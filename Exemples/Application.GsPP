@@ -1,0 +1,11 @@
+espace Shrine::Exemples
+{
+    publique entier32 Principal()
+    {
+        Point point;
+        point.X = 20;
+        point.Y = 22;
+        NombreAppels = NombreAppels + 1;
+        retourner Journaliser(Additionner(&point));
+    }
+}

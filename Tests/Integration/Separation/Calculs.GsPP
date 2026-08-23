@@ -1,0 +1,10 @@
+espace Essai::Separation
+{
+    publique entier32 CompteurPartage = 1;
+
+    publique entier32 Doubler(entier32 valeur)
+    {
+        CompteurPartage = CompteurPartage + 1;
+        retourner valeur * 2;
+    }
+}

@@ -1,0 +1,7 @@
+espace Essai::Separation
+{
+    publique entier32 Principal()
+    {
+        retourner Doubler(21) + CompteurPartage;
+    }
+}

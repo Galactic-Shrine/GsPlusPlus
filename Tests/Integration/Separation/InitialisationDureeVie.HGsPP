@@ -1,0 +1,33 @@
+externe entier32 TraceConstructionSeparee;
+externe entier32 TraceDestructionSeparee;
+externe entier32 CompteurArgumentsSepare;
+
+publique entier32 ProchaineValeurSeparee();
+
+classe ElementDureeSeparee
+{
+    publique:
+        entier32 Valeur;
+        constructeur(entier32 valeur);
+        destructeur();
+};
+
+classe ConfigurationDureeSeparee
+{
+    publique:
+        entier32 Base;
+        entier32 Codes[3];
+        ElementDureeSeparee Elements[3];
+
+        constructeur();
+        constructeur(entier32 valeur);
+        destructeur();
+};
+
+classe ChoixDureeSeparee
+{
+    publique:
+        entier32 Valeur;
+        constructeur();
+        constructeur(entier32 valeur);
+};

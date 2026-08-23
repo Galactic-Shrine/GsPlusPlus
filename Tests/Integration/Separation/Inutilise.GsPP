@@ -1,0 +1,9 @@
+espace Essai::Separation
+{
+    externe entier32 ServiceQuiNeDoitPasEtreImporte();
+
+    publique entier32 FonctionInutilisee()
+    {
+        retourner ServiceQuiNeDoitPasEtreImporte();
+    }
+}

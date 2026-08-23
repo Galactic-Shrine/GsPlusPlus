@@ -1,0 +1,66 @@
+publique entier32 TraceConstructionParent = 0;
+
+classe BaseInitialisee
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 initiale)
+        {
+            soi.Valeur = initiale;
+            TraceConstructionParent = TraceConstructionParent * 10 + 1;
+        }
+
+        virtuel entier32 Lire()
+        {
+            retourner soi.Valeur;
+        }
+
+        virtuel destructeur()
+        {
+            TraceConstructionParent = TraceConstructionParent * 10 + 4;
+        }
+};
+
+classe DeriveeInitialisee : publique BaseInitialisee
+{
+    privée:
+        entier32 Bonus;
+
+    publique:
+        constructeur(entier32 initiale, entier32 bonus)
+            : parent(initiale)
+        {
+            soi.Bonus = bonus;
+            TraceConstructionParent = TraceConstructionParent * 10 + 2;
+        }
+
+        remplacer entier32 Lire()
+        {
+            retourner parent.Lire() + soi.Bonus;
+        }
+
+        entier32 LireParent()
+        {
+            retourner parent.Lire();
+        }
+
+        remplacer destructeur()
+        {
+            TraceConstructionParent = TraceConstructionParent * 10 + 3;
+        }
+};
+
+publique entier32 Principal()
+{
+    entier32 resultat = 0;
+    {
+        DeriveeInitialisee valeur(40, 2);
+        si (TraceConstructionParent != 12) retourner 97;
+        BaseInitialisee& vueBase = valeur;
+        resultat = vueBase.Lire() + valeur.LireParent();
+    }
+    si (TraceConstructionParent != 1234) retourner 99;
+    retourner resultat;
+}

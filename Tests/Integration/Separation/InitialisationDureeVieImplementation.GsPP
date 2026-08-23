@@ -1,0 +1,52 @@
+publique entier32 TraceConstructionSeparee = 0;
+publique entier32 TraceDestructionSeparee = 0;
+publique entier32 CompteurArgumentsSepare = 0;
+
+publique entier32 ProchaineValeurSeparee()
+{
+    CompteurArgumentsSepare = CompteurArgumentsSepare + 1;
+    retourner CompteurArgumentsSepare;
+}
+
+classe ElementDureeSeparee
+{
+    publique:
+        entier32 Valeur;
+
+        constructeur(entier32 valeur)
+        {
+            soi.Valeur = valeur;
+            TraceConstructionSeparee = TraceConstructionSeparee * 10 + valeur;
+        }
+
+        destructeur()
+        {
+            TraceDestructionSeparee = TraceDestructionSeparee * 10 + soi.Valeur;
+        }
+};
+
+classe ConfigurationDureeSeparee
+{
+    publique:
+        entier32 Base = 7;
+        entier32 Codes[3] = {1, 2};
+        ElementDureeSeparee Elements[3];
+
+        constructeur() : Elements(ProchaineValeurSeparee()) {}
+
+        constructeur(entier32 valeur) : soi()
+        {
+            soi.Base = valeur;
+        }
+
+        destructeur() {}
+};
+
+classe ChoixDureeSeparee
+{
+    publique:
+        entier32 Valeur = 5;
+
+        constructeur() {}
+        constructeur(entier32 valeur) : Valeur(valeur) {}
+};

@@ -1,0 +1,13 @@
+espace Shrine::Exemples
+{
+    structure Point
+    {
+        entier32 X;
+        entier32 Y;
+    };
+
+    publique entier32 Additionner(Point* point)
+    {
+        retourner point->X + point->Y;
+    }
+}

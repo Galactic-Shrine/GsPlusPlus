@@ -1,0 +1,36 @@
+name: Validation Gs++
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows / MSVC
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurer
+        run: cmake -S . -B Construction/CI -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON
+      - name: Construire
+        run: cmake --build Construction/CI --config Release --target espace_travail --parallel
+      - name: Tester
+        run: ctest --test-dir Construction/CI -C Release --output-on-failure
+
+  linux:
+    name: Linux / GNU
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurer
+        run: cmake -S . -B Construction/CI -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+      - name: Construire
+        run: cmake --build Construction/CI --target espace_travail --parallel
+      - name: Tester
+        run: ctest --test-dir Construction/CI --output-on-failure

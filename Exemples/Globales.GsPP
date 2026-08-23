@@ -1,0 +1,7 @@
+espace Shrine::Exemples
+{
+    publique entier32 NombreAppels = 0;
+    Point DernierPoint;
+
+    externe entier32 Journaliser(entier32 valeur);
+}

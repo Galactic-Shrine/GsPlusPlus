@@ -1,0 +1,31 @@
+espace Gs::Hebergee
+{
+    publique booléen ChargerFichier(
+        constante caractère* chemin,
+        octet* destination,
+        naturel64 capacite,
+        naturel64* taille)
+    {
+        RequeteFichier requete = {chemin, destination, 0, capacite};
+        naturel32 resultat = Gs::Hote::LireFichier(&requete);
+        si (resultat == 0 || requete.Taille > capacite)
+        {
+            *taille = 0;
+            retourner faux;
+        }
+        *taille = requete.Taille;
+        retourner vrai;
+    }
+
+    publique booléen SauverFichier(
+        constante caractère* chemin, octet* source, naturel64 taille)
+    {
+        RequeteFichier requete = {chemin, source, taille, taille};
+        retourner Gs::Hote::EcrireFichier(&requete) != 0;
+    }
+
+    publique vide SignalerDiagnostic(Diagnostic diagnostic)
+    {
+        Gs::Hote::EmettreDiagnostic(diagnostic);
+    }
+}

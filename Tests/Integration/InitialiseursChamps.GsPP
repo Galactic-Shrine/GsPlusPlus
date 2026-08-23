@@ -1,0 +1,88 @@
+publique entier32 TraceInitialiseursChamps = 0;
+
+publique entier32 MarquerInitialiseur(entier32 valeur, entier32 marque)
+{
+    TraceInitialiseursChamps = TraceInitialiseursChamps * 10 + marque;
+    retourner valeur;
+}
+
+structure PointChamp
+{
+    entier32 X;
+    entier32 Y;
+};
+
+classe BaseChamps
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 valeur)
+        {
+            soi.Valeur = valeur;
+            TraceInitialiseursChamps = TraceInitialiseursChamps * 10 + 1;
+        }
+
+        virtuel entier32 Lire()
+        {
+            retourner soi.Valeur;
+        }
+
+        virtuel destructeur()
+        {
+            TraceInitialiseursChamps = TraceInitialiseursChamps * 10 + 7;
+        }
+};
+
+classe DeriveeChamps : publique BaseChamps
+{
+    privée:
+        constante entier32 Bonus;
+        PointChamp Position;
+        entier32 Tableau[2];
+        entier32* Source;
+        entier32 Corps;
+
+    publique:
+        constructeur(
+            entier32 valeur,
+            entier32 bonus,
+            entier32* source)
+            : parent(valeur),
+              Bonus(MarquerInitialiseur(bonus, 2)),
+              Position({MarquerInitialiseur(3, 3), 4}),
+              Tableau({MarquerInitialiseur(5, 4), 6}),
+              Source(source)
+        {
+            soi.Corps = 8;
+            TraceInitialiseursChamps = TraceInitialiseursChamps * 10 + 5;
+        }
+
+        remplacer entier32 Lire()
+        {
+            retourner parent.Lire() + soi.Bonus
+                + soi.Position.X + soi.Position.Y
+                + soi.Tableau[0] + soi.Tableau[1]
+                + *soi.Source + soi.Corps;
+        }
+
+        remplacer destructeur()
+        {
+            TraceInitialiseursChamps = TraceInitialiseursChamps * 10 + 6;
+        }
+};
+
+publique entier32 Principal()
+{
+    entier32 resultat = 0;
+    entier32 source = 7;
+    {
+        DeriveeChamps valeur(40, 2, &source);
+        si (TraceInitialiseursChamps != 12345) retourner 97;
+        BaseChamps& vue = valeur;
+        resultat = vue.Lire();
+    }
+    si (TraceInitialiseursChamps != 1234567) retourner 99;
+    retourner resultat;
+}

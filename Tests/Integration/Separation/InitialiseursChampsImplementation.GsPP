@@ -1,0 +1,79 @@
+publique entier32 TraceChampsSepares = 0;
+
+publique entier32 MarquerChampSepare(entier32 valeur, entier32 marque)
+{
+    TraceChampsSepares = TraceChampsSepares * 10 + marque;
+    retourner valeur;
+}
+
+structure PointChampSepare
+{
+    entier32 X;
+    entier32 Y;
+};
+
+classe BaseChampsSepares
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 valeur)
+        {
+            soi.Valeur = valeur;
+            TraceChampsSepares = TraceChampsSepares * 10 + 1;
+        }
+
+        virtuel entier32 Lire()
+        {
+            retourner soi.Valeur;
+        }
+
+        virtuel destructeur()
+        {
+            TraceChampsSepares = TraceChampsSepares * 10 + 7;
+        }
+};
+
+classe DeriveeChampsSepares : publique BaseChampsSepares
+{
+    privée:
+        constante entier32 Bonus;
+        PointChampSepare Position;
+        entier32 Tableau[2];
+        entier32* Source;
+        entier32 Corps;
+
+    publique:
+        constructeur(
+            entier32 valeur,
+            entier32 bonus,
+            entier32* source)
+            : parent(valeur),
+              Bonus(MarquerChampSepare(bonus, 2)),
+              Position({MarquerChampSepare(3, 3), 4}),
+              Tableau({MarquerChampSepare(5, 4), 6}),
+              Source(source)
+        {
+            soi.Corps = 8;
+            TraceChampsSepares = TraceChampsSepares * 10 + 5;
+        }
+
+        remplacer entier32 Lire()
+        {
+            retourner parent.Lire() + soi.Bonus
+                + soi.Position.X + soi.Position.Y
+                + soi.Tableau[0] + soi.Tableau[1]
+                + *soi.Source + soi.Corps;
+        }
+
+        remplacer destructeur()
+        {
+            TraceChampsSepares = TraceChampsSepares * 10 + 6;
+        }
+};
+
+publique entier32 EvaluerChampsSepares(BaseChampsSepares& valeur)
+{
+    retourner valeur.Lire();
+}

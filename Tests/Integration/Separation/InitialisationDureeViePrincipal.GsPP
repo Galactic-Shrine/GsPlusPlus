@@ -1,0 +1,34 @@
+publique entier32 PrincipalDureeSeparee()
+{
+    TraceConstructionSeparee = 0;
+    TraceDestructionSeparee = 0;
+    CompteurArgumentsSepare = 0;
+    {
+        ConfigurationDureeSeparee configuration(9);
+        si (configuration.Base != 9) retourner 1;
+        si (configuration.Codes[0] != 1) retourner 2;
+        si (configuration.Codes[1] != 2) retourner 3;
+        si (configuration.Codes[2] != 0) retourner 4;
+        si (TraceConstructionSeparee != 123) retourner 5;
+        si (configuration.Elements[0].Valeur != 1) retourner 13;
+        si (configuration.Elements[2].Valeur != 3) retourner 14;
+    }
+    si (TraceDestructionSeparee != 321) retourner 6;
+
+    TraceConstructionSeparee = 0;
+    TraceDestructionSeparee = 0;
+    CompteurArgumentsSepare = 0;
+    {
+        ElementDureeSeparee locaux[3](ProchaineValeurSeparee());
+        si (TraceConstructionSeparee != 123) retourner 7;
+        si (locaux[0].Valeur != 1) retourner 8;
+        si (locaux[2].Valeur != 3) retourner 9;
+    }
+    si (TraceDestructionSeparee != 321) retourner 10;
+
+    ChoixDureeSeparee valeurDefaut;
+    ChoixDureeSeparee valeurExplicite(8);
+    si (valeurDefaut.Valeur != 5) retourner 11;
+    si (valeurExplicite.Valeur != 8) retourner 12;
+    retourner 25;
+}

@@ -1,0 +1,20 @@
+externe entier32 CompteurTableauSepare;
+externe entier32 TraceTableauSepare;
+
+classe ElementTableauSepare
+{
+    publique:
+        entier32 Valeur;
+        constructeur();
+        destructeur();
+};
+
+classe ConteneurTableauSepare
+{
+    privée:
+        ElementTableauSepare Valeurs[2][2];
+    publique:
+        constructeur();
+        destructeur();
+        entier32 Somme();
+};

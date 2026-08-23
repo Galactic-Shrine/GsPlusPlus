@@ -1,0 +1,245 @@
+publique entier32 TesterBibliothequeHebergee()
+{
+    naturel64 diviseurNul = 0;
+    si (faux && (1 / diviseurNul == 0)) retourner 90;
+    si (!(vrai || (1 / diviseurNul == 0))) retourner 91;
+
+    octet entree[32];
+    naturel64 taille = 0;
+    si (!Gs::Hosted::LoadFile(
+            "source.GsPP", &entree[0], 32, &taille))
+        retourner 1;
+    si (taille != 6) retourner 2;
+
+    Gs::Hosted::InputStream lecture =
+        Gs::Hosted::MakeInputStream(&entree[0], taille);
+    octet premier = 0;
+    si (!Gs::Hosted::ReadByte(&lecture, &premier) || premier != 71)
+        retourner 3;
+    octet bloc[5];
+    si (Gs::Hosted::ReadBlock(&lecture, &bloc[0], 5) != 5)
+        retourner 4;
+
+    octet sortie[8];
+    Gs::Hosted::OutputStream ecriture =
+        Gs::Hosted::MakeOutputStream(&sortie[0], 8);
+    si (!Gs::Hosted::WriteByte(&ecriture, 71)) retourner 5;
+    si (Gs::Hosted::WriteBlock(&ecriture, &bloc[0], 5) != 5)
+        retourner 6;
+    si (!Gs::Hosted::SaveFile("sortie.GsObj", &sortie[0], 6))
+        retourner 7;
+
+    naturel64 stockageVecteur[4];
+    Gs::Hosted::ValueVector vecteur;
+    Gs::Hosted::InitializeVector(&vecteur, &stockageVecteur[0], 4);
+    si (!Gs::Hosted::AppendValue(&vecteur, 17)
+        || !Gs::Hosted::AppendValue(&vecteur, 42))
+        retourner 8;
+    naturel64 valeur = 0;
+    si (!Gs::Hosted::ReadValue(&vecteur, 1, &valeur) || valeur != 42)
+        retourner 9;
+
+    Gs::Hosted::SymbolEntry stockageTable[8];
+    Gs::Hosted::SymbolTable table;
+    Gs::Hosted::InitializeSymbolTable(
+        &table, &stockageTable[0], 8);
+    si (!Gs::Hosted::InsertSymbol(
+            &table,
+            Gs::Hosted::MakeTerminatedTextView("Compteur"),
+            91))
+        retourner 10;
+    si (!Gs::Hosted::InsertSymbol(
+            &table,
+            Gs::Hosted::MakeTerminatedTextView("Compteur"),
+            92)
+        || table.Nombre != 1)
+        retourner 11;
+    valeur = 0;
+    si (!Gs::Hosted::FindSymbol(
+            &table,
+            Gs::Hosted::MakeTerminatedTextView("Compteur"),
+            &valeur)
+        || valeur != 92)
+        retourner 12;
+    si (Gs::Hosted::FindSymbol(
+            &table,
+            Gs::Hosted::MakeTerminatedTextView("Absent"),
+            &valeur))
+        retourner 13;
+
+    si (!Gs::Hosted::ValidateUtf8(
+            Gs::Hosted::MakeTerminatedTextView("sanctuaire galactique étendu")))
+        retourner 14;
+    octet utf8Invalide[2];
+    utf8Invalide[0] = 192;
+    utf8Invalide[1] = 175;
+    Gs::Hosted::TextView vueUtf8Invalide = {
+        convertir<constante caractère*>(&utf8Invalide[0]), 2};
+    si (Gs::Hosted::ValidateUtf8(vueUtf8Invalide)) retourner 15;
+
+    Gs::Hosted::Utf8String chaine;
+    Gs::Hosted::InitializeUtf8String(&chaine);
+    si (Gs::Hosted::AssignUtf8String(
+            &chaine,
+            Gs::Hosted::MakeTerminatedTextView("Gs++!"))
+        != Gs::Hebergee::CodeErreurHebergee::Reussite)
+        retourner 16;
+    si (chaine.Taille != 5 || chaine.Donnees[5] != 0)
+        retourner 17;
+    caractère* ancienneAdresseChaine = chaine.Donnees;
+    si (Gs::Hosted::ReserveUtf8String(&chaine, 4096)
+            != Gs::Hebergee::CodeErreurHebergee::AllocationEchouee
+        || chaine.Donnees != ancienneAdresseChaine
+        || chaine.Taille != 5
+        || chaine.Donnees[0] != 71)
+        retourner 18;
+    Gs::Hosted::TextView vueChaine =
+        Gs::Hosted::ViewUtf8String(&chaine);
+    si (Gs::Hosted::AppendUtf8View(&chaine, vueChaine)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || chaine.Taille != 10
+        || chaine.Donnees[5] != 71
+        || chaine.Donnees[10] != 0)
+        retourner 19;
+
+    Gs::Hosted::DynamicByteVector octetsDynamiques;
+    Gs::Hosted::InitializeDynamicByteVector(&octetsDynamiques);
+    si (Gs::Hosted::AppendDynamicByteBlock(
+            &octetsDynamiques, &entree[0], 6)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::AppendDynamicByteBlock(
+            &octetsDynamiques, octetsDynamiques.Donnees, 6)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || octetsDynamiques.Taille != 12
+        || octetsDynamiques.Donnees[6] != 71)
+        retourner 20;
+
+    Gs::Hosted::DynamicValueVector naturelsDynamiques;
+    Gs::Hosted::InitializeDynamicValueVector(&naturelsDynamiques);
+    naturel64 indexNaturel = 0;
+    tantque (indexNaturel < 20)
+    {
+        si (Gs::Hosted::AppendDynamicValue(
+                &naturelsDynamiques, indexNaturel * 3)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite)
+            retourner 21;
+        indexNaturel = indexNaturel + 1;
+    }
+    naturel64 naturelLu = 0;
+    si (!Gs::Hosted::ReadDynamicValue(
+            &naturelsDynamiques, 19, &naturelLu)
+        || naturelLu != 57)
+        retourner 22;
+
+    Gs::Hosted::DynamicSymbolTable symbolesDynamiques;
+    Gs::Hosted::InitializeDynamicSymbolTable(&symbolesDynamiques);
+    si (Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("un"), 1)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("deux"), 2)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("trois"), 3)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("quatre"), 4)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("cinq"), 5)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("six"), 6)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("sept"), 7)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("huit"), 8)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("neuf"), 9)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite)
+        retourner 23;
+    si (Gs::Hosted::InsertDynamicSymbol(&symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("sept"), 77)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || symbolesDynamiques.Nombre != 9)
+        retourner 24;
+    naturel64 symboleLu = 0;
+    si (!Gs::Hosted::FindDynamicSymbol(
+            &symbolesDynamiques,
+            Gs::Hosted::MakeTerminatedTextView("sept"),
+            &symboleLu)
+        || symboleLu != 77
+        || symbolesDynamiques.Capacite < 16)
+        retourner 25;
+
+    Gs::Hosted::Arena arene;
+    Gs::Hosted::InitializeArena(&arene, 64);
+    octet* premierBlocArene = Gs::Hosted::ArenaAllocate(&arene, 32, 8);
+    si (!premierBlocArene) retourner 26;
+    premierBlocArene[0] = 77;
+    octet* secondBlocArene = Gs::Hosted::ArenaAllocate(&arene, 80, 8);
+    si (!secondBlocArene
+        || arene.Premier == arene.Dernier
+        || premierBlocArene[0] != 77
+        || arene.NombreOctets != 112)
+        retourner 27;
+
+    Gs::Hosted::Utf8String cheminJoint;
+    Gs::Hosted::InitializeUtf8String(&cheminJoint);
+    si (Gs::Hosted::JoinUtf8Path(
+            &cheminJoint,
+            Gs::Hosted::MakeTerminatedTextView("racine/"),
+            Gs::Hosted::MakeTerminatedTextView("/source.GsPP"),
+            convertir<caractère>(47))
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || !Gs::Hosted::TextViewsEqual(
+            Gs::Hosted::ViewUtf8String(&cheminJoint),
+            Gs::Hosted::MakeTerminatedTextView("racine/source.GsPP")))
+        retourner 28;
+    si (!Gs::Hosted::TextViewsEqual(
+            Gs::Hosted::FileNameView(
+                Gs::Hosted::ViewUtf8String(&cheminJoint)),
+            Gs::Hosted::MakeTerminatedTextView("source.GsPP"))
+        || !Gs::Hosted::TextViewsEqual(
+            Gs::Hosted::ExtensionView(
+                Gs::Hosted::ViewUtf8String(&cheminJoint)),
+            Gs::Hosted::MakeTerminatedTextView(".GsPP")))
+        retourner 29;
+
+    Gs::Hosted::AllocatedFile fichierAlloue;
+    Gs::Hosted::InitializeAllocatedFile(&fichierAlloue);
+    si (Gs::Hosted::LoadAllocatedFile("source.GsPP", &fichierAlloue)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite
+        || fichierAlloue.Taille != 6
+        || fichierAlloue.Donnees[5] != 33)
+        retourner 30;
+    si (Gs::Hosted::SaveFileResult(
+            "sortie-allouee.GsObj",
+            fichierAlloue.Donnees,
+            fichierAlloue.Taille)
+            != Gs::Hebergee::CodeErreurHebergee::Reussite)
+        retourner 31;
+    Gs::Hosted::FreeAllocatedFile(&fichierAlloue);
+    si (fichierAlloue.Donnees || fichierAlloue.Taille != 0)
+        retourner 32;
+
+    Gs::Hosted::Diagnostic diagnostic = {
+        2,
+        7,
+        9,
+        0,
+        Gs::Hosted::MakeTerminatedTextView("auto.GsPP"),
+        Gs::Hosted::MakeTerminatedTextView("diagnostic auto-hébergé")
+    };
+    Gs::Hosted::ReportDiagnostic(diagnostic);
+    Gs::Hosted::DestroyUtf8String(&cheminJoint);
+    Gs::Hosted::DestroyArena(&arene);
+    Gs::Hosted::DestroyDynamicSymbolTable(&symbolesDynamiques);
+    Gs::Hosted::DestroyDynamicValueVector(&naturelsDynamiques);
+    Gs::Hosted::DestroyDynamicByteVector(&octetsDynamiques);
+    Gs::Hosted::DestroyUtf8String(&chaine);
+    retourner 260;
+}

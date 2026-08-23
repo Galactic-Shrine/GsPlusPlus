@@ -1,0 +1,58 @@
+espace Essai::Fonctions
+{
+    structure Operation
+    {
+        pointeur_fonction<entier32(entier32)> Executer;
+    };
+
+    publique entier32 AjouterUn(entier32 valeur)
+    {
+        retourner valeur + 1;
+    }
+
+    publique entier32 Doubler(entier32 valeur)
+    {
+        retourner valeur * 2;
+    }
+
+    publique pointeur_fonction<entier32(entier32)> OperationGlobale = &AjouterUn;
+
+    publique pointeur_fonction<entier32(entier32)> Choisir(booléen doubler)
+    {
+        si (doubler)
+        {
+            retourner &Doubler;
+        }
+        retourner AjouterUn;
+    }
+
+    publique entier32 Appliquer(
+        pointeur_fonction<entier32(entier32)> operation,
+        entier32 valeur)
+    {
+        retourner operation(valeur);
+    }
+
+    publique entier32 Principal()
+    {
+        pointeur_fonction<entier32(entier32)> operation = &AjouterUn;
+        si (operation(41) != 42) retourner 1;
+
+        operation = Choisir(vrai);
+        si ((*operation)(21) != 42) retourner 2;
+
+        Operation enveloppe;
+        enveloppe.Executer = AjouterUn;
+        si (enveloppe.Executer(41) != 42) retourner 3;
+
+        pointeur_fonction<entier32(entier32)> table[2];
+        table[0] = &AjouterUn;
+        table[1] = Doubler;
+        si (table[0](41) != 42) retourner 4;
+        si (Appliquer(table[1], 21) != 42) retourner 5;
+
+        si (OperationGlobale(41) != 42) retourner 6;
+        si (operation != &Doubler) retourner 7;
+        retourner 44;
+    }
+}

@@ -1,0 +1,104 @@
+énumération EtatExecution
+{
+    Arrete = 3,
+    Actif,
+    Termine = 9,
+};
+
+union MotDouble
+{
+    naturel64 Complet;
+    naturel32 Parties[2];
+};
+
+publique naturel8 OctetGlobal = 250;
+publique entier64 EntierLongGlobal = -5_000_000_000;
+publique constante entier32 LimiteGlobale = 42;
+volatile naturel32 TemoinGlobal = 7;
+publique naturel64 NaturelMaxGlobal = 18_446_744_073_709_551_615;
+publique entier64 EntierMinGlobal = -9_223_372_036_854_775_808;
+
+publique entier8 AjouterEntier8(entier8 valeur)
+{
+    retourner valeur + 1;
+}
+
+publique naturel8 AjouterNaturel8(naturel8 valeur)
+{
+    retourner valeur + 1;
+}
+
+publique entier16 AjouterEntier16(entier16 valeur)
+{
+    retourner valeur + 2;
+}
+
+publique naturel16 DiviserNaturel16(naturel16 valeur, naturel16 diviseur)
+{
+    retourner valeur / diviseur;
+}
+
+publique naturel32 AjouterNaturel32(naturel32 valeur)
+{
+    retourner valeur + 3;
+}
+
+publique entier64 DiviserEntier64(entier64 valeur, entier64 diviseur)
+{
+    retourner valeur / diviseur;
+}
+
+publique naturel64 AjouterNaturel64(naturel64 valeur)
+{
+    retourner valeur + 4;
+}
+
+publique booléen EstSuperieur(naturel8 valeur, naturel8 limite)
+{
+    retourner valeur > limite;
+}
+
+publique entier32 Principal()
+{
+    si (AjouterEntier8(-8) != -7) { retourner 1; }
+    si (AjouterNaturel8(250) != 251) { retourner 2; }
+    si (AjouterEntier16(-30000) != -29998) { retourner 3; }
+    si (DiviserNaturel16(60000, 3) != 20000) { retourner 4; }
+    si (AjouterNaturel32(4_000_000_000) != 4_000_000_003) { retourner 5; }
+    si (DiviserEntier64(-5_000_000_000, 5) != -1_000_000_000) { retourner 6; }
+    si (AjouterNaturel64(5_000_000_000) != 5_000_000_004) { retourner 7; }
+    si (!EstSuperieur(250, 10)) { retourner 8; }
+
+    entier16 valeurs[4];
+    valeurs[0] = -5;
+    valeurs[1] = 12;
+    valeurs[2] = valeurs[0] + valeurs[1];
+    si (valeurs[2] != 7) { retourner 9; }
+
+    MotDouble mot;
+    mot.Complet = 4_294_967_298;
+    si (mot.Parties[0] != 2) { retourner 10; }
+    si (mot.Parties[1] != 1) { retourner 11; }
+
+    EtatExecution etat = EtatExecution::Actif;
+    si (convertir<entier32>(etat) != 4) { retourner 12; }
+    etat = convertir<EtatExecution>(9);
+    si (etat != EtatExecution::Termine) { retourner 13; }
+
+    constante entier32 limite = 42;
+    volatile naturel32 temoin = 40;
+    temoin = temoin + 2;
+    si (limite != convertir<entier32>(temoin)) { retourner 14; }
+
+    caractère signe = -7;
+    octet brut = 200;
+    si (signe != -7) { retourner 15; }
+    si (brut != 200) { retourner 16; }
+    si (OctetGlobal != 250) { retourner 17; }
+    si (EntierLongGlobal != -5_000_000_000) { retourner 18; }
+    si (LimiteGlobale != 42) { retourner 19; }
+    si (NaturelMaxGlobal + 1 != 0) { retourner 20; }
+    si (EntierMinGlobal != -9_223_372_036_854_775_808) { retourner 21; }
+
+    retourner 120;
+}

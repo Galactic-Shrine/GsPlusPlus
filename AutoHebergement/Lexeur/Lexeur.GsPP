@@ -1,0 +1,456 @@
+espace Gs::Autohebergement
+{
+    structure EtatLexeur
+    {
+        constante caractère* Source;
+        naturel64 Taille;
+        naturel64 Position;
+        naturel32 Ligne;
+        naturel32 Colonne;
+    };
+
+    booléen EstFinLexeur(EtatLexeur* etat)
+    {
+        retourner etat->Position >= etat->Taille;
+    }
+
+    octet OctetCourant(EtatLexeur* etat)
+    {
+        si (EstFinLexeur(etat)) retourner 0;
+        retourner convertir<octet>(etat->Source[etat->Position]);
+    }
+
+    octet OctetSuivant(EtatLexeur* etat)
+    {
+        si (etat->Position + 1 >= etat->Taille) retourner 0;
+        retourner convertir<octet>(etat->Source[etat->Position + 1]);
+    }
+
+    octet AvancerLexeur(EtatLexeur* etat)
+    {
+        octet valeur = OctetCourant(etat);
+        si (!EstFinLexeur(etat))
+        {
+            etat->Position = etat->Position + 1;
+            si (valeur == 10)
+            {
+                etat->Ligne = etat->Ligne + 1;
+                etat->Colonne = 1;
+            }
+            sinon
+            {
+                etat->Colonne = etat->Colonne + 1;
+            }
+        }
+        retourner valeur;
+    }
+
+    booléen EstEspaceAscii(octet valeur)
+    {
+        retourner valeur == 32 || valeur == 9 || valeur == 10
+            || valeur == 13 || valeur == 12 || valeur == 11;
+    }
+
+    booléen EstChiffreAscii(octet valeur)
+    {
+        retourner valeur >= 48 && valeur <= 57;
+    }
+
+    booléen EstLettreAscii(octet valeur)
+    {
+        retourner (valeur >= 65 && valeur <= 90)
+            || (valeur >= 97 && valeur <= 122);
+    }
+
+    booléen CommenceIdentifiantLexeur(octet valeur)
+    {
+        retourner valeur == 95 || valeur >= 128 || EstLettreAscii(valeur);
+    }
+
+    booléen ContinueIdentifiantLexeur(octet valeur)
+    {
+        retourner CommenceIdentifiantLexeur(valeur)
+            || EstChiffreAscii(valeur);
+    }
+
+    naturel64 HachageVideLexeur()
+    {
+        retourner 14_695_981_039_346_656_037;
+    }
+
+    naturel64 AjouterOctetHachage(naturel64 hachage, octet valeur)
+    {
+        retourner (hachage ^ convertir<naturel64>(valeur))
+            * 1_099_511_628_211;
+    }
+
+    naturel64 HacherTranche(
+        constante caractère* source, naturel64 debut, naturel64 taille)
+    {
+        retourner Gs::Hebergee::HacherVueTexte(
+            Gs::Hebergee::CreerVueTexte(&source[debut], taille));
+    }
+
+    vide InitialiserResultatLexage(ResultatLexage* resultat)
+    {
+        resultat->Erreur = ErreurLexage::Reussite;
+        resultat->LigneErreur = 0;
+        resultat->ColonneErreur = 0;
+        resultat->Reserve = 0;
+        resultat->NombreJetons = 0;
+        resultat->CapaciteRequise = 0;
+    }
+
+    ErreurLexage SignalerErreurLexage(
+        RequeteLexage* requete,
+        ErreurLexage erreur,
+        naturel32 ligne,
+        naturel32 colonne)
+    {
+        requete->Resultat.Erreur = erreur;
+        requete->Resultat.LigneErreur = ligne;
+        requete->Resultat.ColonneErreur = colonne;
+        requete->Resultat.CapaciteRequise = requete->Resultat.NombreJetons;
+        retourner erreur;
+    }
+
+    vide AjouterJetonLexe(RequeteLexage* requete, JetonLexe jeton)
+    {
+        naturel64 index = requete->Resultat.NombreJetons;
+        si (requete->Jetons && index < requete->Capacite)
+            requete->Jetons[index] = jeton;
+        requete->Resultat.NombreJetons = index + 1;
+    }
+
+    ErreurLexage IgnorerSeparationsLexeur(
+        EtatLexeur* etat, RequeteLexage* requete)
+    {
+        tantque (!EstFinLexeur(etat))
+        {
+            si (EstEspaceAscii(OctetCourant(etat)))
+            {
+                AvancerLexeur(etat);
+            }
+            sinon si (OctetCourant(etat) == 47 && OctetSuivant(etat) == 47)
+            {
+                tantque (!EstFinLexeur(etat) && OctetCourant(etat) != 10)
+                    AvancerLexeur(etat);
+            }
+            sinon si (OctetCourant(etat) == 47 && OctetSuivant(etat) == 42)
+            {
+                naturel32 ligne = etat->Ligne;
+                naturel32 colonne = etat->Colonne;
+                AvancerLexeur(etat);
+                AvancerLexeur(etat);
+                tantque (!EstFinLexeur(etat)
+                    && !(OctetCourant(etat) == 42
+                        && OctetSuivant(etat) == 47))
+                    AvancerLexeur(etat);
+                si (EstFinLexeur(etat))
+                    retourner SignalerErreurLexage(
+                        requete,
+                        ErreurLexage::CommentaireNonTermine,
+                        ligne,
+                        colonne);
+                AvancerLexeur(etat);
+                AvancerLexeur(etat);
+            }
+            sinon
+            {
+                retourner ErreurLexage::Reussite;
+            }
+        }
+        retourner ErreurLexage::Reussite;
+    }
+
+    vide LireNombreLexeur(
+        EtatLexeur* etat,
+        RequeteLexage* requete)
+    {
+        naturel64 debut = etat->Position;
+        naturel32 ligne = etat->Ligne;
+        naturel32 colonne = etat->Colonne;
+        tantque (!EstFinLexeur(etat)
+            && (EstChiffreAscii(OctetCourant(etat))
+                || OctetCourant(etat) == 95))
+            AvancerLexeur(etat);
+        naturel64 taille = etat->Position - debut;
+        JetonLexe jeton = {
+            2, ligne, colonne, 0,
+            debut, taille, taille,
+            HacherTranche(etat->Source, debut, taille)};
+        AjouterJetonLexe(requete, jeton);
+    }
+
+    vide LireIdentifiantLexeur(
+        EtatLexeur* etat,
+        RequeteLexage* requete)
+    {
+        naturel64 debut = etat->Position;
+        naturel32 ligne = etat->Ligne;
+        naturel32 colonne = etat->Colonne;
+        tantque (!EstFinLexeur(etat)
+            && ContinueIdentifiantLexeur(OctetCourant(etat)))
+            AvancerLexeur(etat);
+        naturel64 taille = etat->Position - debut;
+        naturel32 genre = ClassifierMotCle(&etat->Source[debut], taille);
+        JetonLexe jeton = {
+            genre, ligne, colonne, 0,
+            debut, taille, taille,
+            HacherTranche(etat->Source, debut, taille)};
+        AjouterJetonLexe(requete, jeton);
+    }
+
+    ErreurLexage LireChaineLexeur(
+        EtatLexeur* etat,
+        RequeteLexage* requete)
+    {
+        naturel64 debut = etat->Position;
+        naturel32 ligne = etat->Ligne;
+        naturel32 colonne = etat->Colonne;
+        naturel64 hachage = HachageVideLexeur();
+        naturel64 tailleTexte = 0;
+        AvancerLexeur(etat);
+        tantque (!EstFinLexeur(etat))
+        {
+            octet valeur = AvancerLexeur(etat);
+            si (valeur == 34)
+            {
+                JetonLexe jeton = {
+                    3, ligne, colonne, 0,
+                    debut, etat->Position - debut,
+                    tailleTexte, hachage};
+                AjouterJetonLexe(requete, jeton);
+                retourner ErreurLexage::Reussite;
+            }
+            si (valeur == 10 || valeur == 13)
+                retourner SignalerErreurLexage(
+                    requete,
+                    ErreurLexage::ChaineNonTerminee,
+                    ligne,
+                    colonne);
+            si (valeur != 92)
+            {
+                hachage = AjouterOctetHachage(hachage, valeur);
+                tailleTexte = tailleTexte + 1;
+            }
+            sinon
+            {
+                si (EstFinLexeur(etat))
+                    retourner SignalerErreurLexage(
+                        requete,
+                        ErreurLexage::EchappementNonTermine,
+                        ligne,
+                        colonne);
+                octet echappement = AvancerLexeur(etat);
+                octet decode = 0;
+                si (echappement == 92) decode = 92;
+                sinon si (echappement == 34) decode = 34;
+                sinon si (echappement == 110) decode = 10;
+                sinon si (echappement == 114) decode = 13;
+                sinon si (echappement == 116) decode = 9;
+                sinon si (echappement == 48) decode = 0;
+                sinon
+                    retourner SignalerErreurLexage(
+                        requete,
+                        ErreurLexage::EchappementInconnu,
+                        etat->Ligne,
+                        etat->Colonne - 1);
+                hachage = AjouterOctetHachage(hachage, decode);
+                tailleTexte = tailleTexte + 1;
+            }
+        }
+        retourner SignalerErreurLexage(
+            requete,
+            ErreurLexage::ChaineNonTerminee,
+            ligne,
+            colonne);
+    }
+
+    ErreurLexage LireSymboleLexeur(
+        EtatLexeur* etat,
+        RequeteLexage* requete)
+    {
+        naturel64 debut = etat->Position;
+        naturel32 ligne = etat->Ligne;
+        naturel32 colonne = etat->Colonne;
+        octet valeur = AvancerLexeur(etat);
+        naturel32 genre = 0;
+
+        si (valeur == 40) genre = 34;
+        sinon si (valeur == 41) genre = 35;
+        sinon si (valeur == 123) genre = 36;
+        sinon si (valeur == 125) genre = 37;
+        sinon si (valeur == 91) genre = 38;
+        sinon si (valeur == 93) genre = 39;
+        sinon si (valeur == 59) genre = 40;
+        sinon si (valeur == 44) genre = 41;
+        sinon si (valeur == 46) genre = 42;
+        sinon si (valeur == 43) genre = 61;
+        sinon si (valeur == 42) genre = 63;
+        sinon si (valeur == 47) genre = 64;
+        sinon si (valeur == 37) genre = 65;
+        sinon si (valeur == 94) genre = 57;
+        sinon si (valeur == 126) genre = 58;
+        sinon si (valeur == 45)
+        {
+            si (OctetCourant(etat) == 62)
+            {
+                AvancerLexeur(etat);
+                genre = 43;
+            }
+            sinon genre = 62;
+        }
+        sinon si (valeur == 38)
+        {
+            si (OctetCourant(etat) == 38)
+            {
+                AvancerLexeur(etat);
+                genre = 53;
+            }
+            sinon genre = 55;
+        }
+        sinon si (valeur == 124)
+        {
+            si (OctetCourant(etat) == 124)
+            {
+                AvancerLexeur(etat);
+                genre = 54;
+            }
+            sinon genre = 56;
+        }
+        sinon si (valeur == 61)
+        {
+            si (OctetCourant(etat) == 61)
+            {
+                AvancerLexeur(etat);
+                genre = 46;
+            }
+            sinon genre = 45;
+        }
+        sinon si (valeur == 33)
+        {
+            si (OctetCourant(etat) == 61)
+            {
+                AvancerLexeur(etat);
+                genre = 47;
+            }
+            sinon genre = 52;
+        }
+        sinon si (valeur == 60)
+        {
+            si (OctetCourant(etat) == 60)
+            {
+                AvancerLexeur(etat);
+                genre = 59;
+            }
+            sinon si (OctetCourant(etat) == 61)
+            {
+                AvancerLexeur(etat);
+                genre = 49;
+            }
+            sinon genre = 48;
+        }
+        sinon si (valeur == 62)
+        {
+            si (OctetCourant(etat) == 62)
+            {
+                AvancerLexeur(etat);
+                genre = 60;
+            }
+            sinon si (OctetCourant(etat) == 61)
+            {
+                AvancerLexeur(etat);
+                genre = 51;
+            }
+            sinon genre = 50;
+        }
+        sinon si (valeur == 58)
+        {
+            si (OctetCourant(etat) == 58)
+            {
+                AvancerLexeur(etat);
+                genre = 44;
+            }
+            sinon genre = 73;
+        }
+        sinon
+            retourner SignalerErreurLexage(
+                requete,
+                ErreurLexage::CaractereInattendu,
+                ligne,
+                colonne);
+
+        naturel64 taille = etat->Position - debut;
+        JetonLexe jeton = {
+            genre, ligne, colonne, 0,
+            debut, taille, taille,
+            HacherTranche(etat->Source, debut, taille)};
+        AjouterJetonLexe(requete, jeton);
+        retourner ErreurLexage::Reussite;
+    }
+
+    publique ErreurLexage AnalyserSource(RequeteLexage* requete)
+    {
+        si (!requete) retourner ErreurLexage::ArgumentInvalide;
+        InitialiserResultatLexage(&requete->Resultat);
+        si ((!requete->Source && requete->Taille != 0)
+            || (!requete->Jetons && requete->Capacite != 0))
+            retourner SignalerErreurLexage(
+                requete, ErreurLexage::ArgumentInvalide, 1, 1);
+
+        si (!Gs::Hebergee::ValiderUtf8(
+                Gs::Hebergee::CreerVueTexte(
+                    requete->Source, requete->Taille)))
+            retourner SignalerErreurLexage(
+                requete, ErreurLexage::Utf8Invalide, 1, 1);
+
+        EtatLexeur etat = {
+            requete->Source, requete->Taille, 0, 1, 1};
+        si (requete->Taille >= 3
+            && convertir<octet>(requete->Source[0]) == 239
+            && convertir<octet>(requete->Source[1]) == 187
+            && convertir<octet>(requete->Source[2]) == 191)
+            etat.Position = 3;
+
+        tantque (vrai)
+        {
+            ErreurLexage erreur = IgnorerSeparationsLexeur(&etat, requete);
+            si (erreur != ErreurLexage::Reussite) retourner erreur;
+            si (EstFinLexeur(&etat))
+            {
+                JetonLexe fin = {
+                    0, etat.Ligne, etat.Colonne, 0,
+                    etat.Position, 0, 0, HachageVideLexeur()};
+                AjouterJetonLexe(requete, fin);
+                requete->Resultat.CapaciteRequise =
+                    requete->Resultat.NombreJetons;
+                si (!requete->Jetons
+                    || requete->Capacite < requete->Resultat.NombreJetons)
+                {
+                    requete->Resultat.Erreur =
+                        ErreurLexage::CapaciteInsuffisante;
+                    retourner requete->Resultat.Erreur;
+                }
+                requete->Resultat.Erreur = ErreurLexage::Reussite;
+                retourner requete->Resultat.Erreur;
+            }
+
+            octet courant = OctetCourant(&etat);
+            si (EstChiffreAscii(courant))
+                LireNombreLexeur(&etat, requete);
+            sinon si (CommenceIdentifiantLexeur(courant))
+                LireIdentifiantLexeur(&etat, requete);
+            sinon si (courant == 34)
+            {
+                erreur = LireChaineLexeur(&etat, requete);
+                si (erreur != ErreurLexage::Reussite) retourner erreur;
+            }
+            sinon
+            {
+                erreur = LireSymboleLexeur(&etat, requete);
+                si (erreur != ErreurLexage::Reussite) retourner erreur;
+            }
+        }
+    }
+}

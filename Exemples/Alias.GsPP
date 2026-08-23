@@ -1,0 +1,14 @@
+espace Shrine::Exemples
+{
+    publique entier32 CalculerAvecAlias(entier32 valeur)
+    {
+        retourner valeur + 1;
+    }
+
+    alias CalculateWithAlias = CalculerAvecAlias;
+
+    publique entier32 TesterAlias()
+    {
+        retourner CalculateWithAlias(41);
+    }
+}

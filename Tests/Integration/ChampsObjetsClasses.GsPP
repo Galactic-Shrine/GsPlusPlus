@@ -1,0 +1,116 @@
+publique entier32 TraceChampsObjets = 0;
+
+classe BaseConteneur
+{
+    protégée:
+        entier32 BaseValeur;
+
+    publique:
+        constructeur()
+        {
+            soi.BaseValeur = 1;
+            TraceChampsObjets = TraceChampsObjets * 10 + 1;
+        }
+
+        virtuel destructeur()
+        {
+            TraceChampsObjets = TraceChampsObjets * 10 + 8;
+        }
+};
+
+classe ChampExplicite
+{
+    publique:
+        entier32 Valeur;
+
+        constructeur(entier32 valeur)
+        {
+            soi.Valeur = valeur;
+            TraceChampsObjets = TraceChampsObjets * 10 + 2;
+        }
+
+        destructeur()
+        {
+            TraceChampsObjets = TraceChampsObjets * 10 + 7;
+        }
+};
+
+classe ChampDefaut
+{
+    publique:
+        entier32 Valeur;
+
+        constructeur()
+        {
+            soi.Valeur = 30;
+            TraceChampsObjets = TraceChampsObjets * 10 + 3;
+        }
+
+        destructeur()
+        {
+            TraceChampsObjets = TraceChampsObjets * 10 + 6;
+        }
+};
+
+classe FeuilleImbriquee
+{
+    publique:
+        entier32 Valeur;
+
+        constructeur()
+        {
+            soi.Valeur = 40;
+            TraceChampsObjets = TraceChampsObjets * 10 + 4;
+        }
+
+        destructeur()
+        {
+            TraceChampsObjets = TraceChampsObjets * 10 + 5;
+        }
+};
+
+classe EnveloppeImplicite
+{
+    publique:
+        FeuilleImbriquee Feuille;
+        virtuel entier32 Lire()
+        { retourner soi.Feuille.Valeur; }
+};
+
+classe ConteneurObjets : publique BaseConteneur
+{
+    privée:
+        ChampExplicite Explicite;
+        ChampDefaut Defaut;
+        EnveloppeImplicite Imbrique;
+
+    publique:
+        constructeur(entier32 valeur)
+            : parent(), Explicite(valeur)
+        {}
+
+        entier32 Somme()
+        {
+            retourner soi.BaseValeur + soi.Explicite.Valeur
+                + soi.Defaut.Valeur + soi.Imbrique.Lire();
+        }
+
+        remplacer destructeur()
+        {
+            TraceChampsObjets = TraceChampsObjets * 10 + 9;
+        }
+};
+
+entier32 ConstruireEtRetourner()
+{
+    ConteneurObjets objet(20);
+    si (TraceChampsObjets != 1234) retourner 97;
+    retourner objet.Somme();
+}
+
+publique entier32 Principal()
+{
+    entier32 resultat = ConstruireEtRetourner();
+    si (TraceChampsObjets != 123495678) retourner 99;
+    retourner resultat;
+}

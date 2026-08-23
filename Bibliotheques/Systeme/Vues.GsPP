@@ -1,0 +1,90 @@
+espace Gs::Systeme
+{
+    publique VueOctets CreerVueOctets(octet* donnees, naturel64 taille)
+    {
+        retourner {donnees, taille};
+    }
+
+    publique VueOctets SousVueOctets(
+        VueOctets vue, naturel64 debut, naturel64 taille)
+    {
+        si (debut > vue.Taille) retourner {&vue.Donnees[vue.Taille], 0};
+        naturel64 disponible = vue.Taille - debut;
+        si (taille > disponible) taille = disponible;
+        retourner {&vue.Donnees[debut], taille};
+    }
+
+    publique booléen VuesOctetsEgales(VueOctets gauche, VueOctets droite)
+    {
+        si (gauche.Taille != droite.Taille) retourner faux;
+        naturel64 index = 0;
+        tantque (index < gauche.Taille)
+        {
+            si (gauche.Donnees[index] != droite.Donnees[index]) retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    publique naturel64 ChercherOctet(VueOctets vue, octet valeur)
+    {
+        naturel64 index = 0;
+        tantque (index < vue.Taille)
+        {
+            si (vue.Donnees[index] == valeur) retourner index;
+            index = index + 1;
+        }
+        retourner vue.Taille;
+    }
+
+    publique naturel64 LongueurTexte(caractère* texte)
+    {
+        naturel64 longueur = 0;
+        tantque (texte[longueur] != 0) longueur = longueur + 1;
+        retourner longueur;
+    }
+
+    publique VueTexte CreerVueTexte(caractère* texte)
+    {
+        retourner {texte, LongueurTexte(texte)};
+    }
+
+    publique booléen VuesTexteEgales(VueTexte gauche, VueTexte droite)
+    {
+        si (gauche.Taille != droite.Taille) retourner faux;
+        naturel64 index = 0;
+        tantque (index < gauche.Taille)
+        {
+            si (gauche.Donnees[index] != droite.Donnees[index]) retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    publique entier32 ComparerVuesTexte(VueTexte gauche, VueTexte droite)
+    {
+        naturel64 limite = gauche.Taille;
+        si (droite.Taille < limite) limite = droite.Taille;
+        naturel64 index = 0;
+        tantque (index < limite)
+        {
+            si (gauche.Donnees[index] < droite.Donnees[index]) retourner -1;
+            si (gauche.Donnees[index] > droite.Donnees[index]) retourner 1;
+            index = index + 1;
+        }
+        si (gauche.Taille < droite.Taille) retourner -1;
+        si (gauche.Taille > droite.Taille) retourner 1;
+        retourner 0;
+    }
+
+    publique naturel64 ChercherCaractere(VueTexte vue, caractère valeur)
+    {
+        naturel64 index = 0;
+        tantque (index < vue.Taille)
+        {
+            si (vue.Donnees[index] == valeur) retourner index;
+            index = index + 1;
+        }
+        retourner vue.Taille;
+    }
+}

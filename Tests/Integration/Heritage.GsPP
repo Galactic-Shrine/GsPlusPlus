@@ -1,0 +1,70 @@
+publique entier32 DestructionsHeritage = 0;
+
+classe BaseHeritage
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur()
+        {
+            soi.Valeur = 20;
+        }
+
+        virtuel entier32 Lire()
+        {
+            retourner soi.Valeur;
+        }
+
+        virtuel destructeur()
+        {
+            DestructionsHeritage = DestructionsHeritage + 1;
+        }
+};
+
+classe DeriveeHeritage : publique BaseHeritage
+{
+    privée:
+        entier32 Bonus;
+
+    publique:
+        constructeur()
+        {
+            soi.Bonus = 2;
+        }
+
+        remplacer entier32 Lire()
+        {
+            retourner soi.Valeur + soi.Bonus;
+        }
+
+        remplacer destructeur()
+        {
+            DestructionsHeritage = DestructionsHeritage + 10;
+        }
+
+        virtuel entier32 Doubler()
+        {
+            retourner soi.Lire() * 2;
+        }
+};
+
+entier32 AppelerBase(BaseHeritage& valeur)
+{
+    retourner valeur.Lire();
+}
+
+publique entier32 Principal()
+{
+    entier32 resultat = 0;
+    {
+        DeriveeHeritage derivee();
+        BaseHeritage& referenceBase = derivee;
+        BaseHeritage* pointeurBase = &derivee;
+        resultat = AppelerBase(referenceBase)
+            + pointeurBase->Lire()
+            + derivee.Doubler();
+    }
+    si (DestructionsHeritage != 11) retourner 99;
+    retourner resultat;
+}

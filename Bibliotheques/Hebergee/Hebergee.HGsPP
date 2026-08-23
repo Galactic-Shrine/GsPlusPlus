@@ -1,0 +1,399 @@
+// Bibliothèque hébergée de Gs++ 0.26.
+// Les allocations sont toujours demandées explicitement. Les seuls services
+// dépendant de l’hôte sont regroupés dans l’espace Gs::Hote.
+
+espace Gs::Hebergee
+{
+    énumération CodeErreurHebergee
+    {
+        Reussite = 0,
+        Success = 0,
+        ArgumentInvalide = 1,
+        InvalidArgument = 1,
+        AllocationEchouee = 2,
+        AllocationFailed = 2,
+        CapaciteDepassee = 3,
+        CapacityExceeded = 3,
+        LectureEchouee = 4,
+        ReadFailed = 4,
+        EcritureEchouee = 5,
+        WriteFailed = 5,
+        CheminInvalide = 6,
+        InvalidPath = 6,
+        Utf8Invalide = 7,
+        InvalidUtf8 = 7,
+    };
+
+    structure VueTexte
+    {
+        constante caractère* Donnees;
+        naturel64 Taille;
+        alias Data = Donnees;
+        alias Size = Taille;
+    };
+
+    structure ChaineUtf8
+    {
+        caractère* Donnees;
+        naturel64 Taille;
+        naturel64 Capacite;
+    };
+
+    structure VecteurOctetsDynamique
+    {
+        octet* Donnees;
+        naturel64 Taille;
+        naturel64 Capacite;
+    };
+
+    structure VecteurNaturelsDynamique
+    {
+        naturel64* Donnees;
+        naturel64 Taille;
+        naturel64 Capacite;
+    };
+
+    structure BlocArene
+    {
+        BlocArene* Suivant;
+        naturel64 Capacite;
+        naturel64 Position;
+    };
+
+    structure AreneMemoire
+    {
+        BlocArene* Premier;
+        BlocArene* Dernier;
+        naturel64 TailleBloc;
+        naturel64 NombreOctets;
+    };
+
+    structure FluxLecture
+    {
+        octet* Donnees;
+        naturel64 Taille;
+        naturel64 Position;
+    };
+
+    structure FluxEcriture
+    {
+        octet* Donnees;
+        naturel64 Capacite;
+        naturel64 Position;
+    };
+
+    structure VecteurNaturels
+    {
+        naturel64* Donnees;
+        naturel64 Taille;
+        naturel64 Capacite;
+    };
+
+    structure EntreeTableSymboles
+    {
+        VueTexte Cle;
+        naturel64 Valeur;
+        booléen Occupee;
+    };
+
+    structure TableSymboles
+    {
+        EntreeTableSymboles* Entrees;
+        naturel64 Capacite;
+        naturel64 Nombre;
+    };
+
+    structure TableSymbolesDynamique
+    {
+        EntreeTableSymboles* Entrees;
+        naturel64 Capacite;
+        naturel64 Nombre;
+    };
+
+    structure RequeteFichier
+    {
+        constante caractère* Chemin;
+        octet* Donnees;
+        naturel64 Taille;
+        naturel64 Capacite;
+    };
+
+    structure FichierAlloue
+    {
+        octet* Donnees;
+        naturel64 Taille;
+    };
+
+    structure Diagnostic
+    {
+        naturel32 Niveau;
+        naturel32 Ligne;
+        naturel32 Colonne;
+        naturel32 Reserve;
+        VueTexte Fichier;
+        VueTexte Message;
+    };
+
+    publique VueTexte CreerVueTexte(
+        constante caractère* donnees, naturel64 taille);
+    publique VueTexte CreerVueTexteTerminee(
+        constante caractère* texte);
+    publique booléen VuesTexteEgales(
+        VueTexte gauche, VueTexte droite);
+    publique naturel64 HacherVueTexte(VueTexte texte);
+    publique booléen ValiderUtf8(VueTexte texte);
+
+    publique vide InitialiserChaineUtf8(ChaineUtf8* chaine);
+    publique vide DetruireChaineUtf8(ChaineUtf8* chaine);
+    publique CodeErreurHebergee ReserverChaineUtf8(
+        ChaineUtf8* chaine, naturel64 capacite);
+    publique CodeErreurHebergee AssignerChaineUtf8(
+        ChaineUtf8* chaine, VueTexte texte);
+    publique CodeErreurHebergee AjouterVueChaineUtf8(
+        ChaineUtf8* chaine, VueTexte texte);
+    publique CodeErreurHebergee AjouterAsciiChaineUtf8(
+        ChaineUtf8* chaine, caractère valeur);
+    publique VueTexte VueDepuisChaineUtf8(ChaineUtf8* chaine);
+
+    publique vide InitialiserArene(
+        AreneMemoire* arene, naturel64 tailleBloc);
+    publique vide DetruireArene(AreneMemoire* arene);
+    publique octet* AllouerArene(
+        AreneMemoire* arene, naturel64 taille, naturel64 alignement);
+
+    publique FluxLecture CreerFluxLecture(
+        octet* donnees, naturel64 taille);
+    publique booléen LireOctetFlux(
+        FluxLecture* flux, octet* valeur);
+    publique naturel64 LireBlocFlux(
+        FluxLecture* flux, octet* destination, naturel64 taille);
+    publique FluxEcriture CreerFluxEcriture(
+        octet* donnees, naturel64 capacite);
+    publique booléen EcrireOctetFlux(
+        FluxEcriture* flux, octet valeur);
+    publique naturel64 EcrireBlocFlux(
+        FluxEcriture* flux, octet* source, naturel64 taille);
+
+    publique vide InitialiserVecteurNaturels(
+        VecteurNaturels* vecteur, naturel64* stockage, naturel64 capacite);
+    publique booléen AjouterNaturel(
+        VecteurNaturels* vecteur, naturel64 valeur);
+    publique booléen LireNaturel(
+        VecteurNaturels* vecteur, naturel64 index, naturel64* valeur);
+
+    publique vide InitialiserVecteurOctetsDynamique(
+        VecteurOctetsDynamique* vecteur);
+    publique vide DetruireVecteurOctetsDynamique(
+        VecteurOctetsDynamique* vecteur);
+    publique CodeErreurHebergee ReserverVecteurOctetsDynamique(
+        VecteurOctetsDynamique* vecteur, naturel64 capacite);
+    publique CodeErreurHebergee AjouterBlocVecteurOctetsDynamique(
+        VecteurOctetsDynamique* vecteur, octet* source, naturel64 taille);
+
+    publique vide InitialiserVecteurNaturelsDynamique(
+        VecteurNaturelsDynamique* vecteur);
+    publique vide DetruireVecteurNaturelsDynamique(
+        VecteurNaturelsDynamique* vecteur);
+    publique CodeErreurHebergee ReserverVecteurNaturelsDynamique(
+        VecteurNaturelsDynamique* vecteur, naturel64 capacite);
+    publique CodeErreurHebergee AjouterVecteurNaturelsDynamique(
+        VecteurNaturelsDynamique* vecteur, naturel64 valeur);
+    publique booléen LireVecteurNaturelsDynamique(
+        VecteurNaturelsDynamique* vecteur,
+        naturel64 index,
+        naturel64* valeur);
+
+    publique vide InitialiserTableSymboles(
+        TableSymboles* table,
+        EntreeTableSymboles* stockage,
+        naturel64 capacite);
+    publique booléen InsererSymbole(
+        TableSymboles* table, VueTexte cle, naturel64 valeur);
+    publique booléen ChercherSymbole(
+        TableSymboles* table, VueTexte cle, naturel64* valeur);
+    publique vide InitialiserTableSymbolesDynamique(
+        TableSymbolesDynamique* table);
+    publique vide DetruireTableSymbolesDynamique(
+        TableSymbolesDynamique* table);
+    publique CodeErreurHebergee ReserverTableSymbolesDynamique(
+        TableSymbolesDynamique* table, naturel64 capacite);
+    publique CodeErreurHebergee InsererTableSymbolesDynamique(
+        TableSymbolesDynamique* table, VueTexte cle, naturel64 valeur);
+    publique booléen ChercherTableSymbolesDynamique(
+        TableSymbolesDynamique* table, VueTexte cle, naturel64* valeur);
+
+    publique booléen ChargerFichier(
+        constante caractère* chemin,
+        octet* destination,
+        naturel64 capacite,
+        naturel64* taille);
+    publique booléen SauverFichier(
+        constante caractère* chemin, octet* source, naturel64 taille);
+    publique CodeErreurHebergee ChargerFichierAlloue(
+        constante caractère* chemin, FichierAlloue* fichier);
+    publique vide InitialiserFichierAlloue(FichierAlloue* fichier);
+    publique vide LibererFichierAlloue(FichierAlloue* fichier);
+    publique CodeErreurHebergee SauverFichierResultat(
+        constante caractère* chemin, octet* source, naturel64 taille);
+    publique CodeErreurHebergee JoindreCheminUtf8(
+        ChaineUtf8* sortie,
+        VueTexte base,
+        VueTexte enfant,
+        caractère separateur);
+    publique VueTexte NomFichierVue(VueTexte chemin);
+    publique VueTexte ExtensionVue(VueTexte chemin);
+    publique vide SignalerDiagnostic(Diagnostic diagnostic);
+
+    alias MakeTextView = CreerVueTexte;
+    alias MakeTerminatedTextView = CreerVueTexteTerminee;
+    alias TextViewsEqual = VuesTexteEgales;
+    alias HashTextView = HacherVueTexte;
+    alias ValidateUtf8 = ValiderUtf8;
+    alias InitializeUtf8String = InitialiserChaineUtf8;
+    alias DestroyUtf8String = DetruireChaineUtf8;
+    alias ReserveUtf8String = ReserverChaineUtf8;
+    alias AssignUtf8String = AssignerChaineUtf8;
+    alias AppendUtf8View = AjouterVueChaineUtf8;
+    alias AppendAscii = AjouterAsciiChaineUtf8;
+    alias ViewUtf8String = VueDepuisChaineUtf8;
+    alias InitializeArena = InitialiserArene;
+    alias DestroyArena = DetruireArene;
+    alias ArenaAllocate = AllouerArene;
+    alias MakeInputStream = CreerFluxLecture;
+    alias ReadByte = LireOctetFlux;
+    alias ReadBlock = LireBlocFlux;
+    alias MakeOutputStream = CreerFluxEcriture;
+    alias WriteByte = EcrireOctetFlux;
+    alias WriteBlock = EcrireBlocFlux;
+    alias InitializeVector = InitialiserVecteurNaturels;
+    alias AppendValue = AjouterNaturel;
+    alias ReadValue = LireNaturel;
+    alias InitializeDynamicByteVector = InitialiserVecteurOctetsDynamique;
+    alias DestroyDynamicByteVector = DetruireVecteurOctetsDynamique;
+    alias ReserveDynamicByteVector = ReserverVecteurOctetsDynamique;
+    alias AppendDynamicByteBlock = AjouterBlocVecteurOctetsDynamique;
+    alias InitializeDynamicValueVector = InitialiserVecteurNaturelsDynamique;
+    alias DestroyDynamicValueVector = DetruireVecteurNaturelsDynamique;
+    alias ReserveDynamicValueVector = ReserverVecteurNaturelsDynamique;
+    alias AppendDynamicValue = AjouterVecteurNaturelsDynamique;
+    alias ReadDynamicValue = LireVecteurNaturelsDynamique;
+    alias InitializeSymbolTable = InitialiserTableSymboles;
+    alias InsertSymbol = InsererSymbole;
+    alias FindSymbol = ChercherSymbole;
+    alias InitializeDynamicSymbolTable = InitialiserTableSymbolesDynamique;
+    alias DestroyDynamicSymbolTable = DetruireTableSymbolesDynamique;
+    alias ReserveDynamicSymbolTable = ReserverTableSymbolesDynamique;
+    alias InsertDynamicSymbol = InsererTableSymbolesDynamique;
+    alias FindDynamicSymbol = ChercherTableSymbolesDynamique;
+    alias LoadFile = ChargerFichier;
+    alias SaveFile = SauverFichier;
+    alias LoadAllocatedFile = ChargerFichierAlloue;
+    alias InitializeAllocatedFile = InitialiserFichierAlloue;
+    alias FreeAllocatedFile = LibererFichierAlloue;
+    alias SaveFileResult = SauverFichierResultat;
+    alias JoinUtf8Path = JoindreCheminUtf8;
+    alias FileNameView = NomFichierVue;
+    alias ExtensionView = ExtensionVue;
+    alias ReportDiagnostic = SignalerDiagnostic;
+}
+
+espace Gs::Hote
+{
+    externe octet* AllouerMemoire(naturel64 taille);
+    externe vide LibererMemoire(octet* adresse);
+    externe naturel32 LireFichier(
+        Gs::Hebergee::RequeteFichier* requete);
+    externe naturel32 EcrireFichier(
+        Gs::Hebergee::RequeteFichier* requete);
+    externe vide EmettreDiagnostic(
+        Gs::Hebergee::Diagnostic diagnostic);
+}
+
+alias Gs::Hosted::TextView = Gs::Hebergee::VueTexte;
+alias Gs::Hosted::Utf8String = Gs::Hebergee::ChaineUtf8;
+alias Gs::Hosted::DynamicByteVector =
+    Gs::Hebergee::VecteurOctetsDynamique;
+alias Gs::Hosted::DynamicValueVector =
+    Gs::Hebergee::VecteurNaturelsDynamique;
+alias Gs::Hosted::ArenaBlock = Gs::Hebergee::BlocArene;
+alias Gs::Hosted::Arena = Gs::Hebergee::AreneMemoire;
+alias Gs::Hosted::InputStream = Gs::Hebergee::FluxLecture;
+alias Gs::Hosted::OutputStream = Gs::Hebergee::FluxEcriture;
+alias Gs::Hosted::ValueVector = Gs::Hebergee::VecteurNaturels;
+alias Gs::Hosted::SymbolEntry = Gs::Hebergee::EntreeTableSymboles;
+alias Gs::Hosted::SymbolTable = Gs::Hebergee::TableSymboles;
+alias Gs::Hosted::DynamicSymbolTable =
+    Gs::Hebergee::TableSymbolesDynamique;
+alias Gs::Hosted::FileRequest = Gs::Hebergee::RequeteFichier;
+alias Gs::Hosted::AllocatedFile = Gs::Hebergee::FichierAlloue;
+alias Gs::Hosted::Diagnostic = Gs::Hebergee::Diagnostic;
+alias Gs::Hosted::MakeTextView = Gs::Hebergee::CreerVueTexte;
+alias Gs::Hosted::MakeTerminatedTextView =
+    Gs::Hebergee::CreerVueTexteTerminee;
+alias Gs::Hosted::TextViewsEqual = Gs::Hebergee::VuesTexteEgales;
+alias Gs::Hosted::HashTextView = Gs::Hebergee::HacherVueTexte;
+alias Gs::Hosted::ValidateUtf8 = Gs::Hebergee::ValiderUtf8;
+alias Gs::Hosted::InitializeUtf8String =
+    Gs::Hebergee::InitialiserChaineUtf8;
+alias Gs::Hosted::DestroyUtf8String = Gs::Hebergee::DetruireChaineUtf8;
+alias Gs::Hosted::ReserveUtf8String = Gs::Hebergee::ReserverChaineUtf8;
+alias Gs::Hosted::AssignUtf8String = Gs::Hebergee::AssignerChaineUtf8;
+alias Gs::Hosted::AppendUtf8View = Gs::Hebergee::AjouterVueChaineUtf8;
+alias Gs::Hosted::AppendAscii = Gs::Hebergee::AjouterAsciiChaineUtf8;
+alias Gs::Hosted::ViewUtf8String = Gs::Hebergee::VueDepuisChaineUtf8;
+alias Gs::Hosted::InitializeArena = Gs::Hebergee::InitialiserArene;
+alias Gs::Hosted::DestroyArena = Gs::Hebergee::DetruireArene;
+alias Gs::Hosted::ArenaAllocate = Gs::Hebergee::AllouerArene;
+alias Gs::Hosted::MakeInputStream = Gs::Hebergee::CreerFluxLecture;
+alias Gs::Hosted::ReadByte = Gs::Hebergee::LireOctetFlux;
+alias Gs::Hosted::ReadBlock = Gs::Hebergee::LireBlocFlux;
+alias Gs::Hosted::MakeOutputStream = Gs::Hebergee::CreerFluxEcriture;
+alias Gs::Hosted::WriteByte = Gs::Hebergee::EcrireOctetFlux;
+alias Gs::Hosted::WriteBlock = Gs::Hebergee::EcrireBlocFlux;
+alias Gs::Hosted::InitializeVector =
+    Gs::Hebergee::InitialiserVecteurNaturels;
+alias Gs::Hosted::AppendValue = Gs::Hebergee::AjouterNaturel;
+alias Gs::Hosted::ReadValue = Gs::Hebergee::LireNaturel;
+alias Gs::Hosted::InitializeDynamicByteVector =
+    Gs::Hebergee::InitialiserVecteurOctetsDynamique;
+alias Gs::Hosted::DestroyDynamicByteVector =
+    Gs::Hebergee::DetruireVecteurOctetsDynamique;
+alias Gs::Hosted::ReserveDynamicByteVector =
+    Gs::Hebergee::ReserverVecteurOctetsDynamique;
+alias Gs::Hosted::AppendDynamicByteBlock =
+    Gs::Hebergee::AjouterBlocVecteurOctetsDynamique;
+alias Gs::Hosted::InitializeDynamicValueVector =
+    Gs::Hebergee::InitialiserVecteurNaturelsDynamique;
+alias Gs::Hosted::DestroyDynamicValueVector =
+    Gs::Hebergee::DetruireVecteurNaturelsDynamique;
+alias Gs::Hosted::ReserveDynamicValueVector =
+    Gs::Hebergee::ReserverVecteurNaturelsDynamique;
+alias Gs::Hosted::AppendDynamicValue =
+    Gs::Hebergee::AjouterVecteurNaturelsDynamique;
+alias Gs::Hosted::ReadDynamicValue =
+    Gs::Hebergee::LireVecteurNaturelsDynamique;
+alias Gs::Hosted::InitializeSymbolTable =
+    Gs::Hebergee::InitialiserTableSymboles;
+alias Gs::Hosted::InsertSymbol = Gs::Hebergee::InsererSymbole;
+alias Gs::Hosted::FindSymbol = Gs::Hebergee::ChercherSymbole;
+alias Gs::Hosted::InitializeDynamicSymbolTable =
+    Gs::Hebergee::InitialiserTableSymbolesDynamique;
+alias Gs::Hosted::DestroyDynamicSymbolTable =
+    Gs::Hebergee::DetruireTableSymbolesDynamique;
+alias Gs::Hosted::ReserveDynamicSymbolTable =
+    Gs::Hebergee::ReserverTableSymbolesDynamique;
+alias Gs::Hosted::InsertDynamicSymbol =
+    Gs::Hebergee::InsererTableSymbolesDynamique;
+alias Gs::Hosted::FindDynamicSymbol =
+    Gs::Hebergee::ChercherTableSymbolesDynamique;
+alias Gs::Hosted::LoadFile = Gs::Hebergee::ChargerFichier;
+alias Gs::Hosted::SaveFile = Gs::Hebergee::SauverFichier;
+alias Gs::Hosted::LoadAllocatedFile = Gs::Hebergee::ChargerFichierAlloue;
+alias Gs::Hosted::InitializeAllocatedFile =
+    Gs::Hebergee::InitialiserFichierAlloue;
+alias Gs::Hosted::FreeAllocatedFile = Gs::Hebergee::LibererFichierAlloue;
+alias Gs::Hosted::SaveFileResult = Gs::Hebergee::SauverFichierResultat;
+alias Gs::Hosted::JoinUtf8Path = Gs::Hebergee::JoindreCheminUtf8;
+alias Gs::Hosted::FileNameView = Gs::Hebergee::NomFichierVue;
+alias Gs::Hosted::ExtensionView = Gs::Hebergee::ExtensionVue;
+alias Gs::Hosted::ReportDiagnostic = Gs::Hebergee::SignalerDiagnostic;

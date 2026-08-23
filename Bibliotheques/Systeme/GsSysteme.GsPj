@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GsProjet Version="1.0" Nom="GsSysteme" Type="bibliotheque">
+    <Interface Chemin="Systeme.HGsPP" />
+    <Source Chemin="Memoire.GsPP" />
+    <Source Chemin="Vues.GsPP" />
+    <Source Chemin="Bits.GsPP" />
+    <Source Chemin="Atomiques.GsPP" />
+    <Construction
+        RepertoireObjets="../../Construction/Artefacts/GsPlusPlus/Bibliotheques/Systeme/Objets"
+        Sortie="../../Construction/Artefacts/GsPlusPlus/Bibliotheques/Systeme/GsSysteme.GsA" />
+</GsProjet>

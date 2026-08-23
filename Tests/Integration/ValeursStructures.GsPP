@@ -1,0 +1,153 @@
+espace Essai::Valeurs
+{
+    structure Petit
+    {
+        entier32 X;
+        entier32 Y;
+    };
+
+    structure Grand
+    {
+        entier64 A;
+        entier32 B;
+        entier16 C;
+        octet D;
+        octet E;
+    };
+
+    structure Enveloppe
+    {
+        Petit Point;
+        entier32 Valeurs[3];
+        Grand Large;
+    };
+
+    structure Dispatch
+    {
+        pointeur_fonction<entier32(entier32)> Operation;
+        entier32 Base;
+    };
+
+    publique entier32 Doubler(entier32 valeur)
+    {
+        retourner valeur * 2;
+    }
+
+    publique Enveloppe Globale = {
+        {2, 3},
+        {4, 5},
+        {6, 7, 8, 9, 10},
+    };
+
+    publique Dispatch Operations = {&Doubler, 2};
+
+    publique Petit CreerPetit(entier32 x, entier32 y)
+    {
+        retourner {x, y};
+    }
+
+    publique Petit DecalerPetit(
+        Petit valeur,
+        entier32 deltaX,
+        entier32 deltaY)
+    {
+        valeur.X = valeur.X + deltaX;
+        valeur.Y = valeur.Y + deltaY;
+        retourner valeur;
+    }
+
+    publique Grand ModifierGrand(Grand valeur, entier64 delta)
+    {
+        valeur.A = valeur.A + delta;
+        valeur.B = valeur.B + 1;
+        retourner valeur;
+    }
+
+    publique entier32 ModifierCopie(Grand valeur)
+    {
+        valeur.B = 99;
+        retourner valeur.B;
+    }
+
+    publique Petit ParCallback(Petit valeur)
+    {
+        retourner {valeur.X + 1, valeur.Y + 1};
+    }
+
+    publique entier32 Principal()
+    {
+        Petit point = {20, 22};
+        Petit copie = point;
+        point.X = 1;
+        si (copie.X != 20) retourner 1;
+        si (copie.Y != 22) retourner 1;
+
+        copie = {10, 32};
+        si (copie.X != 10) retourner 2;
+        si (copie.Y != 32) retourner 2;
+        copie = {copie.Y, copie.X};
+        si (copie.X != 32) retourner 2;
+        si (copie.Y != 10) retourner 2;
+        copie = {copie.Y, copie.X};
+
+        Petit cree = CreerPetit(19, 23);
+        si (cree.X != 19) retourner 3;
+        si (cree.Y != 23) retourner 3;
+
+        Petit decale = DecalerPetit(cree, 1, -1);
+        si (decale.X != 20) retourner 4;
+        si (decale.Y != 22) retourner 4;
+        si (cree.X != 19) retourner 5;
+        si (cree.Y != 23) retourner 5;
+
+        Grand grand = {1000, 7, 8, 9, 10};
+        Grand modifie = ModifierGrand(grand, 24);
+        si (modifie.A != 1024) retourner 6;
+        si (modifie.B != 8) retourner 6;
+        si (grand.A != 1000) retourner 7;
+        si (grand.B != 7) retourner 7;
+        si (ModifierCopie(grand) != 99) retourner 8;
+        si (grand.B != 7) retourner 8;
+
+        pointeur_fonction<Petit(Petit)> callback = &ParCallback;
+        Petit resultatCallback = callback(copie);
+        si (resultatCallback.X != 11) retourner 9;
+        si (resultatCallback.Y != 33) retourner 9;
+        si (copie.X != 10) retourner 10;
+        si (copie.Y != 32) retourner 10;
+
+        Enveloppe locale = Globale;
+        si (locale.Point.X != 2) retourner 11;
+        si (locale.Point.Y != 3) retourner 11;
+        si (locale.Valeurs[0] != 4) retourner 12;
+        si (locale.Valeurs[1] != 5) retourner 12;
+        si (locale.Valeurs[2] != 0) retourner 12;
+        si (locale.Large.A != 6) retourner 13;
+        si (locale.Large.B != 7) retourner 13;
+        si (locale.Large.C != 8) retourner 13;
+        si (locale.Large.D != 9) retourner 13;
+        si (locale.Large.E != 10) retourner 13;
+        locale.Point.X = 50;
+        si (Globale.Point.X != 2) retourner 14;
+
+        entier32 nombres[3] = {11, 12};
+        si (nombres[0] != 11) retourner 15;
+        si (nombres[1] != 12) retourner 15;
+        si (nombres[2] != 0) retourner 15;
+
+        Dispatch dispatch = Operations;
+        si (dispatch.Operation(20) + dispatch.Base != 42) retourner 16;
+        si (CreerPetit(4, 5).Y != 5) retourner 17;
+
+        entier32 zero = {};
+        entier32 scalaire = {42};
+        scalaire = {41};
+        si (zero != 0) retourner 18;
+        si (scalaire != 41) retourner 19;
+        scalaire = {scalaire + 1};
+        si (scalaire != 42) retourner 19;
+        si (ModifierCopie({1, 7, 8, 9, 10}) != 99) retourner 20;
+
+        retourner 45;
+    }
+}

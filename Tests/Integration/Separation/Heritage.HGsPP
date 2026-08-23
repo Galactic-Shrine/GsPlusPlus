@@ -1,0 +1,25 @@
+externe entier32 DestructionsHeritageSepare;
+
+classe BaseHeritageSepare
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur();
+        virtuel entier32 Lire();
+        virtuel destructeur();
+};
+
+classe DeriveeHeritageSepare : publique BaseHeritageSepare
+{
+    privée:
+        entier32 Bonus;
+
+    publique:
+        constructeur();
+        remplacer entier32 Lire();
+        remplacer destructeur();
+};
+
+publique entier32 EvaluerHeritage(BaseHeritageSepare& valeur);

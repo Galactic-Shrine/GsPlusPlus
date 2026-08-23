@@ -1,0 +1,12 @@
+publique entier32 PrincipalChampsSepares()
+{
+    entier32 resultat = 0;
+    entier32 source = 7;
+    {
+        DeriveeChampsSepares valeur(40, 2, &source);
+        si (TraceChampsSepares != 12345) retourner 97;
+        resultat = EvaluerChampsSepares(valeur);
+    }
+    si (TraceChampsSepares != 1234567) retourner 99;
+    retourner resultat;
+}

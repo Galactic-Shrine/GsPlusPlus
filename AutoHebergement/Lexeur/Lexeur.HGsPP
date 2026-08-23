@@ -1,0 +1,66 @@
+// Frontend auto-hébergé Gs++ 0.27 : contrat public du lexeur.
+// Le stockage des jetons appartient à l'appelant. Un premier appel avec une
+// capacité nulle retourne CapaciteInsuffisante et la capacité exacte requise.
+
+espace Gs::Autohebergement
+{
+    énumération ErreurLexage
+    {
+        Reussite = 0,
+        Success = 0,
+        CapaciteInsuffisante = 1,
+        InsufficientCapacity = 1,
+        Utf8Invalide = 2,
+        InvalidUtf8 = 2,
+        CommentaireNonTermine = 3,
+        UnterminatedComment = 3,
+        ChaineNonTerminee = 4,
+        UnterminatedString = 4,
+        EchappementNonTermine = 5,
+        UnterminatedEscape = 5,
+        EchappementInconnu = 6,
+        UnknownEscape = 6,
+        CaractereInattendu = 7,
+        UnexpectedCharacter = 7,
+        ArgumentInvalide = 8,
+        InvalidArgument = 8,
+    };
+
+    structure JetonLexe
+    {
+        naturel32 Genre;
+        naturel32 Ligne;
+        naturel32 Colonne;
+        naturel32 Reserve;
+        naturel64 Debut;
+        naturel64 TailleSource;
+        naturel64 TailleTexte;
+        naturel64 HachageTexte;
+    };
+
+    structure ResultatLexage
+    {
+        ErreurLexage Erreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+        naturel32 Reserve;
+        naturel64 NombreJetons;
+        naturel64 CapaciteRequise;
+    };
+
+    structure RequeteLexage
+    {
+        constante caractère* Source;
+        naturel64 Taille;
+        JetonLexe* Jetons;
+        naturel64 Capacite;
+        ResultatLexage Resultat;
+    };
+
+    publique ErreurLexage AnalyserSource(RequeteLexage* requete);
+
+    alias LexToken = JetonLexe;
+    alias LexResult = ResultatLexage;
+    alias LexRequest = RequeteLexage;
+    alias LexSource = AnalyserSource;
+}

@@ -1,0 +1,4 @@
+publique entier32 Principal()
+{
+    retourner 24;
+}

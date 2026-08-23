@@ -1,0 +1,11 @@
+espace Essai::ValeursSeparation
+{
+    publique entier32 PrincipalValeurs()
+    {
+        Paire paire = Construire(20, 25);
+        entier32 resultat = Additionner(paire);
+        si (paire.X != 20) retourner 1;
+        si (paire.Y != 25) retourner 2;
+        retourner resultat;
+    }
+}

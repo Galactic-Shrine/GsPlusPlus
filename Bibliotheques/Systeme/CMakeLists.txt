@@ -1,0 +1,28 @@
+set(GS_SYSTEME_INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/Systeme.HGsPP")
+set(GS_SYSTEME_PROJET "${CMAKE_CURRENT_SOURCE_DIR}/GsSysteme.GsPj")
+set(GS_SYSTEME_REPERTOIRE "${GS_REPERTOIRE_ARTEFACTS}/GsPlusPlus/Bibliotheques/Systeme")
+set(GS_SYSTEME_GSA "${GS_SYSTEME_REPERTOIRE}/GsSysteme.GsA")
+set(GS_SYSTEME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Memoire.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Vues.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Bits.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Atomiques.GsPP"
+)
+
+add_custom_command(
+    OUTPUT "${GS_SYSTEME_GSA}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${GS_SYSTEME_REPERTOIRE}"
+    COMMAND $<TARGET_FILE:gsppc> "${GS_SYSTEME_PROJET}"
+        -o "${GS_SYSTEME_GSA}"
+        --repertoire-objets "${GS_SYSTEME_REPERTOIRE}/Objets"
+    DEPENDS
+        gsppc
+        "${GS_SYSTEME_PROJET}"
+        "${GS_SYSTEME_INTERFACE}"
+        ${GS_SYSTEME_SOURCES}
+    VERBATIM
+)
+add_custom_target(bibliotheque_systeme DEPENDS "${GS_SYSTEME_GSA}")
+
+set(GS_SYSTEME_INTERFACE "${GS_SYSTEME_INTERFACE}" CACHE INTERNAL "")
+set(GS_SYSTEME_GSA "${GS_SYSTEME_GSA}" CACHE INTERNAL "")

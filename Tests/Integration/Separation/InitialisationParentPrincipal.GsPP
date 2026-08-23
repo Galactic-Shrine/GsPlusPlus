@@ -1,0 +1,11 @@
+publique entier32 PrincipalParentSepare()
+{
+    entier32 resultat = 0;
+    {
+        DeriveeParentSepare valeur(40, 2);
+        si (TraceParentSepare != 12) retourner 97;
+        resultat = EvaluerParent(valeur) + valeur.LireParent();
+    }
+    si (TraceParentSepare != 1234) retourner 99;
+    retourner resultat;
+}

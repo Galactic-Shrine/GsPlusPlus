@@ -1,0 +1,6 @@
+espace Gs::Autohebergement
+{
+    publique naturel32 ClassifierMotCle(
+        constante caractère* texte, naturel64 taille);
+    alias ClassifyKeyword = ClassifierMotCle;
+}

@@ -1,0 +1,27 @@
+// Same program using the official English aliases.
+namespace Shrine::Exemples
+{
+    public int32 Additionner(int32 gauche, int32 droite)
+    {
+        return gauche + droite;
+    }
+
+    public int32 Principal()
+    {
+        int32 résultat = Additionner(20, 22);
+
+        if (résultat != 42)
+        {
+            résultat = 0;
+        }
+        else
+        {
+            while (résultat < 42)
+            {
+                résultat = résultat + 1;
+            }
+        }
+
+        return résultat;
+    }
+}

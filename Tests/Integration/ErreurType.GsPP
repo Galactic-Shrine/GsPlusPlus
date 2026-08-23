@@ -1,0 +1,7 @@
+publique entier32 Principal()
+{
+    entier32 valeur = 42;
+    entier32* pointeur = &valeur;
+    valeur = pointeur;
+    retourner valeur;
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GsProject
+    Version="1.0"
+    Name="ApplicationSeparation"
+    Type="executable"
+    EntryPoint="Essai::Separation::Principal"
+    ApplicationVersion="0.27.0-alpha.1">
+    <Interface Path="Calculs.HeaderGsPlusPlus" />
+    <Source Path="Principal.GsPP" />
+    <Library Path="../../../Construction/Tests/GsPlusPlus/Separation/CalculsSeparation.GsA" />
+    <Build
+        ObjectDirectory="../../../Construction/Tests/GsPlusPlus/Separation/ProjetApplication/Objets"
+        Output="../../../Construction/Tests/GsPlusPlus/Separation/ApplicationProjet.GsE"
+        Map="../../../Construction/Tests/GsPlusPlus/Separation/ApplicationProjet.map" />
+</GsProject>

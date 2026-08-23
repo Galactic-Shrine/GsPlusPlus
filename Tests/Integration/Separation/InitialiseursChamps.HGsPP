@@ -1,0 +1,38 @@
+externe entier32 TraceChampsSepares;
+
+structure PointChampSepare
+{
+    entier32 X;
+    entier32 Y;
+};
+
+classe BaseChampsSepares
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 valeur);
+        virtuel entier32 Lire();
+        virtuel destructeur();
+};
+
+classe DeriveeChampsSepares : publique BaseChampsSepares
+{
+    privée:
+        constante entier32 Bonus;
+        PointChampSepare Position;
+        entier32 Tableau[2];
+        entier32* Source;
+        entier32 Corps;
+
+    publique:
+        constructeur(
+            entier32 valeur,
+            entier32 bonus,
+            entier32* source);
+        remplacer entier32 Lire();
+        remplacer destructeur();
+};
+
+publique entier32 EvaluerChampsSepares(BaseChampsSepares& valeur);

@@ -1,0 +1,50 @@
+publique entier32 DestructionsHeritageSepare = 0;
+
+classe BaseHeritageSepare
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur()
+        {
+            soi.Valeur = 40;
+        }
+
+        virtuel entier32 Lire()
+        {
+            retourner soi.Valeur;
+        }
+
+        virtuel destructeur()
+        {
+            DestructionsHeritageSepare = DestructionsHeritageSepare + 1;
+        }
+};
+
+classe DeriveeHeritageSepare : publique BaseHeritageSepare
+{
+    privée:
+        entier32 Bonus;
+
+    publique:
+        constructeur()
+        {
+            soi.Bonus = 2;
+        }
+
+        remplacer entier32 Lire()
+        {
+            retourner soi.Valeur + soi.Bonus;
+        }
+
+        remplacer destructeur()
+        {
+            DestructionsHeritageSepare = DestructionsHeritageSepare + 10;
+        }
+};
+
+publique entier32 EvaluerHeritage(BaseHeritageSepare& valeur)
+{
+    retourner valeur.Lire();
+}

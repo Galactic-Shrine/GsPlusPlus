@@ -1,0 +1,80 @@
+publique entier32 TraceObjetsSepares = 0;
+
+classe BaseObjetSepare
+{
+    protégée: entier32 BaseValeur;
+    publique:
+        constructeur()
+        {
+            soi.BaseValeur = 1;
+            TraceObjetsSepares = TraceObjetsSepares * 10 + 1;
+        }
+        virtuel destructeur()
+        { TraceObjetsSepares = TraceObjetsSepares * 10 + 8; }
+};
+
+classe ChampExpliciteSepare
+{
+    publique:
+        entier32 Valeur;
+        constructeur(entier32 valeur)
+        {
+            soi.Valeur = valeur;
+            TraceObjetsSepares = TraceObjetsSepares * 10 + 2;
+        }
+        destructeur()
+        { TraceObjetsSepares = TraceObjetsSepares * 10 + 7; }
+};
+
+classe ChampDefautSepare
+{
+    publique:
+        entier32 Valeur;
+        constructeur()
+        {
+            soi.Valeur = 30;
+            TraceObjetsSepares = TraceObjetsSepares * 10 + 3;
+        }
+        destructeur()
+        { TraceObjetsSepares = TraceObjetsSepares * 10 + 6; }
+};
+
+classe FeuilleSeparee
+{
+    publique:
+        entier32 Valeur;
+        constructeur()
+        {
+            soi.Valeur = 40;
+            TraceObjetsSepares = TraceObjetsSepares * 10 + 4;
+        }
+        destructeur()
+        { TraceObjetsSepares = TraceObjetsSepares * 10 + 5; }
+};
+
+classe EnveloppeSeparee
+{
+    publique:
+        FeuilleSeparee Feuille;
+        virtuel entier32 Lire()
+        { retourner soi.Feuille.Valeur; }
+};
+
+classe ConteneurSepare : publique BaseObjetSepare
+{
+    privée:
+        ChampExpliciteSepare Explicite;
+        ChampDefautSepare Defaut;
+        EnveloppeSeparee Imbrique;
+    publique:
+        constructeur(entier32 valeur)
+            : parent(), Explicite(valeur)
+        {}
+        entier32 Somme()
+        {
+            retourner soi.BaseValeur + soi.Explicite.Valeur
+                + soi.Defaut.Valeur + soi.Imbrique.Lire();
+        }
+        remplacer destructeur()
+        { TraceObjetsSepares = TraceObjetsSepares * 10 + 9; }
+};

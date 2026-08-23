@@ -1,0 +1,176 @@
+espace Gs::Hebergee
+{
+    octet* NulOctetsFichier;
+
+    octet* PointeurNulOctetsFichier()
+    {
+        retourner NulOctetsFichier;
+    }
+
+    booléen EstSeparateurChemin(caractère valeur)
+    {
+        retourner valeur == 47 || valeur == 92;
+    }
+
+    booléen VueCheminValide(VueTexte chemin)
+    {
+        si (chemin.Taille == 0 || !chemin.Donnees) retourner faux;
+        si (!ValiderUtf8(chemin)) retourner faux;
+        naturel64 index = 0;
+        tantque (index < chemin.Taille)
+        {
+            si (chemin.Donnees[index] == 0) retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    publique CodeErreurHebergee JoindreCheminUtf8(
+        ChaineUtf8* sortie,
+        VueTexte base,
+        VueTexte enfant,
+        caractère separateur)
+    {
+        si (!VueCheminValide(base) || !VueCheminValide(enfant)
+            || !EstSeparateurChemin(separateur))
+            retourner CodeErreurHebergee::CheminInvalide;
+
+        ChaineUtf8 temporaire;
+        InitialiserChaineUtf8(&temporaire);
+        CodeErreurHebergee resultat = AssignerChaineUtf8(&temporaire, base);
+        si (resultat != CodeErreurHebergee::Reussite)
+        {
+            DetruireChaineUtf8(&temporaire);
+            retourner resultat;
+        }
+
+        booléen finBase = EstSeparateurChemin(
+            temporaire.Donnees[temporaire.Taille - 1]);
+        naturel64 debutEnfant = 0;
+        booléen debutSepare = EstSeparateurChemin(enfant.Donnees[0]);
+        si (finBase && debutSepare) debutEnfant = 1;
+        sinon si (!finBase && !debutSepare)
+        {
+            resultat = AjouterAsciiChaineUtf8(&temporaire, separateur);
+            si (resultat != CodeErreurHebergee::Reussite)
+            {
+                DetruireChaineUtf8(&temporaire);
+                retourner resultat;
+            }
+        }
+
+        VueTexte suffixe = {
+            &enfant.Donnees[debutEnfant], enfant.Taille - debutEnfant};
+        resultat = AjouterVueChaineUtf8(&temporaire, suffixe);
+        si (resultat != CodeErreurHebergee::Reussite)
+        {
+            DetruireChaineUtf8(&temporaire);
+            retourner resultat;
+        }
+
+        DetruireChaineUtf8(sortie);
+        sortie->Donnees = temporaire.Donnees;
+        sortie->Taille = temporaire.Taille;
+        sortie->Capacite = temporaire.Capacite;
+        retourner CodeErreurHebergee::Reussite;
+    }
+
+    publique VueTexte NomFichierVue(VueTexte chemin)
+    {
+        si (chemin.Taille == 0 || !chemin.Donnees) retourner chemin;
+        naturel64 debut = 0;
+        naturel64 index = 0;
+        tantque (index < chemin.Taille)
+        {
+            si (EstSeparateurChemin(chemin.Donnees[index]))
+                debut = index + 1;
+            index = index + 1;
+        }
+        retourner {&chemin.Donnees[debut], chemin.Taille - debut};
+    }
+
+    publique VueTexte ExtensionVue(VueTexte chemin)
+    {
+        VueTexte nom = NomFichierVue(chemin);
+        si (nom.Taille == 0) retourner nom;
+        naturel64 position = nom.Taille;
+        naturel64 index = 0;
+        tantque (index < nom.Taille)
+        {
+            si (nom.Donnees[index] == 46) position = index;
+            index = index + 1;
+        }
+        si (position == nom.Taille || position == 0)
+            retourner {&nom.Donnees[nom.Taille], 0};
+        retourner {&nom.Donnees[position], nom.Taille - position};
+    }
+
+    publique CodeErreurHebergee ChargerFichierAlloue(
+        constante caractère* chemin, FichierAlloue* fichier)
+    {
+        si (!chemin || !fichier)
+            retourner CodeErreurHebergee::ArgumentInvalide;
+        VueTexte cheminVue = CreerVueTexteTerminee(chemin);
+        si (!VueCheminValide(cheminVue))
+            retourner CodeErreurHebergee::CheminInvalide;
+
+        RequeteFichier mesure = {
+            chemin, PointeurNulOctetsFichier(), 0, 0};
+        si (Gs::Hote::LireFichier(&mesure) == 0)
+            retourner CodeErreurHebergee::LectureEchouee;
+
+        si (mesure.Taille == 0)
+        {
+            si (fichier->Donnees)
+                Gs::Hote::LibererMemoire(fichier->Donnees);
+            fichier->Donnees = PointeurNulOctetsFichier();
+            fichier->Taille = 0;
+            retourner CodeErreurHebergee::Reussite;
+        }
+
+        octet* donnees = Gs::Hote::AllouerMemoire(mesure.Taille);
+        si (!donnees) retourner CodeErreurHebergee::AllocationEchouee;
+        RequeteFichier lecture = {
+            chemin, donnees, 0, mesure.Taille};
+        si (Gs::Hote::LireFichier(&lecture) == 0
+            || lecture.Taille != mesure.Taille)
+        {
+            Gs::Hote::LibererMemoire(donnees);
+            retourner CodeErreurHebergee::LectureEchouee;
+        }
+
+        si (fichier->Donnees)
+            Gs::Hote::LibererMemoire(fichier->Donnees);
+        fichier->Donnees = donnees;
+        fichier->Taille = lecture.Taille;
+        retourner CodeErreurHebergee::Reussite;
+    }
+
+    publique vide InitialiserFichierAlloue(FichierAlloue* fichier)
+    {
+        fichier->Donnees = PointeurNulOctetsFichier();
+        fichier->Taille = 0;
+    }
+
+    publique vide LibererFichierAlloue(FichierAlloue* fichier)
+    {
+        si (fichier->Donnees)
+            Gs::Hote::LibererMemoire(fichier->Donnees);
+        fichier->Donnees = PointeurNulOctetsFichier();
+        fichier->Taille = 0;
+    }
+
+    publique CodeErreurHebergee SauverFichierResultat(
+        constante caractère* chemin, octet* source, naturel64 taille)
+    {
+        si (!chemin || (taille != 0 && !source))
+            retourner CodeErreurHebergee::ArgumentInvalide;
+        VueTexte cheminVue = CreerVueTexteTerminee(chemin);
+        si (!VueCheminValide(cheminVue))
+            retourner CodeErreurHebergee::CheminInvalide;
+        RequeteFichier requete = {chemin, source, taille, taille};
+        si (Gs::Hote::EcrireFichier(&requete) == 0)
+            retourner CodeErreurHebergee::EcritureEchouee;
+        retourner CodeErreurHebergee::Reussite;
+    }
+}

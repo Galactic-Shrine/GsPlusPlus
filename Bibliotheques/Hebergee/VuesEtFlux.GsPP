@@ -1,0 +1,107 @@
+espace Gs::Hebergee
+{
+    publique VueTexte CreerVueTexte(
+        constante caractère* donnees, naturel64 taille)
+    {
+        retourner {donnees, taille};
+    }
+
+    publique VueTexte CreerVueTexteTerminee(
+        constante caractère* texte)
+    {
+        naturel64 taille = 0;
+        tantque (texte[taille] != 0) taille = taille + 1;
+        retourner {texte, taille};
+    }
+
+    publique booléen VuesTexteEgales(
+        VueTexte gauche, VueTexte droite)
+    {
+        si (gauche.Taille != droite.Taille) retourner faux;
+        naturel64 index = 0;
+        tantque (index < gauche.Taille)
+        {
+            si (gauche.Donnees[index] != droite.Donnees[index])
+                retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    publique naturel64 HacherVueTexte(VueTexte texte)
+    {
+        naturel64 valeur = 14_695_981_039_346_656_037;
+        naturel64 index = 0;
+        tantque (index < texte.Taille)
+        {
+            valeur = valeur
+                ^ convertir<naturel64>(
+                    convertir<naturel8>(texte.Donnees[index]));
+            valeur = valeur * 1_099_511_628_211;
+            index = index + 1;
+        }
+        retourner valeur;
+    }
+
+    publique FluxLecture CreerFluxLecture(
+        octet* donnees, naturel64 taille)
+    {
+        retourner {donnees, taille, 0};
+    }
+
+    publique booléen LireOctetFlux(
+        FluxLecture* flux, octet* valeur)
+    {
+        si (flux->Position >= flux->Taille) retourner faux;
+        *valeur = flux->Donnees[flux->Position];
+        flux->Position = flux->Position + 1;
+        retourner vrai;
+    }
+
+    publique naturel64 LireBlocFlux(
+        FluxLecture* flux, octet* destination, naturel64 taille)
+    {
+        si (flux->Position >= flux->Taille) retourner 0;
+        naturel64 disponible = flux->Taille - flux->Position;
+        si (taille > disponible) taille = disponible;
+        naturel64 index = 0;
+        tantque (index < taille)
+        {
+            destination[index] = flux->Donnees[flux->Position + index];
+            index = index + 1;
+        }
+        flux->Position = flux->Position + taille;
+        retourner taille;
+    }
+
+    publique FluxEcriture CreerFluxEcriture(
+        octet* donnees, naturel64 capacite)
+    {
+        retourner {donnees, capacite, 0};
+    }
+
+    publique booléen EcrireOctetFlux(
+        FluxEcriture* flux, octet valeur)
+    {
+        si (flux->Position >= flux->Capacite) retourner faux;
+        flux->Donnees[flux->Position] = valeur;
+        flux->Position = flux->Position + 1;
+        retourner vrai;
+    }
+
+    publique naturel64 EcrireBlocFlux(
+        FluxEcriture* flux, octet* source, naturel64 taille)
+    {
+        si (flux->Position >= flux->Capacite) retourner 0;
+        naturel64 disponible = flux->Capacite - flux->Position;
+        si (taille > disponible) taille = disponible;
+        naturel64 index = 0;
+        tantque (index < taille)
+        {
+            flux->Donnees[flux->Position + index] = source[index];
+            index = index + 1;
+        }
+        flux->Position = flux->Position + taille;
+        retourner taille;
+    }
+}

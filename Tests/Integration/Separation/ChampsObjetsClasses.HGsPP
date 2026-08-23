@@ -1,0 +1,52 @@
+externe entier32 TraceObjetsSepares;
+
+classe BaseObjetSepare
+{
+    protégée: entier32 BaseValeur;
+    publique:
+        constructeur();
+        virtuel destructeur();
+};
+
+classe ChampExpliciteSepare
+{
+    publique:
+        entier32 Valeur;
+        constructeur(entier32 valeur);
+        destructeur();
+};
+
+classe ChampDefautSepare
+{
+    publique:
+        entier32 Valeur;
+        constructeur();
+        destructeur();
+};
+
+classe FeuilleSeparee
+{
+    publique:
+        entier32 Valeur;
+        constructeur();
+        destructeur();
+};
+
+classe EnveloppeSeparee
+{
+    publique:
+        FeuilleSeparee Feuille;
+        virtuel entier32 Lire();
+};
+
+classe ConteneurSepare : publique BaseObjetSepare
+{
+    privée:
+        ChampExpliciteSepare Explicite;
+        ChampDefautSepare Defaut;
+        EnveloppeSeparee Imbrique;
+    publique:
+        constructeur(entier32 valeur);
+        entier32 Somme();
+        remplacer destructeur();
+};

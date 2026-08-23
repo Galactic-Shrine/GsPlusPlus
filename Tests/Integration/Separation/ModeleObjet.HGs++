@@ -1,0 +1,13 @@
+externe entier32 DestructionsObjetSepare;
+
+classe AccumulateurSepare
+{
+    privée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 valeur);
+        destructeur();
+        virtuel entier32 Ajouter(entier32 delta);
+        entier32 Lire();
+};

@@ -1,0 +1,340 @@
+espace Gs::Hebergee
+{
+    octet* NulOctetsHeberge;
+
+    octet* PointeurNulOctetsHeberge()
+    {
+        retourner NulOctetsHeberge;
+    }
+
+    caractère* PointeurNulTexteHeberge()
+    {
+        retourner convertir<caractère*>(PointeurNulOctetsHeberge());
+    }
+
+    BlocArene* PointeurNulBlocArene()
+    {
+        retourner convertir<BlocArene*>(PointeurNulOctetsHeberge());
+    }
+
+    naturel64 CalculerCapaciteHebergee(
+        naturel64 actuelle, naturel64 minimale)
+    {
+        naturel64 capacite = actuelle;
+        si (capacite < 16) capacite = 16;
+        tantque (capacite < minimale)
+        {
+            si (capacite > 9_223_372_036_854_775_807)
+                retourner minimale;
+            capacite = capacite * 2;
+        }
+        retourner capacite;
+    }
+
+    booléen EstSuiteUtf8(octet valeur)
+    {
+        retourner valeur >= 128 && valeur <= 191;
+    }
+
+    publique booléen ValiderUtf8(VueTexte texte)
+    {
+        si (!texte.Donnees && texte.Taille != 0) retourner faux;
+        naturel64 index = 0;
+        tantque (index < texte.Taille)
+        {
+            octet premier = convertir<octet>(texte.Donnees[index]);
+            si (premier <= 127)
+            {
+                index = index + 1;
+            }
+            sinon si (premier >= 194 && premier <= 223)
+            {
+                si (index + 1 >= texte.Taille) retourner faux;
+                si (!EstSuiteUtf8(
+                        convertir<octet>(texte.Donnees[index + 1])))
+                    retourner faux;
+                index = index + 2;
+            }
+            sinon si (premier >= 224 && premier <= 239)
+            {
+                si (index + 2 >= texte.Taille) retourner faux;
+                octet secondTrois = convertir<octet>(texte.Donnees[index + 1]);
+                octet troisieme = convertir<octet>(texte.Donnees[index + 2]);
+                si (!EstSuiteUtf8(troisieme)) retourner faux;
+                si (premier == 224 && (secondTrois < 160 || secondTrois > 191))
+                    retourner faux;
+                si (premier == 237 && (secondTrois < 128 || secondTrois > 159))
+                    retourner faux;
+                si (premier != 224 && premier != 237
+                    && !EstSuiteUtf8(secondTrois))
+                    retourner faux;
+                index = index + 3;
+            }
+            sinon si (premier >= 240 && premier <= 244)
+            {
+                si (index + 3 >= texte.Taille) retourner faux;
+                octet secondQuatre = convertir<octet>(texte.Donnees[index + 1]);
+                si (premier == 240 && (secondQuatre < 144 || secondQuatre > 191))
+                    retourner faux;
+                si (premier == 244 && (secondQuatre < 128 || secondQuatre > 143))
+                    retourner faux;
+                si (premier != 240 && premier != 244
+                    && !EstSuiteUtf8(secondQuatre))
+                    retourner faux;
+                si (!EstSuiteUtf8(
+                        convertir<octet>(texte.Donnees[index + 2]))
+                    || !EstSuiteUtf8(
+                        convertir<octet>(texte.Donnees[index + 3])))
+                    retourner faux;
+                index = index + 4;
+            }
+            sinon retourner faux;
+        }
+        retourner vrai;
+    }
+
+    publique vide InitialiserChaineUtf8(ChaineUtf8* chaine)
+    {
+        chaine->Donnees = PointeurNulTexteHeberge();
+        chaine->Taille = 0;
+        chaine->Capacite = 0;
+    }
+
+    publique vide DetruireChaineUtf8(ChaineUtf8* chaine)
+    {
+        si (chaine->Donnees)
+            Gs::Hote::LibererMemoire(
+                convertir<octet*>(chaine->Donnees));
+        InitialiserChaineUtf8(chaine);
+    }
+
+    publique CodeErreurHebergee ReserverChaineUtf8(
+        ChaineUtf8* chaine, naturel64 capacite)
+    {
+        si (capacite <= chaine->Capacite)
+            retourner CodeErreurHebergee::Reussite;
+        si (capacite == 18_446_744_073_709_551_615)
+            retourner CodeErreurHebergee::CapaciteDepassee;
+        naturel64 nouvelleCapacite =
+            CalculerCapaciteHebergee(chaine->Capacite, capacite);
+        si (nouvelleCapacite < capacite
+            || nouvelleCapacite == 18_446_744_073_709_551_615)
+            retourner CodeErreurHebergee::CapaciteDepassee;
+        octet* nouveau =
+            Gs::Hote::AllouerMemoire(nouvelleCapacite + 1);
+        si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
+        naturel64 index = 0;
+        tantque (index < chaine->Taille)
+        {
+            nouveau[index] = convertir<octet>(chaine->Donnees[index]);
+            index = index + 1;
+        }
+        nouveau[chaine->Taille] = 0;
+        si (chaine->Donnees)
+            Gs::Hote::LibererMemoire(
+                convertir<octet*>(chaine->Donnees));
+        chaine->Donnees = convertir<caractère*>(nouveau);
+        chaine->Capacite = nouvelleCapacite;
+        retourner CodeErreurHebergee::Reussite;
+    }
+
+    publique CodeErreurHebergee AssignerChaineUtf8(
+        ChaineUtf8* chaine, VueTexte texte)
+    {
+        si (!ValiderUtf8(texte))
+            retourner CodeErreurHebergee::Utf8Invalide;
+        si (texte.Taille == 0)
+        {
+            chaine->Taille = 0;
+            si (chaine->Donnees) chaine->Donnees[0] = 0;
+            retourner CodeErreurHebergee::Reussite;
+        }
+        si (texte.Taille > chaine->Capacite)
+        {
+            naturel64 nouvelleCapacite = CalculerCapaciteHebergee(
+                chaine->Capacite, texte.Taille);
+            si (nouvelleCapacite < texte.Taille
+                || nouvelleCapacite == 18_446_744_073_709_551_615)
+                retourner CodeErreurHebergee::CapaciteDepassee;
+            octet* nouveau =
+                Gs::Hote::AllouerMemoire(nouvelleCapacite + 1);
+            si (!nouveau)
+                retourner CodeErreurHebergee::AllocationEchouee;
+            naturel64 indexNouveau = 0;
+            tantque (indexNouveau < texte.Taille)
+            {
+                nouveau[indexNouveau] =
+                    convertir<octet>(texte.Donnees[indexNouveau]);
+                indexNouveau = indexNouveau + 1;
+            }
+            nouveau[texte.Taille] = 0;
+            caractère* ancien = chaine->Donnees;
+            chaine->Donnees = convertir<caractère*>(nouveau);
+            chaine->Taille = texte.Taille;
+            chaine->Capacite = nouvelleCapacite;
+            si (ancien)
+                Gs::Hote::LibererMemoire(convertir<octet*>(ancien));
+            retourner CodeErreurHebergee::Reussite;
+        }
+        naturel64 index = 0;
+        tantque (index < texte.Taille)
+        {
+            chaine->Donnees[index] = texte.Donnees[index];
+            index = index + 1;
+        }
+        chaine->Taille = texte.Taille;
+        chaine->Donnees[chaine->Taille] = 0;
+        retourner CodeErreurHebergee::Reussite;
+    }
+
+    publique CodeErreurHebergee AjouterVueChaineUtf8(
+        ChaineUtf8* chaine, VueTexte texte)
+    {
+        si (!ValiderUtf8(texte))
+            retourner CodeErreurHebergee::Utf8Invalide;
+        si (texte.Taille == 0)
+            retourner CodeErreurHebergee::Reussite;
+        si (texte.Taille
+            > 18_446_744_073_709_551_615 - chaine->Taille)
+            retourner CodeErreurHebergee::CapaciteDepassee;
+        naturel64 ancienneTaille = chaine->Taille;
+        naturel64 nouvelleTaille = ancienneTaille + texte.Taille;
+        si (nouvelleTaille > chaine->Capacite)
+        {
+            naturel64 nouvelleCapacite = CalculerCapaciteHebergee(
+                chaine->Capacite, nouvelleTaille);
+            si (nouvelleCapacite < nouvelleTaille
+                || nouvelleCapacite == 18_446_744_073_709_551_615)
+                retourner CodeErreurHebergee::CapaciteDepassee;
+            octet* nouveau =
+                Gs::Hote::AllouerMemoire(nouvelleCapacite + 1);
+            si (!nouveau)
+                retourner CodeErreurHebergee::AllocationEchouee;
+            naturel64 indexAncien = 0;
+            tantque (indexAncien < ancienneTaille)
+            {
+                nouveau[indexAncien] =
+                    convertir<octet>(chaine->Donnees[indexAncien]);
+                indexAncien = indexAncien + 1;
+            }
+            naturel64 indexSource = 0;
+            tantque (indexSource < texte.Taille)
+            {
+                nouveau[ancienneTaille + indexSource] =
+                    convertir<octet>(texte.Donnees[indexSource]);
+                indexSource = indexSource + 1;
+            }
+            nouveau[nouvelleTaille] = 0;
+            caractère* ancien = chaine->Donnees;
+            chaine->Donnees = convertir<caractère*>(nouveau);
+            chaine->Taille = nouvelleTaille;
+            chaine->Capacite = nouvelleCapacite;
+            si (ancien)
+                Gs::Hote::LibererMemoire(convertir<octet*>(ancien));
+            retourner CodeErreurHebergee::Reussite;
+        }
+        naturel64 index = 0;
+        tantque (index < texte.Taille)
+        {
+            chaine->Donnees[ancienneTaille + index] = texte.Donnees[index];
+            index = index + 1;
+        }
+        chaine->Taille = nouvelleTaille;
+        chaine->Donnees[chaine->Taille] = 0;
+        retourner CodeErreurHebergee::Reussite;
+    }
+
+    publique CodeErreurHebergee AjouterAsciiChaineUtf8(
+        ChaineUtf8* chaine, caractère valeur)
+    {
+        octet octetValeur = convertir<octet>(valeur);
+        si (octetValeur == 0 || octetValeur > 127)
+            retourner CodeErreurHebergee::ArgumentInvalide;
+        si (chaine->Taille == 18_446_744_073_709_551_615)
+            retourner CodeErreurHebergee::CapaciteDepassee;
+        CodeErreurHebergee resultat =
+            ReserverChaineUtf8(chaine, chaine->Taille + 1);
+        si (resultat != CodeErreurHebergee::Reussite)
+            retourner resultat;
+        chaine->Donnees[chaine->Taille] = valeur;
+        chaine->Taille = chaine->Taille + 1;
+        chaine->Donnees[chaine->Taille] = 0;
+        retourner CodeErreurHebergee::Reussite;
+    }
+
+    publique VueTexte VueDepuisChaineUtf8(ChaineUtf8* chaine)
+    {
+        retourner {convertir<constante caractère*>(chaine->Donnees), chaine->Taille};
+    }
+
+    publique vide InitialiserArene(
+        AreneMemoire* arene, naturel64 tailleBloc)
+    {
+        arene->Premier = PointeurNulBlocArene();
+        arene->Dernier = PointeurNulBlocArene();
+        arene->TailleBloc = tailleBloc;
+        si (arene->TailleBloc < 64) arene->TailleBloc = 64;
+        arene->NombreOctets = 0;
+    }
+
+    publique vide DetruireArene(AreneMemoire* arene)
+    {
+        BlocArene* bloc = arene->Premier;
+        tantque (bloc)
+        {
+            BlocArene* suivant = bloc->Suivant;
+            Gs::Hote::LibererMemoire(convertir<octet*>(bloc));
+            bloc = suivant;
+        }
+        InitialiserArene(arene, arene->TailleBloc);
+    }
+
+    publique octet* AllouerArene(
+        AreneMemoire* arene, naturel64 taille, naturel64 alignement)
+    {
+        si (taille == 0 || alignement == 0 || alignement > 8
+            || (alignement & (alignement - 1)) != 0)
+            retourner PointeurNulOctetsHeberge();
+
+        BlocArene* bloc = arene->Dernier;
+        naturel64 position = 0;
+        si (bloc)
+        {
+            si (bloc->Position
+                > 18_446_744_073_709_551_615 - (alignement - 1))
+                retourner PointeurNulOctetsHeberge();
+            position = (bloc->Position + alignement - 1)
+                & ~(alignement - 1);
+        }
+        si (!bloc || position > bloc->Capacite
+            || taille > bloc->Capacite - position)
+        {
+            si (taille
+                > 18_446_744_073_709_551_615 - (alignement - 1))
+                retourner PointeurNulOctetsHeberge();
+            naturel64 necessaire = taille + alignement - 1;
+            naturel64 capacite = arene->TailleBloc;
+            si (capacite < necessaire) capacite = necessaire;
+            si (capacite > 18_446_744_073_709_551_615
+                - convertir<naturel64>(24))
+                retourner PointeurNulOctetsHeberge();
+            octet* brut = Gs::Hote::AllouerMemoire(capacite + 24);
+            si (!brut) retourner PointeurNulOctetsHeberge();
+            bloc = convertir<BlocArene*>(brut);
+            bloc->Suivant = PointeurNulBlocArene();
+            bloc->Capacite = capacite;
+            bloc->Position = 0;
+            si (arene->Dernier) arene->Dernier->Suivant = bloc;
+            sinon arene->Premier = bloc;
+            arene->Dernier = bloc;
+            position = 0;
+        }
+        octet* donnees = convertir<octet*>(bloc);
+        octet* resultat = &donnees[24 + position];
+        bloc->Position = position + taille;
+        si (taille > 18_446_744_073_709_551_615 - arene->NombreOctets)
+            arene->NombreOctets = 18_446_744_073_709_551_615;
+        sinon arene->NombreOctets = arene->NombreOctets + taille;
+        retourner resultat;
+    }
+}

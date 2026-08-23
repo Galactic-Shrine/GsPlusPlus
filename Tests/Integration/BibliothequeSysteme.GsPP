@@ -1,0 +1,58 @@
+publique entier32 Principal()
+{
+    octet source[6] = {1, 2, 3, 4, 5, 6};
+    octet destination[6];
+    Gs::System::FillMemory(&destination[0], 0, 6);
+    Gs::System::CopyMemory(&destination[0], &source[0], 6);
+    si (!Gs::System::MemoryEqual(&destination[0], &source[0], 6)) retourner 1;
+    destination[2] = 9;
+    si (Gs::System::CompareMemory(&destination[0], &source[0], 6) <= 0) retourner 2;
+    destination[2] = 3;
+
+    Gs::System::ByteView vue = Gs::System::MakeByteView(&destination[0], 6);
+    Gs::System::ByteView sousVue = Gs::System::SubByteView(vue, 2, 3);
+    si (sousVue.Size != 3) retourner 3;
+    si (Gs::System::FindByte(sousVue, 4) != 1) retourner 4;
+
+    caractère texte[4] = {65, 66, 67, 0};
+    Gs::System::TextView vueTexte = Gs::System::MakeTextView(&texte[0]);
+    si (vueTexte.Size != 3) retourner 5;
+    si (Gs::System::FindCharacter(vueTexte, 66) != 1) retourner 6;
+
+    si (Gs::System::RotateLeft32(1, 8) != 256) retourner 7;
+    si (Gs::System::RotateRight32(256, 8) != 1) retourner 8;
+    si (Gs::System::CountOnes64(4_294_967_311) != 5) retourner 9;
+    si (Gs::System::ByteSwap32(16_909_060) != 67_305_985) retourner 10;
+    si (Gs::System::AlignUp(65, 64) != 128) retourner 11;
+    si (Gs::System::RotateLeft64(1, 40) != 1_099_511_627_776) retourner 19;
+    si (Gs::System::ByteSwap64(72_623_859_790_382_856)
+        != 578_437_695_752_307_201) retourner 20;
+    si (!Gs::System::IsPowerOfTwo(4_294_967_296)) retourner 21;
+    si (Gs::System::IsPowerOfTwo(4_294_967_297)) retourner 22;
+
+    volatile naturel32 atomique = 1;
+    si (Gs::System::AtomicFetchAdd32(&atomique, 4) != 1) retourner 12;
+    si (Gs::System::AtomicLoad32(&atomique) != 5) retourner 13;
+    si (Gs::System::AtomicCompareExchange32(&atomique, 5, 9) != 5)
+        retourner 14;
+    si (Gs::System::AtomicExchange32(&atomique, 3) != 9) retourner 15;
+
+    volatile naturel64 atomique64 = 10;
+    si (Gs::System::AtomicFetchAdd64(&atomique64, 5) != 10) retourner 23;
+    si (Gs::System::AtomicLoad64(&atomique64) != 15) retourner 24;
+    si (Gs::System::AtomicCompareExchange64(&atomique64, 15, 20) != 15)
+        retourner 25;
+    si (Gs::System::AtomicExchange64(&atomique64, 4) != 20) retourner 26;
+    Gs::System::AtomicStore64(&atomique64, 6);
+    si (Gs::System::AtomicLoad64(&atomique64) != 6) retourner 27;
+
+    Gs::System::SpinLock verrou = {0};
+    Gs::System::InitializeLock(&verrou);
+    si (!Gs::System::TryAcquireLock(&verrou)) retourner 16;
+    si (Gs::System::TryAcquireLock(&verrou)) retourner 17;
+    Gs::System::ReleaseLock(&verrou);
+    si (!Gs::System::TryAcquireLock(&verrou)) retourner 18;
+    Gs::System::ReleaseLock(&verrou);
+
+    retourner 64;
+}

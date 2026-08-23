@@ -1,0 +1,10 @@
+publique entier32 PrincipalHeritageSepare()
+{
+    entier32 resultat = 0;
+    {
+        DeriveeHeritageSepare derivee();
+        resultat = EvaluerHeritage(derivee);
+    }
+    si (DestructionsHeritageSepare != 11) retourner 99;
+    retourner resultat;
+}

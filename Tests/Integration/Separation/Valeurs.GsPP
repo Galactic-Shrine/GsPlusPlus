@@ -1,0 +1,13 @@
+espace Essai::ValeursSeparation
+{
+    publique Paire Construire(entier32 x, entier32 y)
+    {
+        retourner {x, y};
+    }
+
+    publique entier32 Additionner(Paire valeur)
+    {
+        valeur.X = valeur.X + 1;
+        retourner valeur.X + valeur.Y;
+    }
+}

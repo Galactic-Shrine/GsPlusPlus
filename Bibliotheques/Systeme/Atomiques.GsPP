@@ -1,0 +1,92 @@
+espace Gs::Systeme
+{
+    publique naturel32 ChargerAtomique32(volatile naturel32* cible)
+    {
+        retourner Gs::Intrinseques::ChargerAtomique32(cible);
+    }
+
+    publique naturel64 ChargerAtomique64(volatile naturel64* cible)
+    {
+        retourner Gs::Intrinseques::ChargerAtomique64(cible);
+    }
+
+    publique vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur)
+    {
+        Gs::Intrinseques::StockerAtomique32(cible, valeur);
+    }
+
+    publique vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur)
+    {
+        Gs::Intrinseques::StockerAtomique64(cible, valeur);
+    }
+
+    publique naturel32 EchangerAtomique32(
+        volatile naturel32* cible, naturel32 valeur)
+    {
+        retourner Gs::Intrinseques::EchangerAtomique32(cible, valeur);
+    }
+
+    publique naturel64 EchangerAtomique64(
+        volatile naturel64* cible, naturel64 valeur)
+    {
+        retourner Gs::Intrinseques::EchangerAtomique64(cible, valeur);
+    }
+
+    publique naturel32 AjouterAtomique32(
+        volatile naturel32* cible, naturel32 valeur)
+    {
+        retourner Gs::Intrinseques::AjouterAtomique32(cible, valeur);
+    }
+
+    publique naturel64 AjouterAtomique64(
+        volatile naturel64* cible, naturel64 valeur)
+    {
+        retourner Gs::Intrinseques::AjouterAtomique64(cible, valeur);
+    }
+
+    publique naturel32 ComparerEchanger32(
+        volatile naturel32* cible, naturel32 attendu, naturel32 desire)
+    {
+        retourner Gs::Intrinseques::ComparerEchanger32(
+            cible, attendu, desire);
+    }
+
+    publique naturel64 ComparerEchanger64(
+        volatile naturel64* cible, naturel64 attendu, naturel64 desire)
+    {
+        retourner Gs::Intrinseques::ComparerEchanger64(
+            cible, attendu, desire);
+    }
+
+    publique vide BarriereMemoire()
+    {
+        Gs::Intrinseques::BarriereMemoire();
+    }
+
+    publique vide PauseProcesseur()
+    {
+        Gs::Intrinseques::PauseProcesseur();
+    }
+
+    publique vide InitialiserVerrou(VerrouAtomique* verrou)
+    {
+        StockerAtomique32(&verrou->Etat, 0);
+    }
+
+    publique booléen EssayerAcquerirVerrou(VerrouAtomique* verrou)
+    {
+        retourner ComparerEchanger32(&verrou->Etat, 0, 1) == 0;
+    }
+
+    publique vide AcquerirVerrou(VerrouAtomique* verrou)
+    {
+        tantque (ComparerEchanger32(&verrou->Etat, 0, 1) != 0)
+            PauseProcesseur();
+    }
+
+    publique vide LibererVerrou(VerrouAtomique* verrou)
+    {
+        BarriereMemoire();
+        StockerAtomique32(&verrou->Etat, 0);
+    }
+}

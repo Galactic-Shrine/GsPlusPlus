@@ -1,0 +1,27 @@
+// Exemple Gs++ utilisant la syntaxe française canonique.
+espace Shrine::Exemples
+{
+    publique entier32 Additionner(entier32 gauche, entier32 droite)
+    {
+        retourner gauche + droite;
+    }
+
+    publique entier32 Principal()
+    {
+        entier32 résultat = Additionner(20, 22);
+
+        si (résultat != 42)
+        {
+            résultat = 0;
+        }
+        sinon
+        {
+            tantque (résultat < 42)
+            {
+                résultat = résultat + 1;
+            }
+        }
+
+        retourner résultat;
+    }
+}

@@ -1,0 +1,11 @@
+publique entier32 PrincipalObjetSepare()
+{
+    entier32 resultat = 0;
+    {
+        AccumulateurSepare valeur(40);
+        resultat = valeur.Ajouter(2);
+        si (valeur.Lire() != 42) retourner 98;
+    }
+    si (DestructionsObjetSepare != 1) retourner 99;
+    retourner resultat;
+}

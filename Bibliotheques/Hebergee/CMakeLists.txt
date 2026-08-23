@@ -1,0 +1,30 @@
+set(GS_HEBERGEE_INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/Hebergee.HGsPP")
+set(GS_HEBERGEE_PROJET "${CMAKE_CURRENT_SOURCE_DIR}/GsHebergee.GsPj")
+set(GS_HEBERGEE_REPERTOIRE "${GS_REPERTOIRE_ARTEFACTS}/GsPlusPlus/Bibliotheques/Hebergee")
+set(GS_HEBERGEE_GSA "${GS_HEBERGEE_REPERTOIRE}/GsHebergee.GsA")
+set(GS_HEBERGEE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/VuesEtFlux.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Conteneurs.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Utf8EtMemoire.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ConteneursDynamiques.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CheminsEtFichiers.GsPP"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Hote.GsPP"
+)
+
+add_custom_command(
+    OUTPUT "${GS_HEBERGEE_GSA}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${GS_HEBERGEE_REPERTOIRE}"
+    COMMAND $<TARGET_FILE:gsppc> "${GS_HEBERGEE_PROJET}"
+        -o "${GS_HEBERGEE_GSA}"
+        --repertoire-objets "${GS_HEBERGEE_REPERTOIRE}/Objets"
+    DEPENDS
+        gsppc
+        "${GS_HEBERGEE_PROJET}"
+        "${GS_HEBERGEE_INTERFACE}"
+        ${GS_HEBERGEE_SOURCES}
+    VERBATIM
+)
+add_custom_target(bibliotheque_hebergee DEPENDS "${GS_HEBERGEE_GSA}")
+
+set(GS_HEBERGEE_INTERFACE "${GS_HEBERGEE_INTERFACE}" CACHE INTERNAL "")
+set(GS_HEBERGEE_GSA "${GS_HEBERGEE_GSA}" CACHE INTERNAL "")

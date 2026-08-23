@@ -1,0 +1,63 @@
+publique entier32 Destructions = 0;
+
+classe Ressource
+{
+    privée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 initiale)
+        {
+            soi.Valeur = initiale;
+        }
+
+        destructeur()
+        {
+            Destructions = Destructions + 1;
+            soi.Valeur = 0;
+        }
+
+        entier32 Lire()
+        {
+            retourner soi.Valeur;
+        }
+
+        virtuel entier32 Avancer(entier32 delta)
+        {
+            soi.Valeur = soi.Valeur + delta;
+            retourner soi.Valeur;
+        }
+
+        entier32 opérateur +(entier32 delta)
+        {
+            retourner soi.Valeur + delta;
+        }
+};
+
+entier32 Choisir(entier32& valeur)
+{
+    valeur = valeur + 1;
+    retourner valeur;
+}
+
+entier64 Choisir(entier64& valeur)
+{
+    valeur = valeur + 2;
+    retourner valeur;
+}
+
+publique entier32 Principal()
+{
+    entier32 résultat = 0;
+    entier32 base = 5;
+    entier32& référence = base;
+    {
+        Ressource ressource(référence);
+        résultat = ressource.Lire()
+            + ressource.Avancer(1)
+            + (ressource + 2)
+            + Choisir(référence);
+    }
+    si (Destructions != 1) retourner 99;
+    retourner résultat;
+}

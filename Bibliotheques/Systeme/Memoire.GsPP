@@ -1,0 +1,49 @@
+espace Gs::Systeme
+{
+    publique vide RemplirMemoire(
+        octet* destination, octet valeur, naturel64 taille)
+    {
+        naturel64 index = 0;
+        tantque (index < taille)
+        {
+            destination[index] = valeur;
+            index = index + 1;
+        }
+    }
+
+    publique vide CopierMemoire(
+        octet* destination, octet* source, naturel64 taille)
+    {
+        naturel64 index = 0;
+        tantque (index < taille)
+        {
+            destination[index] = source[index];
+            index = index + 1;
+        }
+    }
+
+    publique entier32 ComparerMemoire(
+        octet* gauche, octet* droite, naturel64 taille)
+    {
+        naturel64 index = 0;
+        tantque (index < taille)
+        {
+            si (gauche[index] < droite[index]) retourner -1;
+            si (gauche[index] > droite[index]) retourner 1;
+            index = index + 1;
+        }
+        retourner 0;
+    }
+
+    publique booléen MemoiresEgales(
+        octet* gauche, octet* droite, naturel64 taille)
+    {
+        naturel64 index = 0;
+        tantque (index < taille)
+        {
+            si (gauche[index] != droite[index]) retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+}

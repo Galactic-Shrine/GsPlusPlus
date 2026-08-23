@@ -1,0 +1,70 @@
+espace Gs::Autohebergement
+{
+    booléen EstMot(
+        Gs::Hebergee::VueTexte mot, constante caractère* attendu)
+    {
+        retourner Gs::Hebergee::VuesTexteEgales(
+            mot, Gs::Hebergee::CreerVueTexteTerminee(attendu));
+    }
+
+    publique naturel32 ClassifierMotCle(
+        constante caractère* texte, naturel64 taille)
+    {
+        Gs::Hebergee::VueTexte mot =
+            Gs::Hebergee::CreerVueTexte(texte, taille);
+
+        si (EstMot(mot, "espace") || EstMot(mot, "namespace")) retourner 4;
+        si (EstMot(mot, "structure") || EstMot(mot, "struct")) retourner 5;
+        si (EstMot(mot, "union")) retourner 6;
+        si (EstMot(mot, "énumération")
+            || EstMot(mot, "enumeration")
+            || EstMot(mot, "enum")) retourner 7;
+        si (EstMot(mot, "alias")) retourner 8;
+        si (EstMot(mot, "externe") || EstMot(mot, "extern")) retourner 9;
+        si (EstMot(mot, "publique") || EstMot(mot, "public")) retourner 10;
+        si (EstMot(mot, "privée") || EstMot(mot, "private")) retourner 11;
+        si (EstMot(mot, "constante") || EstMot(mot, "const")) retourner 12;
+        si (EstMot(mot, "volatile")) retourner 13;
+        si (EstMot(mot, "entier8") || EstMot(mot, "int8")) retourner 14;
+        si (EstMot(mot, "entier16") || EstMot(mot, "int16")) retourner 15;
+        si (EstMot(mot, "entier32") || EstMot(mot, "int32")) retourner 16;
+        si (EstMot(mot, "entier64") || EstMot(mot, "int64")) retourner 17;
+        si (EstMot(mot, "naturel8") || EstMot(mot, "uint8")) retourner 18;
+        si (EstMot(mot, "naturel16") || EstMot(mot, "uint16")) retourner 19;
+        si (EstMot(mot, "naturel32") || EstMot(mot, "uint32")) retourner 20;
+        si (EstMot(mot, "naturel64") || EstMot(mot, "uint64")) retourner 21;
+        si (EstMot(mot, "booléen")
+            || EstMot(mot, "booleen")
+            || EstMot(mot, "bool")) retourner 22;
+        si (EstMot(mot, "octet") || EstMot(mot, "byte")) retourner 23;
+        si (EstMot(mot, "caractère")
+            || EstMot(mot, "caractere")
+            || EstMot(mot, "char")) retourner 24;
+        si (EstMot(mot, "vide") || EstMot(mot, "void")) retourner 25;
+        si (EstMot(mot, "pointeur_fonction")
+            || EstMot(mot, "function_pointer")) retourner 26;
+        si (EstMot(mot, "convertir") || EstMot(mot, "cast")) retourner 27;
+        si (EstMot(mot, "retourner") || EstMot(mot, "return")) retourner 28;
+        si (EstMot(mot, "si") || EstMot(mot, "if")) retourner 29;
+        si (EstMot(mot, "sinon") || EstMot(mot, "else")) retourner 30;
+        si (EstMot(mot, "tantque") || EstMot(mot, "while")) retourner 31;
+        si (EstMot(mot, "vrai") || EstMot(mot, "true")) retourner 32;
+        si (EstMot(mot, "faux") || EstMot(mot, "false")) retourner 33;
+        si (EstMot(mot, "classe") || EstMot(mot, "class")) retourner 66;
+        si (EstMot(mot, "protégée")
+            || EstMot(mot, "protegee")
+            || EstMot(mot, "protected")) retourner 67;
+        si (EstMot(mot, "virtuel") || EstMot(mot, "virtual")) retourner 68;
+        si (EstMot(mot, "constructeur")
+            || EstMot(mot, "constructor")) retourner 69;
+        si (EstMot(mot, "destructeur")
+            || EstMot(mot, "destructor")) retourner 70;
+        si (EstMot(mot, "opérateur")
+            || EstMot(mot, "operateur")
+            || EstMot(mot, "operator")) retourner 71;
+        si (EstMot(mot, "soi") || EstMot(mot, "this")) retourner 72;
+        si (EstMot(mot, "remplacer") || EstMot(mot, "override")) retourner 74;
+        si (EstMot(mot, "parent") || EstMot(mot, "super")) retourner 75;
+        retourner 1;
+    }
+}

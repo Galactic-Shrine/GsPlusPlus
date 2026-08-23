@@ -1,0 +1,26 @@
+externe entier32 TraceParentSepare;
+
+classe BaseParentSepare
+{
+    protégée:
+        entier32 Valeur;
+
+    publique:
+        constructeur(entier32 initiale);
+        virtuel entier32 Lire();
+        virtuel destructeur();
+};
+
+classe DeriveeParentSepare : publique BaseParentSepare
+{
+    privée:
+        entier32 Bonus;
+
+    publique:
+        constructeur(entier32 initiale, entier32 bonus);
+        remplacer entier32 Lire();
+        entier32 LireParent();
+        remplacer destructeur();
+};
+
+publique entier32 EvaluerParent(BaseParentSepare& valeur);

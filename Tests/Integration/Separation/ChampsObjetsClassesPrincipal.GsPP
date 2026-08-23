@@ -1,0 +1,11 @@
+publique entier32 PrincipalObjetsSepares()
+{
+    entier32 resultat = 0;
+    {
+        ConteneurSepare objet(20);
+        si (TraceObjetsSepares != 1234) retourner 97;
+        resultat = objet.Somme();
+    }
+    si (TraceObjetsSepares != 123495678) retourner 99;
+    retourner resultat;
+}

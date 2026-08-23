@@ -1,0 +1,113 @@
+{
+  "schema": "GsPlusPlus.Conformite:1",
+  "cible": "Gs++ 1.0",
+  "producteur": "Gs++ 0.27.0-alpha.1",
+  "format": {
+    "GsObj": "1.0",
+    "GsA": "1.0",
+    "GsE": "1.0",
+    "ABI": 1
+  },
+  "exigences": [
+    {
+      "id": "CONF-CLI-001",
+      "domaine": "interface",
+      "titre": "Les outils publient la version Gs++ 0.27.0-alpha.1"
+    },
+    {
+      "id": "CONF-EXT-001",
+      "domaine": "extensions",
+      "titre": "Les trois extensions source Gs++ sont acceptées"
+    },
+    {
+      "id": "CONF-EXT-002",
+      "domaine": "extensions",
+      "titre": "Les trois extensions d’interface Gs++ sont acceptées"
+    },
+    {
+      "id": "CONF-FMT-001",
+      "domaine": "formats",
+      "titre": "GsObj respecte la signature, la version et l’ABI normatives"
+    },
+    {
+      "id": "CONF-FMT-002",
+      "domaine": "formats",
+      "titre": "GsA respecte la signature, la version et l’ABI normatives"
+    },
+    {
+      "id": "CONF-FMT-003",
+      "domaine": "formats",
+      "titre": "GsE respecte la signature, la version, l’ABI et s’exécute"
+    },
+    {
+      "id": "CONF-ABI-001",
+      "domaine": "abi",
+      "titre": "Les symboles GsObj portent le préfixe ABI x64-ms-v1"
+    },
+    {
+      "id": "CONF-LANG-001",
+      "domaine": "langage",
+      "titre": "Les formes françaises et anglaises ont la même sémantique"
+    },
+    {
+      "id": "CONF-LIFE-001",
+      "domaine": "durée de vie",
+      "titre": "L’initialisation 0.25 construit et détruit les objets dans l’ordre normatif"
+    },
+    {
+      "id": "CONF-HOST-001",
+      "domaine": "bibliothèque hébergée",
+      "titre": "GsHebergee expose les primitives 0.26 avec exactement cinq imports d’hôte"
+    },
+    {
+      "id": "CONF-HOST-002",
+      "domaine": "profil système",
+      "titre": "GsSysteme reste indépendant de tous les imports d’hôte"
+    },
+    {
+      "id": "CONF-DET-001",
+      "domaine": "reproductibilité",
+      "titre": "GsObj, GsA et GsE sont reproductibles à entrées identiques"
+    },
+    {
+      "id": "CONF-PROJ-001",
+      "domaine": "projets",
+      "titre": "Les projets et solutions XML 1.0 bilingues construisent une application"
+    },
+    {
+      "id": "CONF-NEG-001",
+      "domaine": "refus",
+      "titre": "L’extension de sortie obsolète GsO est refusée"
+    },
+    {
+      "id": "CONF-NEG-002",
+      "domaine": "refus",
+      "titre": "L’extension d’interface obsolète GsPPH est refusée"
+    },
+    {
+      "id": "CONF-NEG-003",
+      "domaine": "refus",
+      "titre": "Une source Gs# est routée hors de gsppc"
+    },
+    {
+      "id": "CONF-NEG-004",
+      "domaine": "refus",
+      "titre": "Une image GsE tronquée est refusée par le vérificateur"
+    },
+    {
+      "id": "CONF-NEG-005",
+      "domaine": "refus",
+      "titre": "Un objet de classe global est refusé sans runtime de durée de vie"
+    },
+    {
+      "id": "CONF-NEG-006",
+      "domaine": "refus",
+      "titre": "Un cycle de délégation entre constructeurs est refusé"
+    },
+    {
+      "id": "CONF-NEG-007",
+      "domaine": "refus",
+      "titre": "L’ancien format texte des projets GsPj est refusé"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GsProjet Version="1.0" Nom="GsHebergee" Type="bibliotheque">
+    <Interface Chemin="Hebergee.HGsPP" />
+    <Source Chemin="VuesEtFlux.GsPP" />
+    <Source Chemin="Conteneurs.GsPP" />
+    <Source Chemin="Utf8EtMemoire.GsPP" />
+    <Source Chemin="ConteneursDynamiques.GsPP" />
+    <Source Chemin="CheminsEtFichiers.GsPP" />
+    <Source Chemin="Hote.GsPP" />
+    <Construction
+        RepertoireObjets="../../Construction/Artefacts/GsPlusPlus/Bibliotheques/Hebergee/Objets"
+        Sortie="../../Construction/Artefacts/GsPlusPlus/Bibliotheques/Hebergee/GsHebergee.GsA" />
+</GsProjet>

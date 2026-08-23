@@ -1,0 +1,11 @@
+espace Essai::ValeursSeparation
+{
+    structure Paire
+    {
+        entier32 X;
+        entier32 Y;
+    };
+
+    publique Paire Construire(entier32 x, entier32 y);
+    publique entier32 Additionner(Paire valeur);
+}

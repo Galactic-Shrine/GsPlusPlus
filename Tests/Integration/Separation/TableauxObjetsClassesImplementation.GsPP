@@ -1,0 +1,31 @@
+publique entier32 CompteurTableauSepare = 0;
+publique entier32 TraceTableauSepare = 0;
+
+classe ElementTableauSepare
+{
+    publique:
+        entier32 Valeur;
+        constructeur()
+        {
+            CompteurTableauSepare = CompteurTableauSepare + 1;
+            soi.Valeur = CompteurTableauSepare;
+        }
+        destructeur()
+        { TraceTableauSepare = TraceTableauSepare * 10 + soi.Valeur; }
+};
+
+classe ConteneurTableauSepare
+{
+    privée:
+        ElementTableauSepare Valeurs[2][2];
+    publique:
+        constructeur() {}
+        destructeur() {}
+        entier32 Somme()
+        {
+            retourner soi.Valeurs[0][0].Valeur
+                + soi.Valeurs[0][1].Valeur
+                + soi.Valeurs[1][0].Valeur
+                + soi.Valeurs[1][1].Valeur;
+        }
+};

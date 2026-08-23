@@ -1,0 +1,5 @@
+espace Essai::Separation
+{
+    publique entier32 Doubler(entier32 valeur);
+    publique entier32 CompteurPartage;
+}

@@ -1,0 +1,13 @@
+entier32 ConstruireTableauSepare()
+{
+    ConteneurTableauSepare objet;
+    si (CompteurTableauSepare != 4) retourner 97;
+    retourner objet.Somme();
+}
+
+publique entier32 PrincipalTableauSepare()
+{
+    entier32 resultat = ConstruireTableauSepare();
+    si (TraceTableauSepare != 4321) retourner 99;
+    retourner resultat;
+}

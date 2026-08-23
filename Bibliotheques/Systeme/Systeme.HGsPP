@@ -1,0 +1,183 @@
+// Bibliothèque système freestanding de Gs++ 0.16.
+// Cette interface n’alloue aucune mémoire et ne dépend d’aucun runtime.
+
+espace Gs::Intrinseques
+{
+    naturel32 ChargerAtomique32(volatile naturel32* cible);
+    naturel64 ChargerAtomique64(volatile naturel64* cible);
+    vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur);
+    vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur);
+    naturel32 EchangerAtomique32(volatile naturel32* cible, naturel32 valeur);
+    naturel64 EchangerAtomique64(volatile naturel64* cible, naturel64 valeur);
+    naturel32 AjouterAtomique32(volatile naturel32* cible, naturel32 valeur);
+    naturel64 AjouterAtomique64(volatile naturel64* cible, naturel64 valeur);
+    naturel32 ComparerEchanger32(
+        volatile naturel32* cible, naturel32 attendu, naturel32 desire);
+    naturel64 ComparerEchanger64(
+        volatile naturel64* cible, naturel64 attendu, naturel64 desire);
+    vide BarriereMemoire();
+    vide PauseProcesseur();
+}
+
+espace Gs::Systeme
+{
+    structure VueOctets
+    {
+        octet* Donnees;
+        naturel64 Taille;
+        alias Data = Donnees;
+        alias Size = Taille;
+    };
+
+    structure VueTexte
+    {
+        caractère* Donnees;
+        naturel64 Taille;
+        alias Data = Donnees;
+        alias Size = Taille;
+    };
+
+    structure VerrouAtomique
+    {
+        volatile naturel32 Etat;
+        alias State = Etat;
+    };
+
+    publique vide RemplirMemoire(
+        octet* destination, octet valeur, naturel64 taille);
+    publique vide CopierMemoire(
+        octet* destination, octet* source, naturel64 taille);
+    publique entier32 ComparerMemoire(
+        octet* gauche, octet* droite, naturel64 taille);
+    publique booléen MemoiresEgales(
+        octet* gauche, octet* droite, naturel64 taille);
+
+    publique VueOctets CreerVueOctets(octet* donnees, naturel64 taille);
+    publique VueOctets SousVueOctets(
+        VueOctets vue, naturel64 debut, naturel64 taille);
+    publique booléen VuesOctetsEgales(VueOctets gauche, VueOctets droite);
+    publique naturel64 ChercherOctet(VueOctets vue, octet valeur);
+
+    publique naturel64 LongueurTexte(caractère* texte);
+    publique VueTexte CreerVueTexte(caractère* texte);
+    publique booléen VuesTexteEgales(VueTexte gauche, VueTexte droite);
+    publique entier32 ComparerVuesTexte(VueTexte gauche, VueTexte droite);
+    publique naturel64 ChercherCaractere(VueTexte vue, caractère valeur);
+
+    publique naturel32 RotationGauche32(naturel32 valeur, naturel32 distance);
+    publique naturel64 RotationGauche64(naturel64 valeur, naturel32 distance);
+    publique naturel32 RotationDroite32(naturel32 valeur, naturel32 distance);
+    publique naturel64 RotationDroite64(naturel64 valeur, naturel32 distance);
+    publique naturel32 CompterBitsUn32(naturel32 valeur);
+    publique naturel32 CompterBitsUn64(naturel64 valeur);
+    publique naturel32 InverserOctets32(naturel32 valeur);
+    publique naturel64 InverserOctets64(naturel64 valeur);
+    publique booléen EstPuissanceDeux(naturel64 valeur);
+    publique naturel64 AlignerSuperieur(naturel64 valeur, naturel64 alignement);
+
+    publique naturel32 ChargerAtomique32(volatile naturel32* cible);
+    publique naturel64 ChargerAtomique64(volatile naturel64* cible);
+    publique vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur);
+    publique vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur);
+    publique naturel32 EchangerAtomique32(
+        volatile naturel32* cible, naturel32 valeur);
+    publique naturel64 EchangerAtomique64(
+        volatile naturel64* cible, naturel64 valeur);
+    publique naturel32 AjouterAtomique32(
+        volatile naturel32* cible, naturel32 valeur);
+    publique naturel64 AjouterAtomique64(
+        volatile naturel64* cible, naturel64 valeur);
+    publique naturel32 ComparerEchanger32(
+        volatile naturel32* cible, naturel32 attendu, naturel32 desire);
+    publique naturel64 ComparerEchanger64(
+        volatile naturel64* cible, naturel64 attendu, naturel64 desire);
+    publique vide BarriereMemoire();
+    publique vide PauseProcesseur();
+    publique vide InitialiserVerrou(VerrouAtomique* verrou);
+    publique booléen EssayerAcquerirVerrou(VerrouAtomique* verrou);
+    publique vide AcquerirVerrou(VerrouAtomique* verrou);
+    publique vide LibererVerrou(VerrouAtomique* verrou);
+
+    alias FillMemory = RemplirMemoire;
+    alias CopyMemory = CopierMemoire;
+    alias CompareMemory = ComparerMemoire;
+    alias MemoryEqual = MemoiresEgales;
+    alias MakeByteView = CreerVueOctets;
+    alias SubByteView = SousVueOctets;
+    alias ByteViewsEqual = VuesOctetsEgales;
+    alias FindByte = ChercherOctet;
+    alias TextLength = LongueurTexte;
+    alias MakeTextView = CreerVueTexte;
+    alias TextViewsEqual = VuesTexteEgales;
+    alias CompareTextViews = ComparerVuesTexte;
+    alias FindCharacter = ChercherCaractere;
+    alias RotateLeft32 = RotationGauche32;
+    alias RotateLeft64 = RotationGauche64;
+    alias RotateRight32 = RotationDroite32;
+    alias RotateRight64 = RotationDroite64;
+    alias CountOnes32 = CompterBitsUn32;
+    alias CountOnes64 = CompterBitsUn64;
+    alias ByteSwap32 = InverserOctets32;
+    alias ByteSwap64 = InverserOctets64;
+    alias IsPowerOfTwo = EstPuissanceDeux;
+    alias AlignUp = AlignerSuperieur;
+    alias AtomicLoad32 = ChargerAtomique32;
+    alias AtomicLoad64 = ChargerAtomique64;
+    alias AtomicStore32 = StockerAtomique32;
+    alias AtomicStore64 = StockerAtomique64;
+    alias AtomicExchange32 = EchangerAtomique32;
+    alias AtomicExchange64 = EchangerAtomique64;
+    alias AtomicFetchAdd32 = AjouterAtomique32;
+    alias AtomicFetchAdd64 = AjouterAtomique64;
+    alias AtomicCompareExchange32 = ComparerEchanger32;
+    alias AtomicCompareExchange64 = ComparerEchanger64;
+    alias MemoryFence = BarriereMemoire;
+    alias ProcessorPause = PauseProcesseur;
+    alias InitializeLock = InitialiserVerrou;
+    alias TryAcquireLock = EssayerAcquerirVerrou;
+    alias AcquireLock = AcquerirVerrou;
+    alias ReleaseLock = LibererVerrou;
+}
+
+alias Gs::System::ByteView = Gs::Systeme::VueOctets;
+alias Gs::System::TextView = Gs::Systeme::VueTexte;
+alias Gs::System::SpinLock = Gs::Systeme::VerrouAtomique;
+alias Gs::System::FillMemory = Gs::Systeme::RemplirMemoire;
+alias Gs::System::CopyMemory = Gs::Systeme::CopierMemoire;
+alias Gs::System::CompareMemory = Gs::Systeme::ComparerMemoire;
+alias Gs::System::MemoryEqual = Gs::Systeme::MemoiresEgales;
+alias Gs::System::MakeByteView = Gs::Systeme::CreerVueOctets;
+alias Gs::System::SubByteView = Gs::Systeme::SousVueOctets;
+alias Gs::System::ByteViewsEqual = Gs::Systeme::VuesOctetsEgales;
+alias Gs::System::FindByte = Gs::Systeme::ChercherOctet;
+alias Gs::System::TextLength = Gs::Systeme::LongueurTexte;
+alias Gs::System::MakeTextView = Gs::Systeme::CreerVueTexte;
+alias Gs::System::TextViewsEqual = Gs::Systeme::VuesTexteEgales;
+alias Gs::System::CompareTextViews = Gs::Systeme::ComparerVuesTexte;
+alias Gs::System::FindCharacter = Gs::Systeme::ChercherCaractere;
+alias Gs::System::RotateLeft32 = Gs::Systeme::RotationGauche32;
+alias Gs::System::RotateLeft64 = Gs::Systeme::RotationGauche64;
+alias Gs::System::RotateRight32 = Gs::Systeme::RotationDroite32;
+alias Gs::System::RotateRight64 = Gs::Systeme::RotationDroite64;
+alias Gs::System::CountOnes32 = Gs::Systeme::CompterBitsUn32;
+alias Gs::System::CountOnes64 = Gs::Systeme::CompterBitsUn64;
+alias Gs::System::ByteSwap32 = Gs::Systeme::InverserOctets32;
+alias Gs::System::ByteSwap64 = Gs::Systeme::InverserOctets64;
+alias Gs::System::IsPowerOfTwo = Gs::Systeme::EstPuissanceDeux;
+alias Gs::System::AlignUp = Gs::Systeme::AlignerSuperieur;
+alias Gs::System::AtomicLoad32 = Gs::Systeme::ChargerAtomique32;
+alias Gs::System::AtomicLoad64 = Gs::Systeme::ChargerAtomique64;
+alias Gs::System::AtomicStore32 = Gs::Systeme::StockerAtomique32;
+alias Gs::System::AtomicStore64 = Gs::Systeme::StockerAtomique64;
+alias Gs::System::AtomicExchange32 = Gs::Systeme::EchangerAtomique32;
+alias Gs::System::AtomicExchange64 = Gs::Systeme::EchangerAtomique64;
+alias Gs::System::AtomicFetchAdd32 = Gs::Systeme::AjouterAtomique32;
+alias Gs::System::AtomicFetchAdd64 = Gs::Systeme::AjouterAtomique64;
+alias Gs::System::AtomicCompareExchange32 = Gs::Systeme::ComparerEchanger32;
+alias Gs::System::AtomicCompareExchange64 = Gs::Systeme::ComparerEchanger64;
+alias Gs::System::MemoryFence = Gs::Systeme::BarriereMemoire;
+alias Gs::System::ProcessorPause = Gs::Systeme::PauseProcesseur;
+alias Gs::System::InitializeLock = Gs::Systeme::InitialiserVerrou;
+alias Gs::System::TryAcquireLock = Gs::Systeme::EssayerAcquerirVerrou;
+alias Gs::System::AcquireLock = Gs::Systeme::AcquerirVerrou;
+alias Gs::System::ReleaseLock = Gs::Systeme::LibererVerrou;

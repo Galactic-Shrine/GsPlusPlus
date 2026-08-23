@@ -1,4 +1,5 @@
 #include "GsPP/ChargeurGsE.hpp"
+#include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
 #include "GsPP/Lexeur.hpp"
 
@@ -92,12 +93,50 @@ namespace
         ResultatLexageHote Resultat;
     };
 
+    struct NoeudDeclarationHote
+    {
+        std::uint32_t Genre;
+        std::uint32_t Ligne;
+        std::uint32_t Colonne;
+        std::uint32_t Drapeaux;
+        std::uint64_t Parent;
+        std::uint64_t DebutNom;
+        std::uint64_t TailleNom;
+        std::uint64_t HachageNom;
+        std::uint64_t HachageEspace;
+        std::uint64_t HachageType;
+    };
+
+    struct ResultatAnalyseDeclarationsHote
+    {
+        std::uint32_t Erreur;
+        std::uint32_t LigneErreur;
+        std::uint32_t ColonneErreur;
+        std::uint32_t Detail;
+        std::uint64_t NombreNoeuds;
+        std::uint64_t CapaciteRequise;
+        std::uint64_t NombreOctetsArene;
+        std::uint64_t Reserve;
+    };
+
+    struct RequeteAnalyseDeclarationsHote
+    {
+        const char* Source;
+        std::uint64_t Taille;
+        NoeudDeclarationHote* Noeuds;
+        std::uint64_t Capacite;
+        ResultatAnalyseDeclarationsHote Resultat;
+    };
+
     static_assert(sizeof(VueTexteHote) == 16);
     static_assert(sizeof(RequeteFichierHote) == 32);
     static_assert(sizeof(DiagnosticHote) == 48);
     static_assert(sizeof(JetonLexeHote) == 48);
     static_assert(sizeof(ResultatLexageHote) == 32);
     static_assert(sizeof(RequeteLexageHote) == 64);
+    static_assert(sizeof(NoeudDeclarationHote) == 64);
+    static_assert(sizeof(ResultatAnalyseDeclarationsHote) == 48);
+    static_assert(sizeof(RequeteAnalyseDeclarationsHote) == 80);
 
     std::string CheminLu;
     std::string CheminEcrit;
@@ -320,6 +359,138 @@ namespace
             valeur *= 1'099'511'628'211ULL;
         }
         return valeur;
+    }
+
+    std::uint64_t AjouterNaturel32Empreinte(
+        std::uint64_t hachage,
+        std::uint32_t valeur)
+    {
+        for (unsigned index = 0; index < 4; ++index)
+        {
+            hachage ^= static_cast<std::uint8_t>(valeur & 0xFFU);
+            hachage *= 1'099'511'628'211ULL;
+            valeur >>= 8U;
+        }
+        return hachage;
+    }
+
+    std::uint64_t AjouterNaturel64Empreinte(
+        std::uint64_t hachage,
+        std::uint64_t valeur)
+    {
+        for (unsigned index = 0; index < 8; ++index)
+        {
+            hachage ^= static_cast<std::uint8_t>(valeur & 0xFFULL);
+            hachage *= 1'099'511'628'211ULL;
+            valeur >>= 8U;
+        }
+        return hachage;
+    }
+
+    std::uint32_t CodeTypeDeclaration(const GsPP::TypeGs& type)
+    {
+        switch (type.Genre)
+        {
+            case GsPP::GenreType::Entier8: return 1;
+            case GsPP::GenreType::Entier16: return 2;
+            case GsPP::GenreType::Entier32: return 3;
+            case GsPP::GenreType::Entier64: return 4;
+            case GsPP::GenreType::Naturel8: return 5;
+            case GsPP::GenreType::Naturel16: return 6;
+            case GsPP::GenreType::Naturel32: return 7;
+            case GsPP::GenreType::Naturel64: return 8;
+            case GsPP::GenreType::Booleen: return 9;
+            case GsPP::GenreType::Octet: return 10;
+            case GsPP::GenreType::Caractere: return 11;
+            case GsPP::GenreType::Vide: return 12;
+            case GsPP::GenreType::Structure: return 13;
+            default:
+                throw std::runtime_error(
+                    "type absent de la tranche AST des déclarations");
+        }
+    }
+
+    std::uint64_t HacherTypeDeclaration(const GsPP::TypeGs& type)
+    {
+        std::uint32_t qualificatifs = 0;
+        if (type.EstConstante) qualificatifs |= 1U;
+        if (type.EstVolatile) qualificatifs |= 2U;
+        if (type.EstReference) qualificatifs |= 4U;
+
+        std::uint64_t dimensions = HacherTexte({});
+        for (const auto dimension : type.DimensionsTableau)
+            dimensions = AjouterNaturel64Empreinte(dimensions, dimension);
+
+        std::uint64_t hachage = HacherTexte({});
+        hachage = AjouterNaturel32Empreinte(
+            hachage, CodeTypeDeclaration(type));
+        hachage = AjouterNaturel32Empreinte(hachage, qualificatifs);
+        hachage = AjouterNaturel32Empreinte(
+            hachage, type.NiveauPointeur);
+        hachage = AjouterNaturel32Empreinte(
+            hachage,
+            static_cast<std::uint32_t>(type.DimensionsTableau.size()));
+        hachage = AjouterNaturel64Empreinte(
+            hachage,
+            type.Genre == GsPP::GenreType::Structure
+                ? HacherTexte(type.Nom)
+                : HacherTexte({}));
+        hachage = AjouterNaturel64Empreinte(hachage, dimensions);
+        return hachage;
+    }
+
+    std::vector<NoeudDeclarationHote> ConstruireDeclarationsReference(
+        const GsPP::Programme& programme)
+    {
+        std::vector<NoeudDeclarationHote> resultat;
+        resultat.push_back({
+            0, 1, 1, 0, 0, 0, 0, 0, HacherTexte({}), 0});
+        for (const auto& fonction : programme.Fonctions)
+        {
+            const auto indexFonction = resultat.size();
+            std::uint32_t drapeaux = 0;
+            if (fonction.EstPublique) drapeaux |= 1U;
+            if (fonction.EstExterne) drapeaux |= 2U;
+            if (fonction.Corps) drapeaux |= 4U;
+            resultat.push_back({
+                1,
+                static_cast<std::uint32_t>(fonction.Position.Ligne),
+                static_cast<std::uint32_t>(fonction.Position.Colonne),
+                drapeaux,
+                0,
+                0,
+                0,
+                HacherTexte(fonction.Nom),
+                HacherTexte(fonction.Espace),
+                HacherTypeDeclaration(fonction.TypeRetour)});
+            for (const auto& parametre : fonction.Parametres)
+            {
+                resultat.push_back({
+                    2,
+                    static_cast<std::uint32_t>(parametre.Position.Ligne),
+                    static_cast<std::uint32_t>(parametre.Position.Colonne),
+                    0,
+                    indexFonction,
+                    0,
+                    0,
+                    HacherTexte(parametre.Nom),
+                    HacherTexte(fonction.Espace),
+                    HacherTypeDeclaration(parametre.Type)});
+            }
+        }
+        return resultat;
+    }
+
+    bool MemeStructureDeclaration(
+        const NoeudDeclarationHote& gauche,
+        const NoeudDeclarationHote& droite)
+    {
+        return gauche.Genre == droite.Genre
+            && gauche.Drapeaux == droite.Drapeaux
+            && gauche.Parent == droite.Parent
+            && gauche.HachageNom == droite.HachageNom
+            && gauche.HachageEspace == droite.HachageEspace
+            && gauche.HachageType == droite.HachageType;
     }
 
     std::size_t PositionSource(
@@ -589,6 +760,297 @@ namespace
             "le lexeur auto-hébergé a altéré l’état mémoire de l’hôte");
     }
 
+    using AnalyseurDeclarationsAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequeteAnalyseDeclarationsHote*);
+
+    std::vector<NoeudDeclarationHote> ComparerDeclarations(
+        AnalyseurDeclarationsAutoHeberge analyseur,
+        const std::string& source,
+        std::string_view nomCorpus)
+    {
+        const auto jetons = GsPP::Lexeur(
+            source, std::string(nomCorpus)).Analyser();
+        const auto programme = GsPP::AnalyseurSyntaxique(
+            jetons, std::string(nomCorpus)).Analyser();
+        const auto reference = ConstruireDeclarationsReference(programme);
+
+        RequeteAnalyseDeclarationsHote requete{
+            source.data(),
+            static_cast<std::uint64_t>(source.size()),
+            nullptr,
+            0,
+            {}};
+        const auto interrogation = analyseur(&requete);
+        Exiger(
+            interrogation == 1
+                && requete.Resultat.Erreur == 1
+                && requete.Resultat.NombreNoeuds == reference.size()
+                && requete.Resultat.CapaciteRequise == reference.size()
+                && requete.Resultat.NombreOctetsArene != 0,
+            "interrogation de capacité de l’AST Gs++ incorrecte pour "
+                + std::string(nomCorpus));
+
+        if (reference.size() > 1)
+        {
+            std::vector<NoeudDeclarationHote> partiel(
+                reference.size() - 1);
+            requete.Noeuds = partiel.data();
+            requete.Capacite = partiel.size();
+            const auto capacitePartielle = analyseur(&requete);
+            Exiger(
+                capacitePartielle == 1
+                    && requete.Resultat.NombreNoeuds == reference.size()
+                    && requete.Resultat.CapaciteRequise == reference.size(),
+                "capacité partielle de l’AST Gs++ mal diagnostiquée pour "
+                    + std::string(nomCorpus));
+        }
+
+        std::vector<NoeudDeclarationHote> obtenu(reference.size());
+        requete.Noeuds = obtenu.data();
+        requete.Capacite = obtenu.size();
+        const auto resultat = analyseur(&requete);
+        Exiger(
+            resultat == 0
+                && requete.Resultat.Erreur == 0
+                && requete.Resultat.NombreNoeuds == reference.size()
+                && requete.Resultat.CapaciteRequise == reference.size()
+                && requete.Resultat.Reserve == 0,
+            "analyse des déclarations Gs++ échouée pour "
+                + std::string(nomCorpus));
+
+        for (std::size_t index = 0; index < reference.size(); ++index)
+        {
+            const auto& attendu = reference[index];
+            const auto& courant = obtenu[index];
+            Exiger(
+                MemeStructureDeclaration(courant, attendu)
+                    && courant.Ligne == attendu.Ligne
+                    && courant.Colonne == attendu.Colonne,
+                "nœud de déclaration différent au rang "
+                    + std::to_string(index) + " de "
+                    + std::string(nomCorpus));
+            if (courant.Genre == 0)
+            {
+                Exiger(
+                    courant.DebutNom == 0
+                        && courant.TailleNom == 0
+                        && courant.HachageNom == 0,
+                    "nœud programme Gs++ non canonique pour "
+                        + std::string(nomCorpus));
+                continue;
+            }
+            Exiger(
+                courant.DebutNom <= source.size()
+                    && courant.TailleNom
+                        <= source.size() - courant.DebutNom,
+                "tranche de nom invalide dans l’AST Gs++ pour "
+                    + std::string(nomCorpus));
+            const auto nom = std::string_view(source).substr(
+                static_cast<std::size_t>(courant.DebutNom),
+                static_cast<std::size_t>(courant.TailleNom));
+            Exiger(
+                HacherTexte(nom) == courant.HachageNom,
+                "hachage de nom incohérent dans l’AST Gs++ pour "
+                    + std::string(nomCorpus));
+        }
+        return obtenu;
+    }
+
+    void ComparerErreurDeclarations(
+        AnalyseurDeclarationsAutoHeberge analyseur,
+        const std::string& source,
+        std::uint32_t erreurAttendue,
+        std::string_view nomCorpus)
+    {
+        std::uint32_t ligne = 0;
+        std::uint32_t colonne = 0;
+        bool bootstrapRefuse = false;
+        try
+        {
+            const auto jetons = GsPP::Lexeur(
+                source, std::string(nomCorpus)).Analyser();
+            (void)GsPP::AnalyseurSyntaxique(
+                jetons, std::string(nomCorpus)).Analyser();
+        }
+        catch (const GsPP::ErreurCompilation& erreur)
+        {
+            bootstrapRefuse = true;
+            ligne = static_cast<std::uint32_t>(erreur.Ligne());
+            colonne = static_cast<std::uint32_t>(erreur.Colonne());
+        }
+        Exiger(
+            bootstrapRefuse,
+            "le bootstrap a accepté le corpus syntaxique invalide "
+                + std::string(nomCorpus));
+
+        RequeteAnalyseDeclarationsHote requete{
+            source.data(),
+            static_cast<std::uint64_t>(source.size()),
+            nullptr,
+            0,
+            {}};
+        const auto resultat = analyseur(&requete);
+        Exiger(
+            resultat == erreurAttendue
+                && requete.Resultat.Erreur == erreurAttendue
+                && requete.Resultat.LigneErreur == ligne
+                && requete.Resultat.ColonneErreur == colonne
+                && requete.Resultat.NombreOctetsArene != 0,
+            "diagnostic de déclaration différent du bootstrap pour "
+                + std::string(nomCorpus));
+    }
+
+    void TesterAnalyseurDeclarations(const std::string& chemin)
+    {
+        AllocationsActives.clear();
+        NombreAllocations = 0;
+        NombreLiberations = 0;
+        LiberationInvalide = false;
+
+        const auto contenu = LireFichier(chemin);
+        const auto tailleImage = Lire64(contenu, 48);
+        const auto debutTrampolines = AlignerPage(tailleImage);
+        ZoneExecutable zone(debutTrampolines + 4096);
+        const auto allouer = zone.AjouterTrampoline(
+            debutTrampolines,
+            reinterpret_cast<std::uintptr_t>(&AllouerMemoireHote));
+        const auto liberer = zone.AjouterTrampoline(
+            debutTrampolines + 16,
+            reinterpret_cast<std::uintptr_t>(&LibererMemoireHote));
+        const auto resolveur =
+            [&](std::string_view nom) -> std::optional<std::uint64_t>
+        {
+            if (nom == "Gs::Hote::AllouerMemoire") return allouer;
+            if (nom == "Gs::Hote::LibererMemoire") return liberer;
+            return std::nullopt;
+        };
+        const auto image = GsPP::ChargeurGsE().Charger(
+            contenu, zone.Base(), resolveur);
+        zone.Copier(image.Memoire);
+
+        const auto adresse = image.ChercherExport(
+            "Gs::Autohebergement::AnalyserDeclarationsSource");
+        Exiger(adresse.has_value(),
+               "export de l’analyseur de déclarations Gs++ absent");
+        const auto analyseur =
+            reinterpret_cast<AnalyseurDeclarationsAutoHeberge>(*adresse);
+
+        const std::string francais =
+            "espace Demo {\n"
+            "  publique entier32 Addition(entier32 gauche, "
+            "constante naturel64* droite) { retourner gauche; }\n"
+            "  externe vide Journaliser(caractère* texte);\n"
+            "}\n";
+        const std::string anglais =
+            "namespace Demo {\n"
+            "  public int32 Addition(int32 gauche, "
+            "const uint64* droite) { return gauche; }\n"
+            "  extern void Journaliser(char* texte);\n"
+            "}\n";
+        const auto astFrancais = ComparerDeclarations(
+            analyseur, francais, "declarations-francaises");
+        const auto astAnglais = ComparerDeclarations(
+            analyseur, anglais, "declarations-anglaises");
+        Exiger(
+            astFrancais.size() == astAnglais.size(),
+            "les AST français et anglais ont des tailles différentes");
+        for (std::size_t index = 0; index < astFrancais.size(); ++index)
+            Exiger(
+                MemeStructureDeclaration(
+                    astFrancais[index], astAnglais[index]),
+                "les AST français et anglais divergent au rang "
+                    + std::to_string(index));
+
+        ComparerDeclarations(analyseur, "", "declarations-vides");
+        ComparerDeclarations(
+            analyseur,
+            "espace Galactic { espace Frontend { "
+            "vide Executer() {} } }",
+            "espaces-imbriques");
+        ComparerDeclarations(
+            analyseur,
+            "namespace Galactic::Frontend {\n"
+            "  public uint64 Compter(const byte donnees[4], "
+            "uint32 dimensions[2][3]) { return 0; }\n"
+            "}\n",
+            "espace-qualifie-tableaux");
+        ComparerDeclarations(
+            analyseur,
+            "espace Galactic {\n"
+            "  publique Gs::Noeud* Copier("
+            "constante Gs::Noeud& source) { retourner source; }\n"
+            "}\n",
+            "types-qualifies");
+
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique entier32 F(entier32 valeur { retourner valeur; }",
+            8,
+            "parenthese-parametres-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique entier32 (entier32 valeur) { retourner valeur; }",
+            5,
+            "nom-fonction-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique entier32 F() { retourner 1;",
+            10,
+            "accolade-corps-manquante");
+
+        const std::string globale = "entier32 Valeur;";
+        RequeteAnalyseDeclarationsHote requeteGlobale{
+            globale.data(),
+            static_cast<std::uint64_t>(globale.size()),
+            nullptr,
+            0,
+            {}};
+        Exiger(
+            analyseur(&requeteGlobale) == 12,
+            "une variable globale aurait dû rester hors de la tranche");
+
+        const std::string lexicalementInvalide = "@";
+        RequeteAnalyseDeclarationsHote requeteLexicale{
+            lexicalementInvalide.data(),
+            static_cast<std::uint64_t>(lexicalementInvalide.size()),
+            nullptr,
+            0,
+            {}};
+        Exiger(
+            analyseur(&requeteLexicale) == 2
+                && requeteLexicale.Resultat.Detail == 7
+                && requeteLexicale.Resultat.LigneErreur == 1
+                && requeteLexicale.Resultat.ColonneErreur == 1,
+            "l’erreur lexicale n’a pas été propagée par l’analyseur");
+
+        Exiger(
+            analyseur(nullptr) == 3,
+            "une requête d’analyse nulle aurait dû être refusée");
+        RequeteAnalyseDeclarationsHote requeteInvalide{
+            nullptr, 1, nullptr, 0, {}};
+        Exiger(
+            analyseur(&requeteInvalide) == 3
+                && requeteInvalide.Resultat.LigneErreur == 1
+                && requeteInvalide.Resultat.ColonneErreur == 1,
+            "une source d’analyse nulle aurait dû être refusée");
+        NoeudDeclarationHote* aucunNoeud = nullptr;
+        RequeteAnalyseDeclarationsHote sortieInvalide{
+            francais.data(),
+            static_cast<std::uint64_t>(francais.size()),
+            aucunNoeud,
+            1,
+            {}};
+        Exiger(
+            analyseur(&sortieInvalide) == 3,
+            "une capacité sans tampon AST aurait dû être refusée");
+        Exiger(
+            !LiberationInvalide
+                && AllocationsActives.empty()
+                && NombreAllocations == NombreLiberations
+                && NombreAllocations != 0,
+            "l’AST auto-hébergé ne libère pas proprement son arène");
+    }
+
     void TesterClassificateur(const std::string& chemin)
     {
         const auto contenu = LireFichier(chemin);
@@ -733,15 +1195,17 @@ int main(int argc, char** argv)
 {
     try
     {
-        if (argc != 4)
+        if (argc != 5)
             throw std::runtime_error(
-                "trois images GsE de test sont attendues");
+                "quatre images GsE de test sont attendues");
         TesterClassificateur(argv[1]);
         TesterLexeur(argv[2]);
-        TesterBibliothequeHebergee(argv[3]);
+        TesterAnalyseurDeclarations(argv[3]);
+        TesterBibliothequeHebergee(argv[4]);
         std::cout
             << "Auto-hébergement 0.27 : "
-            << "83 classifications, lexeur différentiel "
+            << "83 classifications, lexeur différentiel, "
+            << "AST différentiel des déclarations "
             << "et bibliothèque hébergée validés.\n";
         return 0;
     }

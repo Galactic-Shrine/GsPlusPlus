@@ -1,0 +1,684 @@
+espace Gs::Autohebergement
+{
+    JetonLexe* NulJetonsDeclarations;
+    NoeudDeclaration* NulNoeudsDeclarations;
+
+    structure TypeDeclarationInterne
+    {
+        naturel32 Genre;
+        naturel32 Qualificatifs;
+        naturel32 NiveauPointeur;
+        naturel32 NombreDimensions;
+        naturel64 HachageNom;
+        naturel64 HachageDimensions;
+    };
+
+    structure ContexteEspaceDeclaration
+    {
+        naturel64 Hachage;
+        booléen EstVide;
+    };
+
+    structure EtatAnalyseDeclarations
+    {
+        RequeteAnalyseDeclarations* Requete;
+        JetonLexe* Jetons;
+        naturel64 NombreJetons;
+        naturel64 Position;
+        NoeudDeclaration* NoeudsTravail;
+        naturel64 NombreNoeuds;
+        Gs::Hebergee::AreneMemoire Arene;
+    };
+
+    naturel64 HachageVideDeclaration()
+    {
+        retourner 14_695_981_039_346_656_037;
+    }
+
+    naturel64 AjouterOctetDeclaration(naturel64 hachage, octet valeur)
+    {
+        retourner (hachage ^ convertir<naturel64>(valeur))
+            * 1_099_511_628_211;
+    }
+
+    naturel64 AjouterNaturel32Declaration(
+        naturel64 hachage, naturel32 valeur)
+    {
+        naturel32 index = 0;
+        tantque (index < 4)
+        {
+            hachage = AjouterOctetDeclaration(
+                hachage, convertir<octet>(valeur & 255));
+            valeur = valeur >> 8;
+            index = index + 1;
+        }
+        retourner hachage;
+    }
+
+    naturel64 AjouterNaturel64Declaration(
+        naturel64 hachage, naturel64 valeur)
+    {
+        naturel32 index = 0;
+        tantque (index < 8)
+        {
+            hachage = AjouterOctetDeclaration(
+                hachage, convertir<octet>(valeur & 255));
+            valeur = valeur >> 8;
+            index = index + 1;
+        }
+        retourner hachage;
+    }
+
+    naturel64 AjouterTrancheDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel64 hachage,
+        JetonLexe* jeton)
+    {
+        naturel64 index = 0;
+        tantque (index < jeton->TailleSource)
+        {
+            hachage = AjouterOctetDeclaration(
+                hachage,
+                convertir<octet>(
+                    etat->Requete->Source[jeton->Debut + index]));
+            index = index + 1;
+        }
+        retourner hachage;
+    }
+
+    naturel64 HacherTypeDeclaration(TypeDeclarationInterne* type)
+    {
+        naturel64 hachage = HachageVideDeclaration();
+        hachage = AjouterNaturel32Declaration(hachage, type->Genre);
+        hachage = AjouterNaturel32Declaration(hachage, type->Qualificatifs);
+        hachage = AjouterNaturel32Declaration(hachage, type->NiveauPointeur);
+        hachage = AjouterNaturel32Declaration(
+            hachage, type->NombreDimensions);
+        hachage = AjouterNaturel64Declaration(hachage, type->HachageNom);
+        hachage = AjouterNaturel64Declaration(
+            hachage, type->HachageDimensions);
+        retourner hachage;
+    }
+
+    JetonLexe* JetonCourantDeclaration(EtatAnalyseDeclarations* etat)
+    {
+        retourner &etat->Jetons[etat->Position];
+    }
+
+    booléen EstJetonDeclaration(
+        EtatAnalyseDeclarations* etat, naturel32 genre)
+    {
+        retourner JetonCourantDeclaration(etat)->Genre == genre;
+    }
+
+    booléen AccepterJetonDeclaration(
+        EtatAnalyseDeclarations* etat, naturel32 genre)
+    {
+        si (!EstJetonDeclaration(etat, genre)) retourner faux;
+        etat->Position = etat->Position + 1;
+        retourner vrai;
+    }
+
+    ErreurAnalyseDeclarations SignalerErreurDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ErreurAnalyseDeclarations erreur,
+        naturel32 ligne,
+        naturel32 colonne)
+    {
+        etat->Requete->Resultat.Erreur = erreur;
+        etat->Requete->Resultat.LigneErreur = ligne;
+        etat->Requete->Resultat.ColonneErreur = colonne;
+        etat->Requete->Resultat.NombreNoeuds = etat->NombreNoeuds;
+        etat->Requete->Resultat.CapaciteRequise = etat->NombreNoeuds;
+        retourner erreur;
+    }
+
+    booléen ExigerJetonDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel32 genre,
+        ErreurAnalyseDeclarations erreur)
+    {
+        si (AccepterJetonDeclaration(etat, genre)) retourner vrai;
+        JetonLexe* jetonExige = JetonCourantDeclaration(etat);
+        SignalerErreurDeclaration(
+            etat, erreur, jetonExige->Ligne, jetonExige->Colonne);
+        retourner faux;
+    }
+
+    booléen AjouterNoeudDeclaration(
+        EtatAnalyseDeclarations* etat, NoeudDeclaration noeud)
+    {
+        si (etat->NombreNoeuds >= etat->NombreJetons)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::AllocationImpossible,
+                noeud.Ligne,
+                noeud.Colonne);
+            retourner faux;
+        }
+        etat->NoeudsTravail[etat->NombreNoeuds] = noeud;
+        etat->NombreNoeuds = etat->NombreNoeuds + 1;
+        retourner vrai;
+    }
+
+    booléen AnalyserNomQualifieType(
+        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type)
+    {
+        si (!EstJetonDeclaration(etat, 1))
+        {
+            JetonLexe* premierNomManquant = JetonCourantDeclaration(etat);
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::IdentifiantAttendu,
+                premierNomManquant->Ligne,
+                premierNomManquant->Colonne);
+            retourner faux;
+        }
+        JetonLexe* nom = JetonCourantDeclaration(etat);
+        type->HachageNom = AjouterTrancheDeclaration(
+            etat, HachageVideDeclaration(), nom);
+        etat->Position = etat->Position + 1;
+        tantque (AccepterJetonDeclaration(etat, 44))
+        {
+            type->HachageNom = AjouterOctetDeclaration(
+                type->HachageNom, 58);
+            type->HachageNom = AjouterOctetDeclaration(
+                type->HachageNom, 58);
+            si (!EstJetonDeclaration(etat, 1))
+            {
+                JetonLexe* nomQualifieManquant =
+                    JetonCourantDeclaration(etat);
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::IdentifiantAttendu,
+                    nomQualifieManquant->Ligne,
+                    nomQualifieManquant->Colonne);
+                retourner faux;
+            }
+            nom = JetonCourantDeclaration(etat);
+            type->HachageNom = AjouterTrancheDeclaration(
+                etat, type->HachageNom, nom);
+            etat->Position = etat->Position + 1;
+        }
+        retourner vrai;
+    }
+
+    booléen AnalyserTypeDeclaration(
+        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type)
+    {
+        type->Genre = 0;
+        type->Qualificatifs = 0;
+        type->NiveauPointeur = 0;
+        type->NombreDimensions = 0;
+        type->HachageNom = HachageVideDeclaration();
+        type->HachageDimensions = HachageVideDeclaration();
+
+        booléen continuer = vrai;
+        tantque (continuer)
+        {
+            si (AccepterJetonDeclaration(etat, 12))
+                type->Qualificatifs = type->Qualificatifs | 1;
+            sinon si (AccepterJetonDeclaration(etat, 13))
+                type->Qualificatifs = type->Qualificatifs | 2;
+            sinon continuer = faux;
+        }
+
+        naturel32 genreJeton = JetonCourantDeclaration(etat)->Genre;
+        si (genreJeton >= 14 && genreJeton <= 25)
+        {
+            type->Genre = genreJeton - 13;
+            etat->Position = etat->Position + 1;
+        }
+        sinon si (genreJeton == 1)
+        {
+            type->Genre = 13;
+            si (!AnalyserNomQualifieType(etat, type)) retourner faux;
+        }
+        sinon
+        {
+            JetonLexe* typeManquant = JetonCourantDeclaration(etat);
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::TypeAttendu,
+                typeManquant->Ligne,
+                typeManquant->Colonne);
+            retourner faux;
+        }
+
+        tantque (AccepterJetonDeclaration(etat, 63))
+            type->NiveauPointeur = type->NiveauPointeur + 1;
+        si (AccepterJetonDeclaration(etat, 55))
+            type->Qualificatifs = type->Qualificatifs | 4;
+        retourner vrai;
+    }
+
+    booléen LireTailleTableauDeclaration(
+        EtatAnalyseDeclarations* etat, naturel64* valeur)
+    {
+        JetonLexe* jeton = JetonCourantDeclaration(etat);
+        si (jeton->Genre != 2)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::TailleTableauInvalide,
+                jeton->Ligne,
+                jeton->Colonne);
+            retourner faux;
+        }
+        *valeur = 0;
+        naturel64 index = 0;
+        tantque (index < jeton->TailleSource)
+        {
+            octet courant = convertir<octet>(
+                etat->Requete->Source[jeton->Debut + index]);
+            si (courant != 95)
+            {
+                naturel64 chiffre = convertir<naturel64>(courant - 48);
+                si (*valeur > 214_748_364
+                    || (*valeur == 214_748_364 && chiffre > 7))
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::TailleTableauInvalide,
+                        jeton->Ligne,
+                        jeton->Colonne);
+                    retourner faux;
+                }
+                *valeur = *valeur * 10 + chiffre;
+            }
+            index = index + 1;
+        }
+        si (*valeur == 0)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::TailleTableauInvalide,
+                jeton->Ligne,
+                jeton->Colonne);
+            retourner faux;
+        }
+        etat->Position = etat->Position + 1;
+        retourner vrai;
+    }
+
+    booléen AnalyserDimensionsDeclaration(
+        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type)
+    {
+        tantque (AccepterJetonDeclaration(etat, 38))
+        {
+            naturel64 valeur = 0;
+            si (!LireTailleTableauDeclaration(etat, &valeur)) retourner faux;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    39,
+                    ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge))
+                retourner faux;
+            type->NombreDimensions = type->NombreDimensions + 1;
+            type->HachageDimensions = AjouterNaturel64Declaration(
+                type->HachageDimensions, valeur);
+        }
+        retourner vrai;
+    }
+
+    booléen IgnorerCorpsDeclaration(EtatAnalyseDeclarations* etat)
+    {
+        si (!ExigerJetonDeclaration(
+                etat,
+                36,
+                ErreurAnalyseDeclarations::AccoladeOuvranteAttendue))
+            retourner faux;
+        naturel64 profondeur = 1;
+        tantque (profondeur != 0)
+        {
+            JetonLexe* finCorpsManquante = JetonCourantDeclaration(etat);
+            si (finCorpsManquante->Genre == 0)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
+                    finCorpsManquante->Ligne,
+                    finCorpsManquante->Colonne);
+                retourner faux;
+            }
+            si (finCorpsManquante->Genre == 36)
+                profondeur = profondeur + 1;
+            sinon si (finCorpsManquante->Genre == 37)
+                profondeur = profondeur - 1;
+            etat->Position = etat->Position + 1;
+        }
+        retourner vrai;
+    }
+
+    booléen AnalyserFonctionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteEspaceDeclaration* contexte)
+    {
+        JetonLexe position = *JetonCourantDeclaration(etat);
+        booléen estPublique = faux;
+        booléen estExterne = faux;
+        booléen continuer = vrai;
+        tantque (continuer)
+        {
+            si (AccepterJetonDeclaration(etat, 10)) estPublique = vrai;
+            sinon si (AccepterJetonDeclaration(etat, 11)) estPublique = faux;
+            sinon si (AccepterJetonDeclaration(etat, 9)) estExterne = vrai;
+            sinon continuer = faux;
+        }
+
+        TypeDeclarationInterne typeRetour;
+        si (!AnalyserTypeDeclaration(etat, &typeRetour)) retourner faux;
+        JetonLexe* nom = JetonCourantDeclaration(etat);
+        si (!ExigerJetonDeclaration(
+                etat,
+                1,
+                ErreurAnalyseDeclarations::IdentifiantAttendu))
+            retourner faux;
+        si (!AnalyserDimensionsDeclaration(etat, &typeRetour)) retourner faux;
+        si (typeRetour.NombreDimensions != 0)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge,
+                position.Ligne,
+                position.Colonne);
+            retourner faux;
+        }
+        si (!EstJetonDeclaration(etat, 34))
+        {
+            JetonLexe* parentheseFonctionManquante =
+                JetonCourantDeclaration(etat);
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge,
+                parentheseFonctionManquante->Ligne,
+                parentheseFonctionManquante->Colonne);
+            retourner faux;
+        }
+
+        naturel64 indexFonction = etat->NombreNoeuds;
+        naturel32 drapeaux = 0;
+        si (estPublique) drapeaux = drapeaux | 1;
+        si (estExterne) drapeaux = drapeaux | 2;
+        si (!estExterne) drapeaux = drapeaux | 4;
+        NoeudDeclaration noeudFonction = {
+            1,
+            position.Ligne,
+            position.Colonne,
+            drapeaux,
+            0,
+            nom->Debut,
+            nom->TailleSource,
+            nom->HachageTexte,
+            contexte->Hachage,
+            HacherTypeDeclaration(&typeRetour)};
+        si (!AjouterNoeudDeclaration(etat, noeudFonction)) retourner faux;
+
+        etat->Position = etat->Position + 1;
+        si (!EstJetonDeclaration(etat, 35))
+        {
+            booléen continuerParametres = vrai;
+            tantque (continuerParametres)
+            {
+                JetonLexe positionParametre = *JetonCourantDeclaration(etat);
+                TypeDeclarationInterne typeParametre;
+                si (!AnalyserTypeDeclaration(etat, &typeParametre))
+                    retourner faux;
+                JetonLexe* nomParametre = JetonCourantDeclaration(etat);
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        1,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu))
+                    retourner faux;
+                si (!AnalyserDimensionsDeclaration(etat, &typeParametre))
+                    retourner faux;
+                NoeudDeclaration noeudParametre = {
+                    2,
+                    positionParametre.Ligne,
+                    positionParametre.Colonne,
+                    0,
+                    indexFonction,
+                    nomParametre->Debut,
+                    nomParametre->TailleSource,
+                    nomParametre->HachageTexte,
+                    contexte->Hachage,
+                    HacherTypeDeclaration(&typeParametre)};
+                si (!AjouterNoeudDeclaration(etat, noeudParametre))
+                    retourner faux;
+                si (!AccepterJetonDeclaration(etat, 41))
+                    continuerParametres = faux;
+            }
+        }
+        si (!ExigerJetonDeclaration(
+                etat,
+                35,
+                ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+            retourner faux;
+
+        si (estExterne)
+            retourner ExigerJetonDeclaration(
+                etat,
+                40,
+                ErreurAnalyseDeclarations::PointVirguleAttendu);
+        retourner IgnorerCorpsDeclaration(etat);
+    }
+
+    booléen AnalyserDeclarationsDansEspace(
+        EtatAnalyseDeclarations* etat,
+        ContexteEspaceDeclaration* contexte,
+        booléen attendreFermeture)
+    {
+        tantque (!EstJetonDeclaration(etat, 0)
+            && !(attendreFermeture && EstJetonDeclaration(etat, 37)))
+        {
+            si (AccepterJetonDeclaration(etat, 4))
+            {
+                ContexteEspaceDeclaration enfant = *contexte;
+                si (!EstJetonDeclaration(etat, 1))
+                {
+                    JetonLexe* nomEspaceManquant =
+                        JetonCourantDeclaration(etat);
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu,
+                        nomEspaceManquant->Ligne,
+                        nomEspaceManquant->Colonne);
+                    retourner faux;
+                }
+                booléen continuerNom = vrai;
+                tantque (continuerNom)
+                {
+                    JetonLexe* nom = JetonCourantDeclaration(etat);
+                    si (!enfant.EstVide)
+                    {
+                        enfant.Hachage = AjouterOctetDeclaration(
+                            enfant.Hachage, 58);
+                        enfant.Hachage = AjouterOctetDeclaration(
+                            enfant.Hachage, 58);
+                    }
+                    enfant.Hachage = AjouterTrancheDeclaration(
+                        etat, enfant.Hachage, nom);
+                    enfant.EstVide = faux;
+                    etat->Position = etat->Position + 1;
+                    si (AccepterJetonDeclaration(etat, 44))
+                    {
+                        si (!EstJetonDeclaration(etat, 1))
+                        {
+                            JetonLexe* nomEspaceQualifieManquant =
+                                JetonCourantDeclaration(etat);
+                            SignalerErreurDeclaration(
+                                etat,
+                                ErreurAnalyseDeclarations::IdentifiantAttendu,
+                                nomEspaceQualifieManquant->Ligne,
+                                nomEspaceQualifieManquant->Colonne);
+                            retourner faux;
+                        }
+                    }
+                    sinon continuerNom = faux;
+                }
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        36,
+                        ErreurAnalyseDeclarations::AccoladeOuvranteAttendue))
+                    retourner faux;
+                si (!AnalyserDeclarationsDansEspace(etat, &enfant, vrai))
+                    retourner faux;
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        37,
+                        ErreurAnalyseDeclarations::AccoladeFermanteAttendue))
+                    retourner faux;
+                AccepterJetonDeclaration(etat, 40);
+            }
+            sinon
+            {
+                si (!AnalyserFonctionDeclaration(etat, contexte)) retourner faux;
+            }
+        }
+        si (attendreFermeture && EstJetonDeclaration(etat, 0))
+        {
+            JetonLexe* fermetureEspaceManquante =
+                JetonCourantDeclaration(etat);
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
+                fermetureEspaceManquante->Ligne,
+                fermetureEspaceManquante->Colonne);
+            retourner faux;
+        }
+        retourner vrai;
+    }
+
+    vide InitialiserResultatDeclarations(
+        ResultatAnalyseDeclarations* resultat)
+    {
+        resultat->Erreur = ErreurAnalyseDeclarations::Reussite;
+        resultat->LigneErreur = 0;
+        resultat->ColonneErreur = 0;
+        resultat->Detail = 0;
+        resultat->NombreNoeuds = 0;
+        resultat->CapaciteRequise = 0;
+        resultat->NombreOctetsArene = 0;
+        resultat->Reserve = 0;
+    }
+
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
+        RequeteAnalyseDeclarations* requete)
+    {
+        si (!requete) retourner ErreurAnalyseDeclarations::ArgumentInvalide;
+        InitialiserResultatDeclarations(&requete->Resultat);
+        si ((!requete->Source && requete->Taille != 0)
+            || (!requete->Noeuds && requete->Capacite != 0))
+        {
+            requete->Resultat.Erreur =
+                ErreurAnalyseDeclarations::ArgumentInvalide;
+            requete->Resultat.LigneErreur = 1;
+            requete->Resultat.ColonneErreur = 1;
+            retourner requete->Resultat.Erreur;
+        }
+
+        RequeteLexage lexage = {
+            requete->Source, requete->Taille,
+            NulJetonsDeclarations, 0, {}};
+        ErreurLexage erreurLexage = AnalyserSource(&lexage);
+        si (erreurLexage != ErreurLexage::CapaciteInsuffisante)
+        {
+            requete->Resultat.Erreur =
+                ErreurAnalyseDeclarations::ErreurLexicale;
+            requete->Resultat.LigneErreur = lexage.Resultat.LigneErreur;
+            requete->Resultat.ColonneErreur = lexage.Resultat.ColonneErreur;
+            requete->Resultat.Detail = convertir<naturel32>(erreurLexage);
+            retourner requete->Resultat.Erreur;
+        }
+        si (lexage.Resultat.CapaciteRequise == 0
+            || lexage.Resultat.CapaciteRequise > 100_000_000)
+        {
+            requete->Resultat.Erreur =
+                ErreurAnalyseDeclarations::AllocationImpossible;
+            requete->Resultat.LigneErreur = 1;
+            requete->Resultat.ColonneErreur = 1;
+            retourner requete->Resultat.Erreur;
+        }
+
+        EtatAnalyseDeclarations etat;
+        etat.Requete = requete;
+        etat.Jetons = NulJetonsDeclarations;
+        etat.NombreJetons = lexage.Resultat.CapaciteRequise;
+        etat.Position = 0;
+        etat.NoeudsTravail = NulNoeudsDeclarations;
+        etat.NombreNoeuds = 0;
+        Gs::Hebergee::InitialiserArene(&etat.Arene, 4096);
+
+        etat.Jetons = convertir<JetonLexe*>(
+            Gs::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreJetons * 48, 8));
+        etat.NoeudsTravail = convertir<NoeudDeclaration*>(
+            Gs::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreJetons * 64, 8));
+        si (!etat.Jetons || !etat.NoeudsTravail)
+        {
+            requete->Resultat.Erreur =
+                ErreurAnalyseDeclarations::AllocationImpossible;
+            requete->Resultat.LigneErreur = 1;
+            requete->Resultat.ColonneErreur = 1;
+            requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+            Gs::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+
+        lexage.Jetons = etat.Jetons;
+        lexage.Capacite = etat.NombreJetons;
+        erreurLexage = AnalyserSource(&lexage);
+        si (erreurLexage != ErreurLexage::Reussite)
+        {
+            requete->Resultat.Erreur =
+                ErreurAnalyseDeclarations::ErreurLexicale;
+            requete->Resultat.LigneErreur = lexage.Resultat.LigneErreur;
+            requete->Resultat.ColonneErreur = lexage.Resultat.ColonneErreur;
+            requete->Resultat.Detail = convertir<naturel32>(erreurLexage);
+            requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+            Gs::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+
+        NoeudDeclaration programme = {
+            0, 1, 1, 0, 0, 0, 0, 0,
+            HachageVideDeclaration(), 0};
+        si (!AjouterNoeudDeclaration(&etat, programme))
+        {
+            requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+            Gs::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+        ContexteEspaceDeclaration racine = {
+            HachageVideDeclaration(), vrai};
+        si (!AnalyserDeclarationsDansEspace(&etat, &racine, faux))
+        {
+            requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+            Gs::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+
+        requete->Resultat.NombreNoeuds = etat.NombreNoeuds;
+        requete->Resultat.CapaciteRequise = etat.NombreNoeuds;
+        requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+        naturel64 limite = requete->Capacite;
+        si (limite > etat.NombreNoeuds) limite = etat.NombreNoeuds;
+        naturel64 index = 0;
+        tantque (requete->Noeuds && index < limite)
+        {
+            requete->Noeuds[index] = etat.NoeudsTravail[index];
+            index = index + 1;
+        }
+        Gs::Hebergee::DetruireArene(&etat.Arene);
+
+        si (!requete->Noeuds || requete->Capacite < etat.NombreNoeuds)
+        {
+            requete->Resultat.Erreur =
+                ErreurAnalyseDeclarations::CapaciteInsuffisante;
+            retourner requete->Resultat.Erreur;
+        }
+        requete->Resultat.Erreur = ErreurAnalyseDeclarations::Reussite;
+        retourner requete->Resultat.Erreur;
+    }
+}

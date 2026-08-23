@@ -29,7 +29,7 @@ Le français est la syntaxe canonique du langage. Les mots-clés anglais
 documentés sont des alias officiels avec la même sémantique et la même
 génération de code.
 
-> **État actuel — `0.27.0-alpha.1`**
+> **État actuel — `0.27.0-alpha.2`**
 >
 > Cette préversion permet d’évaluer et de développer avec la chaîne Gs++
 > actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais le frontend
@@ -170,7 +170,7 @@ Construction/Ninja/Release/Bin/gsppc \
 
 ## Télécharger une préversion
 
-La [release `0.27.0-alpha.1`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.1)
+La [release `0.27.0-alpha.2`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.2)
 propose des paquets x86-64 pour Windows et Linux. Chaque paquet contient les
 outils, les en-têtes SDK, les bibliothèques Gs++, les exemples et la
 documentation Markdown. Le fichier `SHA256SUMS.txt` permet de vérifier les
@@ -197,7 +197,8 @@ GsPlusPlus/
 - [Formats GsObj 1.0](Documentation/FORMAT_GSOBJ_1.0.md), [GsA 1.0](Documentation/FORMAT_GSA_1.0.md) et [GsE 1.0](Documentation/FORMAT_GSE_1.0.md)
 - [ABI native x86-64](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Matrice de conformité](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
-- [Validation de `0.27.0-alpha.1`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.1.md)
+- [Frontend auto-hébergé 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
+- [Validation de `0.27.0-alpha.2`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.2.md)
 - [Feuille de route](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 Toute la documentation normative est maintenue en Markdown comme source
@@ -209,7 +210,8 @@ principale.
 - CTest : **3/3** sous Windows et **4/4** sous Linux ;
 - quatre scénarios de benchmark smoke réussis sur chaque hôte ;
 - CI GitHub Windows et Linux ;
-- `Lexeur.GsE` reproductible entre les deux chaînes validées.
+- `Lexeur.GsE` et `AnalyseurDeclarations.GsE` reproductibles entre les deux
+  chaînes validées.
 
 ## Licence
 

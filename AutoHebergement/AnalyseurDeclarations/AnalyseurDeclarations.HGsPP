@@ -1,0 +1,94 @@
+// Frontend auto-hébergé Gs++ 0.27 : première tranche de l'AST syntaxique.
+//
+// L'analyseur couvre les déclarations de fonctions libres, leurs paramètres
+// et les espaces de noms. Les corps sont délimités syntaxiquement mais leur
+// AST d'instructions appartient à la tranche suivante. Le stockage de sortie
+// appartient à l'appelant ; l'AST de travail est construit dans une arène.
+
+espace Gs::Autohebergement
+{
+    énumération ErreurAnalyseDeclarations
+    {
+        Reussite = 0,
+        Success = 0,
+        CapaciteInsuffisante = 1,
+        InsufficientCapacity = 1,
+        ErreurLexicale = 2,
+        LexicalError = 2,
+        ArgumentInvalide = 3,
+        InvalidArgument = 3,
+        AllocationImpossible = 4,
+        AllocationFailure = 4,
+        IdentifiantAttendu = 5,
+        ExpectedIdentifier = 5,
+        TypeAttendu = 6,
+        ExpectedType = 6,
+        ParentheseOuvranteAttendue = 7,
+        ExpectedOpeningParenthesis = 7,
+        ParentheseFermanteAttendue = 8,
+        ExpectedClosingParenthesis = 8,
+        AccoladeOuvranteAttendue = 9,
+        ExpectedOpeningBrace = 9,
+        AccoladeFermanteAttendue = 10,
+        ExpectedClosingBrace = 10,
+        PointVirguleAttendu = 11,
+        ExpectedSemicolon = 11,
+        DeclarationNonPriseEnCharge = 12,
+        UnsupportedDeclaration = 12,
+        TailleTableauInvalide = 13,
+        InvalidArraySize = 13,
+    };
+
+    énumération GenreNoeudDeclaration
+    {
+        Programme = 0,
+        Program = 0,
+        Fonction = 1,
+        Function = 1,
+        Parametre = 2,
+        Parameter = 2,
+    };
+
+    structure NoeudDeclaration
+    {
+        naturel32 Genre;
+        naturel32 Ligne;
+        naturel32 Colonne;
+        naturel32 Drapeaux;
+        naturel64 Parent;
+        naturel64 DebutNom;
+        naturel64 TailleNom;
+        naturel64 HachageNom;
+        naturel64 HachageEspace;
+        naturel64 HachageType;
+    };
+
+    structure ResultatAnalyseDeclarations
+    {
+        ErreurAnalyseDeclarations Erreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+        naturel32 Detail;
+        naturel64 NombreNoeuds;
+        naturel64 CapaciteRequise;
+        naturel64 NombreOctetsArene;
+        naturel64 Reserve;
+    };
+
+    structure RequeteAnalyseDeclarations
+    {
+        constante caractère* Source;
+        naturel64 Taille;
+        NoeudDeclaration* Noeuds;
+        naturel64 Capacite;
+        ResultatAnalyseDeclarations Resultat;
+    };
+
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
+        RequeteAnalyseDeclarations* requete);
+
+    alias DeclarationNode = NoeudDeclaration;
+    alias DeclarationAnalysisResult = ResultatAnalyseDeclarations;
+    alias DeclarationAnalysisRequest = RequeteAnalyseDeclarations;
+    alias AnalyzeSourceDeclarations = AnalyserDeclarationsSource;
+}

@@ -27,7 +27,7 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — `0.27.0-alpha.1`**
+> **Current status — `0.27.0-alpha.2`**
 >
 > This prerelease can be used to evaluate and develop with the current Gs++
 > toolchain. Binary formats 1.0 and ABI 1 are validated, but the complete
@@ -168,7 +168,7 @@ Construction/Ninja/Release/Bin/gsppc \
 
 ## Downloading a prerelease
 
-The [`0.27.0-alpha.1` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.1)
+The [`0.27.0-alpha.2` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.2)
 provides x86-64 packages for Windows and Linux. Each package contains the
 tools, SDK headers, Gs++ libraries, examples, and Markdown documentation. Use
 `SHA256SUMS.txt` to verify downloads.
@@ -194,7 +194,8 @@ GsPlusPlus/
 - [GsObj 1.0](Documentation/FORMAT_GSOBJ_1.0.md), [GsA 1.0](Documentation/FORMAT_GSA_1.0.md), and [GsE 1.0](Documentation/FORMAT_GSE_1.0.md) formats
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Conformance matrix](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
-- [`0.27.0-alpha.1` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.1.md)
+- [Self-hosted frontend 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
+- [`0.27.0-alpha.2` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.2.md)
 - [Roadmap](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 All normative documentation is maintained in Markdown as its primary source.
@@ -205,7 +206,8 @@ All normative documentation is maintained in Markdown as its primary source.
 - CTest: **3/3** on Windows and **4/4** on Linux;
 - four successful smoke benchmark scenarios on each host;
 - Windows and Linux GitHub CI;
-- reproducible `Lexeur.GsE` across both validated toolchains.
+- reproducible `Lexeur.GsE` and `AnalyseurDeclarations.GsE` across both
+  validated toolchains.
 
 ## License
 

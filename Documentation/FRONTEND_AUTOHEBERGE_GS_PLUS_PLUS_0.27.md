@@ -1,11 +1,14 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur VALIDÉ — 23 août 2026.**
+**EN COURS — lexeur VALIDÉ, tranche AST des déclarations VALIDÉE —
+23 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
-bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée. Le
-jalon 0.27 complet n’est pas encore validé : l’analyseur syntaxique, l’AST et
-les premières étapes sémantiques restent à migrer.
+bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée et
+l’alpha.2 ajoute un AST compact pour les fonctions libres et leurs paramètres.
+Le jalon 0.27 complet n’est pas encore validé : les autres déclarations, les
+instructions, les expressions et les premières étapes sémantiques restent à
+migrer.
 
 ## Lexeur auto-hébergé validé
 
@@ -28,7 +31,7 @@ Le lexeur couvre le même périmètre que `Compiler/src/Lexeur.cpp` :
 - diagnostics explicites pour UTF-8 invalide, commentaire ou chaîne non
   terminé, échappement incomplet ou inconnu et caractère inattendu.
 
-## Contrat mémoire et ABI
+## Contrat mémoire et ABI du lexeur
 
 L’export public est :
 
@@ -93,10 +96,75 @@ Windows et WSL : leur table de symboles conserve les chemins absolus
 tout au même GsE. La canonicalisation des chemins de provenance reste un point
 explicite du durcissement et de la reproductibilité 0.29.
 
+## AST auto-hébergé des déclarations — tranche alpha.2
+
+Les fichiers canoniques de la deuxième tranche sont :
+
+- `AutoHebergement/AnalyseurDeclarations/AnalyseurDeclarations.HGsPP` pour le
+  contrat ABI public ;
+- `AutoHebergement/AnalyseurDeclarations/AnalyseurDeclarations.GsPP` pour
+  l’implémentation Gs++ ;
+- `Tests/AutoHebergement/AutoHebergement.cpp` pour la comparaison avec les
+  objets `Programme`, `Fonction` et `Parametre` du bootstrap C++.
+
+L’export public est :
+
+```text
+Gs::Autohebergement::AnalyserDeclarationsSource(
+    RequeteAnalyseDeclarations*) -> ErreurAnalyseDeclarations
+```
+
+Comme pour le lexeur, un premier appel sans stockage retourne la capacité
+exacte, un appel trop petit remplit seulement le préfixe disponible et un
+appel correctement dimensionné retourne l’AST complet. Chaque
+`NoeudDeclaration` occupe 64 octets et porte :
+
+- le genre programme, fonction ou paramètre ;
+- la ligne et la colonne du début de la déclaration ;
+- le parent et les drapeaux public, externe et corps présent ;
+- la tranche source et le hachage FNV-1a du nom ;
+- l’empreinte de l’espace de noms ;
+- une empreinte de type normalisée entre les mots-clés français et anglais.
+
+L’empreinte de type couvre les types natifs, les types qualifiés, `constante`/
+`const`, `volatile`, les pointeurs, les références et les dimensions de
+tableaux fixes. Les espaces simples, imbriqués et écrits sous forme qualifiée
+`A::B` produisent la même identité canonique.
+
+Les jetons et les nœuds de travail sont alloués dans `AreneMemoire`, fournie
+par la bibliothèque hébergée 0.26. L’image GsE conserve seulement les deux
+imports explicites d’allocation et de libération. Le test vérifie que chaque
+appel détruit l’arène, qu’aucune adresse invalide n’est libérée et qu’aucune
+allocation active ne subsiste.
+
+### Preuve différentielle de la tranche
+
+Le test charge réellement `AnalyseurDeclarations.GsE` et compare chaque nœud
+au programme produit par `GsPP::AnalyseurSyntaxique` :
+
+- paire de corpus français/anglais structurellement équivalents ;
+- fonctions publiques, externes et avec corps ;
+- paramètres, espaces qualifiés, tableaux multidimensionnels et types
+  qualifiés ;
+- interrogation de capacité, capacité partielle et requêtes invalides ;
+- trois diagnostics syntaxiques avec ligne et colonne identiques au bootstrap ;
+- propagation distincte des erreurs lexicales ;
+- refus explicite des variables globales, encore hors de cette tranche.
+
+Les constructions MSVC et GNU produisent un `AnalyseurDeclarations.GsE`
+identique bit à bit. La validation détaillée et les empreintes sont consignées
+dans
+[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.2.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.2.md).
+
+Cette tranche ne construit pas encore l’AST interne des corps : elle vérifie
+leur délimitation par accolades afin de poursuivre l’analyse des déclarations.
+Ce périmètre est volontairement annoncé comme `PARTIEL`.
+
 ## Travaux restant dans Gs++ 0.27
 
-- définir une représentation AST auto-hébergée fondée sur l’arène 0.26 ;
-- migrer l’analyseur syntaxique ;
+- étendre l’AST aux structures, classes, unions, énumérations, alias et
+  variables globales ;
+- migrer les instructions et la hiérarchie complète des expressions ;
 - migrer les premières résolutions sémantiques ;
 - comparer les AST et diagnostics au bootstrap C++ ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
@@ -105,5 +173,5 @@ explicite du durcissement et de la reproductibilité 0.29.
 - valider séparément l’intégration QEMU/OVMF dans Sanctuaire SE, sans en faire
   une dépendance de Gs++.
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.1`. Aucun statut
+Les outils de la tranche publique annoncent `0.27.0-alpha.2`. Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

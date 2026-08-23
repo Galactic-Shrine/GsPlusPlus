@@ -10,6 +10,34 @@
 
 # Journal des modifications
 
+## Compilateur Gs++ 0.27.0-alpha.2 — 2026-08-23
+
+- ajout de la première représentation AST auto-hébergée, sous forme de nœuds
+  de déclarations de 64 octets à stockage fourni par l’appelant ;
+- migration en Gs++ de l’analyse des fonctions libres, paramètres et espaces
+  de noms simples, imbriqués ou qualifiés ;
+- normalisation bilingue des empreintes de types, couvrant les types natifs,
+  types qualifiés, qualificatifs, pointeurs, références et tableaux fixes ;
+- construction des jetons et de l’AST de travail dans l’arène hébergée 0.26,
+  avec interrogation de capacité, sortie partielle bornée et libération
+  vérifiée de toutes les allocations ;
+- propagation positionnée des erreurs lexicales et diagnostics syntaxiques
+  bornés pour les identifiants, types, parenthèses, accolades et déclarations
+  externes ;
+- ajout de `AnalyseurDeclarations.GsE` à la construction, à l’installation et
+  aux paquets Windows/Linux, sans nouvelle dépendance d’hôte ;
+- comparaison différentielle avec l’AST du bootstrap C++ sur des corpus
+  français et anglais, espaces qualifiés, tableaux, types qualifiés et trois
+  familles d’erreurs syntaxiques ;
+- conservation explicite du statut partiel du frontend 0.27 : les structures,
+  énumérations, alias, variables globales, instructions et expressions restent
+  à migrer avant de déclarer l’analyseur syntaxique complet ;
+- validation complète 3/3 sous Visual Studio 2026 et 4/4 sous GNU/Linux,
+  conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
+  chaîne ;
+- reproductibilité bit à bit de `Lexeur.GsE` et
+  `AnalyseurDeclarations.GsE` entre les constructions MSVC et GNU.
+
 ## Compilateur Gs++ 0.27.0-alpha.1 — 2026-08-23
 
 - première préversion publique destinée aux essais, sans promesse de stabilité

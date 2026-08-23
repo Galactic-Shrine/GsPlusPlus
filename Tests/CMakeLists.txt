@@ -46,7 +46,7 @@ add_custom_command(
         --format gse
         --point-entree TesterBibliothequeHebergee
         --nom "Test bibliothèque hébergée"
-        --version-application 0.27.0-alpha.1
+        --version-application 0.27.0-alpha.2
         -o "${GS_TEST_HEBERGE_GSE}"
     DEPENDS
         gsppc
@@ -60,6 +60,7 @@ add_custom_target(
     DEPENDS
         "${GS_CLASSIFICATEUR_GSE}"
         "${GS_LEXEUR_GSE}"
+        "${GS_ANALYSEUR_DECLARATIONS_GSE}"
         "${GS_TEST_HEBERGE_GSE}"
 )
 add_dependencies(gspp_images_tests autohebergement_images bibliotheque_hebergee)
@@ -71,6 +72,7 @@ add_test(
     COMMAND gspp_autohebergement_tests
         "${GS_CLASSIFICATEUR_GSE}"
         "${GS_LEXEUR_GSE}"
+        "${GS_ANALYSEUR_DECLARATIONS_GSE}"
         "${GS_TEST_HEBERGE_GSE}"
 )
 

@@ -244,8 +244,9 @@ Les prochains jalons sont donc réservés à Gs++ :
 1. 0.24 — contrat du langage et suite de conformité — terminé ;
 2. 0.25 — initialisation et durée de vie finalisées — terminé ;
 3. 0.26 — bibliothèque hébergée suffisante pour le compilateur — terminé ;
-4. 0.27 — frontend auto-hébergé — actif, lexeur validé sous MSVC/GNU,
-   analyseur syntaxique et AST à migrer ;
+4. 0.27 — frontend auto-hébergé — actif, lexeur et tranche AST des fonctions
+   libres validés sous MSVC/GNU, autres déclarations, instructions et
+   expressions à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.
@@ -254,7 +255,7 @@ Le périmètre détaillé, les invariants gelés et les critères de sortie se
 trouvent dans
 [`PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md`](PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md).
 
-La preuve intermédiaire du lexeur 0.27 se trouve dans
+Les preuves intermédiaires du lexeur et de l’AST 0.27 se trouvent dans
 [`FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md`](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md).
 
 Sanctuaire SE reste sur la référence 0.10.2 et continue d’être reconstruit

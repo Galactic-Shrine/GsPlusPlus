@@ -1,7 +1,7 @@
 # Gs++
 
 [![Validation Gs++](https://github.com/Galactic-Shrine/GsPlusPlus/actions/workflows/validation.yml/badge.svg)](https://github.com/Galactic-Shrine/GsPlusPlus/actions/workflows/validation.yml)
-[![Licence MPL-2.0](https://img.shields.io/badge/licence-MPL--2.0-blue.svg)](LICENSE.md)
+[![Licence MPL-2.0](https://img.shields.io/badge/licence-MPL--2.0-blue.svg)](LICENSE)
 
 Ce projet contient le langage Gs++ indépendamment de Sanctuaire SE. Sa
 construction, ses tests et ses paquets publics n’utilisent pas `Noyau.GsE`.

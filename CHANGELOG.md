@@ -20,6 +20,10 @@
   inconnues, des éléments ou attributs inconnus et des alias dupliqués ;
 - ajout d’une construction CMake autonome de `Gs++` sous Windows et Linux,
   sans inclure `SanctuaireSE` et sans exiger ni distribuer `Noyau.GsE` ;
+- adoption de Visual Studio 2026, du générateur CMake
+  `Visual Studio 18 2026` et du runner GitHub Windows correspondant ;
+- refonte du README français autour de l’identité et des usages du langage,
+  accompagnée d’un README anglais équivalent ;
 - ajout du lexeur auto-hébergé Gs++ et de sa preuve différentielle ; le reste
   du frontal auto-hébergé 0.27 demeure en développement et cette version reste
   donc une alpha ;

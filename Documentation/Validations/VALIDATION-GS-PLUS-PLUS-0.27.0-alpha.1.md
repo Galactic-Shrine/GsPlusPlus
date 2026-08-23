@@ -23,8 +23,8 @@ artefacts Gs++ comme un produit externe, mais Gs++ ne les consomme pas.
 
 ### Windows
 
-- générateur : Visual Studio 2022 x64 ;
-- compilateur : MSVC 19.44.35228.0 ;
+- générateur : Visual Studio 2026 x64 avec CMake 4.4.0 ;
+- compilateur : MSVC 19.51.36256.0, outils v145 ;
 - configuration : Release ;
 - construction autonome depuis `GsPlusPlus/CMakeLists.txt` ;
 - CTest : 3/3 réussis ;

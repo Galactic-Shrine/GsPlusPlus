@@ -8,8 +8,8 @@
   "configurePresets": [
     {
       "name": "windows-release",
-      "displayName": "Windows x64 - Release",
-      "generator": "Visual Studio 17 2022",
+      "displayName": "Windows x64 - Release (Visual Studio 2026)",
+      "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/Construction/VisualStudio/Release",
       "cacheVariables": {

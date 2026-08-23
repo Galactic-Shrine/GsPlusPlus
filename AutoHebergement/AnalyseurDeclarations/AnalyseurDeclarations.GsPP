@@ -19,6 +19,15 @@ espace Gs::Autohebergement
         booléen EstVide;
     };
 
+    structure NomQualifieDeclaration
+    {
+        naturel64 Debut;
+        naturel64 Taille;
+        naturel64 Hachage;
+        naturel32 Ligne;
+        naturel32 Colonne;
+    };
+
     structure EtatAnalyseDeclarations
     {
         RequeteAnalyseDeclarations* Requete;
@@ -143,6 +152,53 @@ espace Gs::Autohebergement
         SignalerErreurDeclaration(
             etat, erreur, jetonExige->Ligne, jetonExige->Colonne);
         retourner faux;
+    }
+
+    booléen AnalyserNomQualifieDeclaration(
+        EtatAnalyseDeclarations* etat,
+        NomQualifieDeclaration* resultat)
+    {
+        JetonLexe* premier = JetonCourantDeclaration(etat);
+        si (premier->Genre != 1)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::IdentifiantAttendu,
+                premier->Ligne,
+                premier->Colonne);
+            retourner faux;
+        }
+        resultat->Debut = premier->Debut;
+        resultat->Taille = premier->TailleSource;
+        resultat->Hachage = AjouterTrancheDeclaration(
+            etat, HachageVideDeclaration(), premier);
+        resultat->Ligne = premier->Ligne;
+        resultat->Colonne = premier->Colonne;
+        etat->Position = etat->Position + 1;
+
+        tantque (AccepterJetonDeclaration(etat, 44))
+        {
+            JetonLexe* partie = JetonCourantDeclaration(etat);
+            si (partie->Genre != 1)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::IdentifiantAttendu,
+                    partie->Ligne,
+                    partie->Colonne);
+                retourner faux;
+            }
+            resultat->Hachage = AjouterOctetDeclaration(
+                resultat->Hachage, 58);
+            resultat->Hachage = AjouterOctetDeclaration(
+                resultat->Hachage, 58);
+            resultat->Hachage = AjouterTrancheDeclaration(
+                etat, resultat->Hachage, partie);
+            resultat->Taille = partie->Debut + partie->TailleSource
+                - resultat->Debut;
+            etat->Position = etat->Position + 1;
+        }
+        retourner vrai;
     }
 
     booléen AjouterNoeudDeclaration(
@@ -312,13 +368,65 @@ espace Gs::Autohebergement
             si (!ExigerJetonDeclaration(
                     etat,
                     39,
-                    ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge))
+                    ErreurAnalyseDeclarations::CrochetFermantAttendu))
                 retourner faux;
             type->NombreDimensions = type->NombreDimensions + 1;
             type->HachageDimensions = AjouterNaturel64Declaration(
                 type->HachageDimensions, valeur);
         }
         retourner vrai;
+    }
+
+    booléen IgnorerExpressionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel32 arretPrincipal,
+        naturel32 arretSecondaire)
+    {
+        JetonLexe* premier = JetonCourantDeclaration(etat);
+        si (premier->Genre == 0
+            || premier->Genre == arretPrincipal
+            || premier->Genre == arretSecondaire)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::ExpressionAttendue,
+                premier->Ligne,
+                premier->Colonne);
+            retourner faux;
+        }
+
+        naturel64 parentheses = 0;
+        naturel64 accolades = 0;
+        naturel64 crochets = 0;
+        tantque (vrai)
+        {
+            JetonLexe* courant = JetonCourantDeclaration(etat);
+            si (courant->Genre == 0)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::ExpressionAttendue,
+                    courant->Ligne,
+                    courant->Colonne);
+                retourner faux;
+            }
+            si (parentheses == 0 && accolades == 0 && crochets == 0
+                && (courant->Genre == arretPrincipal
+                    || courant->Genre == arretSecondaire))
+                retourner vrai;
+
+            si (courant->Genre == 34) parentheses = parentheses + 1;
+            sinon si (courant->Genre == 35 && parentheses != 0)
+                parentheses = parentheses - 1;
+            sinon si (courant->Genre == 36) accolades = accolades + 1;
+            sinon si (courant->Genre == 37 && accolades != 0)
+                accolades = accolades - 1;
+            sinon si (courant->Genre == 38) crochets = crochets + 1;
+            sinon si (courant->Genre == 39 && crochets != 0)
+                crochets = crochets - 1;
+            etat->Position = etat->Position + 1;
+        }
+        retourner faux;
     }
 
     booléen IgnorerCorpsDeclaration(EtatAnalyseDeclarations* etat)
@@ -375,6 +483,44 @@ espace Gs::Autohebergement
                 ErreurAnalyseDeclarations::IdentifiantAttendu))
             retourner faux;
         si (!AnalyserDimensionsDeclaration(etat, &typeRetour)) retourner faux;
+        si (!EstJetonDeclaration(etat, 34))
+        {
+            naturel32 drapeauxGlobale = 0;
+            si (estPublique) drapeauxGlobale = drapeauxGlobale | 1;
+            si (estExterne) drapeauxGlobale = drapeauxGlobale | 2;
+            si (AccepterJetonDeclaration(etat, 45))
+            {
+                si (estExterne)
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::InitialiseurExterneInterdit,
+                        position.Ligne,
+                        position.Colonne);
+                    retourner faux;
+                }
+                drapeauxGlobale = drapeauxGlobale | 4;
+                si (!IgnorerExpressionDeclaration(etat, 40, 40))
+                    retourner faux;
+            }
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    40,
+                    ErreurAnalyseDeclarations::PointVirguleAttendu))
+                retourner faux;
+            NoeudDeclaration noeudGlobale = {
+                3,
+                position.Ligne,
+                position.Colonne,
+                drapeauxGlobale,
+                0,
+                nom->Debut,
+                nom->TailleSource,
+                nom->HachageTexte,
+                contexte->Hachage,
+                HacherTypeDeclaration(&typeRetour)};
+            retourner AjouterNoeudDeclaration(etat, noeudGlobale);
+        }
         si (typeRetour.NombreDimensions != 0)
         {
             SignalerErreurDeclaration(
@@ -382,17 +528,6 @@ espace Gs::Autohebergement
                 ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge,
                 position.Ligne,
                 position.Colonne);
-            retourner faux;
-        }
-        si (!EstJetonDeclaration(etat, 34))
-        {
-            JetonLexe* parentheseFonctionManquante =
-                JetonCourantDeclaration(etat);
-            SignalerErreurDeclaration(
-                etat,
-                ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge,
-                parentheseFonctionManquante->Ligne,
-                parentheseFonctionManquante->Colonne);
             retourner faux;
         }
 
@@ -463,6 +598,304 @@ espace Gs::Autohebergement
         retourner IgnorerCorpsDeclaration(etat);
     }
 
+    booléen AnalyserAliasDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteEspaceDeclaration* contexte,
+        naturel64 indexParent,
+        booléen estAliasChamp)
+    {
+        JetonLexe position = *JetonCourantDeclaration(etat);
+        etat->Position = etat->Position + 1;
+        NomQualifieDeclaration nom;
+        si (!AnalyserNomQualifieDeclaration(etat, &nom)) retourner faux;
+        si (!ExigerJetonDeclaration(
+                etat,
+                45,
+                ErreurAnalyseDeclarations::EgalAttendu))
+            retourner faux;
+        NomQualifieDeclaration cible;
+        si (!AnalyserNomQualifieDeclaration(etat, &cible)) retourner faux;
+        si (!ExigerJetonDeclaration(
+                etat,
+                40,
+                ErreurAnalyseDeclarations::PointVirguleAttendu))
+            retourner faux;
+
+        naturel32 genre = 10;
+        si (estAliasChamp) genre = 11;
+        NoeudDeclaration noeud = {
+            genre,
+            position.Ligne,
+            position.Colonne,
+            0,
+            indexParent,
+            nom.Debut,
+            nom.Taille,
+            nom.Hachage,
+            contexte->Hachage,
+            cible.Hachage};
+        retourner AjouterNoeudDeclaration(etat, noeud);
+    }
+
+    booléen AnalyserEnumerationDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteEspaceDeclaration* contexte)
+    {
+        etat->Position = etat->Position + 1;
+        JetonLexe* nom = JetonCourantDeclaration(etat);
+        si (!ExigerJetonDeclaration(
+                etat,
+                1,
+                ErreurAnalyseDeclarations::IdentifiantAttendu))
+            retourner faux;
+        si (!ExigerJetonDeclaration(
+                etat,
+                36,
+                ErreurAnalyseDeclarations::AccoladeOuvranteAttendue))
+            retourner faux;
+
+        naturel64 indexEnumeration = etat->NombreNoeuds;
+        NoeudDeclaration noeudEnumeration = {
+            8,
+            nom->Ligne,
+            nom->Colonne,
+            4,
+            0,
+            nom->Debut,
+            nom->TailleSource,
+            nom->HachageTexte,
+            contexte->Hachage,
+            0};
+        si (!AjouterNoeudDeclaration(etat, noeudEnumeration)) retourner faux;
+
+        si (!EstJetonDeclaration(etat, 37))
+        {
+            booléen continuerValeurs = vrai;
+            tantque (continuerValeurs)
+            {
+                JetonLexe* valeur = JetonCourantDeclaration(etat);
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        1,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu))
+                    retourner faux;
+                naturel32 drapeaux = 0;
+                si (AccepterJetonDeclaration(etat, 45))
+                {
+                    drapeaux = 4;
+                    si (!IgnorerExpressionDeclaration(etat, 41, 37))
+                        retourner faux;
+                }
+                NoeudDeclaration enumerateur = {
+                    9,
+                    valeur->Ligne,
+                    valeur->Colonne,
+                    drapeaux,
+                    indexEnumeration,
+                    valeur->Debut,
+                    valeur->TailleSource,
+                    valeur->HachageTexte,
+                    contexte->Hachage,
+                    0};
+                si (!AjouterNoeudDeclaration(etat, enumerateur))
+                    retourner faux;
+                si (AccepterJetonDeclaration(etat, 41))
+                {
+                    si (EstJetonDeclaration(etat, 37))
+                        continuerValeurs = faux;
+                }
+                sinon continuerValeurs = faux;
+            }
+        }
+        si (!ExigerJetonDeclaration(
+                etat,
+                37,
+                ErreurAnalyseDeclarations::AccoladeFermanteAttendue))
+            retourner faux;
+        retourner ExigerJetonDeclaration(
+            etat,
+            40,
+            ErreurAnalyseDeclarations::PointVirguleAttendu);
+    }
+
+    booléen AnalyserStructureDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteEspaceDeclaration* contexte,
+        naturel32 jetonStructure)
+    {
+        etat->Position = etat->Position + 1;
+        JetonLexe* nom = JetonCourantDeclaration(etat);
+        si (!ExigerJetonDeclaration(
+                etat,
+                1,
+                ErreurAnalyseDeclarations::IdentifiantAttendu))
+            retourner faux;
+
+        naturel32 genre = 4;
+        booléen estClasse = faux;
+        si (jetonStructure == 6) genre = 5;
+        sinon si (jetonStructure == 66)
+        {
+            genre = 6;
+            estClasse = vrai;
+        }
+        naturel32 drapeauxStructure = 4;
+        naturel64 hachageBase = 0;
+        si (estClasse && AccepterJetonDeclaration(etat, 73))
+        {
+            drapeauxStructure = drapeauxStructure | 32 | 1;
+            si (AccepterJetonDeclaration(etat, 10))
+            {
+            }
+            sinon si (AccepterJetonDeclaration(etat, 67))
+            {
+                drapeauxStructure = (drapeauxStructure & 4_294_967_294) | 8;
+            }
+            sinon si (AccepterJetonDeclaration(etat, 11))
+            {
+                drapeauxStructure = (drapeauxStructure & 4_294_967_294) | 16;
+            }
+            NomQualifieDeclaration base;
+            si (!AnalyserNomQualifieDeclaration(etat, &base)) retourner faux;
+            hachageBase = base.Hachage;
+        }
+        si (!ExigerJetonDeclaration(
+                etat,
+                36,
+                ErreurAnalyseDeclarations::AccoladeOuvranteAttendue))
+            retourner faux;
+
+        naturel64 indexStructure = etat->NombreNoeuds;
+        NoeudDeclaration noeudStructure = {
+            genre,
+            nom->Ligne,
+            nom->Colonne,
+            drapeauxStructure,
+            0,
+            nom->Debut,
+            nom->TailleSource,
+            nom->HachageTexte,
+            contexte->Hachage,
+            hachageBase};
+        si (!AjouterNoeudDeclaration(etat, noeudStructure)) retourner faux;
+
+        naturel32 visibilite = 1;
+        si (estClasse) visibilite = 16;
+        tantque (!EstJetonDeclaration(etat, 37))
+        {
+            JetonLexe* courant = JetonCourantDeclaration(etat);
+            si (courant->Genre == 0)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
+                    courant->Ligne,
+                    courant->Colonne);
+                retourner faux;
+            }
+            si (estClasse
+                && (courant->Genre == 10
+                    || courant->Genre == 11
+                    || courant->Genre == 67))
+            {
+                si (courant->Genre == 10) visibilite = 1;
+                sinon si (courant->Genre == 67) visibilite = 8;
+                sinon visibilite = 16;
+                etat->Position = etat->Position + 1;
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        73,
+                        ErreurAnalyseDeclarations::DeuxPointsAttendu))
+                    retourner faux;
+            }
+            sinon si (courant->Genre == 8)
+            {
+                si (!AnalyserAliasDeclaration(
+                        etat, contexte, indexStructure, vrai))
+                    retourner faux;
+            }
+            sinon si (courant->Genre == 68
+                || courant->Genre == 69
+                || courant->Genre == 70
+                || courant->Genre == 71
+                || courant->Genre == 74)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::MembreClasseNonPrisEnCharge,
+                    courant->Ligne,
+                    courant->Colonne);
+                retourner faux;
+            }
+            sinon
+            {
+                JetonLexe positionChamp = *courant;
+                TypeDeclarationInterne typeChamp;
+                si (!AnalyserTypeDeclaration(etat, &typeChamp)) retourner faux;
+                JetonLexe* nomChamp = JetonCourantDeclaration(etat);
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        1,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu))
+                    retourner faux;
+                si (!AnalyserDimensionsDeclaration(etat, &typeChamp))
+                    retourner faux;
+                si (EstJetonDeclaration(etat, 34))
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::MembreClasseNonPrisEnCharge,
+                        positionChamp.Ligne,
+                        positionChamp.Colonne);
+                    retourner faux;
+                }
+                naturel32 drapeauxChamp = visibilite;
+                si (AccepterJetonDeclaration(etat, 45))
+                {
+                    si (!estClasse)
+                    {
+                        SignalerErreurDeclaration(
+                            etat,
+                            ErreurAnalyseDeclarations::InitialiseurChampHorsClasse,
+                            positionChamp.Ligne,
+                            positionChamp.Colonne);
+                        retourner faux;
+                    }
+                    drapeauxChamp = drapeauxChamp | 4;
+                    si (!IgnorerExpressionDeclaration(etat, 40, 40))
+                        retourner faux;
+                }
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        40,
+                        ErreurAnalyseDeclarations::PointVirguleAttendu))
+                    retourner faux;
+                NoeudDeclaration champ = {
+                    7,
+                    positionChamp.Ligne,
+                    positionChamp.Colonne,
+                    drapeauxChamp,
+                    indexStructure,
+                    nomChamp->Debut,
+                    nomChamp->TailleSource,
+                    nomChamp->HachageTexte,
+                    contexte->Hachage,
+                    HacherTypeDeclaration(&typeChamp)};
+                si (!AjouterNoeudDeclaration(etat, champ)) retourner faux;
+            }
+        }
+
+        si (!ExigerJetonDeclaration(
+                etat,
+                37,
+                ErreurAnalyseDeclarations::AccoladeFermanteAttendue))
+            retourner faux;
+        retourner ExigerJetonDeclaration(
+            etat,
+            40,
+            ErreurAnalyseDeclarations::PointVirguleAttendu);
+    }
+
     booléen AnalyserDeclarationsDansEspace(
         EtatAnalyseDeclarations* etat,
         ContexteEspaceDeclaration* contexte,
@@ -529,6 +962,27 @@ espace Gs::Autohebergement
                         ErreurAnalyseDeclarations::AccoladeFermanteAttendue))
                     retourner faux;
                 AccepterJetonDeclaration(etat, 40);
+            }
+            sinon si (EstJetonDeclaration(etat, 5)
+                || EstJetonDeclaration(etat, 6)
+                || EstJetonDeclaration(etat, 66))
+            {
+                naturel32 genreStructure =
+                    JetonCourantDeclaration(etat)->Genre;
+                si (!AnalyserStructureDeclaration(
+                        etat, contexte, genreStructure))
+                    retourner faux;
+            }
+            sinon si (EstJetonDeclaration(etat, 7))
+            {
+                si (!AnalyserEnumerationDeclaration(etat, contexte))
+                    retourner faux;
+            }
+            sinon si (EstJetonDeclaration(etat, 8))
+            {
+                si (!AnalyserAliasDeclaration(
+                        etat, contexte, 0, faux))
+                    retourner faux;
             }
             sinon
             {

@@ -3,6 +3,7 @@
 #include "GsPP/ErreurCompilation.hpp"
 #include "GsPP/Lexeur.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -442,41 +443,272 @@ namespace
     std::vector<NoeudDeclarationHote> ConstruireDeclarationsReference(
         const GsPP::Programme& programme)
     {
+        enum class GenreRacine
+        {
+            Structure,
+            Enumeration,
+            VariableGlobale,
+            Fonction,
+            Alias
+        };
+        struct Racine
+        {
+            GenreRacine Genre;
+            const void* Declaration;
+            std::size_t Ligne;
+            std::size_t Colonne;
+        };
+        std::vector<Racine> racines;
+        for (const auto& structure : programme.Structures)
+            racines.push_back({
+                GenreRacine::Structure,
+                &structure,
+                structure.Position.Ligne,
+                structure.Position.Colonne});
+        for (const auto& enumeration : programme.Enumerations)
+            racines.push_back({
+                GenreRacine::Enumeration,
+                &enumeration,
+                enumeration.Position.Ligne,
+                enumeration.Position.Colonne});
+        for (const auto& variable : programme.VariablesGlobales)
+            racines.push_back({
+                GenreRacine::VariableGlobale,
+                &variable,
+                variable.Position.Ligne,
+                variable.Position.Colonne});
+        for (const auto& fonction : programme.Fonctions)
+            racines.push_back({
+                GenreRacine::Fonction,
+                &fonction,
+                fonction.Position.Ligne,
+                fonction.Position.Colonne});
+        for (const auto& alias : programme.Aliases)
+            racines.push_back({
+                GenreRacine::Alias,
+                &alias,
+                alias.Position.Ligne,
+                alias.Position.Colonne});
+        std::stable_sort(
+            racines.begin(), racines.end(),
+            [](const Racine& gauche, const Racine& droite)
+            {
+                if (gauche.Ligne != droite.Ligne)
+                    return gauche.Ligne < droite.Ligne;
+                return gauche.Colonne < droite.Colonne;
+            });
+
         std::vector<NoeudDeclarationHote> resultat;
         resultat.push_back({
             0, 1, 1, 0, 0, 0, 0, 0, HacherTexte({}), 0});
-        for (const auto& fonction : programme.Fonctions)
+        for (const auto& racine : racines)
         {
-            const auto indexFonction = resultat.size();
-            std::uint32_t drapeaux = 0;
-            if (fonction.EstPublique) drapeaux |= 1U;
-            if (fonction.EstExterne) drapeaux |= 2U;
-            if (fonction.Corps) drapeaux |= 4U;
-            resultat.push_back({
-                1,
-                static_cast<std::uint32_t>(fonction.Position.Ligne),
-                static_cast<std::uint32_t>(fonction.Position.Colonne),
-                drapeaux,
-                0,
-                0,
-                0,
-                HacherTexte(fonction.Nom),
-                HacherTexte(fonction.Espace),
-                HacherTypeDeclaration(fonction.TypeRetour)});
-            for (const auto& parametre : fonction.Parametres)
+            if (racine.Genre == GenreRacine::Structure)
             {
+                const auto& structure = *static_cast<const GsPP::Structure*>(
+                    racine.Declaration);
+                const auto indexStructure = resultat.size();
+                std::uint32_t genre = 4;
+                if (structure.EstUnion) genre = 5;
+                else if (structure.EstClasse) genre = 6;
+                std::uint32_t drapeaux = 4U;
+                std::uint64_t hachageBase = 0;
+                if (!structure.ClasseBase.empty())
+                {
+                    drapeaux |= 32U;
+                    if (structure.VisibiliteHeritage
+                        == GsPP::VisibiliteMembre::Publique)
+                        drapeaux |= 1U;
+                    else if (structure.VisibiliteHeritage
+                        == GsPP::VisibiliteMembre::Protegee)
+                        drapeaux |= 8U;
+                    else
+                        drapeaux |= 16U;
+                    hachageBase = HacherTexte(structure.ClasseBase);
+                }
                 resultat.push_back({
-                    2,
-                    static_cast<std::uint32_t>(parametre.Position.Ligne),
-                    static_cast<std::uint32_t>(parametre.Position.Colonne),
+                    genre,
+                    static_cast<std::uint32_t>(structure.Position.Ligne),
+                    static_cast<std::uint32_t>(structure.Position.Colonne),
+                    drapeaux,
                     0,
-                    indexFonction,
                     0,
                     0,
-                    HacherTexte(parametre.Nom),
-                    HacherTexte(fonction.Espace),
-                    HacherTypeDeclaration(parametre.Type)});
+                    HacherTexte(structure.Nom),
+                    HacherTexte(structure.Espace),
+                    hachageBase});
+
+                struct Membre
+                {
+                    bool EstAlias;
+                    const void* Declaration;
+                    std::size_t Ligne;
+                    std::size_t Colonne;
+                };
+                std::vector<Membre> membres;
+                for (const auto& champ : structure.Champs)
+                    membres.push_back({
+                        false, &champ,
+                        champ.Position.Ligne, champ.Position.Colonne});
+                for (const auto& alias : structure.AliasesChamps)
+                    membres.push_back({
+                        true, &alias,
+                        alias.Position.Ligne, alias.Position.Colonne});
+                std::stable_sort(
+                    membres.begin(), membres.end(),
+                    [](const Membre& gauche, const Membre& droite)
+                    {
+                        if (gauche.Ligne != droite.Ligne)
+                            return gauche.Ligne < droite.Ligne;
+                        return gauche.Colonne < droite.Colonne;
+                    });
+                for (const auto& membre : membres)
+                {
+                    if (membre.EstAlias)
+                    {
+                        const auto& alias =
+                            *static_cast<const GsPP::AliasChamp*>(
+                                membre.Declaration);
+                        resultat.push_back({
+                            11,
+                            static_cast<std::uint32_t>(alias.Position.Ligne),
+                            static_cast<std::uint32_t>(alias.Position.Colonne),
+                            0,
+                            indexStructure,
+                            0,
+                            0,
+                            HacherTexte(alias.Nom),
+                            HacherTexte(structure.Espace),
+                            HacherTexte(alias.Cible)});
+                        continue;
+                    }
+                    const auto& champ =
+                        *static_cast<const GsPP::ChampStructure*>(
+                            membre.Declaration);
+                    std::uint32_t drapeauxChamp = 0;
+                    if (champ.Visibilite
+                        == GsPP::VisibiliteMembre::Publique)
+                        drapeauxChamp |= 1U;
+                    else if (champ.Visibilite
+                        == GsPP::VisibiliteMembre::Protegee)
+                        drapeauxChamp |= 8U;
+                    else
+                        drapeauxChamp |= 16U;
+                    if (champ.InitialiseurParDefaut) drapeauxChamp |= 4U;
+                    resultat.push_back({
+                        7,
+                        static_cast<std::uint32_t>(champ.Position.Ligne),
+                        static_cast<std::uint32_t>(champ.Position.Colonne),
+                        drapeauxChamp,
+                        indexStructure,
+                        0,
+                        0,
+                        HacherTexte(champ.Nom),
+                        HacherTexte(structure.Espace),
+                        HacherTypeDeclaration(champ.Type)});
+                }
+                continue;
             }
+            if (racine.Genre == GenreRacine::Enumeration)
+            {
+                const auto& enumeration =
+                    *static_cast<const GsPP::Enumeration*>(
+                        racine.Declaration);
+                const auto indexEnumeration = resultat.size();
+                resultat.push_back({
+                    8,
+                    static_cast<std::uint32_t>(enumeration.Position.Ligne),
+                    static_cast<std::uint32_t>(enumeration.Position.Colonne),
+                    4,
+                    0,
+                    0,
+                    0,
+                    HacherTexte(enumeration.Nom),
+                    HacherTexte(enumeration.Espace),
+                    0});
+                for (const auto& valeur : enumeration.Valeurs)
+                    resultat.push_back({
+                        9,
+                        static_cast<std::uint32_t>(valeur.Position.Ligne),
+                        static_cast<std::uint32_t>(valeur.Position.Colonne),
+                        valeur.Initialiseur ? 4U : 0U,
+                        indexEnumeration,
+                        0,
+                        0,
+                        HacherTexte(valeur.Nom),
+                        HacherTexte(enumeration.Espace),
+                        0});
+                continue;
+            }
+            if (racine.Genre == GenreRacine::VariableGlobale)
+            {
+                const auto& variable =
+                    *static_cast<const GsPP::VariableGlobale*>(
+                        racine.Declaration);
+                std::uint32_t drapeaux = 0;
+                if (variable.EstPublique) drapeaux |= 1U;
+                if (variable.EstExterne) drapeaux |= 2U;
+                if (variable.Initialiseur) drapeaux |= 4U;
+                resultat.push_back({
+                    3,
+                    static_cast<std::uint32_t>(variable.Position.Ligne),
+                    static_cast<std::uint32_t>(variable.Position.Colonne),
+                    drapeaux,
+                    0,
+                    0,
+                    0,
+                    HacherTexte(variable.Nom),
+                    HacherTexte(variable.Espace),
+                    HacherTypeDeclaration(variable.Type)});
+                continue;
+            }
+            if (racine.Genre == GenreRacine::Fonction)
+            {
+                const auto& fonction = *static_cast<const GsPP::Fonction*>(
+                    racine.Declaration);
+                const auto indexFonction = resultat.size();
+                std::uint32_t drapeaux = 0;
+                if (fonction.EstPublique) drapeaux |= 1U;
+                if (fonction.EstExterne) drapeaux |= 2U;
+                if (fonction.Corps) drapeaux |= 4U;
+                resultat.push_back({
+                    1,
+                    static_cast<std::uint32_t>(fonction.Position.Ligne),
+                    static_cast<std::uint32_t>(fonction.Position.Colonne),
+                    drapeaux,
+                    0,
+                    0,
+                    0,
+                    HacherTexte(fonction.Nom),
+                    HacherTexte(fonction.Espace),
+                    HacherTypeDeclaration(fonction.TypeRetour)});
+                for (const auto& parametre : fonction.Parametres)
+                    resultat.push_back({
+                        2,
+                        static_cast<std::uint32_t>(parametre.Position.Ligne),
+                        static_cast<std::uint32_t>(parametre.Position.Colonne),
+                        0,
+                        indexFonction,
+                        0,
+                        0,
+                        HacherTexte(parametre.Nom),
+                        HacherTexte(fonction.Espace),
+                        HacherTypeDeclaration(parametre.Type)});
+                continue;
+            }
+            const auto& alias = *static_cast<const GsPP::DeclarationAlias*>(
+                racine.Declaration);
+            resultat.push_back({
+                10,
+                static_cast<std::uint32_t>(alias.Position.Ligne),
+                static_cast<std::uint32_t>(alias.Position.Colonne),
+                0,
+                0,
+                0,
+                0,
+                HacherTexte(alias.Nom),
+                HacherTexte(alias.Espace),
+                HacherTexte(alias.Cible)});
         }
         return resultat;
     }
@@ -982,6 +1214,66 @@ namespace
             "}\n",
             "types-qualifies");
 
+        const std::string donneesFrancaises =
+            "espace Demo {\n"
+            "  publique naturel64 Compteur = 1 + (2 * 3);\n"
+            "  externe entier32 ValeurExterne;\n"
+            "  entier32 Valeurs[2] = {1, 2};\n"
+            "  structure Point {\n"
+            "    entier32 X;\n"
+            "    entier32 Y;\n"
+            "    alias Abscisse = X;\n"
+            "  };\n"
+            "  structure Vide {};\n"
+            "  union Valeur { octet OctetBrut; entier32 Entier; };\n"
+            "  énumération Couleur { Rouge = 1, Vert, Bleu = 2 + 3, };\n"
+            "  énumération VideEnum {};\n"
+            "  alias API::CompteurPublic = Demo::Compteur;\n"
+            "  classe Base { publique: entier32 Id; };\n"
+            "  classe Objet : publique Base {\n"
+            "    privée: entier32 Secret = 7;\n"
+            "    protégée: naturel64 Donnees[2];\n"
+            "    publique: alias Identifiant = Secret;\n"
+            "  };\n"
+            "}\n";
+        const std::string donneesAnglaises =
+            "namespace Demo {\n"
+            "  public uint64 Compteur = 1 + (2 * 3);\n"
+            "  extern int32 ValeurExterne;\n"
+            "  int32 Valeurs[2] = {1, 2};\n"
+            "  struct Point {\n"
+            "    int32 X;\n"
+            "    int32 Y;\n"
+            "    alias Abscisse = X;\n"
+            "  };\n"
+            "  struct Vide {};\n"
+            "  union Valeur { byte OctetBrut; int32 Entier; };\n"
+            "  enum Couleur { Rouge = 1, Vert, Bleu = 2 + 3, };\n"
+            "  enum VideEnum {};\n"
+            "  alias API::CompteurPublic = Demo::Compteur;\n"
+            "  class Base { public: int32 Id; };\n"
+            "  class Objet : public Base {\n"
+            "    private: int32 Secret = 7;\n"
+            "    protected: uint64 Donnees[2];\n"
+            "    public: alias Identifiant = Secret;\n"
+            "  };\n"
+            "}\n";
+        const auto astDonneesFrancais = ComparerDeclarations(
+            analyseur, donneesFrancaises, "donnees-francaises");
+        const auto astDonneesAnglais = ComparerDeclarations(
+            analyseur, donneesAnglaises, "donnees-anglaises");
+        Exiger(
+            astDonneesFrancais.size() == astDonneesAnglais.size(),
+            "les AST de données français et anglais ont des tailles différentes");
+        for (std::size_t index = 0;
+             index < astDonneesFrancais.size();
+             ++index)
+            Exiger(
+                MemeStructureDeclaration(
+                    astDonneesFrancais[index], astDonneesAnglais[index]),
+                "les AST de données français et anglais divergent au rang "
+                    + std::to_string(index));
+
         ComparerErreurDeclarations(
             analyseur,
             "publique entier32 F(entier32 valeur { retourner valeur; }",
@@ -997,17 +1289,48 @@ namespace
             "publique entier32 F() { retourner 1;",
             10,
             "accolade-corps-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "externe entier32 Valeur = 1;",
+            15,
+            "initialiseur-globale-externe");
+        ComparerErreurDeclarations(
+            analyseur,
+            "structure Invalide { entier32 Valeur = 1; };",
+            20,
+            "initialiseur-champ-structure");
+        ComparerErreurDeclarations(
+            analyseur,
+            "structure Invalide { entier32 Valeurs[2; };",
+            17,
+            "crochet-champ-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "alias Nom Cible;",
+            18,
+            "egal-alias-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe Invalide { publique entier32 Valeur; };",
+            19,
+            "deux-points-visibilite-manquant");
 
-        const std::string globale = "entier32 Valeur;";
-        RequeteAnalyseDeclarationsHote requeteGlobale{
-            globale.data(),
-            static_cast<std::uint64_t>(globale.size()),
+        const std::string methodeNonMigree =
+            "classe Service { publique: vide Executer() {} };";
+        const auto jetonsMethode = GsPP::Lexeur(
+            methodeNonMigree, "methode-classe-non-migree").Analyser();
+        (void)GsPP::AnalyseurSyntaxique(
+            jetonsMethode, "methode-classe-non-migree").Analyser();
+        RequeteAnalyseDeclarationsHote requeteMethode{
+            methodeNonMigree.data(),
+            static_cast<std::uint64_t>(methodeNonMigree.size()),
             nullptr,
             0,
             {}};
         Exiger(
-            analyseur(&requeteGlobale) == 12,
-            "une variable globale aurait dû rester hors de la tranche");
+            analyseur(&requeteMethode) == 16
+                && requeteMethode.Resultat.Erreur == 16,
+            "une méthode de classe aurait dû rester explicitement hors de la tranche");
 
         const std::string lexicalementInvalide = "@";
         RequeteAnalyseDeclarationsHote requeteLexicale{
@@ -1205,7 +1528,7 @@ int main(int argc, char** argv)
         std::cout
             << "Auto-hébergement 0.27 : "
             << "83 classifications, lexeur différentiel, "
-            << "AST différentiel des déclarations "
+            << "AST différentiel des fonctions et données "
             << "et bibliothèque hébergée validés.\n";
         return 0;
     }

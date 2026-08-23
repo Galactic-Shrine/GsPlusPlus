@@ -29,12 +29,13 @@ Le français est la syntaxe canonique du langage. Les mots-clés anglais
 documentés sont des alias officiels avec la même sémantique et la même
 génération de code.
 
-> **État actuel — `0.27.0-alpha.2`**
+> **État actuel — `0.27.0-alpha.3`**
 >
 > Cette préversion permet d’évaluer et de développer avec la chaîne Gs++
 > actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais le frontend
-> auto-hébergé complet et le contrat final Gs++ 1.0 sont encore en
-> développement. Les interfaces peuvent évoluer avant la version stable.
+> auto-hébergé reste en développement. Le lexeur et l’AST des fonctions,
+> globales, agrégats, énumérations et alias sont désormais écrits et validés en
+> Gs++. Les instructions, expressions et méthodes de classes restent à migrer.
 
 ## Principes du langage
 
@@ -170,7 +171,7 @@ Construction/Ninja/Release/Bin/gsppc \
 
 ## Télécharger une préversion
 
-La [release `0.27.0-alpha.2`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.2)
+La [release `0.27.0-alpha.3`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.3)
 propose des paquets x86-64 pour Windows et Linux. Chaque paquet contient les
 outils, les en-têtes SDK, les bibliothèques Gs++, les exemples et la
 documentation Markdown. Le fichier `SHA256SUMS.txt` permet de vérifier les
@@ -198,7 +199,7 @@ GsPlusPlus/
 - [ABI native x86-64](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Matrice de conformité](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [Validation de `0.27.0-alpha.2`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.2.md)
+- [Validation de `0.27.0-alpha.3`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.3.md)
 - [Feuille de route](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 Toute la documentation normative est maintenue en Markdown comme source

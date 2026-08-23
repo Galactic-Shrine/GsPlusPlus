@@ -18,7 +18,7 @@ from typing import Any, Callable
 from xml.sax.saxutils import quoteattr
 
 
-VERSION_GSPP = "0.27.0-alpha.2"
+VERSION_GSPP = "0.27.0-alpha.3"
 SIGNATURE_ABI = b"GsAbi:x64-ms-v1"
 
 

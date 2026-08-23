@@ -37,6 +37,20 @@ espace Gs::Autohebergement
         UnsupportedDeclaration = 12,
         TailleTableauInvalide = 13,
         InvalidArraySize = 13,
+        ExpressionAttendue = 14,
+        ExpectedExpression = 14,
+        InitialiseurExterneInterdit = 15,
+        ExternalInitializerForbidden = 15,
+        MembreClasseNonPrisEnCharge = 16,
+        UnsupportedClassMember = 16,
+        CrochetFermantAttendu = 17,
+        ExpectedClosingBracket = 17,
+        EgalAttendu = 18,
+        ExpectedEquals = 18,
+        DeuxPointsAttendu = 19,
+        ExpectedColon = 19,
+        InitialiseurChampHorsClasse = 20,
+        DefaultFieldInitializerOutsideClass = 20,
     };
 
     énumération GenreNoeudDeclaration
@@ -47,6 +61,40 @@ espace Gs::Autohebergement
         Function = 1,
         Parametre = 2,
         Parameter = 2,
+        VariableGlobale = 3,
+        GlobalVariable = 3,
+        Structure = 4,
+        Struct = 4,
+        Union = 5,
+        Classe = 6,
+        Class = 6,
+        Champ = 7,
+        Field = 7,
+        Enumeration = 8,
+        Enum = 8,
+        Enumerateur = 9,
+        Enumerator = 9,
+        Alias = 10,
+        AliasChamp = 11,
+        FieldAlias = 11,
+    };
+
+    énumération DrapeauNoeudDeclaration
+    {
+        Aucun = 0,
+        None = 0,
+        Publique = 1,
+        Public = 1,
+        Externe = 2,
+        External = 2,
+        DefinitionPresente = 4,
+        HasDefinition = 4,
+        Protegee = 8,
+        Protected = 8,
+        Privee = 16,
+        Private = 16,
+        HeritagePresent = 32,
+        HasBase = 32,
     };
 
     structure NoeudDeclaration

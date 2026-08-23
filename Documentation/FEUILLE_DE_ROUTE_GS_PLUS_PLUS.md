@@ -244,9 +244,9 @@ Les prochains jalons sont donc réservés à Gs++ :
 1. 0.24 — contrat du langage et suite de conformité — terminé ;
 2. 0.25 — initialisation et durée de vie finalisées — terminé ;
 3. 0.26 — bibliothèque hébergée suffisante pour le compilateur — terminé ;
-4. 0.27 — frontend auto-hébergé — actif, lexeur et tranche AST des fonctions
-   libres validés sous MSVC/GNU, autres déclarations, instructions et
-   expressions à migrer ;
+4. 0.27 — frontend auto-hébergé — actif, lexeur et AST des fonctions libres,
+   globales, agrégats, énumérations et alias validés sous MSVC/GNU ; méthodes,
+   instructions et expressions à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.

@@ -10,6 +10,33 @@
 
 # Journal des modifications
 
+## Compilateur Gs++ 0.27.0-alpha.3 — 2026-08-23
+
+- extension de l’AST auto-hébergé aux variables globales, structures, unions,
+  classes de données, champs, énumérations, énumérateurs et alias ;
+- conservation du contrat ABI compact de 64 octets par nœud, avec nouveaux
+  genres bilingues, relations parent-enfant et drapeaux de visibilité,
+  définition, initialiseur et héritage ;
+- prise en charge des globales publiques, externes, initialisées et en tableau,
+  ainsi que des agrégats d’initialisation correctement délimités ;
+- analyse des champs de structures, unions et classes, des sections de
+  visibilité, de l’héritage simple et des initialiseurs de champs de classes ;
+- analyse des énumérations avec valeurs implicites ou explicites et des alias
+  de déclarations ou de champs ;
+- délimitation sûre des initialiseurs imbriqués sans revendiquer encore leur
+  AST d’expression, réservé à la tranche suivante ;
+- comparaison différentielle avec le bootstrap C++ sur des corpus de données
+  français et anglais, en plus des corpus de fonctions de l’alpha.2 ;
+- diagnostics positionnés ajoutés pour les initialiseurs externes, crochets,
+  séparateurs et initialiseurs de champs invalides ;
+- refus distinct des méthodes, constructeurs, destructeurs et opérateurs de
+  classes, afin de rendre visible la frontière restante du frontend 0.27 ;
+- validation complète 3/3 sous Visual Studio 2026 et 4/4 sous GNU/Linux,
+  conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
+  chaîne ;
+- reproductibilité bit à bit des trois images auto-hébergées entre MSVC et GNU,
+  dont `AnalyseurDeclarations.GsE` de 72 001 octets.
+
 ## Compilateur Gs++ 0.27.0-alpha.2 — 2026-08-23
 
 - ajout de la première représentation AST auto-hébergée, sous forme de nœuds

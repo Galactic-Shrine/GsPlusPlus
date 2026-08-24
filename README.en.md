@@ -1,6 +1,6 @@
 <div align="center">
 
-# Gs++
+<img src="Assets/Gs++.png" alt="Logo Gs++" width="200"/>
 
 **A bilingual native systems language, from source code to machine code.**
 

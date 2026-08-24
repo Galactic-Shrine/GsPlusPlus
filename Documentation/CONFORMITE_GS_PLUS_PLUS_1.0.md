@@ -1,7 +1,7 @@
 # Conformité Gs++ 1.0
 
 **NORMATIF — suite initiale livrée en 0.24, étendue en 0.27.0-alpha.1 et
-revalidée par Gs++ 0.27.0-alpha.4.**
+revalidée par Gs++ 0.27.0-alpha.5.**
 
 La conformité distingue le contrat produit des tests de développement. Une
 construction Gs++ n’est pas déclarée conforme parce qu’elle compile : elle
@@ -22,7 +22,7 @@ chaque exigence obligatoire.
 Le manifeste est lisible par machine. Le présent document explique la portée
 des exigences ; il ne remplace ni le manifeste ni les contrats de format.
 
-## Matrice obligatoire de Gs++ 0.27.0-alpha.4
+## Matrice obligatoire de Gs++ 0.27.0-alpha.5
 
 | Identifiant | Domaine | Preuve |
 | --- | --- | --- |

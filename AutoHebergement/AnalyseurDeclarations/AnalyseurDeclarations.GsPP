@@ -47,6 +47,12 @@ espace Gs::Autohebergement
         JetonLexe* NomClasse;
     };
 
+    structure ContexteInstructionDeclaration
+    {
+        ContexteEspaceDeclaration* Espace;
+        naturel64 Parent;
+    };
+
     naturel64 HachageVideDeclaration()
     {
         retourner 14_695_981_039_346_656_037;
@@ -493,33 +499,252 @@ espace Gs::Autohebergement
             ErreurAnalyseDeclarations::ParentheseFermanteAttendue);
     }
 
-    booléen IgnorerCorpsDeclaration(EtatAnalyseDeclarations* etat)
+    booléen DebuteDeclarationVariableDeclaration(
+        EtatAnalyseDeclarations* etat)
     {
+        naturel32 genre = JetonCourantDeclaration(etat)->Genre;
+        si (genre == 12 || genre == 13
+            || (genre >= 14 && genre <= 25))
+            retourner vrai;
+        si (genre != 1) retourner faux;
+
+        naturel64 positionSauvee = etat->Position;
+        TypeDeclarationInterne typeTeste;
+        booléen resultat = faux;
+        si (AnalyserTypeDeclaration(etat, &typeTeste)
+            && EstJetonDeclaration(etat, 1))
+            resultat = vrai;
+        etat->Position = positionSauvee;
+        retourner resultat;
+    }
+
+    booléen AnalyserInstructionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteInstructionDeclaration* contexte)
+    {
+        JetonLexe position = *JetonCourantDeclaration(etat);
+        si (EstJetonDeclaration(etat, 36))
+        {
+            etat->Position = etat->Position + 1;
+            naturel64 indexBloc = etat->NombreNoeuds;
+            NoeudDeclaration bloc = {
+                16,
+                position.Ligne,
+                position.Colonne,
+                0,
+                contexte->Parent,
+                0,
+                0,
+                0,
+                contexte->Espace->Hachage,
+                0};
+            si (!AjouterNoeudDeclaration(etat, bloc)) retourner faux;
+            ContexteInstructionDeclaration enfant = {
+                contexte->Espace, indexBloc};
+            tantque (!EstJetonDeclaration(etat, 37))
+            {
+                JetonLexe* courantBloc = JetonCourantDeclaration(etat);
+                si (courantBloc->Genre == 0)
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
+                        courantBloc->Ligne,
+                        courantBloc->Colonne);
+                    retourner faux;
+                }
+                si (!AnalyserInstructionDeclaration(etat, &enfant))
+                    retourner faux;
+            }
+            retourner ExigerJetonDeclaration(
+                etat,
+                37,
+                ErreurAnalyseDeclarations::AccoladeFermanteAttendue);
+        }
+
+        si (AccepterJetonDeclaration(etat, 28))
+        {
+            naturel32 drapeauxRetour = 0;
+            si (!EstJetonDeclaration(etat, 40))
+            {
+                drapeauxRetour = 2048;
+                si (!IgnorerExpressionDeclaration(etat, 40, 37))
+                    retourner faux;
+            }
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    40,
+                    ErreurAnalyseDeclarations::PointVirguleAttendu))
+                retourner faux;
+            NoeudDeclaration retour = {
+                17,
+                position.Ligne,
+                position.Colonne,
+                drapeauxRetour,
+                contexte->Parent,
+                0,
+                0,
+                0,
+                contexte->Espace->Hachage,
+                0};
+            retourner AjouterNoeudDeclaration(etat, retour);
+        }
+
+        si (AccepterJetonDeclaration(etat, 29))
+        {
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    34,
+                    ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
+                retourner faux;
+            si (!IgnorerExpressionDeclaration(etat, 35, 35))
+                retourner faux;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                retourner faux;
+
+            naturel64 indexConditionnelle = etat->NombreNoeuds;
+            NoeudDeclaration conditionnelle = {
+                20,
+                position.Ligne,
+                position.Colonne,
+                2048,
+                contexte->Parent,
+                0,
+                0,
+                0,
+                contexte->Espace->Hachage,
+                0};
+            si (!AjouterNoeudDeclaration(etat, conditionnelle))
+                retourner faux;
+            ContexteInstructionDeclaration branche = {
+                contexte->Espace, indexConditionnelle};
+            si (!AnalyserInstructionDeclaration(etat, &branche))
+                retourner faux;
+            si (AccepterJetonDeclaration(etat, 30))
+            {
+                etat->NoeudsTravail[indexConditionnelle].Drapeaux =
+                    2048 | 4096;
+                si (!AnalyserInstructionDeclaration(etat, &branche))
+                    retourner faux;
+            }
+            retourner vrai;
+        }
+
+        si (AccepterJetonDeclaration(etat, 31))
+        {
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    34,
+                    ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
+                retourner faux;
+            si (!IgnorerExpressionDeclaration(etat, 35, 35))
+                retourner faux;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                retourner faux;
+
+            naturel64 indexBoucle = etat->NombreNoeuds;
+            NoeudDeclaration boucle = {
+                21,
+                position.Ligne,
+                position.Colonne,
+                2048,
+                contexte->Parent,
+                0,
+                0,
+                0,
+                contexte->Espace->Hachage,
+                0};
+            si (!AjouterNoeudDeclaration(etat, boucle)) retourner faux;
+            ContexteInstructionDeclaration corpsBoucle = {
+                contexte->Espace, indexBoucle};
+            retourner AnalyserInstructionDeclaration(etat, &corpsBoucle);
+        }
+
+        si (DebuteDeclarationVariableDeclaration(etat))
+        {
+            TypeDeclarationInterne typeVariable;
+            si (!AnalyserTypeDeclaration(etat, &typeVariable))
+                retourner faux;
+            JetonLexe* nomVariable = JetonCourantDeclaration(etat);
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    1,
+                    ErreurAnalyseDeclarations::IdentifiantAttendu))
+                retourner faux;
+            si (!AnalyserDimensionsDeclaration(etat, &typeVariable))
+                retourner faux;
+            naturel32 drapeauxVariable = 0;
+            si (AccepterJetonDeclaration(etat, 45))
+            {
+                drapeauxVariable = 4 | 2048;
+                si (!IgnorerExpressionDeclaration(etat, 40, 37))
+                    retourner faux;
+            }
+            sinon si (EstJetonDeclaration(etat, 34))
+            {
+                drapeauxVariable = 8192;
+                si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+            }
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    40,
+                    ErreurAnalyseDeclarations::PointVirguleAttendu))
+                retourner faux;
+            NoeudDeclaration variable = {
+                19,
+                position.Ligne,
+                position.Colonne,
+                drapeauxVariable,
+                contexte->Parent,
+                nomVariable->Debut,
+                nomVariable->TailleSource,
+                nomVariable->HachageTexte,
+                contexte->Espace->Hachage,
+                HacherTypeDeclaration(&typeVariable)};
+            retourner AjouterNoeudDeclaration(etat, variable);
+        }
+
+        si (!IgnorerExpressionDeclaration(etat, 40, 37)) retourner faux;
         si (!ExigerJetonDeclaration(
                 etat,
-                36,
-                ErreurAnalyseDeclarations::AccoladeOuvranteAttendue))
+                40,
+                ErreurAnalyseDeclarations::PointVirguleAttendu))
             retourner faux;
-        naturel64 profondeur = 1;
-        tantque (profondeur != 0)
+        NoeudDeclaration expression = {
+            18,
+            position.Ligne,
+            position.Colonne,
+            2048,
+            contexte->Parent,
+            0,
+            0,
+            0,
+            contexte->Espace->Hachage,
+            0};
+        retourner AjouterNoeudDeclaration(etat, expression);
+    }
+
+    booléen AnalyserBlocInstructionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteInstructionDeclaration* contexte)
+    {
+        si (!EstJetonDeclaration(etat, 36))
         {
-            JetonLexe* finCorpsManquante = JetonCourantDeclaration(etat);
-            si (finCorpsManquante->Genre == 0)
-            {
-                SignalerErreurDeclaration(
-                    etat,
-                    ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
-                    finCorpsManquante->Ligne,
-                    finCorpsManquante->Colonne);
-                retourner faux;
-            }
-            si (finCorpsManquante->Genre == 36)
-                profondeur = profondeur + 1;
-            sinon si (finCorpsManquante->Genre == 37)
-                profondeur = profondeur - 1;
-            etat->Position = etat->Position + 1;
+            JetonLexe* ouverture = JetonCourantDeclaration(etat);
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::AccoladeOuvranteAttendue,
+                ouverture->Ligne,
+                ouverture->Colonne);
+            retourner faux;
         }
-        retourner vrai;
+        retourner AnalyserInstructionDeclaration(etat, contexte);
     }
 
     booléen AnalyserFonctionDeclaration(
@@ -659,7 +884,10 @@ espace Gs::Autohebergement
                 etat,
                 40,
                 ErreurAnalyseDeclarations::PointVirguleAttendu);
-        retourner IgnorerCorpsDeclaration(etat);
+        ContexteInstructionDeclaration contexteCorps = {
+            contexte,
+            indexFonction};
+        retourner AnalyserBlocInstructionDeclaration(etat, &contexteCorps);
     }
 
     booléen AnalyserMembreClasseDeclaration(
@@ -906,7 +1134,10 @@ espace Gs::Autohebergement
             }
         }
         etat->NoeudsTravail[indexMembre].Drapeaux = drapeaux;
-        retourner IgnorerCorpsDeclaration(etat);
+        ContexteInstructionDeclaration contexteCorps = {
+            contexte->Espace,
+            indexMembre};
+        retourner AnalyserBlocInstructionDeclaration(etat, &contexteCorps);
     }
 
     booléen AnalyserAliasDeclaration(

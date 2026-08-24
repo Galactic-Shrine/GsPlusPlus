@@ -440,6 +440,97 @@ namespace
         return hachage;
     }
 
+    void AjouterInstructionReference(
+        const GsPP::Instruction& instruction,
+        std::size_t parent,
+        std::uint64_t hachageEspace,
+        std::vector<NoeudDeclarationHote>& resultat)
+    {
+        const auto ligne = static_cast<std::uint32_t>(
+            instruction.Position.Ligne);
+        const auto colonne = static_cast<std::uint32_t>(
+            instruction.Position.Colonne);
+        switch (instruction.Genre)
+        {
+            case GsPP::GenreInstruction::Bloc:
+            {
+                const auto indexBloc = resultat.size();
+                resultat.push_back({
+                    16, ligne, colonne, 0, parent,
+                    0, 0, 0, hachageEspace, 0});
+                const auto& bloc = static_cast<
+                    const GsPP::InstructionBloc&>(instruction);
+                for (const auto& enfant : bloc.Instructions)
+                    AjouterInstructionReference(
+                        *enfant, indexBloc, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreInstruction::Retour:
+            {
+                const auto& retour = static_cast<
+                    const GsPP::InstructionRetour&>(instruction);
+                resultat.push_back({
+                    17, ligne, colonne, retour.Valeur ? 2048U : 0U,
+                    parent, 0, 0, 0, hachageEspace, 0});
+                return;
+            }
+            case GsPP::GenreInstruction::Expression:
+                resultat.push_back({
+                    18, ligne, colonne, 2048U, parent,
+                    0, 0, 0, hachageEspace, 0});
+                return;
+            case GsPP::GenreInstruction::Variable:
+            {
+                const auto& variable = static_cast<
+                    const GsPP::InstructionVariable&>(instruction);
+                std::uint32_t drapeaux = 0;
+                if (variable.Initialiseur) drapeaux |= 4U | 2048U;
+                if (variable.ConstructionExplicite) drapeaux |= 8192U;
+                resultat.push_back({
+                    19, ligne, colonne, drapeaux, parent,
+                    0, 0, HacherTexte(variable.Nom), hachageEspace,
+                    HacherTypeDeclaration(variable.Type)});
+                return;
+            }
+            case GsPP::GenreInstruction::Si:
+            {
+                const auto& conditionnelle = static_cast<
+                    const GsPP::InstructionSi&>(instruction);
+                const auto indexConditionnelle = resultat.size();
+                resultat.push_back({
+                    20, ligne, colonne,
+                    2048U | (conditionnelle.Sinon ? 4096U : 0U),
+                    parent, 0, 0, 0, hachageEspace, 0});
+                AjouterInstructionReference(
+                    *conditionnelle.Alors,
+                    indexConditionnelle,
+                    hachageEspace,
+                    resultat);
+                if (conditionnelle.Sinon)
+                    AjouterInstructionReference(
+                        *conditionnelle.Sinon,
+                        indexConditionnelle,
+                        hachageEspace,
+                        resultat);
+                return;
+            }
+            case GsPP::GenreInstruction::TantQue:
+            {
+                const auto& boucle = static_cast<
+                    const GsPP::InstructionTantQue&>(instruction);
+                const auto indexBoucle = resultat.size();
+                resultat.push_back({
+                    21, ligne, colonne, 2048U, parent,
+                    0, 0, 0, hachageEspace, 0});
+                AjouterInstructionReference(
+                    *boucle.Corps, indexBoucle, hachageEspace, resultat);
+                return;
+            }
+        }
+        throw std::runtime_error(
+            "instruction absente de la tranche AST auto-hébergée");
+    }
+
     std::vector<NoeudDeclarationHote> ConstruireDeclarationsReference(
         const GsPP::Programme& programme)
     {
@@ -676,6 +767,12 @@ namespace
                                 HacherTexte(structure.Espace),
                                 HacherTypeDeclaration(parametre.Type)});
                         }
+                        if (fonction.Corps)
+                            AjouterInstructionReference(
+                                *fonction.Corps,
+                                indexFonction,
+                                HacherTexte(structure.Espace),
+                                resultat);
                         continue;
                     }
                     const auto& champ =
@@ -790,6 +887,12 @@ namespace
                         HacherTexte(parametre.Nom),
                         HacherTexte(fonction.Espace),
                         HacherTypeDeclaration(parametre.Type)});
+                if (fonction.Corps)
+                    AjouterInstructionReference(
+                        *fonction.Corps,
+                        indexFonction,
+                        HacherTexte(fonction.Espace),
+                        resultat);
                 continue;
             }
             const auto& alias = *static_cast<const GsPP::DeclarationAlias*>(
@@ -1157,13 +1260,19 @@ namespace
                 "nœud de déclaration différent au rang "
                     + std::to_string(index) + " de "
                     + std::string(nomCorpus));
-            if (courant.Genre == 0)
+            const bool nomAnonyme = courant.Genre == 0
+                || courant.Genre == 16
+                || courant.Genre == 17
+                || courant.Genre == 18
+                || courant.Genre == 20
+                || courant.Genre == 21;
+            if (nomAnonyme)
             {
                 Exiger(
                     courant.DebutNom == 0
                         && courant.TailleNom == 0
                         && courant.HachageNom == 0,
-                    "nœud programme Gs++ non canonique pour "
+                    "nœud syntaxique anonyme Gs++ non canonique pour "
                         + std::string(nomCorpus));
                 continue;
             }
@@ -1473,6 +1582,149 @@ namespace
                 }),
             "le constructeur délégué n’est pas décrit");
 
+        const std::string instructionsFrancaises =
+            "espace Demo {\n"
+            "  structure Point { entier32 X; entier32 Y; };\n"
+            "  publique entier32 Calculer(entier32 limite) {\n"
+            "    entier32 somme = 0;\n"
+            "    entier32 index(0);\n"
+            "    Point point = {1, 2};\n"
+            "    { entier32 local; somme = somme + local; }\n"
+            "    tantque (index < limite) {\n"
+            "      si (index == 2) { retourner somme; }\n"
+            "      sinon si (index == 3) retourner;\n"
+            "      sinon { somme = somme + index; }\n"
+            "      index = index + 1;\n"
+            "    }\n"
+            "    retourner somme;\n"
+            "  }\n"
+            "}\n";
+        const std::string instructionsAnglaises =
+            "namespace Demo {\n"
+            "  struct Point { int32 X; int32 Y; };\n"
+            "  public int32 Calculer(int32 limite) {\n"
+            "    int32 somme = 0;\n"
+            "    int32 index(0);\n"
+            "    Point point = {1, 2};\n"
+            "    { int32 local; somme = somme + local; }\n"
+            "    while (index < limite) {\n"
+            "      if (index == 2) { return somme; }\n"
+            "      else if (index == 3) return;\n"
+            "      else { somme = somme + index; }\n"
+            "      index = index + 1;\n"
+            "    }\n"
+            "    return somme;\n"
+            "  }\n"
+            "}\n";
+        const auto astInstructionsFrancais = ComparerDeclarations(
+            analyseur,
+            instructionsFrancaises,
+            "instructions-francaises");
+        const auto astInstructionsAnglais = ComparerDeclarations(
+            analyseur,
+            instructionsAnglaises,
+            "instructions-anglaises");
+        Exiger(
+            astInstructionsFrancais.size() == astInstructionsAnglais.size(),
+            "les AST d’instructions français et anglais ont des tailles différentes");
+        for (std::size_t index = 0;
+             index < astInstructionsFrancais.size();
+             ++index)
+            Exiger(
+                MemeStructureDeclaration(
+                    astInstructionsFrancais[index],
+                    astInstructionsAnglais[index]),
+                "les AST d’instructions français et anglais divergent au rang "
+                    + std::to_string(index));
+
+        const auto compterGenre = [&](std::uint32_t genre)
+        {
+            return std::count_if(
+                astInstructionsFrancais.begin(),
+                astInstructionsFrancais.end(),
+                [genre](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == genre;
+                });
+        };
+        Exiger(compterGenre(16) == 5, "nombre de blocs incorrect");
+        Exiger(compterGenre(17) == 3, "nombre de retours incorrect");
+        Exiger(compterGenre(18) == 3, "nombre d’expressions incorrect");
+        Exiger(compterGenre(19) == 4, "nombre de variables locales incorrect");
+        Exiger(compterGenre(20) == 2, "nombre de conditionnelles incorrect");
+        Exiger(compterGenre(21) == 1, "nombre de boucles incorrect");
+        Exiger(
+            std::any_of(
+                astInstructionsFrancais.begin(),
+                astInstructionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 19
+                        && (noeud.Drapeaux & (4U | 2048U))
+                            == (4U | 2048U);
+                }),
+            "l’initialiseur d’une variable locale n’est pas décrit");
+        Exiger(
+            std::any_of(
+                astInstructionsFrancais.begin(),
+                astInstructionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 19
+                        && (noeud.Drapeaux & 8192U) != 0;
+                }),
+            "la construction explicite d’une variable locale n’est pas décrite");
+        Exiger(
+            std::any_of(
+                astInstructionsFrancais.begin(),
+                astInstructionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 17
+                        && (noeud.Drapeaux & 2048U) == 0;
+                })
+                && std::any_of(
+                    astInstructionsFrancais.begin(),
+                    astInstructionsFrancais.end(),
+                    [](const NoeudDeclarationHote& noeud)
+                    {
+                        return noeud.Genre == 17
+                            && (noeud.Drapeaux & 2048U) != 0;
+                    }),
+            "les deux formes de retour ne sont pas décrites");
+        Exiger(
+            std::count_if(
+                astInstructionsFrancais.begin(),
+                astInstructionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 20
+                        && (noeud.Drapeaux & 4096U) != 0;
+                }) == 2,
+            "une branche sinon n’est pas décrite");
+        for (const auto& noeud : astInstructionsFrancais)
+        {
+            if (noeud.Genre < 16 || noeud.Genre > 21) continue;
+            Exiger(
+                noeud.Parent < astInstructionsFrancais.size(),
+                "parent d’instruction hors limites");
+            const auto genreParent =
+                astInstructionsFrancais[noeud.Parent].Genre;
+            if (noeud.Genre == 16)
+                Exiger(
+                    genreParent == 1
+                        || (genreParent >= 12 && genreParent <= 16)
+                        || genreParent == 20
+                        || genreParent == 21,
+                    "bloc rattaché à un parent syntaxique invalide");
+            else
+                Exiger(
+                    genreParent == 16
+                        || genreParent == 20
+                        || genreParent == 21,
+                    "instruction rattachée à un parent syntaxique invalide");
+        }
+
         ComparerErreurDeclarations(
             analyseur,
             "publique entier32 F(entier32 valeur { retourner valeur; }",
@@ -1544,6 +1796,46 @@ namespace
             "classe C { publique: constructeur() : soi(), Valeur() {} };",
             26,
             "delegation-constructeur-melangee");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { si () retourner; }",
+            14,
+            "condition-si-vide");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { tantque () {} }",
+            14,
+            "condition-tantque-vide");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { si vrai) retourner; }",
+            7,
+            "parenthese-condition-ouvrante-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { entier32 ; }",
+            5,
+            "nom-variable-locale-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { ; }",
+            14,
+            "instruction-expression-vide");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { entier32 valeur }",
+            11,
+            "point-virgule-variable-locale-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner valeur }",
+            11,
+            "point-virgule-retour-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { valeur }",
+            11,
+            "point-virgule-expression-manquant");
 
         const std::string lexicalementInvalide = "@";
         RequeteAnalyseDeclarationsHote requeteLexicale{

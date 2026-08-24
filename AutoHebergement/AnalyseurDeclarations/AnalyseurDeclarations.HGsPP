@@ -1,10 +1,10 @@
 // Frontend auto-hébergé Gs++ 0.27 : première tranche de l'AST syntaxique.
 //
-// L'analyseur couvre les déclarations de code et de données, y compris les
-// membres exécutables des classes. Les corps et expressions sont délimités
-// syntaxiquement mais leur AST interne appartient aux tranches suivantes. Le
-// stockage de sortie appartient à l'appelant ; l'AST de travail est construit
-// dans une arène.
+// L'analyseur couvre les déclarations de code et de données, les membres
+// exécutables des classes et la hiérarchie des instructions. Les expressions
+// sont délimitées syntaxiquement mais leur AST interne appartient à la tranche
+// suivante. Le stockage de sortie appartient à l'appelant ; l'AST de travail
+// est construit dans une arène.
 
 espace Gs::Autohebergement
 {
@@ -98,6 +98,18 @@ espace Gs::Autohebergement
         DestructorFunction = 14,
         SurchargeOperateur = 15,
         OperatorOverload = 15,
+        BlocInstructions = 16,
+        StatementBlock = 16,
+        InstructionRetour = 17,
+        ReturnStatement = 17,
+        InstructionExpression = 18,
+        ExpressionStatement = 18,
+        VariableLocale = 19,
+        LocalVariable = 19,
+        Conditionnelle = 20,
+        Conditional = 20,
+        BoucleTantQue = 21,
+        WhileLoop = 21,
     };
 
     énumération DrapeauNoeudDeclaration
@@ -126,6 +138,12 @@ espace Gs::Autohebergement
         HasDelegatingConstructor = 512,
         InitialiseurChampPresent = 1024,
         HasFieldInitializer = 1024,
+        ExpressionPresente = 2048,
+        HasExpression = 2048,
+        BrancheSinonPresente = 4096,
+        HasElseBranch = 4096,
+        ConstructionExplicite = 8192,
+        HasExplicitConstruction = 8192,
     };
 
     structure NoeudDeclaration
@@ -170,4 +188,13 @@ espace Gs::Autohebergement
     alias DeclarationAnalysisResult = ResultatAnalyseDeclarations;
     alias DeclarationAnalysisRequest = RequeteAnalyseDeclarations;
     alias AnalyzeSourceDeclarations = AnalyserDeclarationsSource;
+
+    alias NoeudSyntaxique = NoeudDeclaration;
+    alias SyntaxNode = NoeudDeclaration;
+    alias ResultatAnalyseSyntaxique = ResultatAnalyseDeclarations;
+    alias SyntaxAnalysisResult = ResultatAnalyseDeclarations;
+    alias RequeteAnalyseSyntaxique = RequeteAnalyseDeclarations;
+    alias SyntaxAnalysisRequest = RequeteAnalyseDeclarations;
+    alias AnalyserSyntaxeSource = AnalyserDeclarationsSource;
+    alias AnalyzeSourceSyntax = AnalyserDeclarationsSource;
 }

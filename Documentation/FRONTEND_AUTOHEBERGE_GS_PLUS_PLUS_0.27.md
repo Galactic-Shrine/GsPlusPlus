@@ -1,15 +1,16 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur VALIDÉ, AST DES CATÉGORIES DE DÉCLARATIONS VALIDÉ —
+**EN COURS — lexeur VALIDÉ, AST DES DÉCLARATIONS ET DES INSTRUCTIONS VALIDÉ —
 24 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
 l’alpha.2 ajoute les fonctions libres et leurs paramètres, l’alpha.3 étend le
-même AST compact aux déclarations de données, puis l’alpha.4 couvre les
-méthodes, constructeurs, destructeurs et opérateurs de classes. Le jalon 0.27
-complet n’est pas encore validé : les instructions, les expressions et les
-premières étapes sémantiques restent à migrer.
+même AST compact aux déclarations de données, l’alpha.4 couvre les méthodes,
+constructeurs, destructeurs et opérateurs de classes, puis l’alpha.5 construit
+la hiérarchie des blocs et instructions. Le jalon 0.27 complet n’est pas encore
+validé : l’AST interne des expressions et les premières étapes sémantiques
+restent à migrer.
 
 ## Lexeur auto-hébergé validé
 
@@ -85,7 +86,7 @@ Les images GsE MSVC et GNU sont identiques :
 
 ```text
 taille  : 40 897 octets
-SHA-256 : 583a2a8c4b31fc742548e54831df51dd6d7baea2a52a72d28c4bf5072a32aa0a
+SHA-256 : 0acf3de55700a6a2049b2f88ddcb8c2515eb3d37bc3f5bb22ef71c4916e81114
 ```
 
 Le vérificateur confirme une image GsE 1.0 valide, ABI 1, avec trois segments,
@@ -97,7 +98,7 @@ Windows et WSL : leur table de symboles conserve les chemins absolus
 tout au même GsE. La canonicalisation des chemins de provenance reste un point
 explicite du durcissement et de la reproductibilité 0.29.
 
-## AST auto-hébergé des déclarations — tranches alpha.2 à alpha.4
+## AST auto-hébergé — tranches alpha.2 à alpha.5
 
 Les fichiers canoniques de la deuxième tranche sont :
 
@@ -108,7 +109,7 @@ Les fichiers canoniques de la deuxième tranche sont :
 - `Tests/AutoHebergement/AutoHebergement.cpp` pour la comparaison avec les
   objets `Programme`, `Fonction`, `Parametre`, `VariableGlobale`, `Structure`,
   `ChampStructure`, `Enumeration`, `Enumerateur`, les deux catégories d’alias
-  et les membres exécutables de classes du bootstrap C++.
+  les membres exécutables de classes et les instructions du bootstrap C++.
 
 L’export public est :
 
@@ -124,7 +125,8 @@ appel correctement dimensionné retourne l’AST complet. Chaque
 
 - le genre programme, fonction, paramètre, variable globale, structure, union,
   classe, champ, énumération, énumérateur, alias, alias de champ, méthode,
-  constructeur, destructeur ou surcharge d’opérateur ;
+  constructeur, destructeur, surcharge d’opérateur, bloc, retour, instruction
+  d’expression, variable locale, conditionnelle ou boucle `tantque` ;
 - la ligne et la colonne du début de la déclaration ;
 - le parent et les drapeaux de visibilité, caractère externe, définition ou
   initialiseur présent, héritage, virtualité, remplacement et forme de liste
@@ -150,7 +152,8 @@ Le test charge réellement `AnalyseurDeclarations.GsE` et compare chaque nœud
 au programme produit par `GsPP::AnalyseurSyntaxique` :
 
 - paires de corpus français/anglais structurellement équivalents pour les
-  fonctions et pour les déclarations de données ;
+  fonctions, les déclarations de données, les membres de classes et les
+  instructions ;
 - fonctions publiques, externes et avec corps ;
 - paramètres, espaces qualifiés, tableaux multidimensionnels et types
   qualifiés ;
@@ -165,8 +168,13 @@ au programme produit par `GsPP::AnalyseurSyntaxique` :
   `soi` comme s’il provenait de la source ;
 - membres virtuels ou de remplacement et trois formes de listes
   d’initialisation de constructeur ;
+- blocs de fonction ou imbriqués, retours avec ou sans expression, instructions
+  d’expression et variables locales initialisées ou construites explicitement ;
+- conditionnelles avec branches simples ou imbriquées et boucles `tantque` ;
+- relations parent-enfant en préordre entre fonctions, blocs, contrôles et
+  branches ;
 - interrogation de capacité, capacité partielle et requêtes invalides ;
-- quatorze diagnostics syntaxiques avec ligne et colonne identiques au
+- vingt-deux diagnostics syntaxiques avec ligne et colonne identiques au
   bootstrap ;
 - propagation distincte des erreurs lexicales ;
 - relations parent-enfant vérifiées entre classes, membres exécutables et
@@ -175,25 +183,23 @@ au programme produit par `GsPP::AnalyseurSyntaxique` :
 Les constructions MSVC et GNU produisent un `AnalyseurDeclarations.GsE`
 identique bit à bit. La validation détaillée et les empreintes sont consignées
 dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.4.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.4.md).
+[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.5.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.5.md).
 
-Cette tranche ne construit pas encore l’AST interne des corps ni des
-initialiseurs : elle vérifie leurs délimiteurs, conserve leur présence dans les
-drapeaux et poursuit l’analyse des déclarations suivantes. Les classes sont
-couvertes pour leurs données, leur héritage et leurs membres exécutables. Ce
-périmètre reste volontairement annoncé comme `PARTIEL` tant que les corps ne
-possèdent pas leur propre AST.
+Cette tranche construit l’AST des corps et de leurs instructions, mais ne
+construit pas encore l’AST interne des expressions. Leur présence est décrite
+par des drapeaux et leurs délimiteurs sont vérifiés. Les classes sont couvertes
+pour leurs données, leur héritage, leurs membres exécutables et leurs corps. Ce
+périmètre reste volontairement annoncé comme `PARTIEL` tant que les expressions
+et les premières étapes sémantiques ne sont pas auto-hébergées.
 
 ## Travaux restant dans Gs++ 0.27
 
-- migrer les instructions et la hiérarchie complète des expressions ;
+- migrer la hiérarchie complète des expressions ;
 - migrer les premières résolutions sémantiques ;
 - comparer les AST et diagnostics au bootstrap C++ ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;
-- valider séparément l’intégration QEMU/OVMF dans Sanctuaire SE, sans en faire
-  une dépendance de Gs++.
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.4`. Aucun statut
+Les outils de la tranche publique annoncent `0.27.0-alpha.5`. Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

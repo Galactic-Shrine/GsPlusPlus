@@ -10,6 +10,28 @@
 
 # Journal des modifications
 
+## Compilateur Gs++ 0.27.0-alpha.5 — 2026-08-24
+
+- extension de l’AST auto-hébergé à la hiérarchie des blocs et instructions
+  des fonctions libres et des membres exécutables de classes ;
+- ajout de six genres de nœuds stables pour les blocs, retours, instructions
+  d’expression, variables locales, conditionnelles et boucles `tantque` ;
+- conservation des relations parent-enfant en préordre entre fonction, bloc,
+  instruction de contrôle et branche imbriquée ;
+- description de la présence d’une expression, d’une branche `sinon`, d’un
+  initialiseur local ou d’une construction explicite, sans exposer encore
+  l’AST interne des expressions ;
+- ajout des alias ABI génériques `NoeudSyntaxique`, `ResultatAnalyseSyntaxique`
+  et `RequeteAnalyseSyntaxique`, compatibles avec le contrat compact existant ;
+- extension de l’oracle différentiel C++ à des corps bilingues imbriquant
+  variables locales, blocs, retours, conditionnelles et boucles ;
+- passage de quatorze à vingt-deux diagnostics syntaxiques comparés au bootstrap,
+  avec ligne et colonne identiques ;
+- maintien des tailles ABI de 64 octets pour le nœud, 48 octets pour le
+  résultat et 80 octets pour la requête ;
+- validation complète sous Visual Studio 2026 et GNU/Linux, conformité 20/20
+  et reproductibilité bit à bit des images auto-hébergées.
+
 ## Compilateur Gs++ 0.27.0-alpha.4 — 2026-08-24
 
 - extension de l’AST auto-hébergé aux méthodes, constructeurs, destructeurs et

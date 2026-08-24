@@ -10,6 +10,29 @@
 
 # Journal des modifications
 
+## Compilateur Gs++ 0.27.0-alpha.4 — 2026-08-24
+
+- extension de l’AST auto-hébergé aux méthodes, constructeurs, destructeurs et
+  surcharges d’opérateurs déclarés dans les classes ;
+- ajout de quatre genres de nœuds dédiés, rattachés à leur classe par la
+  relation parent-enfant, sans exposer comme source le paramètre implicite
+  `soi` synthétisé par le bootstrap ;
+- conservation de la visibilité, de la présence du corps, des modificateurs
+  `virtuel` et `remplacer`, ainsi que des listes d’initialisation de base, de
+  champ ou de constructeur délégué ;
+- analyse bilingue des paramètres explicites et délimitation des corps et
+  arguments d’initialisation imbriqués, sans revendiquer encore leur AST
+  d’instructions ou d’expressions ;
+- ajout de diagnostics positionnés pour les opérateurs invalides, les
+  modificateurs dupliqués ou interdits, les paramètres de destructeur et les
+  listes d’initialisation invalides ;
+- extension de la comparaison différentielle avec le bootstrap C++ à des
+  classes bilingues mêlant champs et membres exécutables ;
+- maintien des tailles ABI de 64 octets pour `NoeudDeclaration`, 48 octets
+  pour le résultat et 80 octets pour la requête ;
+- validation complète sous Visual Studio 2026 et GNU/Linux, conformité 20/20
+  et reproductibilité bit à bit des images auto-hébergées.
+
 ## Compilateur Gs++ 0.27.0-alpha.3 — 2026-08-23
 
 - extension de l’AST auto-hébergé aux variables globales, structures, unions,

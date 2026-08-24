@@ -3133,7 +3133,7 @@ int main()
         TesterChargeurGsE();
         TesterObjetNatifGsO();
         TesterBibliothequeEtEditionLiens();
-        std::cout << "Tous les tests Gs++ 0.27.0-alpha.3 ont réussi.\n";
+        std::cout << "Tous les tests Gs++ 0.27.0-alpha.4 ont réussi.\n";
         return 0;
     }
     catch (const GsPP::ErreurCompilation& erreur)

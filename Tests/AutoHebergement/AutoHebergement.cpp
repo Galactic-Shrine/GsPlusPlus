@@ -478,11 +478,12 @@ namespace
                 variable.Position.Ligne,
                 variable.Position.Colonne});
         for (const auto& fonction : programme.Fonctions)
-            racines.push_back({
-                GenreRacine::Fonction,
-                &fonction,
-                fonction.Position.Ligne,
-                fonction.Position.Colonne});
+            if (!fonction.EstMethode)
+                racines.push_back({
+                    GenreRacine::Fonction,
+                    &fonction,
+                    fonction.Position.Ligne,
+                    fonction.Position.Colonne});
         for (const auto& alias : programme.Aliases)
             racines.push_back({
                 GenreRacine::Alias,
@@ -538,9 +539,15 @@ namespace
                     HacherTexte(structure.Espace),
                     hachageBase});
 
+                enum class GenreMembre
+                {
+                    Champ,
+                    Alias,
+                    Fonction
+                };
                 struct Membre
                 {
-                    bool EstAlias;
+                    GenreMembre Genre;
                     const void* Declaration;
                     std::size_t Ligne;
                     std::size_t Colonne;
@@ -548,12 +555,21 @@ namespace
                 std::vector<Membre> membres;
                 for (const auto& champ : structure.Champs)
                     membres.push_back({
-                        false, &champ,
+                        GenreMembre::Champ, &champ,
                         champ.Position.Ligne, champ.Position.Colonne});
                 for (const auto& alias : structure.AliasesChamps)
                     membres.push_back({
-                        true, &alias,
+                        GenreMembre::Alias, &alias,
                         alias.Position.Ligne, alias.Position.Colonne});
+                for (const auto& fonction : programme.Fonctions)
+                    if (fonction.EstMethode
+                        && fonction.ClasseProprietaire
+                            == structure.NomComplet())
+                        membres.push_back({
+                            GenreMembre::Fonction,
+                            &fonction,
+                            fonction.Position.Ligne,
+                            fonction.Position.Colonne});
                 std::stable_sort(
                     membres.begin(), membres.end(),
                     [](const Membre& gauche, const Membre& droite)
@@ -561,10 +577,10 @@ namespace
                         if (gauche.Ligne != droite.Ligne)
                             return gauche.Ligne < droite.Ligne;
                         return gauche.Colonne < droite.Colonne;
-                    });
+                });
                 for (const auto& membre : membres)
                 {
-                    if (membre.EstAlias)
+                    if (membre.Genre == GenreMembre::Alias)
                     {
                         const auto& alias =
                             *static_cast<const GsPP::AliasChamp*>(
@@ -580,6 +596,86 @@ namespace
                             HacherTexte(alias.Nom),
                             HacherTexte(structure.Espace),
                             HacherTexte(alias.Cible)});
+                        continue;
+                    }
+                    if (membre.Genre == GenreMembre::Fonction)
+                    {
+                        const auto& fonction =
+                            *static_cast<const GsPP::Fonction*>(
+                                membre.Declaration);
+                        const auto indexFonction = resultat.size();
+                        std::uint32_t genreFonction = 12;
+                        std::uint64_t hachageNom =
+                            HacherTexte(fonction.Nom);
+                        if (fonction.EstConstructeur)
+                        {
+                            genreFonction = 13;
+                            hachageNom = HacherTexte(structure.Nom);
+                        }
+                        else if (fonction.EstDestructeur)
+                        {
+                            genreFonction = 14;
+                            hachageNom = HacherTexte(structure.Nom);
+                        }
+                        else if (fonction.EstOperateur)
+                        {
+                            genreFonction = 15;
+                            hachageNom = HacherTexte(fonction.Operateur);
+                        }
+
+                        std::uint32_t drapeauxFonction = 0;
+                        if (fonction.Visibilite
+                            == GsPP::VisibiliteMembre::Publique)
+                            drapeauxFonction |= 1U;
+                        else if (fonction.Visibilite
+                            == GsPP::VisibiliteMembre::Protegee)
+                            drapeauxFonction |= 8U;
+                        else
+                            drapeauxFonction |= 16U;
+                        if (fonction.Corps) drapeauxFonction |= 4U;
+                        if (fonction.EstVirtuelle) drapeauxFonction |= 64U;
+                        if (fonction.EstRemplacement)
+                            drapeauxFonction |= 128U;
+                        if (fonction.InitialiseurBaseExplicite)
+                            drapeauxFonction |= 256U;
+                        if (fonction.DelegueConstructeur)
+                            drapeauxFonction |= 512U;
+                        if (!fonction.InitialiseursChamps.empty())
+                            drapeauxFonction |= 1024U;
+
+                        resultat.push_back({
+                            genreFonction,
+                            static_cast<std::uint32_t>(
+                                fonction.Position.Ligne),
+                            static_cast<std::uint32_t>(
+                                fonction.Position.Colonne),
+                            drapeauxFonction,
+                            indexStructure,
+                            0,
+                            0,
+                            hachageNom,
+                            HacherTexte(structure.Espace),
+                            HacherTypeDeclaration(fonction.TypeRetour)});
+                        for (std::size_t indexParametre = 1;
+                             indexParametre < fonction.Parametres.size();
+                             ++indexParametre)
+                        {
+                            const auto& parametre =
+                                fonction.Parametres[indexParametre];
+                            resultat.push_back({
+                                2,
+                                static_cast<std::uint32_t>(
+                                    parametre.Position.Ligne),
+                                static_cast<std::uint32_t>(
+                                    parametre.Position.Colonne),
+                                0,
+                                indexFonction,
+                                0,
+                                0,
+                                HacherTexte(parametre.Nom),
+                                HacherTexte(structure.Espace),
+                                HacherTypeDeclaration(parametre.Type)});
+                        }
                         continue;
                     }
                     const auto& champ =
@@ -1274,6 +1370,109 @@ namespace
                 "les AST de données français et anglais divergent au rang "
                     + std::to_string(index));
 
+        const std::string membresFrancais =
+            "espace Demo {\n"
+            "  classe Base {\n"
+            "    publique:\n"
+            "    constructeur(entier32 valeur) {}\n"
+            "    virtuel destructeur() {}\n"
+            "    virtuel entier32 Lire(entier32 delta) {}\n"
+            "    entier32 opérateur+(entier32 droite) {}\n"
+            "  };\n"
+            "  classe Service : publique Base {\n"
+            "    privée: entier32 Etat;\n"
+            "    protégée:\n"
+            "    remplacer entier32 Lire(entier32 delta) {}\n"
+            "    publique:\n"
+            "    constructeur(entier32 valeur)\n"
+            "      : parent(valeur), Etat((valeur + 1)) {}\n"
+            "    constructeur() : soi(1) {}\n"
+            "    remplacer destructeur() {}\n"
+            "    booléen opérateur==(constante Service& autre) {}\n"
+            "  };\n"
+            "}\n";
+        const std::string membresAnglais =
+            "namespace Demo {\n"
+            "  class Base {\n"
+            "    public:\n"
+            "    constructor(int32 valeur) {}\n"
+            "    virtual destructor() {}\n"
+            "    virtual int32 Lire(int32 delta) {}\n"
+            "    int32 operator+(int32 droite) {}\n"
+            "  };\n"
+            "  class Service : public Base {\n"
+            "    private: int32 Etat;\n"
+            "    protected:\n"
+            "    override int32 Lire(int32 delta) {}\n"
+            "    public:\n"
+            "    constructor(int32 valeur)\n"
+            "      : super(valeur), Etat((valeur + 1)) {}\n"
+            "    constructor() : this(1) {}\n"
+            "    override destructor() {}\n"
+            "    bool operator==(const Service& autre) {}\n"
+            "  };\n"
+            "}\n";
+        const auto astMembresFrancais = ComparerDeclarations(
+            analyseur, membresFrancais, "membres-classes-francais");
+        const auto astMembresAnglais = ComparerDeclarations(
+            analyseur, membresAnglais, "membres-classes-anglais");
+        Exiger(
+            astMembresFrancais.size() == astMembresAnglais.size(),
+            "les AST de membres français et anglais ont des tailles différentes");
+        for (std::size_t index = 0;
+             index < astMembresFrancais.size();
+             ++index)
+            Exiger(
+                MemeStructureDeclaration(
+                    astMembresFrancais[index], astMembresAnglais[index]),
+                "les AST de membres français et anglais divergent au rang "
+                    + std::to_string(index));
+        Exiger(
+            std::count_if(
+                astMembresFrancais.begin(),
+                astMembresFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre >= 12 && noeud.Genre <= 15;
+                }) == 9,
+            "le corpus de classes ne contient pas tous ses membres exécutables");
+        Exiger(
+            std::count_if(
+                astMembresFrancais.begin(),
+                astMembresFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 2;
+                }) == 6,
+            "l’AST expose un paramètre implicite soi ou perd un paramètre source");
+        for (const auto& noeud : astMembresFrancais)
+            if (noeud.Genre >= 12 && noeud.Genre <= 15)
+                Exiger(
+                    noeud.Parent < astMembresFrancais.size()
+                        && astMembresFrancais[noeud.Parent].Genre == 6,
+                    "un membre exécutable n’est pas rattaché à sa classe");
+        Exiger(
+            std::any_of(
+                astMembresFrancais.begin(),
+                astMembresFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 13
+                        && (noeud.Drapeaux & (256U | 1024U))
+                            == (256U | 1024U);
+                }),
+            "le constructeur de base et de champ n’est pas décrit");
+        Exiger(
+            std::any_of(
+                astMembresFrancais.begin(),
+                astMembresFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 13
+                        && (noeud.Drapeaux & 512U) != 0;
+                }),
+            "le constructeur délégué n’est pas décrit");
+
         ComparerErreurDeclarations(
             analyseur,
             "publique entier32 F(entier32 valeur { retourner valeur; }",
@@ -1315,22 +1514,36 @@ namespace
             19,
             "deux-points-visibilite-manquant");
 
-        const std::string methodeNonMigree =
-            "classe Service { publique: vide Executer() {} };";
-        const auto jetonsMethode = GsPP::Lexeur(
-            methodeNonMigree, "methode-classe-non-migree").Analyser();
-        (void)GsPP::AnalyseurSyntaxique(
-            jetonsMethode, "methode-classe-non-migree").Analyser();
-        RequeteAnalyseDeclarationsHote requeteMethode{
-            methodeNonMigree.data(),
-            static_cast<std::uint64_t>(methodeNonMigree.size()),
-            nullptr,
-            0,
-            {}};
-        Exiger(
-            analyseur(&requeteMethode) == 16
-                && requeteMethode.Resultat.Erreur == 16,
-            "une méthode de classe aurait dû rester explicitement hors de la tranche");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe C { publique: entier32 opérateur() {} };",
+            21,
+            "operateur-surchargeable-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe C { publique: virtuel virtuel vide F() {} };",
+            22,
+            "modificateur-membre-duplique");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe C { publique: virtuel constructeur() {} };",
+            23,
+            "constructeur-virtuel");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe C { publique: destructeur(entier32 valeur) {} };",
+            24,
+            "parametre-destructeur");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe C { publique: vide F() : Champ() {} };",
+            25,
+            "liste-initialisation-methode");
+        ComparerErreurDeclarations(
+            analyseur,
+            "classe C { publique: constructeur() : soi(), Valeur() {} };",
+            26,
+            "delegation-constructeur-melangee");
 
         const std::string lexicalementInvalide = "@";
         RequeteAnalyseDeclarationsHote requeteLexicale{

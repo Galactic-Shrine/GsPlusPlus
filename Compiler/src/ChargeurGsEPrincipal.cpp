@@ -166,7 +166,7 @@ namespace
     void AfficherAide()
     {
         std::cout
-            << "Chargeur GsE 0.27.0-alpha.3\n\n"
+            << "Chargeur GsE 0.27.0-alpha.4\n\n"
             << "Utilisation : gsechargeur <image.GsE> [options]\n"
             << "Alias anglais : gseload\n\n"
             << "Options :\n"
@@ -196,7 +196,7 @@ int main(int argc, char** argv)
         {
             const std::string argument = argv[index];
             if (argument == "--version")
-            { std::cout << "Chargeur GsE 0.27.0-alpha.3\n"; return 0; }
+            { std::cout << "Chargeur GsE 0.27.0-alpha.4\n"; return 0; }
             if (argument == "--aide" || argument == "--help" || argument == "-h")
             { AfficherAide(); return 0; }
             if (argument == "--executer" || argument == "--execute")

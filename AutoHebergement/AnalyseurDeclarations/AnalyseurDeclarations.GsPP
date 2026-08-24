@@ -39,6 +39,14 @@ espace Gs::Autohebergement
         Gs::Hebergee::AreneMemoire Arene;
     };
 
+    structure ContexteMembreClasseDeclaration
+    {
+        ContexteEspaceDeclaration* Espace;
+        naturel64 IndexClasse;
+        naturel32 Visibilite;
+        JetonLexe* NomClasse;
+    };
+
     naturel64 HachageVideDeclaration()
     {
         retourner 14_695_981_039_346_656_037;
@@ -107,6 +115,38 @@ espace Gs::Autohebergement
         hachage = AjouterNaturel64Declaration(
             hachage, type->HachageDimensions);
         retourner hachage;
+    }
+
+    vide InitialiserTypeVideDeclaration(TypeDeclarationInterne* type)
+    {
+        type->Genre = 12;
+        type->Qualificatifs = 0;
+        type->NiveauPointeur = 0;
+        type->NombreDimensions = 0;
+        type->HachageNom = HachageVideDeclaration();
+        type->HachageDimensions = HachageVideDeclaration();
+    }
+
+    booléen EstOperateurSurchargeableDeclaration(naturel32 genre)
+    {
+        retourner genre == 61
+            || genre == 62
+            || genre == 63
+            || genre == 64
+            || genre == 65
+            || genre == 46
+            || genre == 47
+            || genre == 48
+            || genre == 49
+            || genre == 50
+            || genre == 51
+            || genre == 55
+            || genre == 56
+            || genre == 57
+            || genre == 59
+            || genre == 60
+            || genre == 52
+            || genre == 58;
     }
 
     JetonLexe* JetonCourantDeclaration(EtatAnalyseDeclarations* etat)
@@ -429,6 +469,30 @@ espace Gs::Autohebergement
         retourner faux;
     }
 
+    booléen IgnorerArgumentsDeclaration(EtatAnalyseDeclarations* etat)
+    {
+        si (!ExigerJetonDeclaration(
+                etat,
+                34,
+                ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
+            retourner faux;
+        si (!EstJetonDeclaration(etat, 35))
+        {
+            booléen continuer = vrai;
+            tantque (continuer)
+            {
+                si (!IgnorerExpressionDeclaration(etat, 41, 35))
+                    retourner faux;
+                si (!AccepterJetonDeclaration(etat, 41))
+                    continuer = faux;
+            }
+        }
+        retourner ExigerJetonDeclaration(
+            etat,
+            35,
+            ErreurAnalyseDeclarations::ParentheseFermanteAttendue);
+    }
+
     booléen IgnorerCorpsDeclaration(EtatAnalyseDeclarations* etat)
     {
         si (!ExigerJetonDeclaration(
@@ -595,6 +659,253 @@ espace Gs::Autohebergement
                 etat,
                 40,
                 ErreurAnalyseDeclarations::PointVirguleAttendu);
+        retourner IgnorerCorpsDeclaration(etat);
+    }
+
+    booléen AnalyserMembreClasseDeclaration(
+        EtatAnalyseDeclarations* etat,
+        ContexteMembreClasseDeclaration* contexte)
+    {
+        JetonLexe position = *JetonCourantDeclaration(etat);
+        booléen estVirtuelle = faux;
+        booléen estRemplacement = faux;
+        booléen continuerModificateurs = vrai;
+        tantque (continuerModificateurs)
+        {
+            si (AccepterJetonDeclaration(etat, 68))
+            {
+                si (estVirtuelle)
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::ModificateurMembreDuplique,
+                        position.Ligne,
+                        position.Colonne);
+                    retourner faux;
+                }
+                estVirtuelle = vrai;
+            }
+            sinon si (AccepterJetonDeclaration(etat, 74))
+            {
+                si (estRemplacement)
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::ModificateurMembreDuplique,
+                        position.Ligne,
+                        position.Colonne);
+                    retourner faux;
+                }
+                estRemplacement = vrai;
+                estVirtuelle = vrai;
+            }
+            sinon continuerModificateurs = faux;
+        }
+
+        naturel32 genre = 12;
+        TypeDeclarationInterne typeRetour;
+        JetonLexe* nomMembre = contexte->NomClasse;
+        booléen estConstructeur = faux;
+        booléen estDestructeur = faux;
+        si (AccepterJetonDeclaration(etat, 69))
+        {
+            si (estVirtuelle || estRemplacement)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::ModificateurConstructeurInterdit,
+                    position.Ligne,
+                    position.Colonne);
+                retourner faux;
+            }
+            genre = 13;
+            estConstructeur = vrai;
+            InitialiserTypeVideDeclaration(&typeRetour);
+        }
+        sinon si (AccepterJetonDeclaration(etat, 70))
+        {
+            genre = 14;
+            estDestructeur = vrai;
+            InitialiserTypeVideDeclaration(&typeRetour);
+        }
+        sinon
+        {
+            si (!AnalyserTypeDeclaration(etat, &typeRetour)) retourner faux;
+            si (AccepterJetonDeclaration(etat, 71))
+            {
+                JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+                si (!EstOperateurSurchargeableDeclaration(
+                        jetonOperateur->Genre))
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::OperateurSurchargeableAttendu,
+                        jetonOperateur->Ligne,
+                        jetonOperateur->Colonne);
+                    retourner faux;
+                }
+                genre = 15;
+                nomMembre = jetonOperateur;
+                etat->Position = etat->Position + 1;
+            }
+            sinon
+            {
+                nomMembre = JetonCourantDeclaration(etat);
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        1,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu))
+                    retourner faux;
+            }
+        }
+
+        si (!ExigerJetonDeclaration(
+                etat,
+                34,
+                ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
+            retourner faux;
+
+        naturel32 drapeaux = contexte->Visibilite | 4;
+        si (estVirtuelle) drapeaux = drapeaux | 64;
+        si (estRemplacement) drapeaux = drapeaux | 128;
+        naturel64 indexMembre = etat->NombreNoeuds;
+        NoeudDeclaration noeudMembre = {
+            genre,
+            position.Ligne,
+            position.Colonne,
+            drapeaux,
+            contexte->IndexClasse,
+            nomMembre->Debut,
+            nomMembre->TailleSource,
+            nomMembre->HachageTexte,
+            contexte->Espace->Hachage,
+            HacherTypeDeclaration(&typeRetour)};
+        si (!AjouterNoeudDeclaration(etat, noeudMembre)) retourner faux;
+
+        naturel32 nombreParametres = 0;
+        si (!EstJetonDeclaration(etat, 35))
+        {
+            booléen continuerParametres = vrai;
+            tantque (continuerParametres)
+            {
+                JetonLexe positionParametre = *JetonCourantDeclaration(etat);
+                TypeDeclarationInterne typeParametre;
+                si (!AnalyserTypeDeclaration(etat, &typeParametre))
+                    retourner faux;
+                JetonLexe* nomParametre = JetonCourantDeclaration(etat);
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        1,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu))
+                    retourner faux;
+                si (!AnalyserDimensionsDeclaration(etat, &typeParametre))
+                    retourner faux;
+                NoeudDeclaration noeudParametre = {
+                    2,
+                    positionParametre.Ligne,
+                    positionParametre.Colonne,
+                    0,
+                    indexMembre,
+                    nomParametre->Debut,
+                    nomParametre->TailleSource,
+                    nomParametre->HachageTexte,
+                    contexte->Espace->Hachage,
+                    HacherTypeDeclaration(&typeParametre)};
+                si (!AjouterNoeudDeclaration(etat, noeudParametre))
+                    retourner faux;
+                nombreParametres = nombreParametres + 1;
+                si (!AccepterJetonDeclaration(etat, 41))
+                    continuerParametres = faux;
+            }
+        }
+        si (!ExigerJetonDeclaration(
+                etat,
+                35,
+                ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+            retourner faux;
+        si (estDestructeur && nombreParametres != 0)
+        {
+            SignalerErreurDeclaration(
+                etat,
+                ErreurAnalyseDeclarations::ParametreDestructeurInterdit,
+                position.Ligne,
+                position.Colonne);
+            retourner faux;
+        }
+
+        si (AccepterJetonDeclaration(etat, 73))
+        {
+            si (!estConstructeur)
+            {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::ListeInitialisationInterdite,
+                    position.Ligne,
+                    position.Colonne);
+                retourner faux;
+            }
+            booléen premier = vrai;
+            booléen continuerInitialiseurs = vrai;
+            tantque (continuerInitialiseurs)
+            {
+                JetonLexe* initialiseur = JetonCourantDeclaration(etat);
+                si (AccepterJetonDeclaration(etat, 72))
+                {
+                    si (!premier)
+                    {
+                        SignalerErreurDeclaration(
+                            etat,
+                            ErreurAnalyseDeclarations::InitialiseurConstructeurInvalide,
+                            initialiseur->Ligne,
+                            initialiseur->Colonne);
+                        retourner faux;
+                    }
+                    drapeaux = drapeaux | 512;
+                    si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+                    si (EstJetonDeclaration(etat, 41))
+                    {
+                        JetonLexe* virguleDelegation =
+                            JetonCourantDeclaration(etat);
+                        SignalerErreurDeclaration(
+                            etat,
+                            ErreurAnalyseDeclarations::InitialiseurConstructeurInvalide,
+                            virguleDelegation->Ligne,
+                            virguleDelegation->Colonne);
+                        retourner faux;
+                    }
+                    continuerInitialiseurs = faux;
+                }
+                sinon si (AccepterJetonDeclaration(etat, 75))
+                {
+                    si (!premier)
+                    {
+                        SignalerErreurDeclaration(
+                            etat,
+                            ErreurAnalyseDeclarations::InitialiseurConstructeurInvalide,
+                            initialiseur->Ligne,
+                            initialiseur->Colonne);
+                        retourner faux;
+                    }
+                    drapeaux = drapeaux | 256;
+                    si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+                }
+                sinon
+                {
+                    si (!ExigerJetonDeclaration(
+                            etat,
+                            1,
+                            ErreurAnalyseDeclarations::IdentifiantAttendu))
+                        retourner faux;
+                    drapeaux = drapeaux | 1024;
+                    si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+                }
+                premier = faux;
+                si (continuerInitialiseurs
+                    && !AccepterJetonDeclaration(etat, 41))
+                    continuerInitialiseurs = faux;
+            }
+        }
+        etat->NoeudsTravail[indexMembre].Drapeaux = drapeaux;
         retourner IgnorerCorpsDeclaration(etat);
     }
 
@@ -814,74 +1125,94 @@ espace Gs::Autohebergement
                         etat, contexte, indexStructure, vrai))
                     retourner faux;
             }
-            sinon si (courant->Genre == 68
-                || courant->Genre == 69
-                || courant->Genre == 70
-                || courant->Genre == 71
-                || courant->Genre == 74)
-            {
-                SignalerErreurDeclaration(
-                    etat,
-                    ErreurAnalyseDeclarations::MembreClasseNonPrisEnCharge,
-                    courant->Ligne,
-                    courant->Colonne);
-                retourner faux;
-            }
             sinon
             {
-                JetonLexe positionChamp = *courant;
-                TypeDeclarationInterne typeChamp;
-                si (!AnalyserTypeDeclaration(etat, &typeChamp)) retourner faux;
-                JetonLexe* nomChamp = JetonCourantDeclaration(etat);
-                si (!ExigerJetonDeclaration(
-                        etat,
-                        1,
-                        ErreurAnalyseDeclarations::IdentifiantAttendu))
-                    retourner faux;
-                si (!AnalyserDimensionsDeclaration(etat, &typeChamp))
-                    retourner faux;
-                si (EstJetonDeclaration(etat, 34))
+                booléen estMembreExecutable = faux;
+                si (estClasse)
                 {
-                    SignalerErreurDeclaration(
-                        etat,
-                        ErreurAnalyseDeclarations::MembreClasseNonPrisEnCharge,
-                        positionChamp.Ligne,
-                        positionChamp.Colonne);
-                    retourner faux;
-                }
-                naturel32 drapeauxChamp = visibilite;
-                si (AccepterJetonDeclaration(etat, 45))
-                {
-                    si (!estClasse)
+                    si (courant->Genre == 68
+                        || courant->Genre == 69
+                        || courant->Genre == 70
+                        || courant->Genre == 74)
+                        estMembreExecutable = vrai;
+                    sinon
                     {
-                        SignalerErreurDeclaration(
-                            etat,
-                            ErreurAnalyseDeclarations::InitialiseurChampHorsClasse,
-                            positionChamp.Ligne,
-                            positionChamp.Colonne);
-                        retourner faux;
+                        naturel64 positionSauvee = etat->Position;
+                        TypeDeclarationInterne typeTeste;
+                        si (AnalyserTypeDeclaration(etat, &typeTeste))
+                        {
+                            si (EstJetonDeclaration(etat, 71))
+                                estMembreExecutable = vrai;
+                            sinon si (EstJetonDeclaration(etat, 1))
+                            {
+                                etat->Position = etat->Position + 1;
+                                si (EstJetonDeclaration(etat, 34))
+                                    estMembreExecutable = vrai;
+                            }
+                        }
+                        etat->Position = positionSauvee;
                     }
-                    drapeauxChamp = drapeauxChamp | 4;
-                    si (!IgnorerExpressionDeclaration(etat, 40, 40))
+                }
+                si (estMembreExecutable)
+                {
+                    ContexteMembreClasseDeclaration contexteMembre = {
+                        contexte,
+                        indexStructure,
+                        visibilite,
+                        nom};
+                    si (!AnalyserMembreClasseDeclaration(
+                            etat, &contexteMembre))
                         retourner faux;
                 }
-                si (!ExigerJetonDeclaration(
-                        etat,
-                        40,
-                        ErreurAnalyseDeclarations::PointVirguleAttendu))
-                    retourner faux;
-                NoeudDeclaration champ = {
-                    7,
-                    positionChamp.Ligne,
-                    positionChamp.Colonne,
-                    drapeauxChamp,
-                    indexStructure,
-                    nomChamp->Debut,
-                    nomChamp->TailleSource,
-                    nomChamp->HachageTexte,
-                    contexte->Hachage,
-                    HacherTypeDeclaration(&typeChamp)};
-                si (!AjouterNoeudDeclaration(etat, champ)) retourner faux;
+                sinon
+                {
+                    JetonLexe positionChamp = *courant;
+                    TypeDeclarationInterne typeChamp;
+                    si (!AnalyserTypeDeclaration(etat, &typeChamp))
+                        retourner faux;
+                    JetonLexe* nomChamp = JetonCourantDeclaration(etat);
+                    si (!ExigerJetonDeclaration(
+                            etat,
+                            1,
+                            ErreurAnalyseDeclarations::IdentifiantAttendu))
+                        retourner faux;
+                    si (!AnalyserDimensionsDeclaration(etat, &typeChamp))
+                        retourner faux;
+                    naturel32 drapeauxChamp = visibilite;
+                    si (AccepterJetonDeclaration(etat, 45))
+                    {
+                        si (!estClasse)
+                        {
+                            SignalerErreurDeclaration(
+                                etat,
+                                ErreurAnalyseDeclarations::InitialiseurChampHorsClasse,
+                                positionChamp.Ligne,
+                                positionChamp.Colonne);
+                            retourner faux;
+                        }
+                        drapeauxChamp = drapeauxChamp | 4;
+                        si (!IgnorerExpressionDeclaration(etat, 40, 40))
+                            retourner faux;
+                    }
+                    si (!ExigerJetonDeclaration(
+                            etat,
+                            40,
+                            ErreurAnalyseDeclarations::PointVirguleAttendu))
+                        retourner faux;
+                    NoeudDeclaration champ = {
+                        7,
+                        positionChamp.Ligne,
+                        positionChamp.Colonne,
+                        drapeauxChamp,
+                        indexStructure,
+                        nomChamp->Debut,
+                        nomChamp->TailleSource,
+                        nomChamp->HachageTexte,
+                        contexte->Hachage,
+                        HacherTypeDeclaration(&typeChamp)};
+                    si (!AjouterNoeudDeclaration(etat, champ))
+                        retourner faux;
+                }
             }
         }
 

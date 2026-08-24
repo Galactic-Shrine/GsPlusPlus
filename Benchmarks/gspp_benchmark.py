@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Banc de mesure reproductible pour Gs++ 0.27.0-alpha.3.
+"""Banc de mesure reproductible pour Gs++ 0.27.0-alpha.4.
 
 Le pilote n'invente ni syntaxe ni option du compilateur : tous les corpus et
 les lignes de commande proviennent des tests d'intégration du dépôt.
@@ -31,9 +31,9 @@ from xml.sax.saxutils import quoteattr
 
 
 SCHEMA_VERSION = 1
-EXPECTED_COMPILER_VERSION = "0.27.0-alpha.3"
-EXPECTED_COMPILER_BANNER = "Gs++ Compiler 0.27.0-alpha.3"
-EXPECTED_LOADER_BANNER = "Chargeur GsE 0.27.0-alpha.3"
+EXPECTED_COMPILER_VERSION = "0.27.0-alpha.4"
+EXPECTED_COMPILER_BANNER = "Gs++ Compiler 0.27.0-alpha.4"
+EXPECTED_LOADER_BANNER = "Chargeur GsE 0.27.0-alpha.4"
 BENCHMARK_VERSION = "1.0.0"
 DEFAULT_BOOTSTRAP_SAMPLES = 2_000
 
@@ -125,15 +125,15 @@ SCENARIO_CATALOG = {
 
 def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Banc de mesure Gs++ 0.27.0-alpha.3 fondé sur les corpus validés.",
+        description="Banc de mesure Gs++ 0.27.0-alpha.4 fondé sur les corpus validés.",
     )
     parser.add_argument(
         "--source-root",
         type=Path,
         help="Racine du dépôt Gs++. Par défaut, elle est déduite de ce script.",
     )
-    parser.add_argument("--compiler", type=Path, help="Chemin de gsppc 0.27.0-alpha.3.")
-    parser.add_argument("--loader", type=Path, help="Chemin de gsechargeur 0.27.0-alpha.3.")
+    parser.add_argument("--compiler", type=Path, help="Chemin de gsppc 0.27.0-alpha.4.")
+    parser.add_argument("--loader", type=Path, help="Chemin de gsechargeur 0.27.0-alpha.4.")
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -177,7 +177,7 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--allow-version-mismatch",
         action="store_true",
-        help="Autoriser un compilateur ne déclarant pas 0.27.0-alpha.3 (signalé dans les métadonnées).",
+        help="Autoriser un compilateur ne déclarant pas 0.27.0-alpha.4 (signalé dans les métadonnées).",
     )
     parser.add_argument(
         "--list-scenarios",

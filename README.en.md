@@ -27,13 +27,14 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — `0.27.0-alpha.3`**
+> **Current status — `0.27.0-alpha.4`**
 >
 > This prerelease can be used to evaluate and develop with the current Gs++
 > toolchain. Binary formats 1.0 and ABI 1 are validated, while the self-hosted
-> frontend remains in development. The lexer and the AST for functions,
-> globals, aggregates, enumerations, and aliases are now written and validated
-> in Gs++. Statements, expressions, and class methods remain to be migrated.
+> frontend remains in development. The lexer and the declaration AST,
+> including class methods, constructors, destructors, and operators, are now
+> written and validated in Gs++. Statements and expressions remain to be
+> migrated.
 
 ## Language principles
 
@@ -169,7 +170,7 @@ Construction/Ninja/Release/Bin/gsppc \
 
 ## Downloading a prerelease
 
-The [`0.27.0-alpha.3` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.3)
+The [`0.27.0-alpha.4` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.4)
 provides x86-64 packages for Windows and Linux. Each package contains the
 tools, SDK headers, Gs++ libraries, examples, and Markdown documentation. Use
 `SHA256SUMS.txt` to verify downloads.
@@ -196,7 +197,7 @@ GsPlusPlus/
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Conformance matrix](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Self-hosted frontend 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [`0.27.0-alpha.3` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.3.md)
+- [`0.27.0-alpha.4` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.4.md)
 - [Roadmap](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 All normative documentation is maintained in Markdown as its primary source.

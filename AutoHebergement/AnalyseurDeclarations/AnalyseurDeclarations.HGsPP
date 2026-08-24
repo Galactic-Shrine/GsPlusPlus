@@ -1,9 +1,10 @@
 // Frontend auto-hébergé Gs++ 0.27 : première tranche de l'AST syntaxique.
 //
-// L'analyseur couvre les déclarations de fonctions libres, leurs paramètres
-// et les espaces de noms. Les corps sont délimités syntaxiquement mais leur
-// AST d'instructions appartient à la tranche suivante. Le stockage de sortie
-// appartient à l'appelant ; l'AST de travail est construit dans une arène.
+// L'analyseur couvre les déclarations de code et de données, y compris les
+// membres exécutables des classes. Les corps et expressions sont délimités
+// syntaxiquement mais leur AST interne appartient aux tranches suivantes. Le
+// stockage de sortie appartient à l'appelant ; l'AST de travail est construit
+// dans une arène.
 
 espace Gs::Autohebergement
 {
@@ -51,6 +52,18 @@ espace Gs::Autohebergement
         ExpectedColon = 19,
         InitialiseurChampHorsClasse = 20,
         DefaultFieldInitializerOutsideClass = 20,
+        OperateurSurchargeableAttendu = 21,
+        ExpectedOverloadableOperator = 21,
+        ModificateurMembreDuplique = 22,
+        DuplicateMemberModifier = 22,
+        ModificateurConstructeurInterdit = 23,
+        InvalidConstructorModifier = 23,
+        ParametreDestructeurInterdit = 24,
+        DestructorParameterForbidden = 24,
+        ListeInitialisationInterdite = 25,
+        InitializerListForbidden = 25,
+        InitialiseurConstructeurInvalide = 26,
+        InvalidConstructorInitializer = 26,
     };
 
     énumération GenreNoeudDeclaration
@@ -77,6 +90,14 @@ espace Gs::Autohebergement
         Alias = 10,
         AliasChamp = 11,
         FieldAlias = 11,
+        Methode = 12,
+        Method = 12,
+        FonctionConstructeur = 13,
+        ConstructorFunction = 13,
+        FonctionDestructeur = 14,
+        DestructorFunction = 14,
+        SurchargeOperateur = 15,
+        OperatorOverload = 15,
     };
 
     énumération DrapeauNoeudDeclaration
@@ -95,6 +116,16 @@ espace Gs::Autohebergement
         Private = 16,
         HeritagePresent = 32,
         HasBase = 32,
+        Virtuelle = 64,
+        Virtual = 64,
+        Remplacement = 128,
+        Override = 128,
+        InitialiseurBasePresent = 256,
+        HasBaseInitializer = 256,
+        DelegationConstructeurPresente = 512,
+        HasDelegatingConstructor = 512,
+        InitialiseurChampPresent = 1024,
+        HasFieldInitializer = 1024,
     };
 
     structure NoeudDeclaration

@@ -37,7 +37,7 @@ add_custom_command(
         --format gse
         --point-entree Gs::Autohebergement::ClassifierMotCle
         --nom "Classificateur Gs++"
-        --version-application 0.27.0-alpha.5
+        --version-application 0.27.0-alpha.6
         -o "${GS_CLASSIFICATEUR_GSE}"
     DEPENDS
         gsppc
@@ -73,7 +73,7 @@ add_custom_command(
         --format gse
         --point-entree Gs::Autohebergement::AnalyserSource
         --nom "Lexeur auto-hébergé Gs++"
-        --version-application 0.27.0-alpha.5
+        --version-application 0.27.0-alpha.6
         -o "${GS_LEXEUR_GSE}"
     DEPENDS
         gsppc
@@ -113,7 +113,7 @@ add_custom_command(
         --format gse
         --point-entree Gs::Autohebergement::AnalyserDeclarationsSource
         --nom "Analyseur de déclarations auto-hébergé Gs++"
-        --version-application 0.27.0-alpha.5
+        --version-application 0.27.0-alpha.6
         -o "${GS_ANALYSEUR_DECLARATIONS_GSE}"
     DEPENDS
         gsppc

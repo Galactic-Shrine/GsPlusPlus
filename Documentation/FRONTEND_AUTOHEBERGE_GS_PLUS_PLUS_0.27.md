@@ -1,15 +1,16 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur VALIDÉ, AST DES DÉCLARATIONS ET DES INSTRUCTIONS VALIDÉ —
-24 août 2026.**
+**EN COURS — lexeur et AST syntaxique des déclarations, instructions et
+expressions VALIDÉS — 25 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
 l’alpha.2 ajoute les fonctions libres et leurs paramètres, l’alpha.3 étend le
 même AST compact aux déclarations de données, l’alpha.4 couvre les méthodes,
 constructeurs, destructeurs et opérateurs de classes, puis l’alpha.5 construit
-la hiérarchie des blocs et instructions. Le jalon 0.27 complet n’est pas encore
-validé : l’AST interne des expressions et les premières étapes sémantiques
+la hiérarchie des blocs et instructions. L’alpha.6 ajoute l’AST interne des
+expressions avec les mêmes priorités et associativités que le bootstrap. Le
+jalon 0.27 complet n’est pas encore validé : les premières étapes sémantiques
 restent à migrer.
 
 ## Lexeur auto-hébergé validé
@@ -86,7 +87,7 @@ Les images GsE MSVC et GNU sont identiques :
 
 ```text
 taille  : 40 897 octets
-SHA-256 : 0acf3de55700a6a2049b2f88ddcb8c2515eb3d37bc3f5bb22ef71c4916e81114
+SHA-256 : 3cc82b52d5d55c00284a8074fb5fc8fad6b71aa4ddb6c2437506f68af812d5d2
 ```
 
 Le vérificateur confirme une image GsE 1.0 valide, ABI 1, avec trois segments,
@@ -98,7 +99,7 @@ Windows et WSL : leur table de symboles conserve les chemins absolus
 tout au même GsE. La canonicalisation des chemins de provenance reste un point
 explicite du durcissement et de la reproductibilité 0.29.
 
-## AST auto-hébergé — tranches alpha.2 à alpha.5
+## AST auto-hébergé — tranches alpha.2 à alpha.6
 
 Les fichiers canoniques de la deuxième tranche sont :
 
@@ -109,7 +110,8 @@ Les fichiers canoniques de la deuxième tranche sont :
 - `Tests/AutoHebergement/AutoHebergement.cpp` pour la comparaison avec les
   objets `Programme`, `Fonction`, `Parametre`, `VariableGlobale`, `Structure`,
   `ChampStructure`, `Enumeration`, `Enumerateur`, les deux catégories d’alias
-  les membres exécutables de classes et les instructions du bootstrap C++.
+  les membres exécutables de classes, les instructions et les expressions du
+  bootstrap C++.
 
 L’export public est :
 
@@ -126,7 +128,9 @@ appel correctement dimensionné retourne l’AST complet. Chaque
 - le genre programme, fonction, paramètre, variable globale, structure, union,
   classe, champ, énumération, énumérateur, alias, alias de champ, méthode,
   constructeur, destructeur, surcharge d’opérateur, bloc, retour, instruction
-  d’expression, variable locale, conditionnelle ou boucle `tantque` ;
+  d’expression, variable locale, conditionnelle, boucle `tantque`, littéral,
+  référence de variable, expression unaire ou binaire, affectation, appel,
+  accès membre, indexation, conversion ou agrégat ;
 - la ligne et la colonne du début de la déclaration ;
 - le parent et les drapeaux de visibilité, caractère externe, définition ou
   initialiseur présent, héritage, virtualité, remplacement et forme de liste
@@ -134,6 +138,15 @@ appel correctement dimensionné retourne l’AST complet. Chaque
 - la tranche source et le hachage FNV-1a du nom ;
 - l’empreinte de l’espace de noms ;
 - une empreinte de type normalisée entre les mots-clés français et anglais.
+
+Les expressions sont émises en préordre sous la déclaration ou l’instruction
+qui les porte. Les enfants d’une expression unaire, binaire, d’une affectation,
+d’un appel, d’un accès membre, d’une indexation, d’une conversion ou d’un
+agrégat sont rattachés au nœud compact correspondant. Les valeurs entières sont
+conservées dans `HachageType`, les chaînes sous forme de hachage de leur texte
+décodé et les conversions sous forme d’empreinte normalisée du type cible. Des
+drapeaux distinguent les littéraux booléens, les accès via pointeur et les
+références canoniques à la base `parent` / `super`.
 
 L’empreinte de type couvre les types natifs, les types qualifiés, `constante`/
 `const`, `volatile`, les pointeurs, les références et les dimensions de
@@ -173,8 +186,15 @@ au programme produit par `GsPP::AnalyseurSyntaxique` :
 - conditionnelles avec branches simples ou imbriquées et boucles `tantque` ;
 - relations parent-enfant en préordre entre fonctions, blocs, contrôles et
   branches ;
+- expressions des globales, énumérateurs, champs, listes d’initialisation de
+  constructeurs, retours, variables locales, conditions et boucles ;
+- onze genres d’expressions, six opérateurs unaires, dix-huit opérateurs
+  binaires, affectation associative à droite, appels, membres directs ou via
+  pointeur, indexations, conversions, agrégats et noms qualifiés ;
+- relations parent-enfant en préordre entre chaque porteur syntaxique et toutes
+  ses sous-expressions ;
 - interrogation de capacité, capacité partielle et requêtes invalides ;
-- vingt-deux diagnostics syntaxiques avec ligne et colonne identiques au
+- trente-trois diagnostics syntaxiques avec ligne et colonne identiques au
   bootstrap ;
 - propagation distincte des erreurs lexicales ;
 - relations parent-enfant vérifiées entre classes, membres exécutables et
@@ -183,23 +203,22 @@ au programme produit par `GsPP::AnalyseurSyntaxique` :
 Les constructions MSVC et GNU produisent un `AnalyseurDeclarations.GsE`
 identique bit à bit. La validation détaillée et les empreintes sont consignées
 dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.5.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.5.md).
+[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.6.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.6.md).
 
-Cette tranche construit l’AST des corps et de leurs instructions, mais ne
-construit pas encore l’AST interne des expressions. Leur présence est décrite
-par des drapeaux et leurs délimiteurs sont vérifiés. Les classes sont couvertes
-pour leurs données, leur héritage, leurs membres exécutables et leurs corps. Ce
-périmètre reste volontairement annoncé comme `PARTIEL` tant que les expressions
-et les premières étapes sémantiques ne sont pas auto-hébergées.
+Cette tranche construit l’AST des corps, de leurs instructions et de leurs
+expressions. Les classes sont couvertes pour leurs données, leur héritage, leurs
+membres exécutables et leurs corps. Ce périmètre reste volontairement annoncé
+comme `PARTIEL` tant que les premières résolutions sémantiques ne sont pas
+auto-hébergées.
 
 ## Travaux restant dans Gs++ 0.27
 
-- migrer la hiérarchie complète des expressions ;
 - migrer les premières résolutions sémantiques ;
-- comparer les AST et diagnostics au bootstrap C++ ;
+- définir le contrat public de la première tranche sémantique sans casser le
+  nœud syntaxique compact ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.5`. Aucun statut
+Les outils de la tranche publique annoncent `0.27.0-alpha.6`. Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

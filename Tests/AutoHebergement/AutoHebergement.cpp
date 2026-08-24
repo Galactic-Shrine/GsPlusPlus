@@ -440,6 +440,152 @@ namespace
         return hachage;
     }
 
+    void AjouterExpressionReference(
+        const GsPP::Expression& expression,
+        std::size_t parent,
+        std::uint64_t hachageEspace,
+        std::vector<NoeudDeclarationHote>& resultat)
+    {
+        const auto ligne = static_cast<std::uint32_t>(
+            expression.Position.Ligne);
+        const auto colonne = static_cast<std::uint32_t>(
+            expression.Position.Colonne);
+        const auto ajouter = [&](
+            std::uint32_t genre,
+            std::uint32_t drapeaux = 0,
+            std::uint64_t hachageNom = 0,
+            std::uint64_t hachageType = 0)
+        {
+            const auto index = resultat.size();
+            resultat.push_back({
+                genre, ligne, colonne, drapeaux, parent,
+                0, 0, hachageNom, hachageEspace, hachageType});
+            return index;
+        };
+
+        switch (expression.Genre)
+        {
+            case GsPP::GenreExpression::Entier:
+            {
+                const auto& entier = static_cast<
+                    const GsPP::ExpressionEntier&>(expression);
+                ajouter(
+                    22,
+                    entier.EstLitteralBooleen ? 16'384U : 0U,
+                    0,
+                    entier.Valeur);
+                return;
+            }
+            case GsPP::GenreExpression::Chaine:
+            {
+                const auto& chaine = static_cast<
+                    const GsPP::ExpressionChaine&>(expression);
+                ajouter(23, 0, HacherTexte(chaine.Valeur));
+                return;
+            }
+            case GsPP::GenreExpression::Variable:
+            {
+                const auto& variable = static_cast<
+                    const GsPP::ExpressionVariable&>(expression);
+                ajouter(
+                    24,
+                    variable.EstBase ? 65'536U : 0U,
+                    HacherTexte(variable.Nom));
+                return;
+            }
+            case GsPP::GenreExpression::Unaire:
+            {
+                const auto& unaire = static_cast<
+                    const GsPP::ExpressionUnaire&>(expression);
+                const auto index = ajouter(
+                    25, 0, HacherTexte(unaire.Operateur));
+                AjouterExpressionReference(
+                    *unaire.Operande, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Binaire:
+            {
+                const auto& binaire = static_cast<
+                    const GsPP::ExpressionBinaire&>(expression);
+                const auto index = ajouter(
+                    26, 0, HacherTexte(binaire.Operateur));
+                AjouterExpressionReference(
+                    *binaire.Gauche, index, hachageEspace, resultat);
+                AjouterExpressionReference(
+                    *binaire.Droite, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Affectation:
+            {
+                const auto& affectation = static_cast<
+                    const GsPP::ExpressionAffectation&>(expression);
+                const auto index = ajouter(27);
+                AjouterExpressionReference(
+                    *affectation.Cible, index, hachageEspace, resultat);
+                AjouterExpressionReference(
+                    *affectation.Valeur, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Appel:
+            {
+                const auto& appel = static_cast<
+                    const GsPP::ExpressionAppel&>(expression);
+                const auto index = ajouter(28);
+                AjouterExpressionReference(
+                    *appel.Cible, index, hachageEspace, resultat);
+                for (const auto& argument : appel.Arguments)
+                    AjouterExpressionReference(
+                        *argument, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Membre:
+            {
+                const auto& membre = static_cast<
+                    const GsPP::ExpressionMembre&>(expression);
+                const auto index = ajouter(
+                    29,
+                    membre.ViaPointeur ? 32'768U : 0U,
+                    HacherTexte(membre.Membre));
+                AjouterExpressionReference(
+                    *membre.Objet, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Index:
+            {
+                const auto& indexation = static_cast<
+                    const GsPP::ExpressionIndex&>(expression);
+                const auto index = ajouter(30);
+                AjouterExpressionReference(
+                    *indexation.Objet, index, hachageEspace, resultat);
+                AjouterExpressionReference(
+                    *indexation.Indice, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Conversion:
+            {
+                const auto& conversion = static_cast<
+                    const GsPP::ExpressionConversion&>(expression);
+                const auto index = ajouter(
+                    31, 0, 0, HacherTypeDeclaration(conversion.TypeCible));
+                AjouterExpressionReference(
+                    *conversion.Valeur, index, hachageEspace, resultat);
+                return;
+            }
+            case GsPP::GenreExpression::Agregat:
+            {
+                const auto& agregat = static_cast<
+                    const GsPP::ExpressionAgregat&>(expression);
+                const auto index = ajouter(32);
+                for (const auto& element : agregat.Elements)
+                    AjouterExpressionReference(
+                        *element, index, hachageEspace, resultat);
+                return;
+            }
+        }
+        throw std::runtime_error(
+            "expression absente de la tranche AST auto-hébergée");
+    }
+
     void AjouterInstructionReference(
         const GsPP::Instruction& instruction,
         std::size_t parent,
@@ -469,16 +615,33 @@ namespace
             {
                 const auto& retour = static_cast<
                     const GsPP::InstructionRetour&>(instruction);
+                const auto indexRetour = resultat.size();
                 resultat.push_back({
                     17, ligne, colonne, retour.Valeur ? 2048U : 0U,
                     parent, 0, 0, 0, hachageEspace, 0});
+                if (retour.Valeur)
+                    AjouterExpressionReference(
+                        *retour.Valeur,
+                        indexRetour,
+                        hachageEspace,
+                        resultat);
                 return;
             }
             case GsPP::GenreInstruction::Expression:
+            {
+                const auto& instructionExpression = static_cast<
+                    const GsPP::InstructionExpression&>(instruction);
+                const auto indexExpression = resultat.size();
                 resultat.push_back({
                     18, ligne, colonne, 2048U, parent,
                     0, 0, 0, hachageEspace, 0});
+                AjouterExpressionReference(
+                    *instructionExpression.Valeur,
+                    indexExpression,
+                    hachageEspace,
+                    resultat);
                 return;
+            }
             case GsPP::GenreInstruction::Variable:
             {
                 const auto& variable = static_cast<
@@ -486,10 +649,24 @@ namespace
                 std::uint32_t drapeaux = 0;
                 if (variable.Initialiseur) drapeaux |= 4U | 2048U;
                 if (variable.ConstructionExplicite) drapeaux |= 8192U;
+                const auto indexVariable = resultat.size();
                 resultat.push_back({
                     19, ligne, colonne, drapeaux, parent,
                     0, 0, HacherTexte(variable.Nom), hachageEspace,
                     HacherTypeDeclaration(variable.Type)});
+                if (variable.Initialiseur)
+                    AjouterExpressionReference(
+                        *variable.Initialiseur,
+                        indexVariable,
+                        hachageEspace,
+                        resultat);
+                else
+                    for (const auto& argument : variable.ArgumentsConstruction)
+                        AjouterExpressionReference(
+                            *argument,
+                            indexVariable,
+                            hachageEspace,
+                            resultat);
                 return;
             }
             case GsPP::GenreInstruction::Si:
@@ -501,6 +678,11 @@ namespace
                     20, ligne, colonne,
                     2048U | (conditionnelle.Sinon ? 4096U : 0U),
                     parent, 0, 0, 0, hachageEspace, 0});
+                AjouterExpressionReference(
+                    *conditionnelle.Condition,
+                    indexConditionnelle,
+                    hachageEspace,
+                    resultat);
                 AjouterInstructionReference(
                     *conditionnelle.Alors,
                     indexConditionnelle,
@@ -522,6 +704,11 @@ namespace
                 resultat.push_back({
                     21, ligne, colonne, 2048U, parent,
                     0, 0, 0, hachageEspace, 0});
+                AjouterExpressionReference(
+                    *boucle.Condition,
+                    indexBoucle,
+                    hachageEspace,
+                    resultat);
                 AjouterInstructionReference(
                     *boucle.Corps, indexBoucle, hachageEspace, resultat);
                 return;
@@ -747,8 +934,8 @@ namespace
                             hachageNom,
                             HacherTexte(structure.Espace),
                             HacherTypeDeclaration(fonction.TypeRetour)});
-                        for (std::size_t indexParametre = 1;
-                             indexParametre < fonction.Parametres.size();
+                         for (std::size_t indexParametre = 1;
+                              indexParametre < fonction.Parametres.size();
                              ++indexParametre)
                         {
                             const auto& parametre =
@@ -764,11 +951,40 @@ namespace
                                 0,
                                 0,
                                 HacherTexte(parametre.Nom),
-                                HacherTexte(structure.Espace),
-                                HacherTypeDeclaration(parametre.Type)});
+                                 HacherTexte(structure.Espace),
+                                 HacherTypeDeclaration(parametre.Type)});
+                         }
+                        if (fonction.DelegueConstructeur)
+                        {
+                            for (const auto& argument :
+                                 fonction.ArgumentsConstructeurDelegue)
+                                AjouterExpressionReference(
+                                    *argument,
+                                    indexFonction,
+                                    HacherTexte(structure.Espace),
+                                    resultat);
                         }
-                        if (fonction.Corps)
-                            AjouterInstructionReference(
+                        else
+                        {
+                            for (const auto& argument :
+                                 fonction.ArgumentsConstructeurBase)
+                                AjouterExpressionReference(
+                                    *argument,
+                                    indexFonction,
+                                    HacherTexte(structure.Espace),
+                                    resultat);
+                            for (const auto& initialiseur :
+                                 fonction.InitialiseursChamps)
+                                for (const auto& argument :
+                                     initialiseur.Arguments)
+                                    AjouterExpressionReference(
+                                        *argument,
+                                        indexFonction,
+                                        HacherTexte(structure.Espace),
+                                        resultat);
+                        }
+                         if (fonction.Corps)
+                             AjouterInstructionReference(
                                 *fonction.Corps,
                                 indexFonction,
                                 HacherTexte(structure.Espace),
@@ -788,6 +1004,7 @@ namespace
                     else
                         drapeauxChamp |= 16U;
                     if (champ.InitialiseurParDefaut) drapeauxChamp |= 4U;
+                    const auto indexChamp = resultat.size();
                     resultat.push_back({
                         7,
                         static_cast<std::uint32_t>(champ.Position.Ligne),
@@ -799,6 +1016,12 @@ namespace
                         HacherTexte(champ.Nom),
                         HacherTexte(structure.Espace),
                         HacherTypeDeclaration(champ.Type)});
+                    if (champ.InitialiseurParDefaut)
+                        AjouterExpressionReference(
+                            *champ.InitialiseurParDefaut,
+                            indexChamp,
+                            HacherTexte(structure.Espace),
+                            resultat);
                 }
                 continue;
             }
@@ -820,6 +1043,8 @@ namespace
                     HacherTexte(enumeration.Espace),
                     0});
                 for (const auto& valeur : enumeration.Valeurs)
+                {
+                    const auto indexEnumerateur = resultat.size();
                     resultat.push_back({
                         9,
                         static_cast<std::uint32_t>(valeur.Position.Ligne),
@@ -831,6 +1056,13 @@ namespace
                         HacherTexte(valeur.Nom),
                         HacherTexte(enumeration.Espace),
                         0});
+                    if (valeur.Initialiseur)
+                        AjouterExpressionReference(
+                            *valeur.Initialiseur,
+                            indexEnumerateur,
+                            HacherTexte(enumeration.Espace),
+                            resultat);
+                }
                 continue;
             }
             if (racine.Genre == GenreRacine::VariableGlobale)
@@ -842,6 +1074,7 @@ namespace
                 if (variable.EstPublique) drapeaux |= 1U;
                 if (variable.EstExterne) drapeaux |= 2U;
                 if (variable.Initialiseur) drapeaux |= 4U;
+                const auto indexVariable = resultat.size();
                 resultat.push_back({
                     3,
                     static_cast<std::uint32_t>(variable.Position.Ligne),
@@ -853,6 +1086,12 @@ namespace
                     HacherTexte(variable.Nom),
                     HacherTexte(variable.Espace),
                     HacherTypeDeclaration(variable.Type)});
+                if (variable.Initialiseur)
+                    AjouterExpressionReference(
+                        *variable.Initialiseur,
+                        indexVariable,
+                        HacherTexte(variable.Espace),
+                        resultat);
                 continue;
             }
             if (racine.Genre == GenreRacine::Fonction)
@@ -1265,7 +1504,13 @@ namespace
                 || courant.Genre == 17
                 || courant.Genre == 18
                 || courant.Genre == 20
-                || courant.Genre == 21;
+                || courant.Genre == 21
+                || courant.Genre == 22
+                || courant.Genre == 27
+                || courant.Genre == 28
+                || courant.Genre == 30
+                || courant.Genre == 31
+                || courant.Genre == 32;
             if (nomAnonyme)
             {
                 Exiger(
@@ -1285,6 +1530,25 @@ namespace
             const auto nom = std::string_view(source).substr(
                 static_cast<std::size_t>(courant.DebutNom),
                 static_cast<std::size_t>(courant.TailleNom));
+            if (courant.Genre == 23)
+            {
+                const auto jetonsChaine = GsPP::Lexeur(
+                    std::string(nom), "chaine-expression").Analyser();
+                Exiger(
+                    jetonsChaine.size() == 2
+                        && jetonsChaine.front().Genre
+                            == GsPP::GenreJeton::ChaineCaracteres
+                        && HacherTexte(jetonsChaine.front().Texte)
+                            == courant.HachageNom,
+                    "hachage de chaîne incohérent dans l’AST Gs++ pour "
+                        + std::string(nomCorpus));
+                continue;
+            }
+            if (courant.Genre == 24
+                && courant.HachageNom == HacherTexte("soi")
+                && (nom == "soi" || nom == "this"
+                    || nom == "parent" || nom == "super"))
+                continue;
             Exiger(
                 HacherTexte(nom) == courant.HachageNom,
                 "hachage de nom incohérent dans l’AST Gs++ pour "
@@ -1725,6 +1989,191 @@ namespace
                     "instruction rattachée à un parent syntaxique invalide");
         }
 
+        const std::string expressionsFrancaises =
+            "espace Expressions {\n"
+            "  entier32 Globale = convertir<entier32>(1 + 2);\n"
+            "  énumération Drapeau { Premier = 1 << 2, Second = 3, };\n"
+            "  classe Objet {\n"
+            "    publique:\n"
+            "    entier32 Champ = 7;\n"
+            "    constructeur(entier32 valeur) : Champ(valeur + 1) {}\n"
+            "    entier32 Evaluer(Objet* pointeur, entier32 entree) {\n"
+            "      entier32 a = 1_234;\n"
+            "      entier32 b = vrai;\n"
+            "      caractère* texte = \"Gs++\\n\";\n"
+            "      entier32 tableau[3] = {1, 2, 3};\n"
+            "      a = b = 4;\n"
+            "      a = +a + -b + !faux + ~a + &a + *pointeur;\n"
+            "      a = (a || b) && ((a | b) ^ (a & b));\n"
+            "      a = (a == b) + (a != b) + (a < b) + (a <= b);\n"
+            "      a = (a > b) + (a >= b) + (a << 1) + (b >> 2);\n"
+            "      a = a + b - a * b / 2 % 3;\n"
+            "      a = Calculer(tableau[1], convertir<entier32>(entree));\n"
+            "      soi.Champ = parent.Champ;\n"
+            "      pointeur->Champ = soi.Champ;\n"
+            "      retourner texte[0] + API::Valeur;\n"
+            "    }\n"
+            "  };\n"
+            "}\n";
+        const std::string expressionsAnglaises =
+            "namespace Expressions {\n"
+            "  int32 Globale = cast<int32>(1 + 2);\n"
+            "  enum Drapeau { Premier = 1 << 2, Second = 3, };\n"
+            "  class Objet {\n"
+            "    public:\n"
+            "    int32 Champ = 7;\n"
+            "    constructor(int32 valeur) : Champ(valeur + 1) {}\n"
+            "    int32 Evaluer(Objet* pointeur, int32 entree) {\n"
+            "      int32 a = 1_234;\n"
+            "      int32 b = true;\n"
+            "      char* texte = \"Gs++\\n\";\n"
+            "      int32 tableau[3] = {1, 2, 3};\n"
+            "      a = b = 4;\n"
+            "      a = +a + -b + !false + ~a + &a + *pointeur;\n"
+            "      a = (a || b) && ((a | b) ^ (a & b));\n"
+            "      a = (a == b) + (a != b) + (a < b) + (a <= b);\n"
+            "      a = (a > b) + (a >= b) + (a << 1) + (b >> 2);\n"
+            "      a = a + b - a * b / 2 % 3;\n"
+            "      a = Calculer(tableau[1], cast<int32>(entree));\n"
+            "      this.Champ = super.Champ;\n"
+            "      pointeur->Champ = this.Champ;\n"
+            "      return texte[0] + API::Valeur;\n"
+            "    }\n"
+            "  };\n"
+            "}\n";
+        const auto astExpressionsFrancais = ComparerDeclarations(
+            analyseur,
+            expressionsFrancaises,
+            "expressions-francaises");
+        const auto astExpressionsAnglais = ComparerDeclarations(
+            analyseur,
+            expressionsAnglaises,
+            "expressions-anglaises");
+        Exiger(
+            astExpressionsFrancais.size() == astExpressionsAnglais.size(),
+            "les AST d’expressions français et anglais ont des tailles différentes");
+        for (std::size_t index = 0;
+             index < astExpressionsFrancais.size();
+             ++index)
+            Exiger(
+                MemeStructureDeclaration(
+                    astExpressionsFrancais[index],
+                    astExpressionsAnglais[index]),
+                "les AST d’expressions français et anglais divergent au rang "
+                    + std::to_string(index));
+
+        for (std::uint32_t genre = 22; genre <= 32; ++genre)
+            Exiger(
+                std::any_of(
+                    astExpressionsFrancais.begin(),
+                    astExpressionsFrancais.end(),
+                    [genre](const NoeudDeclarationHote& noeud)
+                    {
+                        return noeud.Genre == genre;
+                    }),
+                "genre d’expression auto-hébergé absent : "
+                    + std::to_string(genre));
+
+        const std::array<std::string_view, 6> operateursUnaires{
+            "+", "-", "!", "~", "&", "*"};
+        for (const auto operateur : operateursUnaires)
+            Exiger(
+                std::any_of(
+                    astExpressionsFrancais.begin(),
+                    astExpressionsFrancais.end(),
+                    [operateur](const NoeudDeclarationHote& noeud)
+                    {
+                        return noeud.Genre == 25
+                            && noeud.HachageNom == HacherTexte(operateur);
+                    }),
+                "opérateur unaire absent de l’AST : "
+                    + std::string(operateur));
+        const std::array<std::string_view, 18> operateursBinaires{
+            "||", "&&", "|", "^", "&", "==", "!=", "<", "<=",
+            ">", ">=", "<<", ">>", "+", "-", "*", "/", "%"};
+        for (const auto operateur : operateursBinaires)
+            Exiger(
+                std::any_of(
+                    astExpressionsFrancais.begin(),
+                    astExpressionsFrancais.end(),
+                    [operateur](const NoeudDeclarationHote& noeud)
+                    {
+                        return noeud.Genre == 26
+                            && noeud.HachageNom == HacherTexte(operateur);
+                    }),
+                "opérateur binaire absent de l’AST : "
+                    + std::string(operateur));
+
+        Exiger(
+            std::any_of(
+                astExpressionsFrancais.begin(),
+                astExpressionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 22
+                        && (noeud.Drapeaux & 16'384U) != 0;
+                }),
+            "les littéraux booléens ne sont pas distingués des entiers");
+        Exiger(
+            std::any_of(
+                astExpressionsFrancais.begin(),
+                astExpressionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 29
+                        && (noeud.Drapeaux & 32'768U) != 0;
+                }),
+            "l’accès membre par pointeur n’est pas distingué");
+        Exiger(
+            std::any_of(
+                astExpressionsFrancais.begin(),
+                astExpressionsFrancais.end(),
+                [](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 24
+                        && (noeud.Drapeaux & 65'536U) != 0
+                        && noeud.HachageNom == HacherTexte("soi");
+                }),
+            "la référence de base parent/super n’est pas distinguée");
+        Exiger(
+            std::any_of(
+                astExpressionsFrancais.begin(),
+                astExpressionsFrancais.end(),
+                [&astExpressionsFrancais](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 27
+                        && noeud.Parent < astExpressionsFrancais.size()
+                        && astExpressionsFrancais[noeud.Parent].Genre == 27;
+                }),
+            "l’affectation associative à droite n’est pas préservée");
+
+        for (std::size_t index = 0;
+             index < astExpressionsFrancais.size();
+             ++index)
+        {
+            const auto& noeud = astExpressionsFrancais[index];
+            if (noeud.Genre < 22 || noeud.Genre > 32) continue;
+            Exiger(
+                noeud.Parent < index,
+                "l’ordre préfixe parent/enfant d’une expression est invalide");
+            const auto genreParent =
+                astExpressionsFrancais[noeud.Parent].Genre;
+            const bool parentExpression =
+                genreParent >= 25 && genreParent <= 32;
+            const bool parentSyntaxique = genreParent == 3
+                || genreParent == 7
+                || genreParent == 9
+                || genreParent == 13
+                || genreParent == 17
+                || genreParent == 18
+                || genreParent == 19
+                || genreParent == 20
+                || genreParent == 21;
+            Exiger(
+                parentExpression || parentSyntaxique,
+                "expression rattachée à un parent syntaxique invalide");
+        }
+
         ComparerErreurDeclarations(
             analyseur,
             "publique entier32 F(entier32 valeur { retourner valeur; }",
@@ -1836,6 +2285,61 @@ namespace
             "publique vide F() { valeur }",
             11,
             "point-virgule-expression-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner valeur + ; }",
+            14,
+            "operande-binaire-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner (1 + 2; }",
+            8,
+            "parenthese-expression-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner valeurs[1; }",
+            17,
+            "crochet-indexation-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner valeurs[]; }",
+            14,
+            "indice-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner objet.; }",
+            5,
+            "nom-membre-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner Appeler(1; }",
+            8,
+            "parenthese-appel-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner convertir entier32(1); }",
+            27,
+            "chevron-conversion-ouvrant-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner cast<int32(1); }",
+            28,
+            "chevron-conversion-fermant-manquant");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner cast<int32> 1; }",
+            7,
+            "parenthese-conversion-ouvrante-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique vide F() { retourner {1, 2; }",
+            10,
+            "accolade-agregat-manquante");
+        ComparerErreurDeclarations(
+            analyseur,
+            "publique naturel64 F() { retourner 18446744073709551616; }",
+            29,
+            "litteral-entier-debordant");
 
         const std::string lexicalementInvalide = "@";
         RequeteAnalyseDeclarationsHote requeteLexicale{

@@ -28,6 +28,23 @@ espace Gs::Autohebergement
         naturel32 Colonne;
     };
 
+    structure NoeudExpressionInterne
+    {
+        naturel32 Genre;
+        naturel32 Ligne;
+        naturel32 Colonne;
+        naturel32 Drapeaux;
+        naturel64 DebutNom;
+        naturel64 TailleNom;
+        naturel64 HachageNom;
+        naturel64 HachageType;
+        naturel64 PremierEnfant;
+        naturel64 DernierEnfant;
+        naturel64 EnfantSuivant;
+    };
+
+    NoeudExpressionInterne* NulExpressionsDeclarations;
+
     structure EtatAnalyseDeclarations
     {
         RequeteAnalyseDeclarations* Requete;
@@ -36,6 +53,8 @@ espace Gs::Autohebergement
         naturel64 Position;
         NoeudDeclaration* NoeudsTravail;
         naturel64 NombreNoeuds;
+        NoeudExpressionInterne* ExpressionsTravail;
+        naturel64 NombreExpressions;
         Gs::Hebergee::AreneMemoire Arene;
     };
 
@@ -423,59 +442,680 @@ espace Gs::Autohebergement
         retourner vrai;
     }
 
-    booléen IgnorerExpressionDeclaration(
-        EtatAnalyseDeclarations* etat,
-        naturel32 arretPrincipal,
-        naturel32 arretSecondaire)
+    naturel64 IndexExpressionNulDeclaration()
     {
-        JetonLexe* premier = JetonCourantDeclaration(etat);
-        si (premier->Genre == 0
-            || premier->Genre == arretPrincipal
-            || premier->Genre == arretSecondaire)
+        retourner 18_446_744_073_709_551_615;
+    }
+
+    naturel64 HacherSoiDeclaration()
+    {
+        naturel64 hachage = HachageVideDeclaration();
+        hachage = AjouterOctetDeclaration(hachage, 115);
+        hachage = AjouterOctetDeclaration(hachage, 111);
+        retourner AjouterOctetDeclaration(hachage, 105);
+    }
+
+    vide InitialiserExpressionInterneDeclaration(
+        NoeudExpressionInterne* noeud,
+        naturel32 genre,
+        naturel32 ligne,
+        naturel32 colonne)
+    {
+        noeud->Genre = genre;
+        noeud->Ligne = ligne;
+        noeud->Colonne = colonne;
+        noeud->Drapeaux = 0;
+        noeud->DebutNom = 0;
+        noeud->TailleNom = 0;
+        noeud->HachageNom = 0;
+        noeud->HachageType = 0;
+        noeud->PremierEnfant = IndexExpressionNulDeclaration();
+        noeud->DernierEnfant = IndexExpressionNulDeclaration();
+        noeud->EnfantSuivant = IndexExpressionNulDeclaration();
+    }
+
+    naturel64 AjouterExpressionInterneDeclaration(
+        EtatAnalyseDeclarations* etat,
+        NoeudExpressionInterne noeud)
+    {
+        si (etat->NombreExpressions >= etat->NombreJetons)
         {
             SignalerErreurDeclaration(
                 etat,
-                ErreurAnalyseDeclarations::ExpressionAttendue,
-                premier->Ligne,
-                premier->Colonne);
-            retourner faux;
+                ErreurAnalyseDeclarations::AllocationImpossible,
+                noeud.Ligne,
+                noeud.Colonne);
+            retourner IndexExpressionNulDeclaration();
         }
-
-        naturel64 parentheses = 0;
-        naturel64 accolades = 0;
-        naturel64 crochets = 0;
-        tantque (vrai)
-        {
-            JetonLexe* courant = JetonCourantDeclaration(etat);
-            si (courant->Genre == 0)
-            {
-                SignalerErreurDeclaration(
-                    etat,
-                    ErreurAnalyseDeclarations::ExpressionAttendue,
-                    courant->Ligne,
-                    courant->Colonne);
-                retourner faux;
-            }
-            si (parentheses == 0 && accolades == 0 && crochets == 0
-                && (courant->Genre == arretPrincipal
-                    || courant->Genre == arretSecondaire))
-                retourner vrai;
-
-            si (courant->Genre == 34) parentheses = parentheses + 1;
-            sinon si (courant->Genre == 35 && parentheses != 0)
-                parentheses = parentheses - 1;
-            sinon si (courant->Genre == 36) accolades = accolades + 1;
-            sinon si (courant->Genre == 37 && accolades != 0)
-                accolades = accolades - 1;
-            sinon si (courant->Genre == 38) crochets = crochets + 1;
-            sinon si (courant->Genre == 39 && crochets != 0)
-                crochets = crochets - 1;
-            etat->Position = etat->Position + 1;
-        }
-        retourner faux;
+        naturel64 index = etat->NombreExpressions;
+        etat->ExpressionsTravail[index] = noeud;
+        etat->NombreExpressions = index + 1;
+        retourner index;
     }
 
-    booléen IgnorerArgumentsDeclaration(EtatAnalyseDeclarations* etat)
+    vide AjouterEnfantExpressionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel64 indexParent,
+        naturel64 enfant)
+    {
+        etat->ExpressionsTravail[enfant].EnfantSuivant =
+            IndexExpressionNulDeclaration();
+        si (etat->ExpressionsTravail[indexParent].PremierEnfant
+            == IndexExpressionNulDeclaration())
+        {
+            etat->ExpressionsTravail[indexParent].PremierEnfant = enfant;
+        }
+        sinon
+        {
+            naturel64 dernier =
+                etat->ExpressionsTravail[indexParent].DernierEnfant;
+            etat->ExpressionsTravail[dernier].EnfantSuivant = enfant;
+        }
+        etat->ExpressionsTravail[indexParent].DernierEnfant = enfant;
+    }
+
+    booléen LireValeurEntiereExpressionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        JetonLexe* jeton,
+        naturel64* valeur)
+    {
+        *valeur = 0;
+        naturel64 index = 0;
+        tantque (index < jeton->TailleSource)
+        {
+            octet courant = convertir<octet>(
+                etat->Requete->Source[jeton->Debut + index]);
+            si (courant != 95)
+            {
+                naturel64 chiffre = convertir<naturel64>(courant - 48);
+                si (*valeur > 1_844_674_407_370_955_161
+                    || (*valeur == 1_844_674_407_370_955_161
+                        && chiffre > 5))
+                {
+                    SignalerErreurDeclaration(
+                        etat,
+                        ErreurAnalyseDeclarations::NombreEntierInvalide,
+                        jeton->Ligne,
+                        jeton->Colonne);
+                    retourner faux;
+                }
+                *valeur = *valeur * 10 + chiffre;
+            }
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    externe naturel64 AnalyserExpressionInterneDeclaration(
+        EtatAnalyseDeclarations* etat);
+
+    naturel64 CreerExpressionBinaireDeclaration(
+        EtatAnalyseDeclarations* etat,
+        JetonLexe* jetonOperateur,
+        naturel64 gauche,
+        naturel64 droite)
+    {
+        NoeudExpressionInterne noeud;
+        InitialiserExpressionInterneDeclaration(
+            &noeud, 26, jetonOperateur->Ligne, jetonOperateur->Colonne);
+        noeud.DebutNom = jetonOperateur->Debut;
+        noeud.TailleNom = jetonOperateur->TailleSource;
+        noeud.HachageNom = jetonOperateur->HachageTexte;
+        naturel64 resultat = AjouterExpressionInterneDeclaration(etat, noeud);
+        si (resultat == IndexExpressionNulDeclaration()) retourner resultat;
+        AjouterEnfantExpressionDeclaration(etat, resultat, gauche);
+        AjouterEnfantExpressionDeclaration(etat, resultat, droite);
+        retourner resultat;
+    }
+
+    naturel64 AnalyserPrimaireExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        JetonLexe* position = JetonCourantDeclaration(etat);
+        si (AccepterJetonDeclaration(etat, 36))
+        {
+            NoeudExpressionInterne agregat;
+            InitialiserExpressionInterneDeclaration(
+                &agregat, 32, position->Ligne, position->Colonne);
+            naturel64 indexAgregat =
+                AjouterExpressionInterneDeclaration(etat, agregat);
+            si (indexAgregat == IndexExpressionNulDeclaration())
+                retourner indexAgregat;
+            si (!EstJetonDeclaration(etat, 37))
+            {
+                booléen continuer = vrai;
+                tantque (continuer)
+                {
+                    naturel64 element =
+                        AnalyserExpressionInterneDeclaration(etat);
+                    si (element == IndexExpressionNulDeclaration())
+                        retourner element;
+                    AjouterEnfantExpressionDeclaration(
+                        etat, indexAgregat, element);
+                    si (AccepterJetonDeclaration(etat, 41))
+                    {
+                        si (EstJetonDeclaration(etat, 37))
+                            continuer = faux;
+                    }
+                    sinon continuer = faux;
+                }
+            }
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    37,
+                    ErreurAnalyseDeclarations::AccoladeFermanteAttendue))
+                retourner IndexExpressionNulDeclaration();
+            retourner indexAgregat;
+        }
+        si (AccepterJetonDeclaration(etat, 2))
+        {
+            naturel64 valeurEntiere = 0;
+            si (!LireValeurEntiereExpressionDeclaration(
+                    etat, position, &valeurEntiere))
+                retourner IndexExpressionNulDeclaration();
+            NoeudExpressionInterne entier;
+            InitialiserExpressionInterneDeclaration(
+                &entier, 22, position->Ligne, position->Colonne);
+            entier.HachageType = valeurEntiere;
+            retourner AjouterExpressionInterneDeclaration(etat, entier);
+        }
+        si (AccepterJetonDeclaration(etat, 3))
+        {
+            NoeudExpressionInterne chaine;
+            InitialiserExpressionInterneDeclaration(
+                &chaine, 23, position->Ligne, position->Colonne);
+            chaine.DebutNom = position->Debut;
+            chaine.TailleNom = position->TailleSource;
+            chaine.HachageNom = position->HachageTexte;
+            retourner AjouterExpressionInterneDeclaration(etat, chaine);
+        }
+        si (AccepterJetonDeclaration(etat, 32)
+            || AccepterJetonDeclaration(etat, 33))
+        {
+            NoeudExpressionInterne litteralBooleen;
+            InitialiserExpressionInterneDeclaration(
+                &litteralBooleen, 22, position->Ligne, position->Colonne);
+            litteralBooleen.Drapeaux = 16384;
+            si (position->Genre == 32) litteralBooleen.HachageType = 1;
+            retourner AjouterExpressionInterneDeclaration(etat, litteralBooleen);
+        }
+        si (AccepterJetonDeclaration(etat, 27))
+        {
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    48,
+                    ErreurAnalyseDeclarations::ChevronOuvrantAttendu))
+                retourner IndexExpressionNulDeclaration();
+            TypeDeclarationInterne typeCible;
+            si (!AnalyserTypeDeclaration(etat, &typeCible))
+                retourner IndexExpressionNulDeclaration();
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    50,
+                    ErreurAnalyseDeclarations::ChevronFermantAttendu))
+                retourner IndexExpressionNulDeclaration();
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    34,
+                    ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
+                retourner IndexExpressionNulDeclaration();
+            naturel64 valeurConvertie = AnalyserExpressionInterneDeclaration(etat);
+            si (valeurConvertie == IndexExpressionNulDeclaration())
+                retourner valeurConvertie;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                retourner IndexExpressionNulDeclaration();
+            NoeudExpressionInterne conversion;
+            InitialiserExpressionInterneDeclaration(
+                &conversion, 31, position->Ligne, position->Colonne);
+            conversion.HachageType = HacherTypeDeclaration(&typeCible);
+            naturel64 indexConversion =
+                AjouterExpressionInterneDeclaration(etat, conversion);
+            si (indexConversion == IndexExpressionNulDeclaration())
+                retourner indexConversion;
+            AjouterEnfantExpressionDeclaration(
+                etat, indexConversion, valeurConvertie);
+            retourner indexConversion;
+        }
+        si (AccepterJetonDeclaration(etat, 72)
+            || AccepterJetonDeclaration(etat, 75))
+        {
+            NoeudExpressionInterne referenceSoi;
+            InitialiserExpressionInterneDeclaration(
+                &referenceSoi, 24, position->Ligne, position->Colonne);
+            referenceSoi.DebutNom = position->Debut;
+            referenceSoi.TailleNom = position->TailleSource;
+            referenceSoi.HachageNom = HacherSoiDeclaration();
+            si (position->Genre == 75) referenceSoi.Drapeaux = 65536;
+            retourner AjouterExpressionInterneDeclaration(etat, referenceSoi);
+        }
+        si (EstJetonDeclaration(etat, 1))
+        {
+            NomQualifieDeclaration nom;
+            si (!AnalyserNomQualifieDeclaration(etat, &nom))
+                retourner IndexExpressionNulDeclaration();
+            NoeudExpressionInterne variable;
+            InitialiserExpressionInterneDeclaration(
+                &variable, 24, nom.Ligne, nom.Colonne);
+            variable.DebutNom = nom.Debut;
+            variable.TailleNom = nom.Taille;
+            variable.HachageNom = nom.Hachage;
+            retourner AjouterExpressionInterneDeclaration(etat, variable);
+        }
+        si (AccepterJetonDeclaration(etat, 34))
+        {
+            naturel64 expression =
+                AnalyserExpressionInterneDeclaration(etat);
+            si (expression == IndexExpressionNulDeclaration())
+                retourner expression;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                retourner IndexExpressionNulDeclaration();
+            retourner expression;
+        }
+        SignalerErreurDeclaration(
+            etat,
+            ErreurAnalyseDeclarations::ExpressionAttendue,
+            position->Ligne,
+            position->Colonne);
+        retourner IndexExpressionNulDeclaration();
+    }
+
+    naturel64 AnalyserPostfixeExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserPrimaireExpressionDeclaration(etat);
+        si (expression == IndexExpressionNulDeclaration())
+            retourner expression;
+        booléen continuer = vrai;
+        tantque (continuer)
+        {
+            si (AccepterJetonDeclaration(etat, 34))
+            {
+                NoeudExpressionInterne appel;
+                NoeudExpressionInterne* cible =
+                    &etat->ExpressionsTravail[expression];
+                InitialiserExpressionInterneDeclaration(
+                    &appel, 28, cible->Ligne, cible->Colonne);
+                naturel64 indexAppel =
+                    AjouterExpressionInterneDeclaration(etat, appel);
+                si (indexAppel == IndexExpressionNulDeclaration())
+                    retourner indexAppel;
+                AjouterEnfantExpressionDeclaration(
+                    etat, indexAppel, expression);
+                si (!EstJetonDeclaration(etat, 35))
+                {
+                    booléen continuerArguments = vrai;
+                    tantque (continuerArguments)
+                    {
+                        naturel64 argument =
+                            AnalyserExpressionInterneDeclaration(etat);
+                        si (argument == IndexExpressionNulDeclaration())
+                            retourner argument;
+                        AjouterEnfantExpressionDeclaration(
+                            etat, indexAppel, argument);
+                        si (!AccepterJetonDeclaration(etat, 41))
+                            continuerArguments = faux;
+                    }
+                }
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        35,
+                        ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                    retourner IndexExpressionNulDeclaration();
+                expression = indexAppel;
+            }
+            sinon si (EstJetonDeclaration(etat, 38))
+            {
+                JetonLexe* crochet = JetonCourantDeclaration(etat);
+                etat->Position = etat->Position + 1;
+                naturel64 indice =
+                    AnalyserExpressionInterneDeclaration(etat);
+                si (indice == IndexExpressionNulDeclaration())
+                    retourner indice;
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        39,
+                        ErreurAnalyseDeclarations::CrochetFermantAttendu))
+                    retourner IndexExpressionNulDeclaration();
+                NoeudExpressionInterne indexation;
+                InitialiserExpressionInterneDeclaration(
+                    &indexation, 30, crochet->Ligne, crochet->Colonne);
+                naturel64 indexIndexation =
+                    AjouterExpressionInterneDeclaration(etat, indexation);
+                si (indexIndexation == IndexExpressionNulDeclaration())
+                    retourner indexIndexation;
+                AjouterEnfantExpressionDeclaration(
+                    etat, indexIndexation, expression);
+                AjouterEnfantExpressionDeclaration(
+                    etat, indexIndexation, indice);
+                expression = indexIndexation;
+            }
+            sinon si (EstJetonDeclaration(etat, 42)
+                || EstJetonDeclaration(etat, 43))
+            {
+                JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+                etat->Position = etat->Position + 1;
+                JetonLexe* membre = JetonCourantDeclaration(etat);
+                si (!ExigerJetonDeclaration(
+                        etat,
+                        1,
+                        ErreurAnalyseDeclarations::IdentifiantAttendu))
+                    retourner IndexExpressionNulDeclaration();
+                NoeudExpressionInterne acces;
+                InitialiserExpressionInterneDeclaration(
+                    &acces, 29, jetonOperateur->Ligne, jetonOperateur->Colonne);
+                acces.DebutNom = membre->Debut;
+                acces.TailleNom = membre->TailleSource;
+                acces.HachageNom = membre->HachageTexte;
+                si (jetonOperateur->Genre == 43) acces.Drapeaux = 32768;
+                naturel64 indexAcces =
+                    AjouterExpressionInterneDeclaration(etat, acces);
+                si (indexAcces == IndexExpressionNulDeclaration())
+                    retourner indexAcces;
+                AjouterEnfantExpressionDeclaration(
+                    etat, indexAcces, expression);
+                expression = indexAcces;
+            }
+            sinon continuer = faux;
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserUnaireExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel32 genre = JetonCourantDeclaration(etat)->Genre;
+        si (genre == 61 || genre == 62 || genre == 52
+            || genre == 58 || genre == 55 || genre == 63)
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 operande = AnalyserUnaireExpressionDeclaration(etat);
+            si (operande == IndexExpressionNulDeclaration())
+                retourner operande;
+            NoeudExpressionInterne unaire;
+            InitialiserExpressionInterneDeclaration(
+                &unaire, 25, jetonOperateur->Ligne, jetonOperateur->Colonne);
+            unaire.DebutNom = jetonOperateur->Debut;
+            unaire.TailleNom = jetonOperateur->TailleSource;
+            unaire.HachageNom = jetonOperateur->HachageTexte;
+            naturel64 indexUnaire =
+                AjouterExpressionInterneDeclaration(etat, unaire);
+            si (indexUnaire == IndexExpressionNulDeclaration())
+                retourner indexUnaire;
+            AjouterEnfantExpressionDeclaration(
+                etat, indexUnaire, operande);
+            retourner indexUnaire;
+        }
+        retourner AnalyserPostfixeExpressionDeclaration(etat);
+    }
+
+    naturel64 AnalyserMultiplicationExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserUnaireExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && (EstJetonDeclaration(etat, 63)
+                || EstJetonDeclaration(etat, 64)
+                || EstJetonDeclaration(etat, 65)))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserUnaireExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserAdditionExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression =
+            AnalyserMultiplicationExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && (EstJetonDeclaration(etat, 61)
+                || EstJetonDeclaration(etat, 62)))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite =
+                AnalyserMultiplicationExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserDecalageExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserAdditionExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && (EstJetonDeclaration(etat, 59)
+                || EstJetonDeclaration(etat, 60)))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserAdditionExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserComparaisonExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserDecalageExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && (EstJetonDeclaration(etat, 48)
+                || EstJetonDeclaration(etat, 49)
+                || EstJetonDeclaration(etat, 50)
+                || EstJetonDeclaration(etat, 51)))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserDecalageExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserEgaliteExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression =
+            AnalyserComparaisonExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && (EstJetonDeclaration(etat, 46)
+                || EstJetonDeclaration(etat, 47)))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite =
+                AnalyserComparaisonExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserEtBinaireExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserEgaliteExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && EstJetonDeclaration(etat, 55))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserEgaliteExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserXorBinaireExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserEtBinaireExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && EstJetonDeclaration(etat, 57))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserEtBinaireExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserOuBinaireExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserXorBinaireExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && EstJetonDeclaration(etat, 56))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserXorBinaireExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserEtLogiqueExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserOuBinaireExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && EstJetonDeclaration(etat, 53))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserOuBinaireExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserOuLogiqueExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 expression = AnalyserEtLogiqueExpressionDeclaration(etat);
+        tantque (expression != IndexExpressionNulDeclaration()
+            && EstJetonDeclaration(etat, 54))
+        {
+            JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
+            etat->Position = etat->Position + 1;
+            naturel64 droite = AnalyserEtLogiqueExpressionDeclaration(etat);
+            si (droite == IndexExpressionNulDeclaration()) retourner droite;
+            expression = CreerExpressionBinaireDeclaration(
+                etat, jetonOperateur, expression, droite);
+        }
+        retourner expression;
+    }
+
+    naturel64 AnalyserAffectationExpressionDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        naturel64 cible = AnalyserOuLogiqueExpressionDeclaration(etat);
+        si (cible == IndexExpressionNulDeclaration()) retourner cible;
+        si (!AccepterJetonDeclaration(etat, 45)) retourner cible;
+        naturel64 valeur = AnalyserAffectationExpressionDeclaration(etat);
+        si (valeur == IndexExpressionNulDeclaration()) retourner valeur;
+        NoeudExpressionInterne affectation;
+        NoeudExpressionInterne* position = &etat->ExpressionsTravail[cible];
+        InitialiserExpressionInterneDeclaration(
+            &affectation, 27, position->Ligne, position->Colonne);
+        naturel64 indexAffectation =
+            AjouterExpressionInterneDeclaration(etat, affectation);
+        si (indexAffectation == IndexExpressionNulDeclaration())
+            retourner indexAffectation;
+        AjouterEnfantExpressionDeclaration(
+            etat, indexAffectation, cible);
+        AjouterEnfantExpressionDeclaration(
+            etat, indexAffectation, valeur);
+        retourner indexAffectation;
+    }
+
+    naturel64 AnalyserExpressionInterneDeclaration(
+        EtatAnalyseDeclarations* etat)
+    {
+        retourner AnalyserAffectationExpressionDeclaration(etat);
+    }
+
+    booléen EmettreExpressionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel64 indexExpression,
+        naturel64 indexParent,
+        naturel64 hachageEspace)
+    {
+        NoeudExpressionInterne* expression =
+            &etat->ExpressionsTravail[indexExpression];
+        naturel64 indexSortie = etat->NombreNoeuds;
+        NoeudDeclaration noeud = {
+            expression->Genre,
+            expression->Ligne,
+            expression->Colonne,
+            expression->Drapeaux,
+            indexParent,
+            expression->DebutNom,
+            expression->TailleNom,
+            expression->HachageNom,
+            hachageEspace,
+            expression->HachageType};
+        si (!AjouterNoeudDeclaration(etat, noeud)) retourner faux;
+        naturel64 enfant = expression->PremierEnfant;
+        tantque (enfant != IndexExpressionNulDeclaration())
+        {
+            naturel64 suivant =
+                etat->ExpressionsTravail[enfant].EnfantSuivant;
+            si (!EmettreExpressionDeclaration(
+                    etat, enfant, indexSortie, hachageEspace))
+                retourner faux;
+            enfant = suivant;
+        }
+        retourner vrai;
+    }
+
+    booléen AnalyserEtEmettreExpressionDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel64 indexParent,
+        naturel64 hachageEspace)
+    {
+        etat->NombreExpressions = 0;
+        naturel64 expression = AnalyserExpressionInterneDeclaration(etat);
+        si (expression == IndexExpressionNulDeclaration()) retourner faux;
+        retourner EmettreExpressionDeclaration(
+            etat, expression, indexParent, hachageEspace);
+    }
+
+    booléen AnalyserArgumentsExpressionsDeclaration(
+        EtatAnalyseDeclarations* etat,
+        naturel64 indexParent,
+        naturel64 hachageEspace)
     {
         si (!ExigerJetonDeclaration(
                 etat,
@@ -487,7 +1127,8 @@ espace Gs::Autohebergement
             booléen continuer = vrai;
             tantque (continuer)
             {
-                si (!IgnorerExpressionDeclaration(etat, 41, 35))
+                si (!AnalyserEtEmettreExpressionDeclaration(
+                        etat, indexParent, hachageEspace))
                     retourner faux;
                 si (!AccepterJetonDeclaration(etat, 41))
                     continuer = faux;
@@ -565,17 +1206,8 @@ espace Gs::Autohebergement
         si (AccepterJetonDeclaration(etat, 28))
         {
             naturel32 drapeauxRetour = 0;
-            si (!EstJetonDeclaration(etat, 40))
-            {
-                drapeauxRetour = 2048;
-                si (!IgnorerExpressionDeclaration(etat, 40, 37))
-                    retourner faux;
-            }
-            si (!ExigerJetonDeclaration(
-                    etat,
-                    40,
-                    ErreurAnalyseDeclarations::PointVirguleAttendu))
-                retourner faux;
+            si (!EstJetonDeclaration(etat, 40)) drapeauxRetour = 2048;
+            naturel64 indexRetour = etat->NombreNoeuds;
             NoeudDeclaration retour = {
                 17,
                 position.Ligne,
@@ -587,7 +1219,15 @@ espace Gs::Autohebergement
                 0,
                 contexte->Espace->Hachage,
                 0};
-            retourner AjouterNoeudDeclaration(etat, retour);
+            si (!AjouterNoeudDeclaration(etat, retour)) retourner faux;
+            si (drapeauxRetour != 0
+                && !AnalyserEtEmettreExpressionDeclaration(
+                    etat, indexRetour, contexte->Espace->Hachage))
+                retourner faux;
+            retourner ExigerJetonDeclaration(
+                etat,
+                40,
+                ErreurAnalyseDeclarations::PointVirguleAttendu);
         }
 
         si (AccepterJetonDeclaration(etat, 29))
@@ -597,14 +1237,6 @@ espace Gs::Autohebergement
                     34,
                     ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
                 retourner faux;
-            si (!IgnorerExpressionDeclaration(etat, 35, 35))
-                retourner faux;
-            si (!ExigerJetonDeclaration(
-                    etat,
-                    35,
-                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
-                retourner faux;
-
             naturel64 indexConditionnelle = etat->NombreNoeuds;
             NoeudDeclaration conditionnelle = {
                 20,
@@ -618,6 +1250,16 @@ espace Gs::Autohebergement
                 contexte->Espace->Hachage,
                 0};
             si (!AjouterNoeudDeclaration(etat, conditionnelle))
+                retourner faux;
+            si (!AnalyserEtEmettreExpressionDeclaration(
+                    etat,
+                    indexConditionnelle,
+                    contexte->Espace->Hachage))
+                retourner faux;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
                 retourner faux;
             ContexteInstructionDeclaration branche = {
                 contexte->Espace, indexConditionnelle};
@@ -640,14 +1282,6 @@ espace Gs::Autohebergement
                     34,
                     ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
                 retourner faux;
-            si (!IgnorerExpressionDeclaration(etat, 35, 35))
-                retourner faux;
-            si (!ExigerJetonDeclaration(
-                    etat,
-                    35,
-                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
-                retourner faux;
-
             naturel64 indexBoucle = etat->NombreNoeuds;
             NoeudDeclaration boucle = {
                 21,
@@ -661,6 +1295,14 @@ espace Gs::Autohebergement
                 contexte->Espace->Hachage,
                 0};
             si (!AjouterNoeudDeclaration(etat, boucle)) retourner faux;
+            si (!AnalyserEtEmettreExpressionDeclaration(
+                    etat, indexBoucle, contexte->Espace->Hachage))
+                retourner faux;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                retourner faux;
             ContexteInstructionDeclaration corpsBoucle = {
                 contexte->Espace, indexBoucle};
             retourner AnalyserInstructionDeclaration(etat, &corpsBoucle);
@@ -680,22 +1322,11 @@ espace Gs::Autohebergement
             si (!AnalyserDimensionsDeclaration(etat, &typeVariable))
                 retourner faux;
             naturel32 drapeauxVariable = 0;
-            si (AccepterJetonDeclaration(etat, 45))
-            {
+            si (EstJetonDeclaration(etat, 45))
                 drapeauxVariable = 4 | 2048;
-                si (!IgnorerExpressionDeclaration(etat, 40, 37))
-                    retourner faux;
-            }
             sinon si (EstJetonDeclaration(etat, 34))
-            {
                 drapeauxVariable = 8192;
-                si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
-            }
-            si (!ExigerJetonDeclaration(
-                    etat,
-                    40,
-                    ErreurAnalyseDeclarations::PointVirguleAttendu))
-                retourner faux;
+            naturel64 indexVariable = etat->NombreNoeuds;
             NoeudDeclaration variable = {
                 19,
                 position.Ligne,
@@ -707,15 +1338,30 @@ espace Gs::Autohebergement
                 nomVariable->HachageTexte,
                 contexte->Espace->Hachage,
                 HacherTypeDeclaration(&typeVariable)};
-            retourner AjouterNoeudDeclaration(etat, variable);
-        }
-
-        si (!IgnorerExpressionDeclaration(etat, 40, 37)) retourner faux;
-        si (!ExigerJetonDeclaration(
+            si (!AjouterNoeudDeclaration(etat, variable)) retourner faux;
+            si (AccepterJetonDeclaration(etat, 45))
+            {
+                si (!AnalyserEtEmettreExpressionDeclaration(
+                        etat,
+                        indexVariable,
+                        contexte->Espace->Hachage))
+                    retourner faux;
+            }
+            sinon si (EstJetonDeclaration(etat, 34))
+            {
+                si (!AnalyserArgumentsExpressionsDeclaration(
+                        etat,
+                        indexVariable,
+                        contexte->Espace->Hachage))
+                    retourner faux;
+            }
+            retourner ExigerJetonDeclaration(
                 etat,
                 40,
-                ErreurAnalyseDeclarations::PointVirguleAttendu))
-            retourner faux;
+                ErreurAnalyseDeclarations::PointVirguleAttendu);
+        }
+
+        naturel64 indexExpression = etat->NombreNoeuds;
         NoeudDeclaration expression = {
             18,
             position.Ligne,
@@ -727,7 +1373,14 @@ espace Gs::Autohebergement
             0,
             contexte->Espace->Hachage,
             0};
-        retourner AjouterNoeudDeclaration(etat, expression);
+        si (!AjouterNoeudDeclaration(etat, expression)) retourner faux;
+        si (!AnalyserEtEmettreExpressionDeclaration(
+                etat, indexExpression, contexte->Espace->Hachage))
+            retourner faux;
+        retourner ExigerJetonDeclaration(
+            etat,
+            40,
+            ErreurAnalyseDeclarations::PointVirguleAttendu);
     }
 
     booléen AnalyserBlocInstructionDeclaration(
@@ -777,7 +1430,7 @@ espace Gs::Autohebergement
             naturel32 drapeauxGlobale = 0;
             si (estPublique) drapeauxGlobale = drapeauxGlobale | 1;
             si (estExterne) drapeauxGlobale = drapeauxGlobale | 2;
-            si (AccepterJetonDeclaration(etat, 45))
+            si (EstJetonDeclaration(etat, 45))
             {
                 si (estExterne)
                 {
@@ -789,14 +1442,8 @@ espace Gs::Autohebergement
                     retourner faux;
                 }
                 drapeauxGlobale = drapeauxGlobale | 4;
-                si (!IgnorerExpressionDeclaration(etat, 40, 40))
-                    retourner faux;
             }
-            si (!ExigerJetonDeclaration(
-                    etat,
-                    40,
-                    ErreurAnalyseDeclarations::PointVirguleAttendu))
-                retourner faux;
+            naturel64 indexGlobale = etat->NombreNoeuds;
             NoeudDeclaration noeudGlobale = {
                 3,
                 position.Ligne,
@@ -808,7 +1455,15 @@ espace Gs::Autohebergement
                 nom->HachageTexte,
                 contexte->Hachage,
                 HacherTypeDeclaration(&typeRetour)};
-            retourner AjouterNoeudDeclaration(etat, noeudGlobale);
+            si (!AjouterNoeudDeclaration(etat, noeudGlobale)) retourner faux;
+            si (AccepterJetonDeclaration(etat, 45)
+                && !AnalyserEtEmettreExpressionDeclaration(
+                    etat, indexGlobale, contexte->Hachage))
+                retourner faux;
+            retourner ExigerJetonDeclaration(
+                etat,
+                40,
+                ErreurAnalyseDeclarations::PointVirguleAttendu);
         }
         si (typeRetour.NombreDimensions != 0)
         {
@@ -1089,7 +1744,11 @@ espace Gs::Autohebergement
                         retourner faux;
                     }
                     drapeaux = drapeaux | 512;
-                    si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+                    si (!AnalyserArgumentsExpressionsDeclaration(
+                            etat,
+                            indexMembre,
+                            contexte->Espace->Hachage))
+                        retourner faux;
                     si (EstJetonDeclaration(etat, 41))
                     {
                         JetonLexe* virguleDelegation =
@@ -1115,7 +1774,11 @@ espace Gs::Autohebergement
                         retourner faux;
                     }
                     drapeaux = drapeaux | 256;
-                    si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+                    si (!AnalyserArgumentsExpressionsDeclaration(
+                            etat,
+                            indexMembre,
+                            contexte->Espace->Hachage))
+                        retourner faux;
                 }
                 sinon
                 {
@@ -1125,7 +1788,11 @@ espace Gs::Autohebergement
                             ErreurAnalyseDeclarations::IdentifiantAttendu))
                         retourner faux;
                     drapeaux = drapeaux | 1024;
-                    si (!IgnorerArgumentsDeclaration(etat)) retourner faux;
+                    si (!AnalyserArgumentsExpressionsDeclaration(
+                            etat,
+                            indexMembre,
+                            contexte->Espace->Hachage))
+                        retourner faux;
                 }
                 premier = faux;
                 si (continuerInitialiseurs
@@ -1222,12 +1889,8 @@ espace Gs::Autohebergement
                         ErreurAnalyseDeclarations::IdentifiantAttendu))
                     retourner faux;
                 naturel32 drapeaux = 0;
-                si (AccepterJetonDeclaration(etat, 45))
-                {
-                    drapeaux = 4;
-                    si (!IgnorerExpressionDeclaration(etat, 41, 37))
-                        retourner faux;
-                }
+                si (EstJetonDeclaration(etat, 45)) drapeaux = 4;
+                naturel64 indexEnumerateur = etat->NombreNoeuds;
                 NoeudDeclaration enumerateur = {
                     9,
                     valeur->Ligne,
@@ -1240,6 +1903,10 @@ espace Gs::Autohebergement
                     contexte->Hachage,
                     0};
                 si (!AjouterNoeudDeclaration(etat, enumerateur))
+                    retourner faux;
+                si (AccepterJetonDeclaration(etat, 45)
+                    && !AnalyserEtEmettreExpressionDeclaration(
+                        etat, indexEnumerateur, contexte->Hachage))
                     retourner faux;
                 si (AccepterJetonDeclaration(etat, 41))
                 {
@@ -1410,7 +2077,7 @@ espace Gs::Autohebergement
                     si (!AnalyserDimensionsDeclaration(etat, &typeChamp))
                         retourner faux;
                     naturel32 drapeauxChamp = visibilite;
-                    si (AccepterJetonDeclaration(etat, 45))
+                    si (EstJetonDeclaration(etat, 45))
                     {
                         si (!estClasse)
                         {
@@ -1422,14 +2089,8 @@ espace Gs::Autohebergement
                             retourner faux;
                         }
                         drapeauxChamp = drapeauxChamp | 4;
-                        si (!IgnorerExpressionDeclaration(etat, 40, 40))
-                            retourner faux;
                     }
-                    si (!ExigerJetonDeclaration(
-                            etat,
-                            40,
-                            ErreurAnalyseDeclarations::PointVirguleAttendu))
-                        retourner faux;
+                    naturel64 indexChamp = etat->NombreNoeuds;
                     NoeudDeclaration champ = {
                         7,
                         positionChamp.Ligne,
@@ -1442,6 +2103,15 @@ espace Gs::Autohebergement
                         contexte->Hachage,
                         HacherTypeDeclaration(&typeChamp)};
                     si (!AjouterNoeudDeclaration(etat, champ))
+                        retourner faux;
+                    si (AccepterJetonDeclaration(etat, 45)
+                        && !AnalyserEtEmettreExpressionDeclaration(
+                            etat, indexChamp, contexte->Hachage))
+                        retourner faux;
+                    si (!ExigerJetonDeclaration(
+                            etat,
+                            40,
+                            ErreurAnalyseDeclarations::PointVirguleAttendu))
                         retourner faux;
                 }
             }
@@ -1623,6 +2293,8 @@ espace Gs::Autohebergement
         etat.Position = 0;
         etat.NoeudsTravail = NulNoeudsDeclarations;
         etat.NombreNoeuds = 0;
+        etat.ExpressionsTravail = NulExpressionsDeclarations;
+        etat.NombreExpressions = 0;
         Gs::Hebergee::InitialiserArene(&etat.Arene, 4096);
 
         etat.Jetons = convertir<JetonLexe*>(
@@ -1631,7 +2303,11 @@ espace Gs::Autohebergement
         etat.NoeudsTravail = convertir<NoeudDeclaration*>(
             Gs::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreJetons * 64, 8));
-        si (!etat.Jetons || !etat.NoeudsTravail)
+        etat.ExpressionsTravail = convertir<NoeudExpressionInterne*>(
+            Gs::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreJetons * 72, 8));
+        si (!etat.Jetons || !etat.NoeudsTravail
+            || !etat.ExpressionsTravail)
         {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::AllocationImpossible;

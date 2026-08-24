@@ -80,7 +80,7 @@ namespace
     void AfficherAide()
     {
         std::cout
-            << "Compilateur Gs++ 0.27.0-alpha.5 — frontend auto-hébergé partiel, formats natifs 1.0 ABI 1\n\n"
+            << "Compilateur Gs++ 0.27.0-alpha.6 — frontend auto-hébergé partiel, formats natifs 1.0 ABI 1\n\n"
             << "Utilisation :\n"
             << "  gsppc <sources/interfaces...> --format gsobj -o module.GsObj\n"
             << "  gsppc <objets.GsObj...> [bibliotheques.GsA...] --format gse -o application.GsE\n"
@@ -216,7 +216,7 @@ int main(int argc, char** argv)
         {
             const std::string argument = argv[index];
             if (argument == "--version")
-            { std::cout << "Gs++ Compiler 0.27.0-alpha.5\n"; return 0; }
+            { std::cout << "Gs++ Compiler 0.27.0-alpha.6\n"; return 0; }
             if (argument == "--aide" || argument == "--help" || argument == "-h")
             { AfficherAide(); return 0; }
             if (argument == "--jetons") { afficherJetons = true; continue; }

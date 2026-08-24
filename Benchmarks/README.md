@@ -1,4 +1,4 @@
-# Banc de mesure Gs++ 0.27.0-alpha.5
+# Banc de mesure Gs++ 0.27.0-alpha.6
 
 Ce dossier contient le pilote pratique du protocole
 [`PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md`](../Documentation/PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md).
@@ -32,7 +32,7 @@ dans les constructions permanentes de publication :
 
 Un autre chemin peut être fourni avec `--compiler` et `--loader`, ou avec les
 paramètres PowerShell `-Compiler` et `-Loader`. Une version différente de
-0.27.0-alpha.5 est refusée par défaut.
+0.27.0-alpha.6 est refusée par défaut.
 
 ## Modes
 
@@ -96,6 +96,6 @@ toujours disponibles pour le diagnostic.
   commentaire neutre ;
 - la sélection manuelle d'étapes du scénario séparé décrit le plan de mesure,
   pas un système automatique de dépendances du compilateur ;
-- Gs++ 0.27.0-alpha.5 ne fournit pas de chronométrage séparé du lexeur, du parseur, de
+- Gs++ 0.27.0-alpha.6 ne fournit pas de chronométrage séparé du lexeur, du parseur, de
   l'analyse sémantique, de la génération de code et de la liaison ;
 - ce banc ne conclut pas que Gs++ est plus rapide que C++20 ou Rust.

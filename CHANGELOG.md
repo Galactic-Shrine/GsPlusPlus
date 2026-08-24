@@ -10,6 +10,32 @@
 
 # Journal des modifications
 
+## Compilateur Gs++ 0.27.0-alpha.6 — 2026-08-25
+
+- extension de l’AST auto-hébergé aux onze genres d’expressions du frontend
+  bootstrap : entier, chaîne, variable, unaire, binaire, affectation, appel,
+  membre, index, conversion et agrégat ;
+- reproduction en Gs++ des priorités, associativités et parcours récursifs des
+  six opérateurs unaires et des dix-huit opérateurs binaires ;
+- rattachement en préordre des sous-expressions aux globales, énumérateurs,
+  champs, constructeurs, retours, variables locales, contrôles et instructions
+  d’expression ;
+- conservation des valeurs entières, chaînes décodées, noms qualifiés,
+  opérateurs et empreintes de types de conversion dans le nœud ABI compact ;
+- ajout des drapeaux publics pour les littéraux booléens, les accès membres par
+  pointeur et les références à la base `parent` / `super` ;
+- maintien de `NoeudDeclaration` à 64 octets, de la requête à 80 octets et du
+  résultat à 48 octets, sans renumérotation des genres 0 à 21 ;
+- ajout d’un corpus différentiel français/anglais couvrant chaque genre,
+  opérateur, position et relation parent-enfant d’expression ;
+- extension à trente-trois diagnostics syntaxiques comparés au bootstrap,
+  notamment pour les conversions, appels, indexations, agrégats, opérandes
+  absents et dépassements d’entiers 64 bits ;
+- installation du logo Gs++ avec les README afin que l’identité visuelle reste
+  résolue dans les paquets Windows et Linux ;
+- conservation des formats GsObj/GsA/GsE en version 1.0, des champs ABI à 1 et
+  des signatures `GSOBJ:0`, `GSA:0` et `GSE:0`.
+
 ## Compilateur Gs++ 0.27.0-alpha.5 — 2026-08-24
 
 - extension de l’AST auto-hébergé à la hiérarchie des blocs et instructions

@@ -1,10 +1,9 @@
 // Frontend auto-hébergé Gs++ 0.27 : première tranche de l'AST syntaxique.
 //
 // L'analyseur couvre les déclarations de code et de données, les membres
-// exécutables des classes et la hiérarchie des instructions. Les expressions
-// sont délimitées syntaxiquement mais leur AST interne appartient à la tranche
-// suivante. Le stockage de sortie appartient à l'appelant ; l'AST de travail
-// est construit dans une arène.
+// exécutables des classes, la hiérarchie des instructions et l'AST interne des
+// expressions. Le stockage de sortie appartient à l'appelant ; l'AST de
+// travail est construit dans une arène.
 
 espace Gs::Autohebergement
 {
@@ -64,6 +63,12 @@ espace Gs::Autohebergement
         InitializerListForbidden = 25,
         InitialiseurConstructeurInvalide = 26,
         InvalidConstructorInitializer = 26,
+        ChevronOuvrantAttendu = 27,
+        ExpectedOpeningAngleBracket = 27,
+        ChevronFermantAttendu = 28,
+        ExpectedClosingAngleBracket = 28,
+        NombreEntierInvalide = 29,
+        InvalidIntegerLiteral = 29,
     };
 
     énumération GenreNoeudDeclaration
@@ -110,6 +115,28 @@ espace Gs::Autohebergement
         Conditional = 20,
         BoucleTantQue = 21,
         WhileLoop = 21,
+        LitteralEntier = 22,
+        IntegerLiteral = 22,
+        LitteralChaine = 23,
+        StringLiteral = 23,
+        ReferenceVariable = 24,
+        VariableReference = 24,
+        ExpressionUnaire = 25,
+        UnaryExpression = 25,
+        ExpressionBinaire = 26,
+        BinaryExpression = 26,
+        Affectation = 27,
+        Assignment = 27,
+        Appel = 28,
+        Call = 28,
+        AccesMembre = 29,
+        MemberAccess = 29,
+        Indexation = 30,
+        Index = 30,
+        Conversion = 31,
+        Cast = 31,
+        Agregat = 32,
+        Aggregate = 32,
     };
 
     énumération DrapeauNoeudDeclaration
@@ -144,6 +171,12 @@ espace Gs::Autohebergement
         HasElseBranch = 4096,
         ConstructionExplicite = 8192,
         HasExplicitConstruction = 8192,
+        LitteralBooleen = 16384,
+        BooleanLiteral = 16384,
+        AccesViaPointeur = 32768,
+        PointerMemberAccess = 32768,
+        ReferenceBase = 65536,
+        BaseReference = 65536,
     };
 
     structure NoeudDeclaration

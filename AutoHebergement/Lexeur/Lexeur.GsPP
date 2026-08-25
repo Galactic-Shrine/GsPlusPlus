@@ -1,7 +1,5 @@
-espace GalacticShrine::GsPP::Autohebergement
-{
-    structure EtatLexeur
-    {
+espace GalacticShrine::GsPP::Autohebergement {
+    structure EtatLexeur {
         constante caractère* Source;
         naturel64 Taille;
         naturel64 Position;
@@ -9,90 +7,74 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel32 Colonne;
     };
 
-    booléen EstFinLexeur(EtatLexeur* etat)
-    {
+    booléen EstFinLexeur(EtatLexeur* etat) {
         retourner etat->Position >= etat->Taille;
     }
 
-    octet OctetCourant(EtatLexeur* etat)
-    {
+    octet OctetCourant(EtatLexeur* etat) {
         si (EstFinLexeur(etat)) retourner 0;
         retourner convertir<octet>(etat->Source[etat->Position]);
     }
 
-    octet OctetSuivant(EtatLexeur* etat)
-    {
+    octet OctetSuivant(EtatLexeur* etat) {
         si (etat->Position + 1 >= etat->Taille) retourner 0;
         retourner convertir<octet>(etat->Source[etat->Position + 1]);
     }
 
-    octet AvancerLexeur(EtatLexeur* etat)
-    {
+    octet AvancerLexeur(EtatLexeur* etat) {
         octet valeur = OctetCourant(etat);
-        si (!EstFinLexeur(etat))
-        {
+        si (!EstFinLexeur(etat)) {
             etat->Position = etat->Position + 1;
-            si (valeur == 10)
-            {
+            si (valeur == 10) {
                 etat->Ligne = etat->Ligne + 1;
                 etat->Colonne = 1;
             }
-            sinon
-            {
+            sinon {
                 etat->Colonne = etat->Colonne + 1;
             }
         }
         retourner valeur;
     }
 
-    booléen EstEspaceAscii(octet valeur)
-    {
+    booléen EstEspaceAscii(octet valeur) {
         retourner valeur == 32 || valeur == 9 || valeur == 10
             || valeur == 13 || valeur == 12 || valeur == 11;
     }
 
-    booléen EstChiffreAscii(octet valeur)
-    {
+    booléen EstChiffreAscii(octet valeur) {
         retourner valeur >= 48 && valeur <= 57;
     }
 
-    booléen EstLettreAscii(octet valeur)
-    {
+    booléen EstLettreAscii(octet valeur) {
         retourner (valeur >= 65 && valeur <= 90)
             || (valeur >= 97 && valeur <= 122);
     }
 
-    booléen CommenceIdentifiantLexeur(octet valeur)
-    {
+    booléen CommenceIdentifiantLexeur(octet valeur) {
         retourner valeur == 95 || valeur >= 128 || EstLettreAscii(valeur);
     }
 
-    booléen ContinueIdentifiantLexeur(octet valeur)
-    {
+    booléen ContinueIdentifiantLexeur(octet valeur) {
         retourner CommenceIdentifiantLexeur(valeur)
             || EstChiffreAscii(valeur);
     }
 
-    naturel64 HachageVideLexeur()
-    {
+    naturel64 HachageVideLexeur() {
         retourner 14_695_981_039_346_656_037;
     }
 
-    naturel64 AjouterOctetHachage(naturel64 hachage, octet valeur)
-    {
+    naturel64 AjouterOctetHachage(naturel64 hachage, octet valeur) {
         retourner (hachage ^ convertir<naturel64>(valeur))
             * 1_099_511_628_211;
     }
 
     naturel64 HacherTranche(
-        constante caractère* source, naturel64 debut, naturel64 taille)
-    {
+        constante caractère* source, naturel64 debut, naturel64 taille) {
         retourner GalacticShrine::GsPP::Hebergee::HacherVueTexte(
             GalacticShrine::GsPP::Hebergee::CreerVueTexte(&source[debut], taille));
     }
 
-    vide InitialiserResultatLexage(ResultatLexage* resultat)
-    {
+    vide InitialiserResultatLexage(ResultatLexage* resultat) {
         resultat->Erreur = ErreurLexage::Reussite;
         resultat->LigneErreur = 0;
         resultat->ColonneErreur = 0;
@@ -105,8 +87,7 @@ espace GalacticShrine::GsPP::Autohebergement
         RequeteLexage* requete,
         ErreurLexage erreur,
         naturel32 ligne,
-        naturel32 colonne)
-    {
+        naturel32 colonne) {
         requete->Resultat.Erreur = erreur;
         requete->Resultat.LigneErreur = ligne;
         requete->Resultat.ColonneErreur = colonne;
@@ -114,8 +95,7 @@ espace GalacticShrine::GsPP::Autohebergement
         retourner erreur;
     }
 
-    vide AjouterJetonLexe(RequeteLexage* requete, JetonLexe jeton)
-    {
+    vide AjouterJetonLexe(RequeteLexage* requete, JetonLexe jeton) {
         naturel64 index = requete->Resultat.NombreJetons;
         si (requete->Jetons && index < requete->Capacite)
             requete->Jetons[index] = jeton;
@@ -123,21 +103,16 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     ErreurLexage IgnorerSeparationsLexeur(
-        EtatLexeur* etat, RequeteLexage* requete)
-    {
-        tantque (!EstFinLexeur(etat))
-        {
-            si (EstEspaceAscii(OctetCourant(etat)))
-            {
+        EtatLexeur* etat, RequeteLexage* requete) {
+        tantque (!EstFinLexeur(etat)) {
+            si (EstEspaceAscii(OctetCourant(etat))) {
                 AvancerLexeur(etat);
             }
-            sinon si (OctetCourant(etat) == 47 && OctetSuivant(etat) == 47)
-            {
+            sinon si (OctetCourant(etat) == 47 && OctetSuivant(etat) == 47) {
                 tantque (!EstFinLexeur(etat) && OctetCourant(etat) != 10)
                     AvancerLexeur(etat);
             }
-            sinon si (OctetCourant(etat) == 47 && OctetSuivant(etat) == 42)
-            {
+            sinon si (OctetCourant(etat) == 47 && OctetSuivant(etat) == 42) {
                 naturel32 ligne = etat->Ligne;
                 naturel32 colonne = etat->Colonne;
                 AvancerLexeur(etat);
@@ -155,8 +130,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 AvancerLexeur(etat);
                 AvancerLexeur(etat);
             }
-            sinon
-            {
+            sinon {
                 retourner ErreurLexage::Reussite;
             }
         }
@@ -165,8 +139,7 @@ espace GalacticShrine::GsPP::Autohebergement
 
     vide LireNombreLexeur(
         EtatLexeur* etat,
-        RequeteLexage* requete)
-    {
+        RequeteLexage* requete) {
         naturel64 debut = etat->Position;
         naturel32 ligne = etat->Ligne;
         naturel32 colonne = etat->Colonne;
@@ -184,8 +157,7 @@ espace GalacticShrine::GsPP::Autohebergement
 
     vide LireIdentifiantLexeur(
         EtatLexeur* etat,
-        RequeteLexage* requete)
-    {
+        RequeteLexage* requete) {
         naturel64 debut = etat->Position;
         naturel32 ligne = etat->Ligne;
         naturel32 colonne = etat->Colonne;
@@ -203,19 +175,16 @@ espace GalacticShrine::GsPP::Autohebergement
 
     ErreurLexage LireChaineLexeur(
         EtatLexeur* etat,
-        RequeteLexage* requete)
-    {
+        RequeteLexage* requete) {
         naturel64 debut = etat->Position;
         naturel32 ligne = etat->Ligne;
         naturel32 colonne = etat->Colonne;
         naturel64 hachage = HachageVideLexeur();
         naturel64 tailleTexte = 0;
         AvancerLexeur(etat);
-        tantque (!EstFinLexeur(etat))
-        {
+        tantque (!EstFinLexeur(etat)) {
             octet valeur = AvancerLexeur(etat);
-            si (valeur == 34)
-            {
+            si (valeur == 34) {
                 JetonLexe jeton = {
                     3, ligne, colonne, 0,
                     debut, etat->Position - debut,
@@ -229,13 +198,11 @@ espace GalacticShrine::GsPP::Autohebergement
                     ErreurLexage::ChaineNonTerminee,
                     ligne,
                     colonne);
-            si (valeur != 92)
-            {
+            si (valeur != 92) {
                 hachage = AjouterOctetHachage(hachage, valeur);
                 tailleTexte = tailleTexte + 1;
             }
-            sinon
-            {
+            sinon {
                 si (EstFinLexeur(etat))
                     retourner SignalerErreurLexage(
                         requete,
@@ -269,8 +236,7 @@ espace GalacticShrine::GsPP::Autohebergement
 
     ErreurLexage LireSymboleLexeur(
         EtatLexeur* etat,
-        RequeteLexage* requete)
-    {
+        RequeteLexage* requete) {
         naturel64 debut = etat->Position;
         naturel32 ligne = etat->Ligne;
         naturel32 colonne = etat->Colonne;
@@ -292,83 +258,65 @@ espace GalacticShrine::GsPP::Autohebergement
         sinon si (valeur == 37) genre = 65;
         sinon si (valeur == 94) genre = 57;
         sinon si (valeur == 126) genre = 58;
-        sinon si (valeur == 45)
-        {
-            si (OctetCourant(etat) == 62)
-            {
+        sinon si (valeur == 45) {
+            si (OctetCourant(etat) == 62) {
                 AvancerLexeur(etat);
                 genre = 43;
             }
             sinon genre = 62;
         }
-        sinon si (valeur == 38)
-        {
-            si (OctetCourant(etat) == 38)
-            {
+        sinon si (valeur == 38) {
+            si (OctetCourant(etat) == 38) {
                 AvancerLexeur(etat);
                 genre = 53;
             }
             sinon genre = 55;
         }
-        sinon si (valeur == 124)
-        {
-            si (OctetCourant(etat) == 124)
-            {
+        sinon si (valeur == 124) {
+            si (OctetCourant(etat) == 124) {
                 AvancerLexeur(etat);
                 genre = 54;
             }
             sinon genre = 56;
         }
-        sinon si (valeur == 61)
-        {
-            si (OctetCourant(etat) == 61)
-            {
+        sinon si (valeur == 61) {
+            si (OctetCourant(etat) == 61) {
                 AvancerLexeur(etat);
                 genre = 46;
             }
             sinon genre = 45;
         }
-        sinon si (valeur == 33)
-        {
-            si (OctetCourant(etat) == 61)
-            {
+        sinon si (valeur == 33) {
+            si (OctetCourant(etat) == 61) {
                 AvancerLexeur(etat);
                 genre = 47;
             }
             sinon genre = 52;
         }
-        sinon si (valeur == 60)
-        {
-            si (OctetCourant(etat) == 60)
-            {
+        sinon si (valeur == 60) {
+            si (OctetCourant(etat) == 60) {
                 AvancerLexeur(etat);
                 genre = 59;
             }
-            sinon si (OctetCourant(etat) == 61)
-            {
+            sinon si (OctetCourant(etat) == 61) {
                 AvancerLexeur(etat);
                 genre = 49;
             }
             sinon genre = 48;
         }
-        sinon si (valeur == 62)
-        {
-            si (OctetCourant(etat) == 62)
-            {
+        sinon si (valeur == 62) {
+            si (OctetCourant(etat) == 62) {
                 AvancerLexeur(etat);
                 genre = 60;
             }
-            sinon si (OctetCourant(etat) == 61)
-            {
+            sinon si (OctetCourant(etat) == 61) {
                 AvancerLexeur(etat);
                 genre = 51;
             }
             sinon genre = 50;
         }
-        sinon si (valeur == 58)
-        {
-            si (OctetCourant(etat) == 58)
-            {
+        sinon si (valeur == 58) {
+            si (OctetCourant(etat) == 58) {
                 AvancerLexeur(etat);
                 genre = 44;
             }
@@ -390,8 +338,7 @@ espace GalacticShrine::GsPP::Autohebergement
         retourner ErreurLexage::Reussite;
     }
 
-    publique ErreurLexage AnalyserSource(RequeteLexage* requete)
-    {
+    publique ErreurLexage AnalyserSource(RequeteLexage* requete) {
         si (!requete) retourner ErreurLexage::ArgumentInvalide;
         InitialiserResultatLexage(&requete->Resultat);
         si ((!requete->Source && requete->Taille != 0)
@@ -413,12 +360,10 @@ espace GalacticShrine::GsPP::Autohebergement
             && convertir<octet>(requete->Source[2]) == 191)
             etat.Position = 3;
 
-        tantque (vrai)
-        {
+        tantque (vrai) {
             ErreurLexage erreur = IgnorerSeparationsLexeur(&etat, requete);
             si (erreur != ErreurLexage::Reussite) retourner erreur;
-            si (EstFinLexeur(&etat))
-            {
+            si (EstFinLexeur(&etat)) {
                 JetonLexe fin = {
                     0, etat.Ligne, etat.Colonne, 0,
                     etat.Position, 0, 0, HachageVideLexeur()};
@@ -426,8 +371,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 requete->Resultat.CapaciteRequise =
                     requete->Resultat.NombreJetons;
                 si (!requete->Jetons
-                    || requete->Capacite < requete->Resultat.NombreJetons)
-                {
+                    || requete->Capacite < requete->Resultat.NombreJetons) {
                     requete->Resultat.Erreur =
                         ErreurLexage::CapaciteInsuffisante;
                     retourner requete->Resultat.Erreur;
@@ -441,13 +385,11 @@ espace GalacticShrine::GsPP::Autohebergement
                 LireNombreLexeur(&etat, requete);
             sinon si (CommenceIdentifiantLexeur(courant))
                 LireIdentifiantLexeur(&etat, requete);
-            sinon si (courant == 34)
-            {
+            sinon si (courant == 34) {
                 erreur = LireChaineLexeur(&etat, requete);
                 si (erreur != ErreurLexage::Reussite) retourner erreur;
             }
-            sinon
-            {
+            sinon {
                 erreur = LireSymboleLexeur(&etat, requete);
                 si (erreur != ErreurLexage::Reussite) retourner erreur;
             }

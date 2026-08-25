@@ -11,7 +11,7 @@
       "displayName": "Windows x64 - Release (Visual Studio 2026)",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "binaryDir": "${sourceDir}/Construction/VisualStudio/Release",
+      "binaryDir": "${sourceDir}/../Construction/GsPlusPlus-Development/VisualStudio/Release",
       "cacheVariables": {
         "BUILD_TESTING": "ON"
       },
@@ -25,7 +25,7 @@
       "name": "linux-release",
       "displayName": "Linux x64 - Release",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/Construction/Ninja/Release",
+      "binaryDir": "${sourceDir}/../Construction/GsPlusPlus-Development/Ninja/Release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "ON"

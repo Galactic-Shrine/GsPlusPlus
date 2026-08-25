@@ -1,16 +1,13 @@
-espace GalacticShrine::GsPP::Hebergee
-{
+espace GalacticShrine::GsPP::Hebergee {
     publique vide InitialiserVecteurNaturels(
-        VecteurNaturels* vecteur, naturel64* stockage, naturel64 capacite)
-    {
+        VecteurNaturels* vecteur, naturel64* stockage, naturel64 capacite) {
         vecteur->Donnees = stockage;
         vecteur->Taille = 0;
         vecteur->Capacite = capacite;
     }
 
     publique booléen AjouterNaturel(
-        VecteurNaturels* vecteur, naturel64 valeur)
-    {
+        VecteurNaturels* vecteur, naturel64 valeur) {
         si (vecteur->Taille >= vecteur->Capacite) retourner faux;
         vecteur->Donnees[vecteur->Taille] = valeur;
         vecteur->Taille = vecteur->Taille + 1;
@@ -18,8 +15,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique booléen LireNaturel(
-        VecteurNaturels* vecteur, naturel64 index, naturel64* valeur)
-    {
+        VecteurNaturels* vecteur, naturel64 index, naturel64* valeur) {
         si (index >= vecteur->Taille) retourner faux;
         *valeur = vecteur->Donnees[index];
         retourner vrai;
@@ -28,38 +24,32 @@ espace GalacticShrine::GsPP::Hebergee
     publique vide InitialiserTableSymboles(
         TableSymboles* table,
         EntreeTableSymboles* stockage,
-        naturel64 capacite)
-    {
+        naturel64 capacite) {
         table->Entrees = stockage;
         table->Capacite = capacite;
         table->Nombre = 0;
         naturel64 index = 0;
-        tantque (index < capacite)
-        {
+        tantque (index < capacite) {
             table->Entrees[index].Occupee = faux;
             index = index + 1;
         }
     }
 
     publique booléen InsererSymbole(
-        TableSymboles* table, VueTexte cle, naturel64 valeur)
-    {
+        TableSymboles* table, VueTexte cle, naturel64 valeur) {
         si (table->Capacite == 0 || cle.Taille == 0) retourner faux;
         naturel64 position = HacherVueTexte(cle) % table->Capacite;
         naturel64 examines = 0;
-        tantque (examines < table->Capacite)
-        {
+        tantque (examines < table->Capacite) {
             EntreeTableSymboles* entree = &table->Entrees[position];
-            si (!entree->Occupee)
-            {
+            si (!entree->Occupee) {
                 entree->Cle = cle;
                 entree->Valeur = valeur;
                 entree->Occupee = vrai;
                 table->Nombre = table->Nombre + 1;
                 retourner vrai;
             }
-            si (VuesTexteEgales(entree->Cle, cle))
-            {
+            si (VuesTexteEgales(entree->Cle, cle)) {
                 entree->Valeur = valeur;
                 retourner vrai;
             }
@@ -70,17 +60,14 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique booléen ChercherSymbole(
-        TableSymboles* table, VueTexte cle, naturel64* valeur)
-    {
+        TableSymboles* table, VueTexte cle, naturel64* valeur) {
         si (table->Capacite == 0 || cle.Taille == 0) retourner faux;
         naturel64 position = HacherVueTexte(cle) % table->Capacite;
         naturel64 examines = 0;
-        tantque (examines < table->Capacite)
-        {
+        tantque (examines < table->Capacite) {
             EntreeTableSymboles* entree = &table->Entrees[position];
             si (!entree->Occupee) retourner faux;
-            si (VuesTexteEgales(entree->Cle, cle))
-            {
+            si (VuesTexteEgales(entree->Cle, cle)) {
                 *valeur = entree->Valeur;
                 retourner vrai;
             }

@@ -41,12 +41,19 @@ officiels et doivent conduire à la même sémantique et à la même génératio
 - une unité source contient des espaces de noms, types, globales et fonctions ;
 - une interface expose les déclarations nécessaires à la compilation séparée ;
 - les noms qualifiés utilisent `::` ;
+- les API livrées par Gs++ utilisent le préfixe canonique
+  `GalacticShrine::GsPP::` ;
+- `GsPP::` seul n'est pas un espace de noms public équivalent et ne participe
+  pas à l'ABI des bibliothèques Gs++ ;
 - les alias applicatifs peuvent cibler fonctions, globales, types et champs ;
 - les cycles, conflits et cibles absentes sont des erreurs ;
 - les symboles publics sont contrôlés entre unités par leur signature ABI.
 
 Le contrat détaillé des alias se trouve dans
 [`ALIAS_GS_PLUS_PLUS_0.11.md`](ALIAS_GS_PLUS_PLUS_0.11.md).
+
+La présentation des sources maintenues par le projet est définie dans les
+[`CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md`](CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md).
 
 ## Types fondamentaux
 

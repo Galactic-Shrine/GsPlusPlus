@@ -7,10 +7,8 @@
  * travail est construit dans une arène.
  **/
 
-espace GalacticShrine::GsPP::Autohebergement
-{
-    énumération ErreurAnalyseDeclarations
-    {
+espace GalacticShrine::GsPP::Autohebergement {
+    énumération ErreurAnalyseDeclarations {
         Reussite = 0,
         Success = 0,
         CapaciteInsuffisante = 1,
@@ -73,8 +71,7 @@ espace GalacticShrine::GsPP::Autohebergement
         InvalidIntegerLiteral = 29,
     };
 
-    énumération GenreNoeudDeclaration
-    {
+    énumération GenreNoeudDeclaration {
         Programme = 0,
         Program = 0,
         Fonction = 1,
@@ -141,8 +138,7 @@ espace GalacticShrine::GsPP::Autohebergement
         Aggregate = 32,
     };
 
-    énumération DrapeauNoeudDeclaration
-    {
+    énumération DrapeauNoeudDeclaration {
         Aucun = 0,
         None = 0,
         Publique = 1,
@@ -181,8 +177,7 @@ espace GalacticShrine::GsPP::Autohebergement
         BaseReference = 65536,
     };
 
-    structure NoeudDeclaration
-    {
+    structure NoeudDeclaration {
         naturel32 Genre;
         naturel32 Ligne;
         naturel32 Colonne;
@@ -195,8 +190,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 HachageType;
     };
 
-    structure ResultatAnalyseDeclarations
-    {
+    structure ResultatAnalyseDeclarations {
         ErreurAnalyseDeclarations Erreur;
         naturel32 LigneErreur;
         naturel32 ColonneErreur;
@@ -207,8 +201,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 Reserve;
     };
 
-    structure RequeteAnalyseDeclarations
-    {
+    structure RequeteAnalyseDeclarations {
         constante caractère* Source;
         naturel64 Taille;
         NoeudDeclaration* Noeuds;

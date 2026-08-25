@@ -1,65 +1,53 @@
-espace GalacticShrine::GsPP::Systeme
-{
-    publique naturel32 RotationGauche32(naturel32 valeur, naturel32 distance)
-    {
+espace GalacticShrine::GsPP::Systeme {
+    publique naturel32 RotationGauche32(naturel32 valeur, naturel32 distance) {
         distance = distance & 31;
         retourner (valeur << distance) | (valeur >> (32 - distance));
     }
 
-    publique naturel64 RotationGauche64(naturel64 valeur, naturel32 distance)
-    {
+    publique naturel64 RotationGauche64(naturel64 valeur, naturel32 distance) {
         distance = distance & 63;
         retourner (valeur << distance) | (valeur >> (64 - distance));
     }
 
-    publique naturel32 RotationDroite32(naturel32 valeur, naturel32 distance)
-    {
+    publique naturel32 RotationDroite32(naturel32 valeur, naturel32 distance) {
         distance = distance & 31;
         retourner (valeur >> distance) | (valeur << (32 - distance));
     }
 
-    publique naturel64 RotationDroite64(naturel64 valeur, naturel32 distance)
-    {
+    publique naturel64 RotationDroite64(naturel64 valeur, naturel32 distance) {
         distance = distance & 63;
         retourner (valeur >> distance) | (valeur << (64 - distance));
     }
 
-    publique naturel32 CompterBitsUn32(naturel32 valeur)
-    {
+    publique naturel32 CompterBitsUn32(naturel32 valeur) {
         naturel32 compte = 0;
-        tantque (valeur != 0)
-        {
+        tantque (valeur != 0) {
             compte = compte + (valeur & 1);
             valeur = valeur >> 1;
         }
         retourner compte;
     }
 
-    publique naturel32 CompterBitsUn64(naturel64 valeur)
-    {
+    publique naturel32 CompterBitsUn64(naturel64 valeur) {
         naturel32 compte = 0;
-        tantque (valeur != 0)
-        {
+        tantque (valeur != 0) {
             compte = compte + convertir<naturel32>(valeur & 1);
             valeur = valeur >> 1;
         }
         retourner compte;
     }
 
-    publique naturel32 InverserOctets32(naturel32 valeur)
-    {
+    publique naturel32 InverserOctets32(naturel32 valeur) {
         retourner ((valeur & 255) << 24)
             | ((valeur & 65_280) << 8)
             | ((valeur >> 8) & 65_280)
             | ((valeur >> 24) & 255);
     }
 
-    publique naturel64 InverserOctets64(naturel64 valeur)
-    {
+    publique naturel64 InverserOctets64(naturel64 valeur) {
         naturel64 resultat = 0;
         naturel32 index = 0;
-        tantque (index < 8)
-        {
+        tantque (index < 8) {
             resultat = (resultat << 8) | (valeur & 255);
             valeur = valeur >> 8;
             index = index + 1;
@@ -67,14 +55,12 @@ espace GalacticShrine::GsPP::Systeme
         retourner resultat;
     }
 
-    publique booléen EstPuissanceDeux(naturel64 valeur)
-    {
+    publique booléen EstPuissanceDeux(naturel64 valeur) {
         si (valeur == 0) retourner faux;
         retourner (valeur & (valeur - 1)) == 0;
     }
 
-    publique naturel64 AlignerSuperieur(naturel64 valeur, naturel64 alignement)
-    {
+    publique naturel64 AlignerSuperieur(naturel64 valeur, naturel64 alignement) {
         si (alignement == 0) retourner valeur;
         retourner (valeur + alignement - 1) & ~(alignement - 1);
     }

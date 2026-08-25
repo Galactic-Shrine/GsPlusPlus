@@ -27,8 +27,8 @@ Benchmarks/invoke-gsplusplus-benchmark.sh --mode smoke
 Depuis la racine autonome de Gs++, le pilote localise par défaut les outils
 dans les constructions permanentes de publication :
 
-- Windows : `Construction/VisualStudio/Release/Bin/` ;
-- GNU/Linux : `Construction/Ninja/Release/Bin/`.
+- Windows : `../Construction/GsPlusPlus-Development/VisualStudio/Release/Bin/` ;
+- GNU/Linux : `../Construction/GsPlusPlus-Development/Ninja/Release/Bin/`.
 
 Un autre chemin peut être fourni avec `--compiler` et `--loader`, ou avec les
 paramètres PowerShell `-Compiler` et `-Loader`. Une version différente de

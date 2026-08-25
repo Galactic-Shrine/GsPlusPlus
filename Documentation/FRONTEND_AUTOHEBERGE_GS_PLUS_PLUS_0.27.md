@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur, AST syntaxique et première passe sémantique VALIDÉS —
-25 août 2026.**
+**EN COURS — lexeur, AST syntaxique, indexation et première sélection typée
+VALIDÉS — 26 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -11,9 +11,10 @@ constructeurs, destructeurs et opérateurs de classes, puis l’alpha.5 construi
 la hiérarchie des blocs et instructions. L’alpha.6 ajoute l’AST interne des
 expressions avec les mêmes priorités et associativités que le bootstrap. Le
 jalon alpha.7 ajoute l’indexation des symboles et la première résolution des
-noms. Le frontend 0.27 complet n’est pas encore validé : la résolution des
-types, la sélection typée des surcharges et les vérifications sémantiques
-suivantes restent à migrer.
+noms. La branche de développement suivante sélectionne maintenant les
+surcharges libres à partir des types déjà déterminables dans l’AST compact.
+Le frontend 0.27 complet n’est pas encore validé : la résolution exhaustive
+des types et les vérifications sémantiques suivantes restent à migrer.
 
 ## Lexeur auto-hébergé validé
 
@@ -280,10 +281,40 @@ La matrice complète, les empreintes reproductibles et les contrôles des
 paquets extraits sont consignés dans
 [`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
 
+## Première sélection typée des surcharges — après alpha.7
+
+La passe auto-hébergée sélectionne désormais une fonction libre précise
+lorsqu’une référence placée en cible d’appel désigne plusieurs surcharges. Le
+choix tient compte :
+
+- du nombre de paramètres ;
+- des empreintes de type des paramètres et des arguments déjà résolus ;
+- des paramètres, variables locales et globales utilisés comme arguments ;
+- des conversions explicites présentes dans l’AST ;
+- du type canonique des littéraux booléens, chaînes et entiers ;
+- de l’adaptation d’un littéral entier lorsque sa valeur est représentable
+  dans le type du paramètre ;
+- du score minimal de conversion, avec détection des ex æquo.
+
+La résolution produite conserve le drapeau `GroupeSurcharges`, mais son
+`IndexSymbole` désigne maintenant la surcharge effectivement choisie et son
+`HachageType` le type de retour de cette fonction. Deux appels bilingues
+sélectionnent différentiellement les variantes `entier32` et `entier64` de
+`Choisir`. Deux corpus négatifs supplémentaires vérifient les diagnostics
+`AucuneSurchargeCompatible` et `AppelSurchargeAmbigu`, portant le total courant
+à dix-sept corpus sémantiques négatifs.
+
+Cette tranche est validée localement par la reconstruction réelle de
+`AnalyseurSemantique.GsE` et par les suites complètes MSVC et GNU. Elle ne
+couvre pas encore les surcharges de membres, les références, les agrégats,
+l’héritage ni toutes les conversions implicites du bootstrap C++.
+
 ## Travaux restant dans Gs++ 0.27
 
-- résoudre et comparer les types des expressions ;
-- sélectionner les surcharges à partir des types d’arguments ;
+- compléter la résolution et la comparaison des types de toutes les
+  expressions ;
+- étendre la sélection typée aux membres, références, agrégats, conversions
+  implicites et relations d’héritage ;
 - étendre la résolution aux membres, conversions et appels de constructeurs ;
 - migrer les vérifications de visibilité, héritage et durée de vie ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend

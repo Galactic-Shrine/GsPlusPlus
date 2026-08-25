@@ -3,8 +3,7 @@
  * Cette interface n’alloue aucune mémoire et ne dépend d’aucun runtime.
  **/
 
-espace GalacticShrine::GsPP::Intrinseques
-{
+espace GalacticShrine::GsPP::Intrinseques {
     naturel32 ChargerAtomique32(volatile naturel32* cible);
     naturel64 ChargerAtomique64(volatile naturel64* cible);
     vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur);
@@ -21,26 +20,22 @@ espace GalacticShrine::GsPP::Intrinseques
     vide PauseProcesseur();
 }
 
-espace GalacticShrine::GsPP::Systeme
-{
-    structure VueOctets
-    {
+espace GalacticShrine::GsPP::Systeme {
+    structure VueOctets {
         octet* Donnees;
         naturel64 Taille;
         alias Data = Donnees;
         alias Size = Taille;
     };
 
-    structure VueTexte
-    {
+    structure VueTexte {
         caractère* Donnees;
         naturel64 Taille;
         alias Data = Donnees;
         alias Size = Taille;
     };
 
-    structure VerrouAtomique
-    {
+    structure VerrouAtomique {
         volatile naturel32 Etat;
         alias State = Etat;
     };

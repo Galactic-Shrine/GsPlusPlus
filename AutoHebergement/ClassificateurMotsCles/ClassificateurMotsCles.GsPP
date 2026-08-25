@@ -1,15 +1,12 @@
-espace GalacticShrine::GsPP::Autohebergement
-{
+espace GalacticShrine::GsPP::Autohebergement {
     booléen EstMot(
-        GalacticShrine::GsPP::Hebergee::VueTexte mot, constante caractère* attendu)
-    {
+        GalacticShrine::GsPP::Hebergee::VueTexte mot, constante caractère* attendu) {
         retourner GalacticShrine::GsPP::Hebergee::VuesTexteEgales(
             mot, GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee(attendu));
     }
 
     publique naturel32 ClassifierMotCle(
-        constante caractère* texte, naturel64 taille)
-    {
+        constante caractère* texte, naturel64 taille) {
         GalacticShrine::GsPP::Hebergee::VueTexte mot =
             GalacticShrine::GsPP::Hebergee::CreerVueTexte(texte, taille);
 

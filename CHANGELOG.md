@@ -10,6 +10,28 @@
 
 # Journal des modifications
 
+## Développement après Gs++ 0.27.0-alpha.7 — 2026-08-26
+
+- adoption de `GalacticShrine::GsPP::` comme préfixe public et ABI canonique,
+  `GsPP::` seul restant exclu des contrats exportés ;
+- ajout des conventions de code Gs++ 1.0 en Markdown, avec accolades ouvrantes
+  sur la ligne de la déclaration, indentation de quatre espaces et blocs
+  documentaires `/** … **/` ;
+- ajout des sections `<résumé>...</résumé>` et des balises typées
+  `@Paramètre(type: nom)` et `@Retourner(type)` aux API documentées ;
+- migration mécanique des sources livrées dans `Bibliotheques` et
+  `AutoHebergement` vers la présentation canonique ;
+- déplacement des sorties des presets CMake vers le dossier central voisin
+  `../Construction/GsPlusPlus-Development`, hors du dépôt source ;
+- ajout d’un contrôle CTest portable des espaces de noms, accolades,
+  tabulations et formes de commentaires ;
+- première sélection typée des surcharges libres à partir des paramètres,
+  variables, conversions explicites et littéraux représentables ;
+- ajout des diagnostics `AucuneSurchargeCompatible` et
+  `AppelSurchargeAmbigu`, comparés au bootstrap C++ ;
+- validation complète avec Visual Studio 2026 et GNU/Linux, avec quatre images
+  auto-hébergées identiques bit à bit entre les deux chaînes.
+
 ## Compilateur Gs++ 0.27.0-alpha.7 — 2026-08-25
 
 - ajout de la première passe sémantique auto-hébergée, consommant l’AST compact

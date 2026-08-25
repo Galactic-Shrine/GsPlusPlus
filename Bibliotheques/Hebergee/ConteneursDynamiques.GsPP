@@ -1,31 +1,25 @@
-espace GalacticShrine::GsPP::Hebergee
-{
+espace GalacticShrine::GsPP::Hebergee {
     octet* NulOctetsConteneur;
     naturel64* NulNaturelsConteneur;
     EntreeTableSymboles* NulEntreesConteneur;
 
-    octet* PointeurNulOctetsConteneur()
-    {
+    octet* PointeurNulOctetsConteneur() {
         retourner NulOctetsConteneur;
     }
 
-    naturel64* PointeurNulNaturelsConteneur()
-    {
+    naturel64* PointeurNulNaturelsConteneur() {
         retourner NulNaturelsConteneur;
     }
 
-    EntreeTableSymboles* PointeurNulEntreesConteneur()
-    {
+    EntreeTableSymboles* PointeurNulEntreesConteneur() {
         retourner NulEntreesConteneur;
     }
 
     naturel64 CapaciteSuivanteConteneur(
-        naturel64 actuelle, naturel64 requise)
-    {
+        naturel64 actuelle, naturel64 requise) {
         naturel64 resultat = actuelle;
         si (resultat < 8) resultat = 8;
-        tantque (resultat < requise)
-        {
+        tantque (resultat < requise) {
             si (resultat > 9_223_372_036_854_775_807)
                 retourner requise;
             resultat = resultat * 2;
@@ -34,30 +28,26 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique vide InitialiserVecteurOctetsDynamique(
-        VecteurOctetsDynamique* vecteur)
-    {
+        VecteurOctetsDynamique* vecteur) {
         vecteur->Donnees = PointeurNulOctetsConteneur();
         vecteur->Taille = 0;
         vecteur->Capacite = 0;
     }
 
     publique vide DetruireVecteurOctetsDynamique(
-        VecteurOctetsDynamique* vecteur)
-    {
+        VecteurOctetsDynamique* vecteur) {
         si (vecteur->Donnees) GalacticShrine::GsPP::Hote::LibererMemoire(vecteur->Donnees);
         InitialiserVecteurOctetsDynamique(vecteur);
     }
 
     publique CodeErreurHebergee ReserverVecteurOctetsDynamique(
-        VecteurOctetsDynamique* vecteur, naturel64 capacite)
-    {
+        VecteurOctetsDynamique* vecteur, naturel64 capacite) {
         si (capacite <= vecteur->Capacite)
             retourner CodeErreurHebergee::Reussite;
         octet* nouveau = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite);
         si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64 index = 0;
-        tantque (index < vecteur->Taille)
-        {
+        tantque (index < vecteur->Taille) {
             nouveau[index] = vecteur->Donnees[index];
             index = index + 1;
         }
@@ -69,18 +59,15 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee AjouterBlocVecteurOctetsDynamique(
-        VecteurOctetsDynamique* vecteur, octet* source, naturel64 taille)
-    {
+        VecteurOctetsDynamique* vecteur, octet* source, naturel64 taille) {
         si (taille == 0) retourner CodeErreurHebergee::Reussite;
         si (!source) retourner CodeErreurHebergee::ArgumentInvalide;
         si (taille > 18_446_744_073_709_551_615 - vecteur->Taille)
             retourner CodeErreurHebergee::CapaciteDepassee;
         naturel64 requise = vecteur->Taille + taille;
-        si (requise <= vecteur->Capacite)
-        {
+        si (requise <= vecteur->Capacite) {
             naturel64 indexDirect = 0;
-            tantque (indexDirect < taille)
-            {
+            tantque (indexDirect < taille) {
                 vecteur->Donnees[vecteur->Taille + indexDirect] =
                     source[indexDirect];
                 indexDirect = indexDirect + 1;
@@ -94,14 +81,12 @@ espace GalacticShrine::GsPP::Hebergee
         octet* nouveau = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite);
         si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64 indexAncien = 0;
-        tantque (indexAncien < vecteur->Taille)
-        {
+        tantque (indexAncien < vecteur->Taille) {
             nouveau[indexAncien] = vecteur->Donnees[indexAncien];
             indexAncien = indexAncien + 1;
         }
         naturel64 indexSource = 0;
-        tantque (indexSource < taille)
-        {
+        tantque (indexSource < taille) {
             nouveau[vecteur->Taille + indexSource] = source[indexSource];
             indexSource = indexSource + 1;
         }
@@ -114,24 +99,21 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique vide InitialiserVecteurNaturelsDynamique(
-        VecteurNaturelsDynamique* vecteur)
-    {
+        VecteurNaturelsDynamique* vecteur) {
         vecteur->Donnees = PointeurNulNaturelsConteneur();
         vecteur->Taille = 0;
         vecteur->Capacite = 0;
     }
 
     publique vide DetruireVecteurNaturelsDynamique(
-        VecteurNaturelsDynamique* vecteur)
-    {
+        VecteurNaturelsDynamique* vecteur) {
         si (vecteur->Donnees)
             GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(vecteur->Donnees));
         InitialiserVecteurNaturelsDynamique(vecteur);
     }
 
     publique CodeErreurHebergee ReserverVecteurNaturelsDynamique(
-        VecteurNaturelsDynamique* vecteur, naturel64 capacite)
-    {
+        VecteurNaturelsDynamique* vecteur, naturel64 capacite) {
         si (capacite <= vecteur->Capacite)
             retourner CodeErreurHebergee::Reussite;
         si (capacite > 2_305_843_009_213_693_951)
@@ -140,8 +122,7 @@ espace GalacticShrine::GsPP::Hebergee
         si (!brut) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64* nouveau = convertir<naturel64*>(brut);
         naturel64 index = 0;
-        tantque (index < vecteur->Taille)
-        {
+        tantque (index < vecteur->Taille) {
             nouveau[index] = vecteur->Donnees[index];
             index = index + 1;
         }
@@ -153,13 +134,11 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee AjouterVecteurNaturelsDynamique(
-        VecteurNaturelsDynamique* vecteur, naturel64 valeur)
-    {
+        VecteurNaturelsDynamique* vecteur, naturel64 valeur) {
         si (vecteur->Taille == 18_446_744_073_709_551_615)
             retourner CodeErreurHebergee::CapaciteDepassee;
         naturel64 requise = vecteur->Taille + 1;
-        si (requise > vecteur->Capacite)
-        {
+        si (requise > vecteur->Capacite) {
             naturel64 capacite = CapaciteSuivanteConteneur(
                 vecteur->Capacite, requise);
             CodeErreurHebergee resultat =
@@ -175,22 +154,19 @@ espace GalacticShrine::GsPP::Hebergee
     publique booléen LireVecteurNaturelsDynamique(
         VecteurNaturelsDynamique* vecteur,
         naturel64 index,
-        naturel64* valeur)
-    {
+        naturel64* valeur) {
         si (index >= vecteur->Taille) retourner faux;
         *valeur = vecteur->Donnees[index];
         retourner vrai;
     }
 
     EntreeTableSymboles* TrouverEntreeDynamique(
-        TableSymbolesDynamique* table, VueTexte cle)
-    {
+        TableSymbolesDynamique* table, VueTexte cle) {
         si (table->Capacite == 0 || cle.Taille == 0)
             retourner PointeurNulEntreesConteneur();
         naturel64 position = HacherVueTexte(cle) % table->Capacite;
         naturel64 examines = 0;
-        tantque (examines < table->Capacite)
-        {
+        tantque (examines < table->Capacite) {
             EntreeTableSymboles* entree = &table->Entrees[position];
             si (!entree->Occupee) retourner PointeurNulEntreesConteneur();
             si (VuesTexteEgales(entree->Cle, cle)) retourner entree;
@@ -201,15 +177,12 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     booléen InsererEntreeDynamiqueSansCroissance(
-        TableSymbolesDynamique* table, VueTexte cle, naturel64 valeur)
-    {
+        TableSymbolesDynamique* table, VueTexte cle, naturel64 valeur) {
         naturel64 position = HacherVueTexte(cle) % table->Capacite;
         naturel64 examines = 0;
-        tantque (examines < table->Capacite)
-        {
+        tantque (examines < table->Capacite) {
             EntreeTableSymboles* entree = &table->Entrees[position];
-            si (!entree->Occupee)
-            {
+            si (!entree->Occupee) {
                 entree->Cle = cle;
                 entree->Valeur = valeur;
                 entree->Occupee = vrai;
@@ -223,24 +196,21 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique vide InitialiserTableSymbolesDynamique(
-        TableSymbolesDynamique* table)
-    {
+        TableSymbolesDynamique* table) {
         table->Entrees = PointeurNulEntreesConteneur();
         table->Capacite = 0;
         table->Nombre = 0;
     }
 
     publique vide DetruireTableSymbolesDynamique(
-        TableSymbolesDynamique* table)
-    {
+        TableSymbolesDynamique* table) {
         si (table->Entrees)
             GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(table->Entrees));
         InitialiserTableSymbolesDynamique(table);
     }
 
     publique CodeErreurHebergee ReserverTableSymbolesDynamique(
-        TableSymbolesDynamique* table, naturel64 capacite)
-    {
+        TableSymbolesDynamique* table, naturel64 capacite) {
         si (capacite <= table->Capacite)
             retourner CodeErreurHebergee::Reussite;
         si (capacite < table->Nombre)
@@ -252,16 +222,13 @@ espace GalacticShrine::GsPP::Hebergee
         TableSymbolesDynamique nouvelle = {
             convertir<EntreeTableSymboles*>(brut), capacite, 0};
         naturel64 indexVide = 0;
-        tantque (indexVide < capacite)
-        {
+        tantque (indexVide < capacite) {
             nouvelle.Entrees[indexVide].Occupee = faux;
             indexVide = indexVide + 1;
         }
         naturel64 indexAncien = 0;
-        tantque (indexAncien < table->Capacite)
-        {
-            si (table->Entrees[indexAncien].Occupee)
-            {
+        tantque (indexAncien < table->Capacite) {
+            si (table->Entrees[indexAncien].Occupee) {
                 InsererEntreeDynamiqueSansCroissance(
                     &nouvelle,
                     table->Entrees[indexAncien].Cle,
@@ -279,20 +246,17 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee InsererTableSymbolesDynamique(
-        TableSymbolesDynamique* table, VueTexte cle, naturel64 valeur)
-    {
+        TableSymbolesDynamique* table, VueTexte cle, naturel64 valeur) {
         si (cle.Taille == 0 || !cle.Donnees)
             retourner CodeErreurHebergee::ArgumentInvalide;
         EntreeTableSymboles* existante = TrouverEntreeDynamique(table, cle);
-        si (existante)
-        {
+        si (existante) {
             existante->Valeur = valeur;
             retourner CodeErreurHebergee::Reussite;
         }
         naturel64 requise = table->Nombre + 1;
         si (table->Capacite == 0
-            || requise > table->Capacite - table->Capacite / 4)
-        {
+            || requise > table->Capacite - table->Capacite / 4) {
             naturel64 capacite = CapaciteSuivanteConteneur(
                 table->Capacite, table->Capacite + 1);
             CodeErreurHebergee resultat =
@@ -306,8 +270,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique booléen ChercherTableSymbolesDynamique(
-        TableSymbolesDynamique* table, VueTexte cle, naturel64* valeur)
-    {
+        TableSymbolesDynamique* table, VueTexte cle, naturel64* valeur) {
         EntreeTableSymboles* entree = TrouverEntreeDynamique(table, cle);
         si (!entree) retourner faux;
         *valeur = entree->Valeur;

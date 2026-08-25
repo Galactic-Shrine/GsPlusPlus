@@ -1,24 +1,19 @@
-espace GalacticShrine::GsPP::Hebergee
-{
+espace GalacticShrine::GsPP::Hebergee {
     octet* NulOctetsFichier;
 
-    octet* PointeurNulOctetsFichier()
-    {
+    octet* PointeurNulOctetsFichier() {
         retourner NulOctetsFichier;
     }
 
-    booléen EstSeparateurChemin(caractère valeur)
-    {
+    booléen EstSeparateurChemin(caractère valeur) {
         retourner valeur == 47 || valeur == 92;
     }
 
-    booléen VueCheminValide(VueTexte chemin)
-    {
+    booléen VueCheminValide(VueTexte chemin) {
         si (chemin.Taille == 0 || !chemin.Donnees) retourner faux;
         si (!ValiderUtf8(chemin)) retourner faux;
         naturel64 index = 0;
-        tantque (index < chemin.Taille)
-        {
+        tantque (index < chemin.Taille) {
             si (chemin.Donnees[index] == 0) retourner faux;
             index = index + 1;
         }
@@ -29,8 +24,7 @@ espace GalacticShrine::GsPP::Hebergee
         ChaineUtf8* sortie,
         VueTexte base,
         VueTexte enfant,
-        caractère separateur)
-    {
+        caractère separateur) {
         si (!VueCheminValide(base) || !VueCheminValide(enfant)
             || !EstSeparateurChemin(separateur))
             retourner CodeErreurHebergee::CheminInvalide;
@@ -38,8 +32,7 @@ espace GalacticShrine::GsPP::Hebergee
         ChaineUtf8 temporaire;
         InitialiserChaineUtf8(&temporaire);
         CodeErreurHebergee resultat = AssignerChaineUtf8(&temporaire, base);
-        si (resultat != CodeErreurHebergee::Reussite)
-        {
+        si (resultat != CodeErreurHebergee::Reussite) {
             DetruireChaineUtf8(&temporaire);
             retourner resultat;
         }
@@ -49,11 +42,9 @@ espace GalacticShrine::GsPP::Hebergee
         naturel64 debutEnfant = 0;
         booléen debutSepare = EstSeparateurChemin(enfant.Donnees[0]);
         si (finBase && debutSepare) debutEnfant = 1;
-        sinon si (!finBase && !debutSepare)
-        {
+        sinon si (!finBase && !debutSepare) {
             resultat = AjouterAsciiChaineUtf8(&temporaire, separateur);
-            si (resultat != CodeErreurHebergee::Reussite)
-            {
+            si (resultat != CodeErreurHebergee::Reussite) {
                 DetruireChaineUtf8(&temporaire);
                 retourner resultat;
             }
@@ -62,8 +53,7 @@ espace GalacticShrine::GsPP::Hebergee
         VueTexte suffixe = {
             &enfant.Donnees[debutEnfant], enfant.Taille - debutEnfant};
         resultat = AjouterVueChaineUtf8(&temporaire, suffixe);
-        si (resultat != CodeErreurHebergee::Reussite)
-        {
+        si (resultat != CodeErreurHebergee::Reussite) {
             DetruireChaineUtf8(&temporaire);
             retourner resultat;
         }
@@ -75,13 +65,11 @@ espace GalacticShrine::GsPP::Hebergee
         retourner CodeErreurHebergee::Reussite;
     }
 
-    publique VueTexte NomFichierVue(VueTexte chemin)
-    {
+    publique VueTexte NomFichierVue(VueTexte chemin) {
         si (chemin.Taille == 0 || !chemin.Donnees) retourner chemin;
         naturel64 debut = 0;
         naturel64 index = 0;
-        tantque (index < chemin.Taille)
-        {
+        tantque (index < chemin.Taille) {
             si (EstSeparateurChemin(chemin.Donnees[index]))
                 debut = index + 1;
             index = index + 1;
@@ -89,14 +77,12 @@ espace GalacticShrine::GsPP::Hebergee
         retourner {&chemin.Donnees[debut], chemin.Taille - debut};
     }
 
-    publique VueTexte ExtensionVue(VueTexte chemin)
-    {
+    publique VueTexte ExtensionVue(VueTexte chemin) {
         VueTexte nom = NomFichierVue(chemin);
         si (nom.Taille == 0) retourner nom;
         naturel64 position = nom.Taille;
         naturel64 index = 0;
-        tantque (index < nom.Taille)
-        {
+        tantque (index < nom.Taille) {
             si (nom.Donnees[index] == 46) position = index;
             index = index + 1;
         }
@@ -106,8 +92,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee ChargerFichierAlloue(
-        constante caractère* chemin, FichierAlloue* fichier)
-    {
+        constante caractère* chemin, FichierAlloue* fichier) {
         si (!chemin || !fichier)
             retourner CodeErreurHebergee::ArgumentInvalide;
         VueTexte cheminVue = CreerVueTexteTerminee(chemin);
@@ -119,8 +104,7 @@ espace GalacticShrine::GsPP::Hebergee
         si (GalacticShrine::GsPP::Hote::LireFichier(&mesure) == 0)
             retourner CodeErreurHebergee::LectureEchouee;
 
-        si (mesure.Taille == 0)
-        {
+        si (mesure.Taille == 0) {
             si (fichier->Donnees)
                 GalacticShrine::GsPP::Hote::LibererMemoire(fichier->Donnees);
             fichier->Donnees = PointeurNulOctetsFichier();
@@ -133,8 +117,7 @@ espace GalacticShrine::GsPP::Hebergee
         RequeteFichier lecture = {
             chemin, donnees, 0, mesure.Taille};
         si (GalacticShrine::GsPP::Hote::LireFichier(&lecture) == 0
-            || lecture.Taille != mesure.Taille)
-        {
+            || lecture.Taille != mesure.Taille) {
             GalacticShrine::GsPP::Hote::LibererMemoire(donnees);
             retourner CodeErreurHebergee::LectureEchouee;
         }
@@ -146,14 +129,12 @@ espace GalacticShrine::GsPP::Hebergee
         retourner CodeErreurHebergee::Reussite;
     }
 
-    publique vide InitialiserFichierAlloue(FichierAlloue* fichier)
-    {
+    publique vide InitialiserFichierAlloue(FichierAlloue* fichier) {
         fichier->Donnees = PointeurNulOctetsFichier();
         fichier->Taille = 0;
     }
 
-    publique vide LibererFichierAlloue(FichierAlloue* fichier)
-    {
+    publique vide LibererFichierAlloue(FichierAlloue* fichier) {
         si (fichier->Donnees)
             GalacticShrine::GsPP::Hote::LibererMemoire(fichier->Donnees);
         fichier->Donnees = PointeurNulOctetsFichier();
@@ -161,8 +142,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee SauverFichierResultat(
-        constante caractère* chemin, octet* source, naturel64 taille)
-    {
+        constante caractère* chemin, octet* source, naturel64 taille) {
         si (!chemin || (taille != 0 && !source))
             retourner CodeErreurHebergee::ArgumentInvalide;
         VueTexte cheminVue = CreerVueTexteTerminee(chemin);

@@ -79,6 +79,17 @@ add_test(
 )
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(
+    NAME gspp_style_sources
+    COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Conformite/verifier_style_sources.py"
+        --source-root "${GS_RACINE_GSPP}"
+)
+set_tests_properties(
+    gspp_style_sources PROPERTIES
+    LABELS "GsPlusPlus;Conformite;Style"
+)
+
 set(GS_RAPPORT_CONFORMITE
     "${GS_REPERTOIRE_TESTS}/GsPlusPlus/Conformite/rapport.json")
 add_test(

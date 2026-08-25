@@ -1,107 +1,179 @@
-espace GalacticShrine::GsPP::Hebergee
-{
+espace GalacticShrine::GsPP::Hebergee {
+
+    /**
+     * <résumé>Construit une vue non propriétaire sur une zone de caractères.</résumé>
+     * @Paramètre(constante caractère*: donnees) Adresse du premier caractère.
+     * @Paramètre(naturel64: taille) Nombre de caractères accessibles.
+     * @Retourner(VueTexte) Vue formée à partir de l'adresse et de la taille.
+     **/
     publique VueTexte CreerVueTexte(
-        constante caractère* donnees, naturel64 taille)
-    {
+        constante caractère* donnees, naturel64 taille) {
+
         retourner {donnees, taille};
     }
 
+    /**
+     * <résumé>Construit une vue sur un texte terminé par un caractère nul.</résumé>
+     * @Paramètre(constante caractère*: texte) Adresse du premier caractère.
+     * @Retourner(VueTexte) Vue qui exclut le caractère nul final.
+     **/
     publique VueTexte CreerVueTexteTerminee(
-        constante caractère* texte)
-    {
+        constante caractère* texte) {
+
         naturel64 taille = 0;
         tantque (texte[taille] != 0) taille = taille + 1;
+
         retourner {texte, taille};
     }
 
+    /**
+     * <résumé>Compare deux vues de texte octet par octet.</résumé>
+     * @Paramètre(VueTexte: gauche) Première vue à comparer.
+     * @Paramètre(VueTexte: droite) Deuxième vue à comparer.
+     * @Retourner(booléen) `vrai` si les tailles et contenus sont identiques.
+     **/
     publique booléen VuesTexteEgales(
-        VueTexte gauche, VueTexte droite)
-    {
+        VueTexte gauche, VueTexte droite) {
+
         si (gauche.Taille != droite.Taille) retourner faux;
+
         naturel64 index = 0;
-        tantque (index < gauche.Taille)
-        {
+        tantque (index < gauche.Taille) {
             si (gauche.Donnees[index] != droite.Donnees[index])
                 retourner faux;
             index = index + 1;
         }
+
         retourner vrai;
     }
 
-    publique naturel64 HacherVueTexte(VueTexte texte)
-    {
+    /**
+     * <résumé>Calcule le hachage FNV-1a d'une vue de texte.</résumé>
+     * @Paramètre(VueTexte: texte) Vue dont le contenu doit être haché.
+     * @Retourner(naturel64) Valeur de hachage non signée sur 64 bits.
+     **/
+    publique naturel64 HacherVueTexte(VueTexte texte) {
+
         naturel64 valeur = 14_695_981_039_346_656_037;
         naturel64 index = 0;
-        tantque (index < texte.Taille)
-        {
+        tantque (index < texte.Taille) {
             valeur = valeur
                 ^ convertir<naturel64>(
                     convertir<naturel8>(texte.Donnees[index]));
             valeur = valeur * 1_099_511_628_211;
             index = index + 1;
         }
+
         retourner valeur;
     }
 
+    /**
+     * <résumé>Crée un flux de lecture non propriétaire.</résumé>
+     * @Paramètre(octet*: donnees) Adresse du premier octet lisible.
+     * @Paramètre(naturel64: taille) Nombre total d'octets lisibles.
+     * @Retourner(FluxLecture) Flux positionné au début de la zone.
+     **/
     publique FluxLecture CreerFluxLecture(
-        octet* donnees, naturel64 taille)
-    {
+        octet* donnees, naturel64 taille) {
+
         retourner {donnees, taille, 0};
     }
 
+    /**
+     * <résumé>Lit l'octet courant d'un flux et avance sa position.</résumé>
+     * @Paramètre(FluxLecture*: flux) Flux de lecture à consommer.
+     * @Paramètre(octet*: valeur) Destination qui reçoit l'octet lu.
+     * @Retourner(booléen) `vrai` si un octet a été lu, sinon `faux`.
+     **/
     publique booléen LireOctetFlux(
-        FluxLecture* flux, octet* valeur)
-    {
+        FluxLecture* flux, octet* valeur) {
+
         si (flux->Position >= flux->Taille) retourner faux;
+
         *valeur = flux->Donnees[flux->Position];
         flux->Position = flux->Position + 1;
+
         retourner vrai;
     }
 
+    /**
+     * <résumé>Copie un bloc depuis la position courante d'un flux.</résumé>
+     * @Paramètre(FluxLecture*: flux) Flux de lecture à consommer.
+     * @Paramètre(octet*: destination) Zone qui reçoit les octets.
+     * @Paramètre(naturel64: taille) Nombre maximal d'octets à lire.
+     * @Retourner(naturel64) Nombre d'octets effectivement copiés.
+     **/
     publique naturel64 LireBlocFlux(
-        FluxLecture* flux, octet* destination, naturel64 taille)
-    {
+        FluxLecture* flux, octet* destination, naturel64 taille) {
+
         si (flux->Position >= flux->Taille) retourner 0;
+
         naturel64 disponible = flux->Taille - flux->Position;
         si (taille > disponible) taille = disponible;
+
         naturel64 index = 0;
-        tantque (index < taille)
-        {
+        tantque (index < taille) {
             destination[index] = flux->Donnees[flux->Position + index];
             index = index + 1;
         }
+
         flux->Position = flux->Position + taille;
+
         retourner taille;
     }
 
+    /**
+     * <résumé>Crée un flux d'écriture non propriétaire.</résumé>
+     * @Paramètre(octet*: donnees) Adresse du premier octet inscriptible.
+     * @Paramètre(naturel64: capacite) Nombre total d'octets inscriptibles.
+     * @Retourner(FluxEcriture) Flux positionné au début de la zone.
+     **/
     publique FluxEcriture CreerFluxEcriture(
-        octet* donnees, naturel64 capacite)
-    {
+        octet* donnees, naturel64 capacite) {
+
         retourner {donnees, capacite, 0};
     }
 
+    /**
+     * <résumé>Écrit un octet à la position courante d'un flux.</résumé>
+     * @Paramètre(FluxEcriture*: flux) Flux d'écriture à modifier.
+     * @Paramètre(octet: valeur) Octet à écrire.
+     * @Retourner(booléen) `vrai` si l'octet a été écrit, sinon `faux`.
+     **/
     publique booléen EcrireOctetFlux(
-        FluxEcriture* flux, octet valeur)
-    {
+        FluxEcriture* flux, octet valeur) {
+
         si (flux->Position >= flux->Capacite) retourner faux;
+
         flux->Donnees[flux->Position] = valeur;
         flux->Position = flux->Position + 1;
+
         retourner vrai;
     }
 
+    /**
+     * <résumé>Copie un bloc dans un flux d'écriture.</résumé>
+     * @Paramètre(FluxEcriture*: flux) Flux d'écriture à modifier.
+     * @Paramètre(octet*: source) Zone contenant les octets à copier.
+     * @Paramètre(naturel64: taille) Nombre maximal d'octets à écrire.
+     * @Retourner(naturel64) Nombre d'octets effectivement copiés.
+     **/
     publique naturel64 EcrireBlocFlux(
-        FluxEcriture* flux, octet* source, naturel64 taille)
-    {
+        FluxEcriture* flux, octet* source, naturel64 taille) {
+
         si (flux->Position >= flux->Capacite) retourner 0;
+
         naturel64 disponible = flux->Capacite - flux->Position;
         si (taille > disponible) taille = disponible;
+
         naturel64 index = 0;
-        tantque (index < taille)
-        {
+        tantque (index < taille) {
             flux->Donnees[flux->Position + index] = source[index];
             index = index + 1;
         }
+
         flux->Position = flux->Position + taille;
+
         retourner taille;
     }
 }

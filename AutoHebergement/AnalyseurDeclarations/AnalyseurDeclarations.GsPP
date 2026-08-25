@@ -1,10 +1,8 @@
-espace GalacticShrine::GsPP::Autohebergement
-{
+espace GalacticShrine::GsPP::Autohebergement {
     JetonLexe* NulJetonsDeclarations;
     NoeudDeclaration* NulNoeudsDeclarations;
 
-    structure TypeDeclarationInterne
-    {
+    structure TypeDeclarationInterne {
         naturel32 Genre;
         naturel32 Qualificatifs;
         naturel32 NiveauPointeur;
@@ -13,14 +11,12 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 HachageDimensions;
     };
 
-    structure ContexteEspaceDeclaration
-    {
+    structure ContexteEspaceDeclaration {
         naturel64 Hachage;
         booléen EstVide;
     };
 
-    structure NomQualifieDeclaration
-    {
+    structure NomQualifieDeclaration {
         naturel64 Debut;
         naturel64 Taille;
         naturel64 Hachage;
@@ -28,8 +24,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel32 Colonne;
     };
 
-    structure NoeudExpressionInterne
-    {
+    structure NoeudExpressionInterne {
         naturel32 Genre;
         naturel32 Ligne;
         naturel32 Colonne;
@@ -45,8 +40,7 @@ espace GalacticShrine::GsPP::Autohebergement
 
     NoeudExpressionInterne* NulExpressionsDeclarations;
 
-    structure EtatAnalyseDeclarations
-    {
+    structure EtatAnalyseDeclarations {
         RequeteAnalyseDeclarations* Requete;
         JetonLexe* Jetons;
         naturel64 NombreJetons;
@@ -58,37 +52,31 @@ espace GalacticShrine::GsPP::Autohebergement
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
-    structure ContexteMembreClasseDeclaration
-    {
+    structure ContexteMembreClasseDeclaration {
         ContexteEspaceDeclaration* Espace;
         naturel64 IndexClasse;
         naturel32 Visibilite;
         JetonLexe* NomClasse;
     };
 
-    structure ContexteInstructionDeclaration
-    {
+    structure ContexteInstructionDeclaration {
         ContexteEspaceDeclaration* Espace;
         naturel64 Parent;
     };
 
-    naturel64 HachageVideDeclaration()
-    {
+    naturel64 HachageVideDeclaration() {
         retourner 14_695_981_039_346_656_037;
     }
 
-    naturel64 AjouterOctetDeclaration(naturel64 hachage, octet valeur)
-    {
+    naturel64 AjouterOctetDeclaration(naturel64 hachage, octet valeur) {
         retourner (hachage ^ convertir<naturel64>(valeur))
             * 1_099_511_628_211;
     }
 
     naturel64 AjouterNaturel32Declaration(
-        naturel64 hachage, naturel32 valeur)
-    {
+        naturel64 hachage, naturel32 valeur) {
         naturel32 index = 0;
-        tantque (index < 4)
-        {
+        tantque (index < 4) {
             hachage = AjouterOctetDeclaration(
                 hachage, convertir<octet>(valeur & 255));
             valeur = valeur >> 8;
@@ -98,11 +86,9 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AjouterNaturel64Declaration(
-        naturel64 hachage, naturel64 valeur)
-    {
+        naturel64 hachage, naturel64 valeur) {
         naturel32 index = 0;
-        tantque (index < 8)
-        {
+        tantque (index < 8) {
             hachage = AjouterOctetDeclaration(
                 hachage, convertir<octet>(valeur & 255));
             valeur = valeur >> 8;
@@ -114,11 +100,9 @@ espace GalacticShrine::GsPP::Autohebergement
     naturel64 AjouterTrancheDeclaration(
         EtatAnalyseDeclarations* etat,
         naturel64 hachage,
-        JetonLexe* jeton)
-    {
+        JetonLexe* jeton) {
         naturel64 index = 0;
-        tantque (index < jeton->TailleSource)
-        {
+        tantque (index < jeton->TailleSource) {
             hachage = AjouterOctetDeclaration(
                 hachage,
                 convertir<octet>(
@@ -128,8 +112,7 @@ espace GalacticShrine::GsPP::Autohebergement
         retourner hachage;
     }
 
-    naturel64 HacherTypeDeclaration(TypeDeclarationInterne* type)
-    {
+    naturel64 HacherTypeDeclaration(TypeDeclarationInterne* type) {
         naturel64 hachage = HachageVideDeclaration();
         hachage = AjouterNaturel32Declaration(hachage, type->Genre);
         hachage = AjouterNaturel32Declaration(hachage, type->Qualificatifs);
@@ -142,8 +125,7 @@ espace GalacticShrine::GsPP::Autohebergement
         retourner hachage;
     }
 
-    vide InitialiserTypeVideDeclaration(TypeDeclarationInterne* type)
-    {
+    vide InitialiserTypeVideDeclaration(TypeDeclarationInterne* type) {
         type->Genre = 12;
         type->Qualificatifs = 0;
         type->NiveauPointeur = 0;
@@ -152,8 +134,7 @@ espace GalacticShrine::GsPP::Autohebergement
         type->HachageDimensions = HachageVideDeclaration();
     }
 
-    booléen EstOperateurSurchargeableDeclaration(naturel32 genre)
-    {
+    booléen EstOperateurSurchargeableDeclaration(naturel32 genre) {
         retourner genre == 61
             || genre == 62
             || genre == 63
@@ -174,20 +155,17 @@ espace GalacticShrine::GsPP::Autohebergement
             || genre == 58;
     }
 
-    JetonLexe* JetonCourantDeclaration(EtatAnalyseDeclarations* etat)
-    {
+    JetonLexe* JetonCourantDeclaration(EtatAnalyseDeclarations* etat) {
         retourner &etat->Jetons[etat->Position];
     }
 
     booléen EstJetonDeclaration(
-        EtatAnalyseDeclarations* etat, naturel32 genre)
-    {
+        EtatAnalyseDeclarations* etat, naturel32 genre) {
         retourner JetonCourantDeclaration(etat)->Genre == genre;
     }
 
     booléen AccepterJetonDeclaration(
-        EtatAnalyseDeclarations* etat, naturel32 genre)
-    {
+        EtatAnalyseDeclarations* etat, naturel32 genre) {
         si (!EstJetonDeclaration(etat, genre)) retourner faux;
         etat->Position = etat->Position + 1;
         retourner vrai;
@@ -197,8 +175,7 @@ espace GalacticShrine::GsPP::Autohebergement
         EtatAnalyseDeclarations* etat,
         ErreurAnalyseDeclarations erreur,
         naturel32 ligne,
-        naturel32 colonne)
-    {
+        naturel32 colonne) {
         etat->Requete->Resultat.Erreur = erreur;
         etat->Requete->Resultat.LigneErreur = ligne;
         etat->Requete->Resultat.ColonneErreur = colonne;
@@ -210,8 +187,7 @@ espace GalacticShrine::GsPP::Autohebergement
     booléen ExigerJetonDeclaration(
         EtatAnalyseDeclarations* etat,
         naturel32 genre,
-        ErreurAnalyseDeclarations erreur)
-    {
+        ErreurAnalyseDeclarations erreur) {
         si (AccepterJetonDeclaration(etat, genre)) retourner vrai;
         JetonLexe* jetonExige = JetonCourantDeclaration(etat);
         SignalerErreurDeclaration(
@@ -221,11 +197,9 @@ espace GalacticShrine::GsPP::Autohebergement
 
     booléen AnalyserNomQualifieDeclaration(
         EtatAnalyseDeclarations* etat,
-        NomQualifieDeclaration* resultat)
-    {
+        NomQualifieDeclaration* resultat) {
         JetonLexe* premier = JetonCourantDeclaration(etat);
-        si (premier->Genre != 1)
-        {
+        si (premier->Genre != 1) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::IdentifiantAttendu,
@@ -241,11 +215,9 @@ espace GalacticShrine::GsPP::Autohebergement
         resultat->Colonne = premier->Colonne;
         etat->Position = etat->Position + 1;
 
-        tantque (AccepterJetonDeclaration(etat, 44))
-        {
+        tantque (AccepterJetonDeclaration(etat, 44)) {
             JetonLexe* partie = JetonCourantDeclaration(etat);
-            si (partie->Genre != 1)
-            {
+            si (partie->Genre != 1) {
                 SignalerErreurDeclaration(
                     etat,
                     ErreurAnalyseDeclarations::IdentifiantAttendu,
@@ -267,10 +239,8 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     booléen AjouterNoeudDeclaration(
-        EtatAnalyseDeclarations* etat, NoeudDeclaration noeud)
-    {
-        si (etat->NombreNoeuds >= etat->NombreJetons)
-        {
+        EtatAnalyseDeclarations* etat, NoeudDeclaration noeud) {
+        si (etat->NombreNoeuds >= etat->NombreJetons) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::AllocationImpossible,
@@ -284,10 +254,8 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     booléen AnalyserNomQualifieType(
-        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type)
-    {
-        si (!EstJetonDeclaration(etat, 1))
-        {
+        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type) {
+        si (!EstJetonDeclaration(etat, 1)) {
             JetonLexe* premierNomManquant = JetonCourantDeclaration(etat);
             SignalerErreurDeclaration(
                 etat,
@@ -300,14 +268,12 @@ espace GalacticShrine::GsPP::Autohebergement
         type->HachageNom = AjouterTrancheDeclaration(
             etat, HachageVideDeclaration(), nom);
         etat->Position = etat->Position + 1;
-        tantque (AccepterJetonDeclaration(etat, 44))
-        {
+        tantque (AccepterJetonDeclaration(etat, 44)) {
             type->HachageNom = AjouterOctetDeclaration(
                 type->HachageNom, 58);
             type->HachageNom = AjouterOctetDeclaration(
                 type->HachageNom, 58);
-            si (!EstJetonDeclaration(etat, 1))
-            {
+            si (!EstJetonDeclaration(etat, 1)) {
                 JetonLexe* nomQualifieManquant =
                     JetonCourantDeclaration(etat);
                 SignalerErreurDeclaration(
@@ -326,8 +292,7 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     booléen AnalyserTypeDeclaration(
-        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type)
-    {
+        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type) {
         type->Genre = 0;
         type->Qualificatifs = 0;
         type->NiveauPointeur = 0;
@@ -336,8 +301,7 @@ espace GalacticShrine::GsPP::Autohebergement
         type->HachageDimensions = HachageVideDeclaration();
 
         booléen continuer = vrai;
-        tantque (continuer)
-        {
+        tantque (continuer) {
             si (AccepterJetonDeclaration(etat, 12))
                 type->Qualificatifs = type->Qualificatifs | 1;
             sinon si (AccepterJetonDeclaration(etat, 13))
@@ -346,18 +310,15 @@ espace GalacticShrine::GsPP::Autohebergement
         }
 
         naturel32 genreJeton = JetonCourantDeclaration(etat)->Genre;
-        si (genreJeton >= 14 && genreJeton <= 25)
-        {
+        si (genreJeton >= 14 && genreJeton <= 25) {
             type->Genre = genreJeton - 13;
             etat->Position = etat->Position + 1;
         }
-        sinon si (genreJeton == 1)
-        {
+        sinon si (genreJeton == 1) {
             type->Genre = 13;
             si (!AnalyserNomQualifieType(etat, type)) retourner faux;
         }
-        sinon
-        {
+        sinon {
             JetonLexe* typeManquant = JetonCourantDeclaration(etat);
             SignalerErreurDeclaration(
                 etat,
@@ -375,11 +336,9 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     booléen LireTailleTableauDeclaration(
-        EtatAnalyseDeclarations* etat, naturel64* valeur)
-    {
+        EtatAnalyseDeclarations* etat, naturel64* valeur) {
         JetonLexe* jeton = JetonCourantDeclaration(etat);
-        si (jeton->Genre != 2)
-        {
+        si (jeton->Genre != 2) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::TailleTableauInvalide,
@@ -389,16 +348,13 @@ espace GalacticShrine::GsPP::Autohebergement
         }
         *valeur = 0;
         naturel64 index = 0;
-        tantque (index < jeton->TailleSource)
-        {
+        tantque (index < jeton->TailleSource) {
             octet courant = convertir<octet>(
                 etat->Requete->Source[jeton->Debut + index]);
-            si (courant != 95)
-            {
+            si (courant != 95) {
                 naturel64 chiffre = convertir<naturel64>(courant - 48);
                 si (*valeur > 214_748_364
-                    || (*valeur == 214_748_364 && chiffre > 7))
-                {
+                    || (*valeur == 214_748_364 && chiffre > 7)) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::TailleTableauInvalide,
@@ -410,8 +366,7 @@ espace GalacticShrine::GsPP::Autohebergement
             }
             index = index + 1;
         }
-        si (*valeur == 0)
-        {
+        si (*valeur == 0) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::TailleTableauInvalide,
@@ -424,10 +379,8 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     booléen AnalyserDimensionsDeclaration(
-        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type)
-    {
-        tantque (AccepterJetonDeclaration(etat, 38))
-        {
+        EtatAnalyseDeclarations* etat, TypeDeclarationInterne* type) {
+        tantque (AccepterJetonDeclaration(etat, 38)) {
             naturel64 valeur = 0;
             si (!LireTailleTableauDeclaration(etat, &valeur)) retourner faux;
             si (!ExigerJetonDeclaration(
@@ -442,13 +395,11 @@ espace GalacticShrine::GsPP::Autohebergement
         retourner vrai;
     }
 
-    naturel64 IndexExpressionNulDeclaration()
-    {
+    naturel64 IndexExpressionNulDeclaration() {
         retourner 18_446_744_073_709_551_615;
     }
 
-    naturel64 HacherSoiDeclaration()
-    {
+    naturel64 HacherSoiDeclaration() {
         naturel64 hachage = HachageVideDeclaration();
         hachage = AjouterOctetDeclaration(hachage, 115);
         hachage = AjouterOctetDeclaration(hachage, 111);
@@ -459,8 +410,7 @@ espace GalacticShrine::GsPP::Autohebergement
         NoeudExpressionInterne* noeud,
         naturel32 genre,
         naturel32 ligne,
-        naturel32 colonne)
-    {
+        naturel32 colonne) {
         noeud->Genre = genre;
         noeud->Ligne = ligne;
         noeud->Colonne = colonne;
@@ -476,10 +426,8 @@ espace GalacticShrine::GsPP::Autohebergement
 
     naturel64 AjouterExpressionInterneDeclaration(
         EtatAnalyseDeclarations* etat,
-        NoeudExpressionInterne noeud)
-    {
-        si (etat->NombreExpressions >= etat->NombreJetons)
-        {
+        NoeudExpressionInterne noeud) {
+        si (etat->NombreExpressions >= etat->NombreJetons) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::AllocationImpossible,
@@ -496,17 +444,14 @@ espace GalacticShrine::GsPP::Autohebergement
     vide AjouterEnfantExpressionDeclaration(
         EtatAnalyseDeclarations* etat,
         naturel64 indexParent,
-        naturel64 enfant)
-    {
+        naturel64 enfant) {
         etat->ExpressionsTravail[enfant].EnfantSuivant =
             IndexExpressionNulDeclaration();
         si (etat->ExpressionsTravail[indexParent].PremierEnfant
-            == IndexExpressionNulDeclaration())
-        {
+            == IndexExpressionNulDeclaration()) {
             etat->ExpressionsTravail[indexParent].PremierEnfant = enfant;
         }
-        sinon
-        {
+        sinon {
             naturel64 dernier =
                 etat->ExpressionsTravail[indexParent].DernierEnfant;
             etat->ExpressionsTravail[dernier].EnfantSuivant = enfant;
@@ -517,21 +462,17 @@ espace GalacticShrine::GsPP::Autohebergement
     booléen LireValeurEntiereExpressionDeclaration(
         EtatAnalyseDeclarations* etat,
         JetonLexe* jeton,
-        naturel64* valeur)
-    {
+        naturel64* valeur) {
         *valeur = 0;
         naturel64 index = 0;
-        tantque (index < jeton->TailleSource)
-        {
+        tantque (index < jeton->TailleSource) {
             octet courant = convertir<octet>(
                 etat->Requete->Source[jeton->Debut + index]);
-            si (courant != 95)
-            {
+            si (courant != 95) {
                 naturel64 chiffre = convertir<naturel64>(courant - 48);
                 si (*valeur > 1_844_674_407_370_955_161
                     || (*valeur == 1_844_674_407_370_955_161
-                        && chiffre > 5))
-                {
+                        && chiffre > 5)) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::NombreEntierInvalide,
@@ -553,8 +494,7 @@ espace GalacticShrine::GsPP::Autohebergement
         EtatAnalyseDeclarations* etat,
         JetonLexe* jetonOperateur,
         naturel64 gauche,
-        naturel64 droite)
-    {
+        naturel64 droite) {
         NoeudExpressionInterne noeud;
         InitialiserExpressionInterneDeclaration(
             &noeud, 26, jetonOperateur->Ligne, jetonOperateur->Colonne);
@@ -569,11 +509,9 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserPrimaireExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         JetonLexe* position = JetonCourantDeclaration(etat);
-        si (AccepterJetonDeclaration(etat, 36))
-        {
+        si (AccepterJetonDeclaration(etat, 36)) {
             NoeudExpressionInterne agregat;
             InitialiserExpressionInterneDeclaration(
                 &agregat, 32, position->Ligne, position->Colonne);
@@ -581,19 +519,16 @@ espace GalacticShrine::GsPP::Autohebergement
                 AjouterExpressionInterneDeclaration(etat, agregat);
             si (indexAgregat == IndexExpressionNulDeclaration())
                 retourner indexAgregat;
-            si (!EstJetonDeclaration(etat, 37))
-            {
+            si (!EstJetonDeclaration(etat, 37)) {
                 booléen continuer = vrai;
-                tantque (continuer)
-                {
+                tantque (continuer) {
                     naturel64 element =
                         AnalyserExpressionInterneDeclaration(etat);
                     si (element == IndexExpressionNulDeclaration())
                         retourner element;
                     AjouterEnfantExpressionDeclaration(
                         etat, indexAgregat, element);
-                    si (AccepterJetonDeclaration(etat, 41))
-                    {
+                    si (AccepterJetonDeclaration(etat, 41)) {
                         si (EstJetonDeclaration(etat, 37))
                             continuer = faux;
                     }
@@ -607,8 +542,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 retourner IndexExpressionNulDeclaration();
             retourner indexAgregat;
         }
-        si (AccepterJetonDeclaration(etat, 2))
-        {
+        si (AccepterJetonDeclaration(etat, 2)) {
             naturel64 valeurEntiere = 0;
             si (!LireValeurEntiereExpressionDeclaration(
                     etat, position, &valeurEntiere))
@@ -619,8 +553,7 @@ espace GalacticShrine::GsPP::Autohebergement
             entier.HachageType = valeurEntiere;
             retourner AjouterExpressionInterneDeclaration(etat, entier);
         }
-        si (AccepterJetonDeclaration(etat, 3))
-        {
+        si (AccepterJetonDeclaration(etat, 3)) {
             NoeudExpressionInterne chaine;
             InitialiserExpressionInterneDeclaration(
                 &chaine, 23, position->Ligne, position->Colonne);
@@ -630,8 +563,7 @@ espace GalacticShrine::GsPP::Autohebergement
             retourner AjouterExpressionInterneDeclaration(etat, chaine);
         }
         si (AccepterJetonDeclaration(etat, 32)
-            || AccepterJetonDeclaration(etat, 33))
-        {
+            || AccepterJetonDeclaration(etat, 33)) {
             NoeudExpressionInterne litteralBooleen;
             InitialiserExpressionInterneDeclaration(
                 &litteralBooleen, 22, position->Ligne, position->Colonne);
@@ -639,8 +571,7 @@ espace GalacticShrine::GsPP::Autohebergement
             si (position->Genre == 32) litteralBooleen.HachageType = 1;
             retourner AjouterExpressionInterneDeclaration(etat, litteralBooleen);
         }
-        si (AccepterJetonDeclaration(etat, 27))
-        {
+        si (AccepterJetonDeclaration(etat, 27)) {
             si (!ExigerJetonDeclaration(
                     etat,
                     48,
@@ -680,8 +611,7 @@ espace GalacticShrine::GsPP::Autohebergement
             retourner indexConversion;
         }
         si (AccepterJetonDeclaration(etat, 72)
-            || AccepterJetonDeclaration(etat, 75))
-        {
+            || AccepterJetonDeclaration(etat, 75)) {
             NoeudExpressionInterne referenceSoi;
             InitialiserExpressionInterneDeclaration(
                 &referenceSoi, 24, position->Ligne, position->Colonne);
@@ -691,8 +621,7 @@ espace GalacticShrine::GsPP::Autohebergement
             si (position->Genre == 75) referenceSoi.Drapeaux = 65536;
             retourner AjouterExpressionInterneDeclaration(etat, referenceSoi);
         }
-        si (EstJetonDeclaration(etat, 1))
-        {
+        si (EstJetonDeclaration(etat, 1)) {
             NomQualifieDeclaration nom;
             si (!AnalyserNomQualifieDeclaration(etat, &nom))
                 retourner IndexExpressionNulDeclaration();
@@ -704,8 +633,7 @@ espace GalacticShrine::GsPP::Autohebergement
             variable.HachageNom = nom.Hachage;
             retourner AjouterExpressionInterneDeclaration(etat, variable);
         }
-        si (AccepterJetonDeclaration(etat, 34))
-        {
+        si (AccepterJetonDeclaration(etat, 34)) {
             naturel64 expression =
                 AnalyserExpressionInterneDeclaration(etat);
             si (expression == IndexExpressionNulDeclaration())
@@ -726,16 +654,13 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserPostfixeExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserPrimaireExpressionDeclaration(etat);
         si (expression == IndexExpressionNulDeclaration())
             retourner expression;
         booléen continuer = vrai;
-        tantque (continuer)
-        {
-            si (AccepterJetonDeclaration(etat, 34))
-            {
+        tantque (continuer) {
+            si (AccepterJetonDeclaration(etat, 34)) {
                 NoeudExpressionInterne appel;
                 NoeudExpressionInterne* cible =
                     &etat->ExpressionsTravail[expression];
@@ -747,11 +672,9 @@ espace GalacticShrine::GsPP::Autohebergement
                     retourner indexAppel;
                 AjouterEnfantExpressionDeclaration(
                     etat, indexAppel, expression);
-                si (!EstJetonDeclaration(etat, 35))
-                {
+                si (!EstJetonDeclaration(etat, 35)) {
                     booléen continuerArguments = vrai;
-                    tantque (continuerArguments)
-                    {
+                    tantque (continuerArguments) {
                         naturel64 argument =
                             AnalyserExpressionInterneDeclaration(etat);
                         si (argument == IndexExpressionNulDeclaration())
@@ -769,8 +692,7 @@ espace GalacticShrine::GsPP::Autohebergement
                     retourner IndexExpressionNulDeclaration();
                 expression = indexAppel;
             }
-            sinon si (EstJetonDeclaration(etat, 38))
-            {
+            sinon si (EstJetonDeclaration(etat, 38)) {
                 JetonLexe* crochet = JetonCourantDeclaration(etat);
                 etat->Position = etat->Position + 1;
                 naturel64 indice =
@@ -796,8 +718,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 expression = indexIndexation;
             }
             sinon si (EstJetonDeclaration(etat, 42)
-                || EstJetonDeclaration(etat, 43))
-            {
+                || EstJetonDeclaration(etat, 43)) {
                 JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
                 etat->Position = etat->Position + 1;
                 JetonLexe* membre = JetonCourantDeclaration(etat);
@@ -827,12 +748,10 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserUnaireExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel32 genre = JetonCourantDeclaration(etat)->Genre;
         si (genre == 61 || genre == 62 || genre == 52
-            || genre == 58 || genre == 55 || genre == 63)
-        {
+            || genre == 58 || genre == 55 || genre == 63) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 operande = AnalyserUnaireExpressionDeclaration(etat);
@@ -856,14 +775,12 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserMultiplicationExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserUnaireExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
             && (EstJetonDeclaration(etat, 63)
                 || EstJetonDeclaration(etat, 64)
-                || EstJetonDeclaration(etat, 65)))
-        {
+                || EstJetonDeclaration(etat, 65))) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserUnaireExpressionDeclaration(etat);
@@ -875,14 +792,12 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserAdditionExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression =
             AnalyserMultiplicationExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
             && (EstJetonDeclaration(etat, 61)
-                || EstJetonDeclaration(etat, 62)))
-        {
+                || EstJetonDeclaration(etat, 62))) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite =
@@ -895,13 +810,11 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserDecalageExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserAdditionExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
             && (EstJetonDeclaration(etat, 59)
-                || EstJetonDeclaration(etat, 60)))
-        {
+                || EstJetonDeclaration(etat, 60))) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserAdditionExpressionDeclaration(etat);
@@ -913,15 +826,13 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserComparaisonExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserDecalageExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
             && (EstJetonDeclaration(etat, 48)
                 || EstJetonDeclaration(etat, 49)
                 || EstJetonDeclaration(etat, 50)
-                || EstJetonDeclaration(etat, 51)))
-        {
+                || EstJetonDeclaration(etat, 51))) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserDecalageExpressionDeclaration(etat);
@@ -933,14 +844,12 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserEgaliteExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression =
             AnalyserComparaisonExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
             && (EstJetonDeclaration(etat, 46)
-                || EstJetonDeclaration(etat, 47)))
-        {
+                || EstJetonDeclaration(etat, 47))) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite =
@@ -953,12 +862,10 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserEtBinaireExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserEgaliteExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
-            && EstJetonDeclaration(etat, 55))
-        {
+            && EstJetonDeclaration(etat, 55)) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserEgaliteExpressionDeclaration(etat);
@@ -970,12 +877,10 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserXorBinaireExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserEtBinaireExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
-            && EstJetonDeclaration(etat, 57))
-        {
+            && EstJetonDeclaration(etat, 57)) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserEtBinaireExpressionDeclaration(etat);
@@ -987,12 +892,10 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserOuBinaireExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserXorBinaireExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
-            && EstJetonDeclaration(etat, 56))
-        {
+            && EstJetonDeclaration(etat, 56)) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserXorBinaireExpressionDeclaration(etat);
@@ -1004,12 +907,10 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserEtLogiqueExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserOuBinaireExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
-            && EstJetonDeclaration(etat, 53))
-        {
+            && EstJetonDeclaration(etat, 53)) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserOuBinaireExpressionDeclaration(etat);
@@ -1021,12 +922,10 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserOuLogiqueExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 expression = AnalyserEtLogiqueExpressionDeclaration(etat);
         tantque (expression != IndexExpressionNulDeclaration()
-            && EstJetonDeclaration(etat, 54))
-        {
+            && EstJetonDeclaration(etat, 54)) {
             JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
             etat->Position = etat->Position + 1;
             naturel64 droite = AnalyserEtLogiqueExpressionDeclaration(etat);
@@ -1038,8 +937,7 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserAffectationExpressionDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel64 cible = AnalyserOuLogiqueExpressionDeclaration(etat);
         si (cible == IndexExpressionNulDeclaration()) retourner cible;
         si (!AccepterJetonDeclaration(etat, 45)) retourner cible;
@@ -1061,8 +959,7 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     naturel64 AnalyserExpressionInterneDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         retourner AnalyserAffectationExpressionDeclaration(etat);
     }
 
@@ -1070,8 +967,7 @@ espace GalacticShrine::GsPP::Autohebergement
         EtatAnalyseDeclarations* etat,
         naturel64 indexExpression,
         naturel64 indexParent,
-        naturel64 hachageEspace)
-    {
+        naturel64 hachageEspace) {
         NoeudExpressionInterne* expression =
             &etat->ExpressionsTravail[indexExpression];
         naturel64 indexSortie = etat->NombreNoeuds;
@@ -1088,8 +984,7 @@ espace GalacticShrine::GsPP::Autohebergement
             expression->HachageType};
         si (!AjouterNoeudDeclaration(etat, noeud)) retourner faux;
         naturel64 enfant = expression->PremierEnfant;
-        tantque (enfant != IndexExpressionNulDeclaration())
-        {
+        tantque (enfant != IndexExpressionNulDeclaration()) {
             naturel64 suivant =
                 etat->ExpressionsTravail[enfant].EnfantSuivant;
             si (!EmettreExpressionDeclaration(
@@ -1103,8 +998,7 @@ espace GalacticShrine::GsPP::Autohebergement
     booléen AnalyserEtEmettreExpressionDeclaration(
         EtatAnalyseDeclarations* etat,
         naturel64 indexParent,
-        naturel64 hachageEspace)
-    {
+        naturel64 hachageEspace) {
         etat->NombreExpressions = 0;
         naturel64 expression = AnalyserExpressionInterneDeclaration(etat);
         si (expression == IndexExpressionNulDeclaration()) retourner faux;
@@ -1115,18 +1009,15 @@ espace GalacticShrine::GsPP::Autohebergement
     booléen AnalyserArgumentsExpressionsDeclaration(
         EtatAnalyseDeclarations* etat,
         naturel64 indexParent,
-        naturel64 hachageEspace)
-    {
+        naturel64 hachageEspace) {
         si (!ExigerJetonDeclaration(
                 etat,
                 34,
                 ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
             retourner faux;
-        si (!EstJetonDeclaration(etat, 35))
-        {
+        si (!EstJetonDeclaration(etat, 35)) {
             booléen continuer = vrai;
-            tantque (continuer)
-            {
+            tantque (continuer) {
                 si (!AnalyserEtEmettreExpressionDeclaration(
                         etat, indexParent, hachageEspace))
                     retourner faux;
@@ -1141,8 +1032,7 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     booléen DebuteDeclarationVariableDeclaration(
-        EtatAnalyseDeclarations* etat)
-    {
+        EtatAnalyseDeclarations* etat) {
         naturel32 genre = JetonCourantDeclaration(etat)->Genre;
         si (genre == 12 || genre == 13
             || (genre >= 14 && genre <= 25))
@@ -1161,11 +1051,9 @@ espace GalacticShrine::GsPP::Autohebergement
 
     booléen AnalyserInstructionDeclaration(
         EtatAnalyseDeclarations* etat,
-        ContexteInstructionDeclaration* contexte)
-    {
+        ContexteInstructionDeclaration* contexte) {
         JetonLexe position = *JetonCourantDeclaration(etat);
-        si (EstJetonDeclaration(etat, 36))
-        {
+        si (EstJetonDeclaration(etat, 36)) {
             etat->Position = etat->Position + 1;
             naturel64 indexBloc = etat->NombreNoeuds;
             NoeudDeclaration bloc = {
@@ -1182,11 +1070,9 @@ espace GalacticShrine::GsPP::Autohebergement
             si (!AjouterNoeudDeclaration(etat, bloc)) retourner faux;
             ContexteInstructionDeclaration enfant = {
                 contexte->Espace, indexBloc};
-            tantque (!EstJetonDeclaration(etat, 37))
-            {
+            tantque (!EstJetonDeclaration(etat, 37)) {
                 JetonLexe* courantBloc = JetonCourantDeclaration(etat);
-                si (courantBloc->Genre == 0)
-                {
+                si (courantBloc->Genre == 0) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
@@ -1203,8 +1089,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 ErreurAnalyseDeclarations::AccoladeFermanteAttendue);
         }
 
-        si (AccepterJetonDeclaration(etat, 28))
-        {
+        si (AccepterJetonDeclaration(etat, 28)) {
             naturel32 drapeauxRetour = 0;
             si (!EstJetonDeclaration(etat, 40)) drapeauxRetour = 2048;
             naturel64 indexRetour = etat->NombreNoeuds;
@@ -1230,8 +1115,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 ErreurAnalyseDeclarations::PointVirguleAttendu);
         }
 
-        si (AccepterJetonDeclaration(etat, 29))
-        {
+        si (AccepterJetonDeclaration(etat, 29)) {
             si (!ExigerJetonDeclaration(
                     etat,
                     34,
@@ -1265,8 +1149,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 contexte->Espace, indexConditionnelle};
             si (!AnalyserInstructionDeclaration(etat, &branche))
                 retourner faux;
-            si (AccepterJetonDeclaration(etat, 30))
-            {
+            si (AccepterJetonDeclaration(etat, 30)) {
                 etat->NoeudsTravail[indexConditionnelle].Drapeaux =
                     2048 | 4096;
                 si (!AnalyserInstructionDeclaration(etat, &branche))
@@ -1275,8 +1158,7 @@ espace GalacticShrine::GsPP::Autohebergement
             retourner vrai;
         }
 
-        si (AccepterJetonDeclaration(etat, 31))
-        {
+        si (AccepterJetonDeclaration(etat, 31)) {
             si (!ExigerJetonDeclaration(
                     etat,
                     34,
@@ -1308,8 +1190,7 @@ espace GalacticShrine::GsPP::Autohebergement
             retourner AnalyserInstructionDeclaration(etat, &corpsBoucle);
         }
 
-        si (DebuteDeclarationVariableDeclaration(etat))
-        {
+        si (DebuteDeclarationVariableDeclaration(etat)) {
             TypeDeclarationInterne typeVariable;
             si (!AnalyserTypeDeclaration(etat, &typeVariable))
                 retourner faux;
@@ -1339,16 +1220,14 @@ espace GalacticShrine::GsPP::Autohebergement
                 contexte->Espace->Hachage,
                 HacherTypeDeclaration(&typeVariable)};
             si (!AjouterNoeudDeclaration(etat, variable)) retourner faux;
-            si (AccepterJetonDeclaration(etat, 45))
-            {
+            si (AccepterJetonDeclaration(etat, 45)) {
                 si (!AnalyserEtEmettreExpressionDeclaration(
                         etat,
                         indexVariable,
                         contexte->Espace->Hachage))
                     retourner faux;
             }
-            sinon si (EstJetonDeclaration(etat, 34))
-            {
+            sinon si (EstJetonDeclaration(etat, 34)) {
                 si (!AnalyserArgumentsExpressionsDeclaration(
                         etat,
                         indexVariable,
@@ -1385,10 +1264,8 @@ espace GalacticShrine::GsPP::Autohebergement
 
     booléen AnalyserBlocInstructionDeclaration(
         EtatAnalyseDeclarations* etat,
-        ContexteInstructionDeclaration* contexte)
-    {
-        si (!EstJetonDeclaration(etat, 36))
-        {
+        ContexteInstructionDeclaration* contexte) {
+        si (!EstJetonDeclaration(etat, 36)) {
             JetonLexe* ouverture = JetonCourantDeclaration(etat);
             SignalerErreurDeclaration(
                 etat,
@@ -1402,14 +1279,12 @@ espace GalacticShrine::GsPP::Autohebergement
 
     booléen AnalyserFonctionDeclaration(
         EtatAnalyseDeclarations* etat,
-        ContexteEspaceDeclaration* contexte)
-    {
+        ContexteEspaceDeclaration* contexte) {
         JetonLexe position = *JetonCourantDeclaration(etat);
         booléen estPublique = faux;
         booléen estExterne = faux;
         booléen continuer = vrai;
-        tantque (continuer)
-        {
+        tantque (continuer) {
             si (AccepterJetonDeclaration(etat, 10)) estPublique = vrai;
             sinon si (AccepterJetonDeclaration(etat, 11)) estPublique = faux;
             sinon si (AccepterJetonDeclaration(etat, 9)) estExterne = vrai;
@@ -1425,15 +1300,12 @@ espace GalacticShrine::GsPP::Autohebergement
                 ErreurAnalyseDeclarations::IdentifiantAttendu))
             retourner faux;
         si (!AnalyserDimensionsDeclaration(etat, &typeRetour)) retourner faux;
-        si (!EstJetonDeclaration(etat, 34))
-        {
+        si (!EstJetonDeclaration(etat, 34)) {
             naturel32 drapeauxGlobale = 0;
             si (estPublique) drapeauxGlobale = drapeauxGlobale | 1;
             si (estExterne) drapeauxGlobale = drapeauxGlobale | 2;
-            si (EstJetonDeclaration(etat, 45))
-            {
-                si (estExterne)
-                {
+            si (EstJetonDeclaration(etat, 45)) {
+                si (estExterne) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::InitialiseurExterneInterdit,
@@ -1465,8 +1337,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 40,
                 ErreurAnalyseDeclarations::PointVirguleAttendu);
         }
-        si (typeRetour.NombreDimensions != 0)
-        {
+        si (typeRetour.NombreDimensions != 0) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::DeclarationNonPriseEnCharge,
@@ -1494,11 +1365,9 @@ espace GalacticShrine::GsPP::Autohebergement
         si (!AjouterNoeudDeclaration(etat, noeudFonction)) retourner faux;
 
         etat->Position = etat->Position + 1;
-        si (!EstJetonDeclaration(etat, 35))
-        {
+        si (!EstJetonDeclaration(etat, 35)) {
             booléen continuerParametres = vrai;
-            tantque (continuerParametres)
-            {
+            tantque (continuerParametres) {
                 JetonLexe positionParametre = *JetonCourantDeclaration(etat);
                 TypeDeclarationInterne typeParametre;
                 si (!AnalyserTypeDeclaration(etat, &typeParametre))
@@ -1547,18 +1416,14 @@ espace GalacticShrine::GsPP::Autohebergement
 
     booléen AnalyserMembreClasseDeclaration(
         EtatAnalyseDeclarations* etat,
-        ContexteMembreClasseDeclaration* contexte)
-    {
+        ContexteMembreClasseDeclaration* contexte) {
         JetonLexe position = *JetonCourantDeclaration(etat);
         booléen estVirtuelle = faux;
         booléen estRemplacement = faux;
         booléen continuerModificateurs = vrai;
-        tantque (continuerModificateurs)
-        {
-            si (AccepterJetonDeclaration(etat, 68))
-            {
-                si (estVirtuelle)
-                {
+        tantque (continuerModificateurs) {
+            si (AccepterJetonDeclaration(etat, 68)) {
+                si (estVirtuelle) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::ModificateurMembreDuplique,
@@ -1568,10 +1433,8 @@ espace GalacticShrine::GsPP::Autohebergement
                 }
                 estVirtuelle = vrai;
             }
-            sinon si (AccepterJetonDeclaration(etat, 74))
-            {
-                si (estRemplacement)
-                {
+            sinon si (AccepterJetonDeclaration(etat, 74)) {
+                si (estRemplacement) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::ModificateurMembreDuplique,
@@ -1590,10 +1453,8 @@ espace GalacticShrine::GsPP::Autohebergement
         JetonLexe* nomMembre = contexte->NomClasse;
         booléen estConstructeur = faux;
         booléen estDestructeur = faux;
-        si (AccepterJetonDeclaration(etat, 69))
-        {
-            si (estVirtuelle || estRemplacement)
-            {
+        si (AccepterJetonDeclaration(etat, 69)) {
+            si (estVirtuelle || estRemplacement) {
                 SignalerErreurDeclaration(
                     etat,
                     ErreurAnalyseDeclarations::ModificateurConstructeurInterdit,
@@ -1605,21 +1466,17 @@ espace GalacticShrine::GsPP::Autohebergement
             estConstructeur = vrai;
             InitialiserTypeVideDeclaration(&typeRetour);
         }
-        sinon si (AccepterJetonDeclaration(etat, 70))
-        {
+        sinon si (AccepterJetonDeclaration(etat, 70)) {
             genre = 14;
             estDestructeur = vrai;
             InitialiserTypeVideDeclaration(&typeRetour);
         }
-        sinon
-        {
+        sinon {
             si (!AnalyserTypeDeclaration(etat, &typeRetour)) retourner faux;
-            si (AccepterJetonDeclaration(etat, 71))
-            {
+            si (AccepterJetonDeclaration(etat, 71)) {
                 JetonLexe* jetonOperateur = JetonCourantDeclaration(etat);
                 si (!EstOperateurSurchargeableDeclaration(
-                        jetonOperateur->Genre))
-                {
+                        jetonOperateur->Genre)) {
                     SignalerErreurDeclaration(
                         etat,
                         ErreurAnalyseDeclarations::OperateurSurchargeableAttendu,
@@ -1631,8 +1488,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 nomMembre = jetonOperateur;
                 etat->Position = etat->Position + 1;
             }
-            sinon
-            {
+            sinon {
                 nomMembre = JetonCourantDeclaration(etat);
                 si (!ExigerJetonDeclaration(
                         etat,
@@ -1666,11 +1522,9 @@ espace GalacticShrine::GsPP::Autohebergement
         si (!AjouterNoeudDeclaration(etat, noeudMembre)) retourner faux;
 
         naturel32 nombreParametres = 0;
-        si (!EstJetonDeclaration(etat, 35))
-        {
+        si (!EstJetonDeclaration(etat, 35)) {
             booléen continuerParametres = vrai;
-            tantque (continuerParametres)
-            {
+            tantque (continuerParametres) {
                 JetonLexe positionParametre = *JetonCourantDeclaration(etat);
                 TypeDeclarationInterne typeParametre;
                 si (!AnalyserTypeDeclaration(etat, &typeParametre))
@@ -1706,8 +1560,7 @@ espace GalacticShrine::GsPP::Autohebergement
                 35,
                 ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
             retourner faux;
-        si (estDestructeur && nombreParametres != 0)
-        {
+        si (estDestructeur && nombreParametres != 0) {
             SignalerErreurDeclaration(
                 etat,
                 ErreurAnalyseDeclarations::ParametreDestructeurInterdit,
@@ -1716,10 +1569,8 @@ espace GalacticShrine::GsPP::Autohebergement
             retourner faux;
         }
 
-        si (AccepterJetonDeclaration(etat, 73))
-        {
-            si (!estConstructeur)
-            {
+        si (AccepterJetonDeclaration(etat, 73)) {
+            si (!estConstructeur) {
                 SignalerErreurDeclaration(
                     etat,
                     ErreurAnalyseDeclarations::ListeInitialisationInterdite,
@@ -1729,13 +1580,10 @@ espace GalacticShrine::GsPP::Autohebergement
             }
             booléen premier = vrai;
             booléen continuerInitialiseurs = vrai;
-            tantque (continuerInitialiseurs)
-            {
+            tantque (continuerInitialiseurs) {
                 JetonLexe* initialiseur = JetonCourantDeclaration(etat);
-                si (AccepterJetonDeclaration(etat, 72))
-                {
-                    si (!premier)
-                    {
+                si (AccepterJetonDeclaration(etat, 72)) {
+                    si (!premier) {
                         SignalerErreurDeclaration(
                             etat,
                             ErreurAnalyseDeclarations::InitialiseurConstructeurInvalide,
@@ -1749,8 +1597,7 @@ espace GalacticShrine::GsPP::Autohebergement
                             indexMembre,
                             contexte->Espace->Hachage))
                         retourner faux;
-                    si (EstJetonDeclaration(etat, 41))
-                    {
+                    si (EstJetonDeclaration(etat, 41)) {
                         JetonLexe* virguleDelegation =
                             JetonCourantDeclaration(etat);
                         SignalerErreurDeclaration(
@@ -1762,10 +1609,8 @@ espace GalacticShrine::GsPP::Autohebergement
                     }
                     continuerInitialiseurs = faux;
                 }
-                sinon si (AccepterJetonDeclaration(etat, 75))
-                {
-                    si (!premier)
-                    {
+                sinon si (AccepterJetonDeclaration(etat, 75)) {
+                    si (!premier) {
                         SignalerErreurDeclaration(
                             etat,
                             ErreurAnalyseDeclarations::InitialiseurConstructeurInvalide,
@@ -1780,8 +1625,7 @@ espace GalacticShrine::GsPP::Autohebergement
                             contexte->Espace->Hachage))
                         retourner faux;
                 }
-                sinon
-                {
+                sinon {
                     si (!ExigerJetonDeclaration(
                             etat,
                             1,
@@ -1811,8 +1655,7 @@ espace GalacticShrine::GsPP::Autohebergement
         EtatAnalyseDeclarations* etat,
         ContexteEspaceDeclaration* contexte,
         naturel64 indexParent,
-        booléen estAliasChamp)
-    {
+        booléen estAliasChamp) {
         JetonLexe position = *JetonCourantDeclaration(etat);
         etat->Position = etat->Position + 1;
         NomQualifieDeclaration nom;
@@ -1848,8 +1691,7 @@ espace GalacticShrine::GsPP::Autohebergement
 
     booléen AnalyserEnumerationDeclaration(
         EtatAnalyseDeclarations* etat,
-        ContexteEspaceDeclaration* contexte)
-    {
+        ContexteEspaceDeclaration* contexte) {
         etat->Position = etat->Position + 1;
         JetonLexe* nom = JetonCourantDeclaration(etat);
         si (!ExigerJetonDeclaration(
@@ -1877,11 +1719,9 @@ espace GalacticShrine::GsPP::Autohebergement
             0};
         si (!AjouterNoeudDeclaration(etat, noeudEnumeration)) retourner faux;
 
-        si (!EstJetonDeclaration(etat, 37))
-        {
+        si (!EstJetonDeclaration(etat, 37)) {
             booléen continuerValeurs = vrai;
-            tantque (continuerValeurs)
-            {
+            tantque (continuerValeurs) {
                 JetonLexe* valeur = JetonCourantDeclaration(etat);
                 si (!ExigerJetonDeclaration(
                         etat,
@@ -1908,8 +1748,7 @@ espace GalacticShrine::GsPP::Autohebergement
                     && !AnalyserEtEmettreExpressionDeclaration(
                         etat, indexEnumerateur, contexte->Hachage))
                     retourner faux;
-                si (AccepterJetonDeclaration(etat, 41))
-                {
+                si (AccepterJetonDeclaration(etat, 41)) {
                     si (EstJetonDeclaration(etat, 37))
                         continuerValeurs = faux;
                 }
@@ -1930,8 +1769,7 @@ espace GalacticShrine::GsPP::Autohebergement
     booléen AnalyserStructureDeclaration(
         EtatAnalyseDeclarations* etat,
         ContexteEspaceDeclaration* contexte,
-        naturel32 jetonStructure)
-    {
+        naturel32 jetonStructure) {
         etat->Position = etat->Position + 1;
         JetonLexe* nom = JetonCourantDeclaration(etat);
         si (!ExigerJetonDeclaration(
@@ -1943,25 +1781,20 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel32 genre = 4;
         booléen estClasse = faux;
         si (jetonStructure == 6) genre = 5;
-        sinon si (jetonStructure == 66)
-        {
+        sinon si (jetonStructure == 66) {
             genre = 6;
             estClasse = vrai;
         }
         naturel32 drapeauxStructure = 4;
         naturel64 hachageBase = 0;
-        si (estClasse && AccepterJetonDeclaration(etat, 73))
-        {
+        si (estClasse && AccepterJetonDeclaration(etat, 73)) {
             drapeauxStructure = drapeauxStructure | 32 | 1;
-            si (AccepterJetonDeclaration(etat, 10))
-            {
+            si (AccepterJetonDeclaration(etat, 10)) {
             }
-            sinon si (AccepterJetonDeclaration(etat, 67))
-            {
+            sinon si (AccepterJetonDeclaration(etat, 67)) {
                 drapeauxStructure = (drapeauxStructure & 4_294_967_294) | 8;
             }
-            sinon si (AccepterJetonDeclaration(etat, 11))
-            {
+            sinon si (AccepterJetonDeclaration(etat, 11)) {
                 drapeauxStructure = (drapeauxStructure & 4_294_967_294) | 16;
             }
             NomQualifieDeclaration base;
@@ -1990,11 +1823,9 @@ espace GalacticShrine::GsPP::Autohebergement
 
         naturel32 visibilite = 1;
         si (estClasse) visibilite = 16;
-        tantque (!EstJetonDeclaration(etat, 37))
-        {
+        tantque (!EstJetonDeclaration(etat, 37)) {
             JetonLexe* courant = JetonCourantDeclaration(etat);
-            si (courant->Genre == 0)
-            {
+            si (courant->Genre == 0) {
                 SignalerErreurDeclaration(
                     etat,
                     ErreurAnalyseDeclarations::AccoladeFermanteAttendue,
@@ -2005,8 +1836,7 @@ espace GalacticShrine::GsPP::Autohebergement
             si (estClasse
                 && (courant->Genre == 10
                     || courant->Genre == 11
-                    || courant->Genre == 67))
-            {
+                    || courant->Genre == 67)) {
                 si (courant->Genre == 10) visibilite = 1;
                 sinon si (courant->Genre == 67) visibilite = 8;
                 sinon visibilite = 16;
@@ -2017,32 +1847,26 @@ espace GalacticShrine::GsPP::Autohebergement
                         ErreurAnalyseDeclarations::DeuxPointsAttendu))
                     retourner faux;
             }
-            sinon si (courant->Genre == 8)
-            {
+            sinon si (courant->Genre == 8) {
                 si (!AnalyserAliasDeclaration(
                         etat, contexte, indexStructure, vrai))
                     retourner faux;
             }
-            sinon
-            {
+            sinon {
                 booléen estMembreExecutable = faux;
-                si (estClasse)
-                {
+                si (estClasse) {
                     si (courant->Genre == 68
                         || courant->Genre == 69
                         || courant->Genre == 70
                         || courant->Genre == 74)
                         estMembreExecutable = vrai;
-                    sinon
-                    {
+                    sinon {
                         naturel64 positionSauvee = etat->Position;
                         TypeDeclarationInterne typeTeste;
-                        si (AnalyserTypeDeclaration(etat, &typeTeste))
-                        {
+                        si (AnalyserTypeDeclaration(etat, &typeTeste)) {
                             si (EstJetonDeclaration(etat, 71))
                                 estMembreExecutable = vrai;
-                            sinon si (EstJetonDeclaration(etat, 1))
-                            {
+                            sinon si (EstJetonDeclaration(etat, 1)) {
                                 etat->Position = etat->Position + 1;
                                 si (EstJetonDeclaration(etat, 34))
                                     estMembreExecutable = vrai;
@@ -2051,8 +1875,7 @@ espace GalacticShrine::GsPP::Autohebergement
                         etat->Position = positionSauvee;
                     }
                 }
-                si (estMembreExecutable)
-                {
+                si (estMembreExecutable) {
                     ContexteMembreClasseDeclaration contexteMembre = {
                         contexte,
                         indexStructure,
@@ -2062,8 +1885,7 @@ espace GalacticShrine::GsPP::Autohebergement
                             etat, &contexteMembre))
                         retourner faux;
                 }
-                sinon
-                {
+                sinon {
                     JetonLexe positionChamp = *courant;
                     TypeDeclarationInterne typeChamp;
                     si (!AnalyserTypeDeclaration(etat, &typeChamp))
@@ -2077,10 +1899,8 @@ espace GalacticShrine::GsPP::Autohebergement
                     si (!AnalyserDimensionsDeclaration(etat, &typeChamp))
                         retourner faux;
                     naturel32 drapeauxChamp = visibilite;
-                    si (EstJetonDeclaration(etat, 45))
-                    {
-                        si (!estClasse)
-                        {
+                    si (EstJetonDeclaration(etat, 45)) {
+                        si (!estClasse) {
                             SignalerErreurDeclaration(
                                 etat,
                                 ErreurAnalyseDeclarations::InitialiseurChampHorsClasse,
@@ -2131,16 +1951,12 @@ espace GalacticShrine::GsPP::Autohebergement
     booléen AnalyserDeclarationsDansEspace(
         EtatAnalyseDeclarations* etat,
         ContexteEspaceDeclaration* contexte,
-        booléen attendreFermeture)
-    {
+        booléen attendreFermeture) {
         tantque (!EstJetonDeclaration(etat, 0)
-            && !(attendreFermeture && EstJetonDeclaration(etat, 37)))
-        {
-            si (AccepterJetonDeclaration(etat, 4))
-            {
+            && !(attendreFermeture && EstJetonDeclaration(etat, 37))) {
+            si (AccepterJetonDeclaration(etat, 4)) {
                 ContexteEspaceDeclaration enfant = *contexte;
-                si (!EstJetonDeclaration(etat, 1))
-                {
+                si (!EstJetonDeclaration(etat, 1)) {
                     JetonLexe* nomEspaceManquant =
                         JetonCourantDeclaration(etat);
                     SignalerErreurDeclaration(
@@ -2151,11 +1967,9 @@ espace GalacticShrine::GsPP::Autohebergement
                     retourner faux;
                 }
                 booléen continuerNom = vrai;
-                tantque (continuerNom)
-                {
+                tantque (continuerNom) {
                     JetonLexe* nom = JetonCourantDeclaration(etat);
-                    si (!enfant.EstVide)
-                    {
+                    si (!enfant.EstVide) {
                         enfant.Hachage = AjouterOctetDeclaration(
                             enfant.Hachage, 58);
                         enfant.Hachage = AjouterOctetDeclaration(
@@ -2165,10 +1979,8 @@ espace GalacticShrine::GsPP::Autohebergement
                         etat, enfant.Hachage, nom);
                     enfant.EstVide = faux;
                     etat->Position = etat->Position + 1;
-                    si (AccepterJetonDeclaration(etat, 44))
-                    {
-                        si (!EstJetonDeclaration(etat, 1))
-                        {
+                    si (AccepterJetonDeclaration(etat, 44)) {
+                        si (!EstJetonDeclaration(etat, 1)) {
                             JetonLexe* nomEspaceQualifieManquant =
                                 JetonCourantDeclaration(etat);
                             SignalerErreurDeclaration(
@@ -2197,32 +2009,27 @@ espace GalacticShrine::GsPP::Autohebergement
             }
             sinon si (EstJetonDeclaration(etat, 5)
                 || EstJetonDeclaration(etat, 6)
-                || EstJetonDeclaration(etat, 66))
-            {
+                || EstJetonDeclaration(etat, 66)) {
                 naturel32 genreStructure =
                     JetonCourantDeclaration(etat)->Genre;
                 si (!AnalyserStructureDeclaration(
                         etat, contexte, genreStructure))
                     retourner faux;
             }
-            sinon si (EstJetonDeclaration(etat, 7))
-            {
+            sinon si (EstJetonDeclaration(etat, 7)) {
                 si (!AnalyserEnumerationDeclaration(etat, contexte))
                     retourner faux;
             }
-            sinon si (EstJetonDeclaration(etat, 8))
-            {
+            sinon si (EstJetonDeclaration(etat, 8)) {
                 si (!AnalyserAliasDeclaration(
                         etat, contexte, 0, faux))
                     retourner faux;
             }
-            sinon
-            {
+            sinon {
                 si (!AnalyserFonctionDeclaration(etat, contexte)) retourner faux;
             }
         }
-        si (attendreFermeture && EstJetonDeclaration(etat, 0))
-        {
+        si (attendreFermeture && EstJetonDeclaration(etat, 0)) {
             JetonLexe* fermetureEspaceManquante =
                 JetonCourantDeclaration(etat);
             SignalerErreurDeclaration(
@@ -2236,8 +2043,7 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     vide InitialiserResultatDeclarations(
-        ResultatAnalyseDeclarations* resultat)
-    {
+        ResultatAnalyseDeclarations* resultat) {
         resultat->Erreur = ErreurAnalyseDeclarations::Reussite;
         resultat->LigneErreur = 0;
         resultat->ColonneErreur = 0;
@@ -2249,13 +2055,11 @@ espace GalacticShrine::GsPP::Autohebergement
     }
 
     publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
-        RequeteAnalyseDeclarations* requete)
-    {
+        RequeteAnalyseDeclarations* requete) {
         si (!requete) retourner ErreurAnalyseDeclarations::ArgumentInvalide;
         InitialiserResultatDeclarations(&requete->Resultat);
         si ((!requete->Source && requete->Taille != 0)
-            || (!requete->Noeuds && requete->Capacite != 0))
-        {
+            || (!requete->Noeuds && requete->Capacite != 0)) {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::ArgumentInvalide;
             requete->Resultat.LigneErreur = 1;
@@ -2267,8 +2071,7 @@ espace GalacticShrine::GsPP::Autohebergement
             requete->Source, requete->Taille,
             NulJetonsDeclarations, 0, {}};
         ErreurLexage erreurLexage = AnalyserSource(&lexage);
-        si (erreurLexage != ErreurLexage::CapaciteInsuffisante)
-        {
+        si (erreurLexage != ErreurLexage::CapaciteInsuffisante) {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::ErreurLexicale;
             requete->Resultat.LigneErreur = lexage.Resultat.LigneErreur;
@@ -2277,8 +2080,7 @@ espace GalacticShrine::GsPP::Autohebergement
             retourner requete->Resultat.Erreur;
         }
         si (lexage.Resultat.CapaciteRequise == 0
-            || lexage.Resultat.CapaciteRequise > 100_000_000)
-        {
+            || lexage.Resultat.CapaciteRequise > 100_000_000) {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::AllocationImpossible;
             requete->Resultat.LigneErreur = 1;
@@ -2307,8 +2109,7 @@ espace GalacticShrine::GsPP::Autohebergement
             GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreJetons * 72, 8));
         si (!etat.Jetons || !etat.NoeudsTravail
-            || !etat.ExpressionsTravail)
-        {
+            || !etat.ExpressionsTravail) {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::AllocationImpossible;
             requete->Resultat.LigneErreur = 1;
@@ -2321,8 +2122,7 @@ espace GalacticShrine::GsPP::Autohebergement
         lexage.Jetons = etat.Jetons;
         lexage.Capacite = etat.NombreJetons;
         erreurLexage = AnalyserSource(&lexage);
-        si (erreurLexage != ErreurLexage::Reussite)
-        {
+        si (erreurLexage != ErreurLexage::Reussite) {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::ErreurLexicale;
             requete->Resultat.LigneErreur = lexage.Resultat.LigneErreur;
@@ -2336,16 +2136,14 @@ espace GalacticShrine::GsPP::Autohebergement
         NoeudDeclaration programme = {
             0, 1, 1, 0, 0, 0, 0, 0,
             HachageVideDeclaration(), 0};
-        si (!AjouterNoeudDeclaration(&etat, programme))
-        {
+        si (!AjouterNoeudDeclaration(&etat, programme)) {
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
         ContexteEspaceDeclaration racine = {
             HachageVideDeclaration(), vrai};
-        si (!AnalyserDeclarationsDansEspace(&etat, &racine, faux))
-        {
+        si (!AnalyserDeclarationsDansEspace(&etat, &racine, faux)) {
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
@@ -2357,15 +2155,13 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 limite = requete->Capacite;
         si (limite > etat.NombreNoeuds) limite = etat.NombreNoeuds;
         naturel64 index = 0;
-        tantque (requete->Noeuds && index < limite)
-        {
+        tantque (requete->Noeuds && index < limite) {
             requete->Noeuds[index] = etat.NoeudsTravail[index];
             index = index + 1;
         }
         GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
 
-        si (!requete->Noeuds || requete->Capacite < etat.NombreNoeuds)
-        {
+        si (!requete->Noeuds || requete->Capacite < etat.NombreNoeuds) {
             requete->Resultat.Erreur =
                 ErreurAnalyseDeclarations::CapaciteInsuffisante;
             retourner requete->Resultat.Erreur;

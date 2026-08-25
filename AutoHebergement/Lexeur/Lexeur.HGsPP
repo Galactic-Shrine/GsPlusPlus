@@ -4,10 +4,8 @@
  * capacité nulle retourne CapaciteInsuffisante et la capacité exacte requise.
  **/
 
-espace GalacticShrine::GsPP::Autohebergement
-{
-    énumération ErreurLexage
-    {
+espace GalacticShrine::GsPP::Autohebergement {
+    énumération ErreurLexage {
         Reussite = 0,
         Success = 0,
         CapaciteInsuffisante = 1,
@@ -28,8 +26,7 @@ espace GalacticShrine::GsPP::Autohebergement
         InvalidArgument = 8,
     };
 
-    structure JetonLexe
-    {
+    structure JetonLexe {
         naturel32 Genre;
         naturel32 Ligne;
         naturel32 Colonne;
@@ -40,8 +37,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 HachageTexte;
     };
 
-    structure ResultatLexage
-    {
+    structure ResultatLexage {
         ErreurLexage Erreur;
         naturel32 LigneErreur;
         naturel32 ColonneErreur;
@@ -50,8 +46,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 CapaciteRequise;
     };
 
-    structure RequeteLexage
-    {
+    structure RequeteLexage {
         constante caractère* Source;
         naturel64 Taille;
         JetonLexe* Jetons;

@@ -5,10 +5,8 @@
  * des symboles et des résolutions appartient à l'appelant.
  **/
 
-espace GalacticShrine::GsPP::Autohebergement
-{
-    énumération ErreurAnalyseSemantique
-    {
+espace GalacticShrine::GsPP::Autohebergement {
+    énumération ErreurAnalyseSemantique {
         Reussite = 0,
         Success = 0,
         ArgumentInvalide = 1,
@@ -51,10 +49,13 @@ espace GalacticShrine::GsPP::Autohebergement
         AmbiguousOverloadAddress = 19,
         FonctionAbsente = 20,
         MissingFunction = 20,
+        AucuneSurchargeCompatible = 21,
+        NoMatchingOverload = 21,
+        AppelSurchargeAmbigu = 22,
+        AmbiguousOverloadCall = 22,
     };
 
-    énumération GenreSymboleSemantique
-    {
+    énumération GenreSymboleSemantique {
         Inconnu = 0,
         Unknown = 0,
         Type = 1,
@@ -75,8 +76,7 @@ espace GalacticShrine::GsPP::Autohebergement
         LocalVariable = 9,
     };
 
-    énumération DrapeauResolutionSemantique
-    {
+    énumération DrapeauResolutionSemantique {
         Aucun = 0,
         None = 0,
         GroupeSurcharges = 1,
@@ -87,8 +87,7 @@ espace GalacticShrine::GsPP::Autohebergement
         BaseReceiver = 4,
     };
 
-    structure SymboleSemantique
-    {
+    structure SymboleSemantique {
         naturel64 IndexNoeud;
         naturel64 IndexPortee;
         naturel64 HachageNom;
@@ -98,8 +97,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel32 Drapeaux;
     };
 
-    structure ResolutionSemantique
-    {
+    structure ResolutionSemantique {
         naturel64 IndexNoeud;
         naturel64 IndexSymbole;
         naturel64 HachageType;
@@ -107,8 +105,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel32 Drapeaux;
     };
 
-    structure ResultatAnalyseSemantique
-    {
+    structure ResultatAnalyseSemantique {
         ErreurAnalyseSemantique Erreur;
         naturel32 LigneErreur;
         naturel32 ColonneErreur;
@@ -120,8 +117,7 @@ espace GalacticShrine::GsPP::Autohebergement
         naturel64 NombreOctetsArene;
     };
 
-    structure RequeteAnalyseSemantique
-    {
+    structure RequeteAnalyseSemantique {
         constante caractère* Source;
         naturel64 TailleSource;
         constante NoeudDeclaration* Noeuds;
@@ -133,6 +129,11 @@ espace GalacticShrine::GsPP::Autohebergement
         ResultatAnalyseSemantique Resultat;
     };
 
+    /**
+     * <résumé>Indexe et résout la tranche sémantique auto-hébergée.</résumé>
+     * @Paramètre(RequeteAnalyseSemantique*: requete) Entrée et sorties de la passe.
+     * @Retourner(ErreurAnalyseSemantique) État final ou capacité requise.
+     **/
     publique ErreurAnalyseSemantique AnalyserSemantique(
         RequeteAnalyseSemantique* requete);
 

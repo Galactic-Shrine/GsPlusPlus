@@ -29,15 +29,14 @@ Le français est la syntaxe canonique du langage. Les mots-clés anglais
 documentés sont des alias officiels avec la même sémantique et la même
 génération de code.
 
-> **État actuel — `0.27.0-alpha.7`**
+> **État actuel — développement après `0.27.0-alpha.7`**
 >
-> Cette préversion permet d’évaluer et de développer avec la chaîne Gs++
-> actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais le frontend
-> auto-hébergé reste en développement. Le lexeur, l’AST des déclarations et la
-> hiérarchie des blocs, instructions et expressions ainsi qu’une première
-> passe d’indexation et de résolution sémantique sont désormais écrits et
-> validés en Gs++. La sélection typée des surcharges et les étapes sémantiques
-> suivantes restent à migrer.
+> La dernière préversion publique permet d’évaluer et de développer avec la
+> chaîne Gs++ actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais
+> le frontend auto-hébergé reste en développement. Le lexeur, l’AST compact et
+> la première passe sémantique sont écrits en Gs++. La branche courante ajoute
+> une première sélection typée des surcharges libres ; la résolution complète
+> des types et les étapes sémantiques suivantes restent à migrer.
 
 ## Principes du langage
 
@@ -61,19 +60,28 @@ Les API livrées par Gs++ utilisent le préfixe d’espace de noms canonique
 ## Un premier programme
 
 ```cpp
-espace Shrine::Exemples
-{
-    publique entier32 Additionner(entier32 gauche, entier32 droite)
-    {
+espace Shrine::Exemples {
+
+    /**
+     * <résumé>Additionne deux entiers signés de 32 bits.</résumé>
+     * @Paramètre(entier32: gauche) Première valeur.
+     * @Paramètre(entier32: droite) Deuxième valeur.
+     * @Retourner(entier32) Somme des deux valeurs.
+     **/
+    publique entier32 Additionner(entier32 gauche, entier32 droite) {
+
         retourner gauche + droite;
     }
 
-    publique entier32 Principal()
-    {
+    /**
+     * <résumé>Exécute le programme d'exemple.</résumé>
+     * @Retourner(entier32) Résultat de l'exécution.
+     **/
+    publique entier32 Principal() {
+
         entier32 résultat = Additionner(20, 22);
 
-        si (résultat == 42)
-        {
+        si (résultat == 42) {
             retourner résultat;
         }
 
@@ -155,13 +163,15 @@ cmake --build --preset linux-release --target espace_travail
 ctest --preset linux-release
 ```
 
-Les outils sont placés dans `Construction/.../Bin` et les bibliothèques Gs++
-dans `Construction/.../Artefacts/GsPlusPlus`.
+Les sorties restent séparées du dépôt dans
+`../Construction/GsPlusPlus-Development/...`. Les outils sont placés dans le
+sous-dossier `Bin` et les bibliothèques Gs++ dans
+`Artefacts/GsPlusPlus`.
 
 Après une construction Windows :
 
 ```powershell
-Construction/VisualStudio/Release/Bin/gsppc.exe `
+../Construction/GsPlusPlus-Development/VisualStudio/Release/Bin/gsppc.exe `
   Exemples/Bonjour.Gs++ `
   --format gsobj `
   -o Bonjour.GsObj
@@ -170,7 +180,7 @@ Construction/VisualStudio/Release/Bin/gsppc.exe `
 Sous Linux :
 
 ```bash
-Construction/Ninja/Release/Bin/gsppc \
+../Construction/GsPlusPlus-Development/Ninja/Release/Bin/gsppc \
   Exemples/Bonjour.Gs++ \
   --format gsobj \
   -o Bonjour.GsObj
@@ -201,6 +211,7 @@ GsPlusPlus/
 ## Documentation
 
 - [Spécification candidate du langage 1.0](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md)
+- [Conventions de code Gs++ 1.0](Documentation/CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md)
 - [Format XML des projets et solutions 1.0](Documentation/FORMAT_PROJETS_GS_PLUS_PLUS_1.0.md)
 - [Formats GsObj 1.0](Documentation/FORMAT_GSOBJ_1.0.md), [GsA 1.0](Documentation/FORMAT_GSA_1.0.md) et [GsE 1.0](Documentation/FORMAT_GSE_1.0.md)
 - [ABI native x86-64](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
@@ -215,7 +226,7 @@ principale.
 ## Validation actuelle
 
 - conformité portable : **20/20** sous MSVC et GNU ;
-- CTest : **3/3** sous Windows et **4/4** sous Linux ;
+- CTest : **4/4** sous Windows et **5/5** sous Linux ;
 - quatre scénarios de benchmark smoke réussis sur chaque hôte ;
 - CI GitHub Windows et Linux ;
 - les quatre images auto-hébergées, dont `AnalyseurSemantique.GsE`, sont

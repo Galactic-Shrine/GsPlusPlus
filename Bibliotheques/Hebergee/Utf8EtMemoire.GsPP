@@ -1,29 +1,23 @@
-espace GalacticShrine::GsPP::Hebergee
-{
+espace GalacticShrine::GsPP::Hebergee {
     octet* NulOctetsHeberge;
 
-    octet* PointeurNulOctetsHeberge()
-    {
+    octet* PointeurNulOctetsHeberge() {
         retourner NulOctetsHeberge;
     }
 
-    caractère* PointeurNulTexteHeberge()
-    {
+    caractère* PointeurNulTexteHeberge() {
         retourner convertir<caractère*>(PointeurNulOctetsHeberge());
     }
 
-    BlocArene* PointeurNulBlocArene()
-    {
+    BlocArene* PointeurNulBlocArene() {
         retourner convertir<BlocArene*>(PointeurNulOctetsHeberge());
     }
 
     naturel64 CalculerCapaciteHebergee(
-        naturel64 actuelle, naturel64 minimale)
-    {
+        naturel64 actuelle, naturel64 minimale) {
         naturel64 capacite = actuelle;
         si (capacite < 16) capacite = 16;
-        tantque (capacite < minimale)
-        {
+        tantque (capacite < minimale) {
             si (capacite > 9_223_372_036_854_775_807)
                 retourner minimale;
             capacite = capacite * 2;
@@ -31,32 +25,26 @@ espace GalacticShrine::GsPP::Hebergee
         retourner capacite;
     }
 
-    booléen EstSuiteUtf8(octet valeur)
-    {
+    booléen EstSuiteUtf8(octet valeur) {
         retourner valeur >= 128 && valeur <= 191;
     }
 
-    publique booléen ValiderUtf8(VueTexte texte)
-    {
+    publique booléen ValiderUtf8(VueTexte texte) {
         si (!texte.Donnees && texte.Taille != 0) retourner faux;
         naturel64 index = 0;
-        tantque (index < texte.Taille)
-        {
+        tantque (index < texte.Taille) {
             octet premier = convertir<octet>(texte.Donnees[index]);
-            si (premier <= 127)
-            {
+            si (premier <= 127) {
                 index = index + 1;
             }
-            sinon si (premier >= 194 && premier <= 223)
-            {
+            sinon si (premier >= 194 && premier <= 223) {
                 si (index + 1 >= texte.Taille) retourner faux;
                 si (!EstSuiteUtf8(
                         convertir<octet>(texte.Donnees[index + 1])))
                     retourner faux;
                 index = index + 2;
             }
-            sinon si (premier >= 224 && premier <= 239)
-            {
+            sinon si (premier >= 224 && premier <= 239) {
                 si (index + 2 >= texte.Taille) retourner faux;
                 octet secondTrois = convertir<octet>(texte.Donnees[index + 1]);
                 octet troisieme = convertir<octet>(texte.Donnees[index + 2]);
@@ -70,8 +58,7 @@ espace GalacticShrine::GsPP::Hebergee
                     retourner faux;
                 index = index + 3;
             }
-            sinon si (premier >= 240 && premier <= 244)
-            {
+            sinon si (premier >= 240 && premier <= 244) {
                 si (index + 3 >= texte.Taille) retourner faux;
                 octet secondQuatre = convertir<octet>(texte.Donnees[index + 1]);
                 si (premier == 240 && (secondQuatre < 144 || secondQuatre > 191))
@@ -93,15 +80,13 @@ espace GalacticShrine::GsPP::Hebergee
         retourner vrai;
     }
 
-    publique vide InitialiserChaineUtf8(ChaineUtf8* chaine)
-    {
+    publique vide InitialiserChaineUtf8(ChaineUtf8* chaine) {
         chaine->Donnees = PointeurNulTexteHeberge();
         chaine->Taille = 0;
         chaine->Capacite = 0;
     }
 
-    publique vide DetruireChaineUtf8(ChaineUtf8* chaine)
-    {
+    publique vide DetruireChaineUtf8(ChaineUtf8* chaine) {
         si (chaine->Donnees)
             GalacticShrine::GsPP::Hote::LibererMemoire(
                 convertir<octet*>(chaine->Donnees));
@@ -109,8 +94,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee ReserverChaineUtf8(
-        ChaineUtf8* chaine, naturel64 capacite)
-    {
+        ChaineUtf8* chaine, naturel64 capacite) {
         si (capacite <= chaine->Capacite)
             retourner CodeErreurHebergee::Reussite;
         si (capacite == 18_446_744_073_709_551_615)
@@ -124,8 +108,7 @@ espace GalacticShrine::GsPP::Hebergee
             GalacticShrine::GsPP::Hote::AllouerMemoire(nouvelleCapacite + 1);
         si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64 index = 0;
-        tantque (index < chaine->Taille)
-        {
+        tantque (index < chaine->Taille) {
             nouveau[index] = convertir<octet>(chaine->Donnees[index]);
             index = index + 1;
         }
@@ -139,18 +122,15 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee AssignerChaineUtf8(
-        ChaineUtf8* chaine, VueTexte texte)
-    {
+        ChaineUtf8* chaine, VueTexte texte) {
         si (!ValiderUtf8(texte))
             retourner CodeErreurHebergee::Utf8Invalide;
-        si (texte.Taille == 0)
-        {
+        si (texte.Taille == 0) {
             chaine->Taille = 0;
             si (chaine->Donnees) chaine->Donnees[0] = 0;
             retourner CodeErreurHebergee::Reussite;
         }
-        si (texte.Taille > chaine->Capacite)
-        {
+        si (texte.Taille > chaine->Capacite) {
             naturel64 nouvelleCapacite = CalculerCapaciteHebergee(
                 chaine->Capacite, texte.Taille);
             si (nouvelleCapacite < texte.Taille
@@ -161,8 +141,7 @@ espace GalacticShrine::GsPP::Hebergee
             si (!nouveau)
                 retourner CodeErreurHebergee::AllocationEchouee;
             naturel64 indexNouveau = 0;
-            tantque (indexNouveau < texte.Taille)
-            {
+            tantque (indexNouveau < texte.Taille) {
                 nouveau[indexNouveau] =
                     convertir<octet>(texte.Donnees[indexNouveau]);
                 indexNouveau = indexNouveau + 1;
@@ -177,8 +156,7 @@ espace GalacticShrine::GsPP::Hebergee
             retourner CodeErreurHebergee::Reussite;
         }
         naturel64 index = 0;
-        tantque (index < texte.Taille)
-        {
+        tantque (index < texte.Taille) {
             chaine->Donnees[index] = texte.Donnees[index];
             index = index + 1;
         }
@@ -188,8 +166,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee AjouterVueChaineUtf8(
-        ChaineUtf8* chaine, VueTexte texte)
-    {
+        ChaineUtf8* chaine, VueTexte texte) {
         si (!ValiderUtf8(texte))
             retourner CodeErreurHebergee::Utf8Invalide;
         si (texte.Taille == 0)
@@ -199,8 +176,7 @@ espace GalacticShrine::GsPP::Hebergee
             retourner CodeErreurHebergee::CapaciteDepassee;
         naturel64 ancienneTaille = chaine->Taille;
         naturel64 nouvelleTaille = ancienneTaille + texte.Taille;
-        si (nouvelleTaille > chaine->Capacite)
-        {
+        si (nouvelleTaille > chaine->Capacite) {
             naturel64 nouvelleCapacite = CalculerCapaciteHebergee(
                 chaine->Capacite, nouvelleTaille);
             si (nouvelleCapacite < nouvelleTaille
@@ -211,15 +187,13 @@ espace GalacticShrine::GsPP::Hebergee
             si (!nouveau)
                 retourner CodeErreurHebergee::AllocationEchouee;
             naturel64 indexAncien = 0;
-            tantque (indexAncien < ancienneTaille)
-            {
+            tantque (indexAncien < ancienneTaille) {
                 nouveau[indexAncien] =
                     convertir<octet>(chaine->Donnees[indexAncien]);
                 indexAncien = indexAncien + 1;
             }
             naturel64 indexSource = 0;
-            tantque (indexSource < texte.Taille)
-            {
+            tantque (indexSource < texte.Taille) {
                 nouveau[ancienneTaille + indexSource] =
                     convertir<octet>(texte.Donnees[indexSource]);
                 indexSource = indexSource + 1;
@@ -234,8 +208,7 @@ espace GalacticShrine::GsPP::Hebergee
             retourner CodeErreurHebergee::Reussite;
         }
         naturel64 index = 0;
-        tantque (index < texte.Taille)
-        {
+        tantque (index < texte.Taille) {
             chaine->Donnees[ancienneTaille + index] = texte.Donnees[index];
             index = index + 1;
         }
@@ -245,8 +218,7 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique CodeErreurHebergee AjouterAsciiChaineUtf8(
-        ChaineUtf8* chaine, caractère valeur)
-    {
+        ChaineUtf8* chaine, caractère valeur) {
         octet octetValeur = convertir<octet>(valeur);
         si (octetValeur == 0 || octetValeur > 127)
             retourner CodeErreurHebergee::ArgumentInvalide;
@@ -262,14 +234,12 @@ espace GalacticShrine::GsPP::Hebergee
         retourner CodeErreurHebergee::Reussite;
     }
 
-    publique VueTexte VueDepuisChaineUtf8(ChaineUtf8* chaine)
-    {
+    publique VueTexte VueDepuisChaineUtf8(ChaineUtf8* chaine) {
         retourner {convertir<constante caractère*>(chaine->Donnees), chaine->Taille};
     }
 
     publique vide InitialiserArene(
-        AreneMemoire* arene, naturel64 tailleBloc)
-    {
+        AreneMemoire* arene, naturel64 tailleBloc) {
         arene->Premier = PointeurNulBlocArene();
         arene->Dernier = PointeurNulBlocArene();
         arene->TailleBloc = tailleBloc;
@@ -277,11 +247,9 @@ espace GalacticShrine::GsPP::Hebergee
         arene->NombreOctets = 0;
     }
 
-    publique vide DetruireArene(AreneMemoire* arene)
-    {
+    publique vide DetruireArene(AreneMemoire* arene) {
         BlocArene* bloc = arene->Premier;
-        tantque (bloc)
-        {
+        tantque (bloc) {
             BlocArene* suivant = bloc->Suivant;
             GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(bloc));
             bloc = suivant;
@@ -290,16 +258,14 @@ espace GalacticShrine::GsPP::Hebergee
     }
 
     publique octet* AllouerArene(
-        AreneMemoire* arene, naturel64 taille, naturel64 alignement)
-    {
+        AreneMemoire* arene, naturel64 taille, naturel64 alignement) {
         si (taille == 0 || alignement == 0 || alignement > 8
             || (alignement & (alignement - 1)) != 0)
             retourner PointeurNulOctetsHeberge();
 
         BlocArene* bloc = arene->Dernier;
         naturel64 position = 0;
-        si (bloc)
-        {
+        si (bloc) {
             si (bloc->Position
                 > 18_446_744_073_709_551_615 - (alignement - 1))
                 retourner PointeurNulOctetsHeberge();
@@ -307,8 +273,7 @@ espace GalacticShrine::GsPP::Hebergee
                 & ~(alignement - 1);
         }
         si (!bloc || position > bloc->Capacite
-            || taille > bloc->Capacite - position)
-        {
+            || taille > bloc->Capacite - position) {
             si (taille
                 > 18_446_744_073_709_551_615 - (alignement - 1))
                 retourner PointeurNulOctetsHeberge();

@@ -27,14 +27,14 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — `0.27.0-alpha.7`**
+> **Current status — development after `0.27.0-alpha.7`**
 >
-> This prerelease can be used to evaluate and develop with the current Gs++
-> toolchain. Binary formats 1.0 and ABI 1 are validated, while the self-hosted
-> frontend remains in development. The lexer, declaration, block, statement,
-> and expression AST hierarchy, as well as a first semantic indexing and name
-> resolution pass, are now written and validated in Gs++. Typed overload
-> selection and the following semantic stages remain to be migrated.
+> The latest public prerelease can be used to evaluate and develop with the
+> current Gs++ toolchain. Binary formats 1.0 and ABI 1 are validated, while the
+> self-hosted frontend remains in development. The lexer, compact AST, and
+> first semantic pass are written in Gs++. The current branch adds an initial
+> typed selection pass for free-function overloads; complete type resolution
+> and the following semantic stages remain to be migrated.
 
 ## Language principles
 
@@ -57,19 +57,28 @@ while host-provided imports use `GalacticShrine::GsPP::Hote`.
 ## A first program
 
 ```cpp
-namespace Shrine::Examples
-{
-    public int32 Add(int32 left, int32 right)
-    {
+namespace Shrine::Examples {
+
+    /**
+     * <summary>Adds two signed 32-bit integers.</summary>
+     * @Parameter(int32: left) First value.
+     * @Parameter(int32: right) Second value.
+     * @Returns(int32) Sum of both values.
+     **/
+    public int32 Add(int32 left, int32 right) {
+
         return left + right;
     }
 
-    public int32 Main()
-    {
+    /**
+     * <summary>Runs the example program.</summary>
+     * @Returns(int32) Program result.
+     **/
+    public int32 Main() {
+
         int32 result = Add(20, 22);
 
-        if (result == 42)
-        {
+        if (result == 42) {
             return result;
         }
 
@@ -151,13 +160,14 @@ cmake --build --preset linux-release --target espace_travail
 ctest --preset linux-release
 ```
 
-Tools are written to `Construction/.../Bin`, while Gs++ libraries are written
-to `Construction/.../Artefacts/GsPlusPlus`.
+Build output stays outside the repository under
+`../Construction/GsPlusPlus-Development/...`. Tools are written to its `Bin`
+subdirectory, while Gs++ libraries are written to `Artefacts/GsPlusPlus`.
 
 After a Windows build:
 
 ```powershell
-Construction/VisualStudio/Release/Bin/gsppc.exe `
+../Construction/GsPlusPlus-Development/VisualStudio/Release/Bin/gsppc.exe `
   Exemples/Hello.GsPlusPlus `
   --format gsobj `
   -o Hello.GsObj
@@ -166,7 +176,7 @@ Construction/VisualStudio/Release/Bin/gsppc.exe `
 On Linux:
 
 ```bash
-Construction/Ninja/Release/Bin/gsppc \
+../Construction/GsPlusPlus-Development/Ninja/Release/Bin/gsppc \
   Exemples/Hello.GsPlusPlus \
   --format gsobj \
   -o Hello.GsObj
@@ -196,6 +206,7 @@ GsPlusPlus/
 ## Documentation
 
 - [Candidate language specification 1.0](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md)
+- [Gs++ 1.0 source-code conventions](Documentation/CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md)
 - [Project and solution XML format 1.0](Documentation/FORMAT_PROJETS_GS_PLUS_PLUS_1.0.md)
 - [GsObj 1.0](Documentation/FORMAT_GSOBJ_1.0.md), [GsA 1.0](Documentation/FORMAT_GSA_1.0.md), and [GsE 1.0](Documentation/FORMAT_GSE_1.0.md) formats
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
@@ -209,7 +220,7 @@ All normative documentation is maintained in Markdown as its primary source.
 ## Current validation
 
 - portable conformance: **20/20** on MSVC and GNU;
-- CTest: **3/3** on Windows and **4/4** on Linux;
+- CTest: **4/4** on Windows and **5/5** on Linux;
 - four successful smoke benchmark scenarios on each host;
 - Windows and Linux GitHub CI;
 - all four self-hosted images, including `AnalyseurSemantique.GsE`, are

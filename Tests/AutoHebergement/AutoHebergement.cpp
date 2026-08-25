@@ -2659,6 +2659,7 @@ namespace
             "  publique entier32 Calculer(entier32 gauche, entier32 droite) {\n"
             "    entier32 somme = gauche + droite;\n"
             "    { entier32 copie = somme; somme = copie; }\n"
+            "    entier64 etendue = Choisir(convertir<entier64>(somme));\n"
             "    retourner Choisir(somme);\n"
             "  }\n"
             "}\n"
@@ -2677,6 +2678,7 @@ namespace
             "  public int32 Calculer(int32 gauche, int32 droite) {\n"
             "    int32 somme = gauche + droite;\n"
             "    { int32 copie = somme; somme = copie; }\n"
+            "    int64 etendue = Choisir(cast<int64>(somme));\n"
             "    return Choisir(somme);\n"
             "  }\n"
             "}\n"
@@ -2718,18 +2720,42 @@ namespace
                     && resolution.GenreCible == symbole.Genre,
                 "genre de cible sémantique incohérent");
         }
-        const auto groupeChoisir = std::find_if(
-            resultatFrancais.Resolutions.begin(),
-            resultatFrancais.Resolutions.end(),
-            [&](const ResolutionSemantiqueHote& resolution)
-            {
-                return resultatFrancais.Noeuds[resolution.IndexNoeud]
-                            .HachageNom == HacherTexte("Choisir")
-                    && (resolution.Drapeaux & 1U) != 0;
-            });
+        const auto typeEntier32 = HacherTypeDeclaration(
+            GsPP::TypeGs(GsPP::GenreType::Entier32));
+        const auto typeEntier64 = HacherTypeDeclaration(
+            GsPP::TypeGs(GsPP::GenreType::Entier64));
+        bool choisirEntier32 = false;
+        bool choisirEntier64 = false;
+        std::size_t nombreAppelsChoisir = 0;
+        for (const auto& resolution : resultatFrancais.Resolutions)
+        {
+            const auto& reference =
+                resultatFrancais.Noeuds[resolution.IndexNoeud];
+            if (reference.HachageNom != HacherTexte("Choisir")
+                || (resolution.Drapeaux & 1U) == 0)
+                continue;
+            ++nombreAppelsChoisir;
+            const auto indexFonction = resultatFrancais.Symboles[
+                resolution.IndexSymbole].IndexNoeud;
+            const auto parametre = std::find_if(
+                resultatFrancais.Noeuds.begin(),
+                resultatFrancais.Noeuds.end(),
+                [&](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 2
+                        && noeud.Parent == indexFonction;
+                });
+            Exiger(
+                parametre != resultatFrancais.Noeuds.end(),
+                "la surcharge Choisir sélectionnée n’a aucun paramètre");
+            choisirEntier32 |= parametre->HachageType == typeEntier32;
+            choisirEntier64 |= parametre->HachageType == typeEntier64;
+        }
         Exiger(
-            groupeChoisir != resultatFrancais.Resolutions.end(),
-            "le groupe de surcharges Choisir n’a pas été identifié");
+            nombreAppelsChoisir == 2
+                && choisirEntier32
+                && choisirEntier64,
+            "la sélection typée des surcharges Choisir est incorrecte");
         const auto recepteur = std::find_if(
             resultatFrancais.Resolutions.begin(),
             resultatFrancais.Resolutions.end(),
@@ -2807,6 +2833,18 @@ namespace
             "publique entier64 F(entier64 X) { retourner X; } "
             "publique vide G() { F; }",
             19, "adresse-surcharge-ambigue");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique entier32 F(entier32 X) { retourner X; } "
+            "publique entier64 F(entier64 X) { retourner X; } "
+            "publique vide G() { F(vrai); }",
+            21, "aucune-surcharge-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique entier64 F(entier64 X, naturel64 Y) { retourner X; } "
+            "publique entier64 F(naturel64 X, entier64 Y) { retourner Y; } "
+            "publique vide G() { F(1, 1); }",
+            22, "appel-surcharge-ambigu");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure SansFonction {};",

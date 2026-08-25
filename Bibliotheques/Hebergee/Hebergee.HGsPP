@@ -1,8 +1,10 @@
-// Bibliothèque hébergée de Gs++ 0.26.
-// Les allocations sont toujours demandées explicitement. Les seuls services
-// dépendant de l’hôte sont regroupés dans l’espace Gs::Hote.
+/**
+ * Bibliothèque hébergée de Gs++ 0.26.
+ * Les allocations sont toujours demandées explicitement. Les seuls services
+ * dépendant de l’hôte sont regroupés dans l’espace GalacticShrine::GsPP::Hote.
+ **/
 
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     énumération CodeErreurHebergee
     {
@@ -297,103 +299,103 @@ espace Gs::Hebergee
     alias ReportDiagnostic = SignalerDiagnostic;
 }
 
-espace Gs::Hote
+espace GalacticShrine::GsPP::Hote
 {
     externe octet* AllouerMemoire(naturel64 taille);
     externe vide LibererMemoire(octet* adresse);
     externe naturel32 LireFichier(
-        Gs::Hebergee::RequeteFichier* requete);
+        GalacticShrine::GsPP::Hebergee::RequeteFichier* requete);
     externe naturel32 EcrireFichier(
-        Gs::Hebergee::RequeteFichier* requete);
+        GalacticShrine::GsPP::Hebergee::RequeteFichier* requete);
     externe vide EmettreDiagnostic(
-        Gs::Hebergee::Diagnostic diagnostic);
+        GalacticShrine::GsPP::Hebergee::Diagnostic diagnostic);
 }
 
-alias Gs::Hosted::TextView = Gs::Hebergee::VueTexte;
-alias Gs::Hosted::Utf8String = Gs::Hebergee::ChaineUtf8;
-alias Gs::Hosted::DynamicByteVector =
-    Gs::Hebergee::VecteurOctetsDynamique;
-alias Gs::Hosted::DynamicValueVector =
-    Gs::Hebergee::VecteurNaturelsDynamique;
-alias Gs::Hosted::ArenaBlock = Gs::Hebergee::BlocArene;
-alias Gs::Hosted::Arena = Gs::Hebergee::AreneMemoire;
-alias Gs::Hosted::InputStream = Gs::Hebergee::FluxLecture;
-alias Gs::Hosted::OutputStream = Gs::Hebergee::FluxEcriture;
-alias Gs::Hosted::ValueVector = Gs::Hebergee::VecteurNaturels;
-alias Gs::Hosted::SymbolEntry = Gs::Hebergee::EntreeTableSymboles;
-alias Gs::Hosted::SymbolTable = Gs::Hebergee::TableSymboles;
-alias Gs::Hosted::DynamicSymbolTable =
-    Gs::Hebergee::TableSymbolesDynamique;
-alias Gs::Hosted::FileRequest = Gs::Hebergee::RequeteFichier;
-alias Gs::Hosted::AllocatedFile = Gs::Hebergee::FichierAlloue;
-alias Gs::Hosted::Diagnostic = Gs::Hebergee::Diagnostic;
-alias Gs::Hosted::MakeTextView = Gs::Hebergee::CreerVueTexte;
-alias Gs::Hosted::MakeTerminatedTextView =
-    Gs::Hebergee::CreerVueTexteTerminee;
-alias Gs::Hosted::TextViewsEqual = Gs::Hebergee::VuesTexteEgales;
-alias Gs::Hosted::HashTextView = Gs::Hebergee::HacherVueTexte;
-alias Gs::Hosted::ValidateUtf8 = Gs::Hebergee::ValiderUtf8;
-alias Gs::Hosted::InitializeUtf8String =
-    Gs::Hebergee::InitialiserChaineUtf8;
-alias Gs::Hosted::DestroyUtf8String = Gs::Hebergee::DetruireChaineUtf8;
-alias Gs::Hosted::ReserveUtf8String = Gs::Hebergee::ReserverChaineUtf8;
-alias Gs::Hosted::AssignUtf8String = Gs::Hebergee::AssignerChaineUtf8;
-alias Gs::Hosted::AppendUtf8View = Gs::Hebergee::AjouterVueChaineUtf8;
-alias Gs::Hosted::AppendAscii = Gs::Hebergee::AjouterAsciiChaineUtf8;
-alias Gs::Hosted::ViewUtf8String = Gs::Hebergee::VueDepuisChaineUtf8;
-alias Gs::Hosted::InitializeArena = Gs::Hebergee::InitialiserArene;
-alias Gs::Hosted::DestroyArena = Gs::Hebergee::DetruireArene;
-alias Gs::Hosted::ArenaAllocate = Gs::Hebergee::AllouerArene;
-alias Gs::Hosted::MakeInputStream = Gs::Hebergee::CreerFluxLecture;
-alias Gs::Hosted::ReadByte = Gs::Hebergee::LireOctetFlux;
-alias Gs::Hosted::ReadBlock = Gs::Hebergee::LireBlocFlux;
-alias Gs::Hosted::MakeOutputStream = Gs::Hebergee::CreerFluxEcriture;
-alias Gs::Hosted::WriteByte = Gs::Hebergee::EcrireOctetFlux;
-alias Gs::Hosted::WriteBlock = Gs::Hebergee::EcrireBlocFlux;
-alias Gs::Hosted::InitializeVector =
-    Gs::Hebergee::InitialiserVecteurNaturels;
-alias Gs::Hosted::AppendValue = Gs::Hebergee::AjouterNaturel;
-alias Gs::Hosted::ReadValue = Gs::Hebergee::LireNaturel;
-alias Gs::Hosted::InitializeDynamicByteVector =
-    Gs::Hebergee::InitialiserVecteurOctetsDynamique;
-alias Gs::Hosted::DestroyDynamicByteVector =
-    Gs::Hebergee::DetruireVecteurOctetsDynamique;
-alias Gs::Hosted::ReserveDynamicByteVector =
-    Gs::Hebergee::ReserverVecteurOctetsDynamique;
-alias Gs::Hosted::AppendDynamicByteBlock =
-    Gs::Hebergee::AjouterBlocVecteurOctetsDynamique;
-alias Gs::Hosted::InitializeDynamicValueVector =
-    Gs::Hebergee::InitialiserVecteurNaturelsDynamique;
-alias Gs::Hosted::DestroyDynamicValueVector =
-    Gs::Hebergee::DetruireVecteurNaturelsDynamique;
-alias Gs::Hosted::ReserveDynamicValueVector =
-    Gs::Hebergee::ReserverVecteurNaturelsDynamique;
-alias Gs::Hosted::AppendDynamicValue =
-    Gs::Hebergee::AjouterVecteurNaturelsDynamique;
-alias Gs::Hosted::ReadDynamicValue =
-    Gs::Hebergee::LireVecteurNaturelsDynamique;
-alias Gs::Hosted::InitializeSymbolTable =
-    Gs::Hebergee::InitialiserTableSymboles;
-alias Gs::Hosted::InsertSymbol = Gs::Hebergee::InsererSymbole;
-alias Gs::Hosted::FindSymbol = Gs::Hebergee::ChercherSymbole;
-alias Gs::Hosted::InitializeDynamicSymbolTable =
-    Gs::Hebergee::InitialiserTableSymbolesDynamique;
-alias Gs::Hosted::DestroyDynamicSymbolTable =
-    Gs::Hebergee::DetruireTableSymbolesDynamique;
-alias Gs::Hosted::ReserveDynamicSymbolTable =
-    Gs::Hebergee::ReserverTableSymbolesDynamique;
-alias Gs::Hosted::InsertDynamicSymbol =
-    Gs::Hebergee::InsererTableSymbolesDynamique;
-alias Gs::Hosted::FindDynamicSymbol =
-    Gs::Hebergee::ChercherTableSymbolesDynamique;
-alias Gs::Hosted::LoadFile = Gs::Hebergee::ChargerFichier;
-alias Gs::Hosted::SaveFile = Gs::Hebergee::SauverFichier;
-alias Gs::Hosted::LoadAllocatedFile = Gs::Hebergee::ChargerFichierAlloue;
-alias Gs::Hosted::InitializeAllocatedFile =
-    Gs::Hebergee::InitialiserFichierAlloue;
-alias Gs::Hosted::FreeAllocatedFile = Gs::Hebergee::LibererFichierAlloue;
-alias Gs::Hosted::SaveFileResult = Gs::Hebergee::SauverFichierResultat;
-alias Gs::Hosted::JoinUtf8Path = Gs::Hebergee::JoindreCheminUtf8;
-alias Gs::Hosted::FileNameView = Gs::Hebergee::NomFichierVue;
-alias Gs::Hosted::ExtensionView = Gs::Hebergee::ExtensionVue;
-alias Gs::Hosted::ReportDiagnostic = Gs::Hebergee::SignalerDiagnostic;
+alias GalacticShrine::GsPP::Hosted::TextView = GalacticShrine::GsPP::Hebergee::VueTexte;
+alias GalacticShrine::GsPP::Hosted::Utf8String = GalacticShrine::GsPP::Hebergee::ChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::DynamicByteVector =
+    GalacticShrine::GsPP::Hebergee::VecteurOctetsDynamique;
+alias GalacticShrine::GsPP::Hosted::DynamicValueVector =
+    GalacticShrine::GsPP::Hebergee::VecteurNaturelsDynamique;
+alias GalacticShrine::GsPP::Hosted::ArenaBlock = GalacticShrine::GsPP::Hebergee::BlocArene;
+alias GalacticShrine::GsPP::Hosted::Arena = GalacticShrine::GsPP::Hebergee::AreneMemoire;
+alias GalacticShrine::GsPP::Hosted::InputStream = GalacticShrine::GsPP::Hebergee::FluxLecture;
+alias GalacticShrine::GsPP::Hosted::OutputStream = GalacticShrine::GsPP::Hebergee::FluxEcriture;
+alias GalacticShrine::GsPP::Hosted::ValueVector = GalacticShrine::GsPP::Hebergee::VecteurNaturels;
+alias GalacticShrine::GsPP::Hosted::SymbolEntry = GalacticShrine::GsPP::Hebergee::EntreeTableSymboles;
+alias GalacticShrine::GsPP::Hosted::SymbolTable = GalacticShrine::GsPP::Hebergee::TableSymboles;
+alias GalacticShrine::GsPP::Hosted::DynamicSymbolTable =
+    GalacticShrine::GsPP::Hebergee::TableSymbolesDynamique;
+alias GalacticShrine::GsPP::Hosted::FileRequest = GalacticShrine::GsPP::Hebergee::RequeteFichier;
+alias GalacticShrine::GsPP::Hosted::AllocatedFile = GalacticShrine::GsPP::Hebergee::FichierAlloue;
+alias GalacticShrine::GsPP::Hosted::Diagnostic = GalacticShrine::GsPP::Hebergee::Diagnostic;
+alias GalacticShrine::GsPP::Hosted::MakeTextView = GalacticShrine::GsPP::Hebergee::CreerVueTexte;
+alias GalacticShrine::GsPP::Hosted::MakeTerminatedTextView =
+    GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee;
+alias GalacticShrine::GsPP::Hosted::TextViewsEqual = GalacticShrine::GsPP::Hebergee::VuesTexteEgales;
+alias GalacticShrine::GsPP::Hosted::HashTextView = GalacticShrine::GsPP::Hebergee::HacherVueTexte;
+alias GalacticShrine::GsPP::Hosted::ValidateUtf8 = GalacticShrine::GsPP::Hebergee::ValiderUtf8;
+alias GalacticShrine::GsPP::Hosted::InitializeUtf8String =
+    GalacticShrine::GsPP::Hebergee::InitialiserChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::DestroyUtf8String = GalacticShrine::GsPP::Hebergee::DetruireChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::ReserveUtf8String = GalacticShrine::GsPP::Hebergee::ReserverChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::AssignUtf8String = GalacticShrine::GsPP::Hebergee::AssignerChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::AppendUtf8View = GalacticShrine::GsPP::Hebergee::AjouterVueChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::AppendAscii = GalacticShrine::GsPP::Hebergee::AjouterAsciiChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::ViewUtf8String = GalacticShrine::GsPP::Hebergee::VueDepuisChaineUtf8;
+alias GalacticShrine::GsPP::Hosted::InitializeArena = GalacticShrine::GsPP::Hebergee::InitialiserArene;
+alias GalacticShrine::GsPP::Hosted::DestroyArena = GalacticShrine::GsPP::Hebergee::DetruireArene;
+alias GalacticShrine::GsPP::Hosted::ArenaAllocate = GalacticShrine::GsPP::Hebergee::AllouerArene;
+alias GalacticShrine::GsPP::Hosted::MakeInputStream = GalacticShrine::GsPP::Hebergee::CreerFluxLecture;
+alias GalacticShrine::GsPP::Hosted::ReadByte = GalacticShrine::GsPP::Hebergee::LireOctetFlux;
+alias GalacticShrine::GsPP::Hosted::ReadBlock = GalacticShrine::GsPP::Hebergee::LireBlocFlux;
+alias GalacticShrine::GsPP::Hosted::MakeOutputStream = GalacticShrine::GsPP::Hebergee::CreerFluxEcriture;
+alias GalacticShrine::GsPP::Hosted::WriteByte = GalacticShrine::GsPP::Hebergee::EcrireOctetFlux;
+alias GalacticShrine::GsPP::Hosted::WriteBlock = GalacticShrine::GsPP::Hebergee::EcrireBlocFlux;
+alias GalacticShrine::GsPP::Hosted::InitializeVector =
+    GalacticShrine::GsPP::Hebergee::InitialiserVecteurNaturels;
+alias GalacticShrine::GsPP::Hosted::AppendValue = GalacticShrine::GsPP::Hebergee::AjouterNaturel;
+alias GalacticShrine::GsPP::Hosted::ReadValue = GalacticShrine::GsPP::Hebergee::LireNaturel;
+alias GalacticShrine::GsPP::Hosted::InitializeDynamicByteVector =
+    GalacticShrine::GsPP::Hebergee::InitialiserVecteurOctetsDynamique;
+alias GalacticShrine::GsPP::Hosted::DestroyDynamicByteVector =
+    GalacticShrine::GsPP::Hebergee::DetruireVecteurOctetsDynamique;
+alias GalacticShrine::GsPP::Hosted::ReserveDynamicByteVector =
+    GalacticShrine::GsPP::Hebergee::ReserverVecteurOctetsDynamique;
+alias GalacticShrine::GsPP::Hosted::AppendDynamicByteBlock =
+    GalacticShrine::GsPP::Hebergee::AjouterBlocVecteurOctetsDynamique;
+alias GalacticShrine::GsPP::Hosted::InitializeDynamicValueVector =
+    GalacticShrine::GsPP::Hebergee::InitialiserVecteurNaturelsDynamique;
+alias GalacticShrine::GsPP::Hosted::DestroyDynamicValueVector =
+    GalacticShrine::GsPP::Hebergee::DetruireVecteurNaturelsDynamique;
+alias GalacticShrine::GsPP::Hosted::ReserveDynamicValueVector =
+    GalacticShrine::GsPP::Hebergee::ReserverVecteurNaturelsDynamique;
+alias GalacticShrine::GsPP::Hosted::AppendDynamicValue =
+    GalacticShrine::GsPP::Hebergee::AjouterVecteurNaturelsDynamique;
+alias GalacticShrine::GsPP::Hosted::ReadDynamicValue =
+    GalacticShrine::GsPP::Hebergee::LireVecteurNaturelsDynamique;
+alias GalacticShrine::GsPP::Hosted::InitializeSymbolTable =
+    GalacticShrine::GsPP::Hebergee::InitialiserTableSymboles;
+alias GalacticShrine::GsPP::Hosted::InsertSymbol = GalacticShrine::GsPP::Hebergee::InsererSymbole;
+alias GalacticShrine::GsPP::Hosted::FindSymbol = GalacticShrine::GsPP::Hebergee::ChercherSymbole;
+alias GalacticShrine::GsPP::Hosted::InitializeDynamicSymbolTable =
+    GalacticShrine::GsPP::Hebergee::InitialiserTableSymbolesDynamique;
+alias GalacticShrine::GsPP::Hosted::DestroyDynamicSymbolTable =
+    GalacticShrine::GsPP::Hebergee::DetruireTableSymbolesDynamique;
+alias GalacticShrine::GsPP::Hosted::ReserveDynamicSymbolTable =
+    GalacticShrine::GsPP::Hebergee::ReserverTableSymbolesDynamique;
+alias GalacticShrine::GsPP::Hosted::InsertDynamicSymbol =
+    GalacticShrine::GsPP::Hebergee::InsererTableSymbolesDynamique;
+alias GalacticShrine::GsPP::Hosted::FindDynamicSymbol =
+    GalacticShrine::GsPP::Hebergee::ChercherTableSymbolesDynamique;
+alias GalacticShrine::GsPP::Hosted::LoadFile = GalacticShrine::GsPP::Hebergee::ChargerFichier;
+alias GalacticShrine::GsPP::Hosted::SaveFile = GalacticShrine::GsPP::Hebergee::SauverFichier;
+alias GalacticShrine::GsPP::Hosted::LoadAllocatedFile = GalacticShrine::GsPP::Hebergee::ChargerFichierAlloue;
+alias GalacticShrine::GsPP::Hosted::InitializeAllocatedFile =
+    GalacticShrine::GsPP::Hebergee::InitialiserFichierAlloue;
+alias GalacticShrine::GsPP::Hosted::FreeAllocatedFile = GalacticShrine::GsPP::Hebergee::LibererFichierAlloue;
+alias GalacticShrine::GsPP::Hosted::SaveFileResult = GalacticShrine::GsPP::Hebergee::SauverFichierResultat;
+alias GalacticShrine::GsPP::Hosted::JoinUtf8Path = GalacticShrine::GsPP::Hebergee::JoindreCheminUtf8;
+alias GalacticShrine::GsPP::Hosted::FileNameView = GalacticShrine::GsPP::Hebergee::NomFichierVue;
+alias GalacticShrine::GsPP::Hosted::ExtensionView = GalacticShrine::GsPP::Hebergee::ExtensionVue;
+alias GalacticShrine::GsPP::Hosted::ReportDiagnostic = GalacticShrine::GsPP::Hebergee::SignalerDiagnostic;

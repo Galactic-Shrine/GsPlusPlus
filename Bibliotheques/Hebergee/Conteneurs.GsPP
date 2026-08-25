@@ -1,4 +1,4 @@
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     publique vide InitialiserVecteurNaturels(
         VecteurNaturels* vecteur, naturel64* stockage, naturel64 capacite)

@@ -56,8 +56,8 @@ comportement est appliqué à l’évaluation des constantes globales.
 `GsSysteme.GsA`. Elle garde un modèle explicite : aucun conteneur n’alloue son
 propre stockage.
 
-L’API française vit dans `Gs::Hebergee` et les alias anglais dans
-`Gs::Hosted`. Elle fournit :
+L’API française vit dans `GalacticShrine::GsPP::Hebergee` et les alias anglais dans
+`GalacticShrine::GsPP::Hosted`. Elle fournit :
 
 - `VueTexte` / `TextView` et le hachage FNV-1a déterministe ;
 - `FluxLecture` / `InputStream` et `FluxEcriture` / `OutputStream` ;
@@ -75,9 +75,9 @@ sa valeur sans modifier l’ordre de sondage.
 Les modules de fichiers et de diagnostics utilisent seulement trois imports :
 
 ```text
-Gs::Hote::LireFichier(RequeteFichier*)
-Gs::Hote::EcrireFichier(RequeteFichier*)
-Gs::Hote::EmettreDiagnostic(Diagnostic par valeur)
+GalacticShrine::GsPP::Hote::LireFichier(RequeteFichier*)
+GalacticShrine::GsPP::Hote::EcrireFichier(RequeteFichier*)
+GalacticShrine::GsPP::Hote::EmettreDiagnostic(Diagnostic par valeur)
 ```
 
 `RequeteFichier` contient le chemin, le tampon, sa taille utilisée et sa

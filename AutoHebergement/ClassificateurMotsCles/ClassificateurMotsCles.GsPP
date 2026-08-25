@@ -1,17 +1,17 @@
-espace Gs::Autohebergement
+espace GalacticShrine::GsPP::Autohebergement
 {
     booléen EstMot(
-        Gs::Hebergee::VueTexte mot, constante caractère* attendu)
+        GalacticShrine::GsPP::Hebergee::VueTexte mot, constante caractère* attendu)
     {
-        retourner Gs::Hebergee::VuesTexteEgales(
-            mot, Gs::Hebergee::CreerVueTexteTerminee(attendu));
+        retourner GalacticShrine::GsPP::Hebergee::VuesTexteEgales(
+            mot, GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee(attendu));
     }
 
     publique naturel32 ClassifierMotCle(
         constante caractère* texte, naturel64 taille)
     {
-        Gs::Hebergee::VueTexte mot =
-            Gs::Hebergee::CreerVueTexte(texte, taille);
+        GalacticShrine::GsPP::Hebergee::VueTexte mot =
+            GalacticShrine::GsPP::Hebergee::CreerVueTexte(texte, taille);
 
         si (EstMot(mot, "espace") || EstMot(mot, "namespace")) retourner 4;
         si (EstMot(mot, "structure") || EstMot(mot, "struct")) retourner 5;

@@ -18,7 +18,7 @@ from typing import Any, Callable
 from xml.sax.saxutils import quoteattr
 
 
-VERSION_GSPP = "0.27.0-alpha.6"
+VERSION_GSPP = "0.27.0-alpha.7"
 SIGNATURE_ABI = b"GsAbi:x64-ms-v1"
 
 
@@ -455,18 +455,18 @@ def main() -> int:
     def extraire_imports_hote(contenu: bytes) -> set[str]:
         return {
             nom.decode("ascii")
-            for nom in re.findall(rb"Gs::Hote::[A-Za-z]+", contenu)
+            for nom in re.findall(rb"GalacticShrine::GsPP::Hote::[A-Za-z]+", contenu)
         }
 
     def verifier_bibliotheque_hebergee() -> dict[str, Any]:
         archive = lire_fichier(options.hosted_library)
         image = lire_fichier(options.hosted_test)
         imports_attendus = {
-            "Gs::Hote::AllouerMemoire",
-            "Gs::Hote::LibererMemoire",
-            "Gs::Hote::LireFichier",
-            "Gs::Hote::EcrireFichier",
-            "Gs::Hote::EmettreDiagnostic",
+            "GalacticShrine::GsPP::Hote::AllouerMemoire",
+            "GalacticShrine::GsPP::Hote::LibererMemoire",
+            "GalacticShrine::GsPP::Hote::LireFichier",
+            "GalacticShrine::GsPP::Hote::EcrireFichier",
+            "GalacticShrine::GsPP::Hote::EmettreDiagnostic",
         }
         exiger(archive[:8] == b"GSA:0\0\0\0", "signature de GsHebergee.GsA incorrecte")
         exiger(image[:8] == b"GSE:0\0\0\0", "signature du test hébergé incorrecte")
@@ -479,13 +479,13 @@ def main() -> int:
             "le test hébergé ne porte pas exactement les cinq imports d’hôte",
         )
         symboles_attendus = (
-            b"Gs::Hebergee::ValiderUtf8",
-            b"Gs::Hebergee::InitialiserChaineUtf8",
-            b"Gs::Hebergee::InitialiserArene",
-            b"Gs::Hebergee::InitialiserVecteurOctetsDynamique",
-            b"Gs::Hebergee::InitialiserTableSymbolesDynamique",
-            b"Gs::Hebergee::JoindreCheminUtf8",
-            b"Gs::Hebergee::ChargerFichierAlloue",
+            b"GalacticShrine::GsPP::Hebergee::ValiderUtf8",
+            b"GalacticShrine::GsPP::Hebergee::InitialiserChaineUtf8",
+            b"GalacticShrine::GsPP::Hebergee::InitialiserArene",
+            b"GalacticShrine::GsPP::Hebergee::InitialiserVecteurOctetsDynamique",
+            b"GalacticShrine::GsPP::Hebergee::InitialiserTableSymbolesDynamique",
+            b"GalacticShrine::GsPP::Hebergee::JoindreCheminUtf8",
+            b"GalacticShrine::GsPP::Hebergee::ChargerFichierAlloue",
         )
         absents = [
             symbole.decode("ascii")
@@ -510,7 +510,7 @@ def main() -> int:
         exiger(archive[:8] == b"GSA:0\0\0\0", "signature de GsSysteme.GsA incorrecte")
         imports = extraire_imports_hote(archive)
         exiger(
-            not imports and b"Gs::Hote::" not in archive,
+            not imports and b"GalacticShrine::GsPP::Hote::" not in archive,
             "GsSysteme.GsA dépend d’un service réservé au profil hébergé",
         )
         return {

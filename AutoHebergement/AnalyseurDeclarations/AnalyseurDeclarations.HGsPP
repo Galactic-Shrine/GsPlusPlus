@@ -1,11 +1,13 @@
-// Frontend auto-hébergé Gs++ 0.27 : première tranche de l'AST syntaxique.
-//
-// L'analyseur couvre les déclarations de code et de données, les membres
-// exécutables des classes, la hiérarchie des instructions et l'AST interne des
-// expressions. Le stockage de sortie appartient à l'appelant ; l'AST de
-// travail est construit dans une arène.
+/**
+ * Frontend auto-hébergé Gs++ 0.27 : première tranche de l'AST syntaxique.
+ *
+ * L'analyseur couvre les déclarations de code et de données, les membres
+ * exécutables des classes, la hiérarchie des instructions et l'AST interne des
+ * expressions. Le stockage de sortie appartient à l'appelant ; l'AST de
+ * travail est construit dans une arène.
+ **/
 
-espace Gs::Autohebergement
+espace GalacticShrine::GsPP::Autohebergement
 {
     énumération ErreurAnalyseDeclarations
     {

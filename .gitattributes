@@ -1,12 +1,12 @@
 * text=auto
 *.sh text eol=lf
 *.py text eol=lf
-*.Gs++ text eol=lf
-*.GsPP text eol=lf
-*.GsPlusPlus text eol=lf
-*.HGs++ text eol=lf
-*.HGsPP text eol=lf
-*.HeaderGsPlusPlus text eol=lf
+*.Gs++ text eol=lf linguist-language=Gs++
+*.GsPP text eol=lf linguist-language=Gs++
+*.GsPlusPlus text eol=lf linguist-language=Gs++
+*.HGs++ text eol=lf linguist-language=Gs++
+*.HGsPP text eol=lf linguist-language=Gs++
+*.HeaderGsPlusPlus text eol=lf linguist-language=Gs++
 *.GsPj text eol=lf
 *.GsProject text eol=lf
 *.GsPs text eol=lf

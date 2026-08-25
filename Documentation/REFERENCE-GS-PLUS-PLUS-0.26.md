@@ -20,7 +20,7 @@ natif n’est renuméroté.
 
 ## Bibliothèques
 
-`GsSysteme.GsA` est freestanding et ne contient aucun import `Gs::Hote`.
+`GsSysteme.GsA` est freestanding et ne contient aucun import `GalacticShrine::GsPP::Hote`.
 
 `GsHebergee.GsA` fournit :
 
@@ -35,11 +35,11 @@ natif n’est renuméroté.
 La bibliothèque dépend exactement des cinq imports suivants :
 
 ```text
-Gs::Hote::AllouerMemoire
-Gs::Hote::LibererMemoire
-Gs::Hote::LireFichier
-Gs::Hote::EcrireFichier
-Gs::Hote::EmettreDiagnostic
+GalacticShrine::GsPP::Hote::AllouerMemoire
+GalacticShrine::GsPP::Hote::LibererMemoire
+GalacticShrine::GsPP::Hote::LireFichier
+GalacticShrine::GsPP::Hote::EcrireFichier
+GalacticShrine::GsPP::Hote::EmettreDiagnostic
 ```
 
 Chaque propriétaire possède une initialisation et une destruction explicites.

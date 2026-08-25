@@ -1,7 +1,9 @@
-// Bibliothèque système freestanding de Gs++ 0.16.
-// Cette interface n’alloue aucune mémoire et ne dépend d’aucun runtime.
+/**
+ * Bibliothèque système freestanding de Gs++ 0.16.
+ * Cette interface n’alloue aucune mémoire et ne dépend d’aucun runtime.
+ **/
 
-espace Gs::Intrinseques
+espace GalacticShrine::GsPP::Intrinseques
 {
     naturel32 ChargerAtomique32(volatile naturel32* cible);
     naturel64 ChargerAtomique64(volatile naturel64* cible);
@@ -19,7 +21,7 @@ espace Gs::Intrinseques
     vide PauseProcesseur();
 }
 
-espace Gs::Systeme
+espace GalacticShrine::GsPP::Systeme
 {
     structure VueOctets
     {
@@ -139,45 +141,45 @@ espace Gs::Systeme
     alias ReleaseLock = LibererVerrou;
 }
 
-alias Gs::System::ByteView = Gs::Systeme::VueOctets;
-alias Gs::System::TextView = Gs::Systeme::VueTexte;
-alias Gs::System::SpinLock = Gs::Systeme::VerrouAtomique;
-alias Gs::System::FillMemory = Gs::Systeme::RemplirMemoire;
-alias Gs::System::CopyMemory = Gs::Systeme::CopierMemoire;
-alias Gs::System::CompareMemory = Gs::Systeme::ComparerMemoire;
-alias Gs::System::MemoryEqual = Gs::Systeme::MemoiresEgales;
-alias Gs::System::MakeByteView = Gs::Systeme::CreerVueOctets;
-alias Gs::System::SubByteView = Gs::Systeme::SousVueOctets;
-alias Gs::System::ByteViewsEqual = Gs::Systeme::VuesOctetsEgales;
-alias Gs::System::FindByte = Gs::Systeme::ChercherOctet;
-alias Gs::System::TextLength = Gs::Systeme::LongueurTexte;
-alias Gs::System::MakeTextView = Gs::Systeme::CreerVueTexte;
-alias Gs::System::TextViewsEqual = Gs::Systeme::VuesTexteEgales;
-alias Gs::System::CompareTextViews = Gs::Systeme::ComparerVuesTexte;
-alias Gs::System::FindCharacter = Gs::Systeme::ChercherCaractere;
-alias Gs::System::RotateLeft32 = Gs::Systeme::RotationGauche32;
-alias Gs::System::RotateLeft64 = Gs::Systeme::RotationGauche64;
-alias Gs::System::RotateRight32 = Gs::Systeme::RotationDroite32;
-alias Gs::System::RotateRight64 = Gs::Systeme::RotationDroite64;
-alias Gs::System::CountOnes32 = Gs::Systeme::CompterBitsUn32;
-alias Gs::System::CountOnes64 = Gs::Systeme::CompterBitsUn64;
-alias Gs::System::ByteSwap32 = Gs::Systeme::InverserOctets32;
-alias Gs::System::ByteSwap64 = Gs::Systeme::InverserOctets64;
-alias Gs::System::IsPowerOfTwo = Gs::Systeme::EstPuissanceDeux;
-alias Gs::System::AlignUp = Gs::Systeme::AlignerSuperieur;
-alias Gs::System::AtomicLoad32 = Gs::Systeme::ChargerAtomique32;
-alias Gs::System::AtomicLoad64 = Gs::Systeme::ChargerAtomique64;
-alias Gs::System::AtomicStore32 = Gs::Systeme::StockerAtomique32;
-alias Gs::System::AtomicStore64 = Gs::Systeme::StockerAtomique64;
-alias Gs::System::AtomicExchange32 = Gs::Systeme::EchangerAtomique32;
-alias Gs::System::AtomicExchange64 = Gs::Systeme::EchangerAtomique64;
-alias Gs::System::AtomicFetchAdd32 = Gs::Systeme::AjouterAtomique32;
-alias Gs::System::AtomicFetchAdd64 = Gs::Systeme::AjouterAtomique64;
-alias Gs::System::AtomicCompareExchange32 = Gs::Systeme::ComparerEchanger32;
-alias Gs::System::AtomicCompareExchange64 = Gs::Systeme::ComparerEchanger64;
-alias Gs::System::MemoryFence = Gs::Systeme::BarriereMemoire;
-alias Gs::System::ProcessorPause = Gs::Systeme::PauseProcesseur;
-alias Gs::System::InitializeLock = Gs::Systeme::InitialiserVerrou;
-alias Gs::System::TryAcquireLock = Gs::Systeme::EssayerAcquerirVerrou;
-alias Gs::System::AcquireLock = Gs::Systeme::AcquerirVerrou;
-alias Gs::System::ReleaseLock = Gs::Systeme::LibererVerrou;
+alias GalacticShrine::GsPP::System::ByteView = GalacticShrine::GsPP::Systeme::VueOctets;
+alias GalacticShrine::GsPP::System::TextView = GalacticShrine::GsPP::Systeme::VueTexte;
+alias GalacticShrine::GsPP::System::SpinLock = GalacticShrine::GsPP::Systeme::VerrouAtomique;
+alias GalacticShrine::GsPP::System::FillMemory = GalacticShrine::GsPP::Systeme::RemplirMemoire;
+alias GalacticShrine::GsPP::System::CopyMemory = GalacticShrine::GsPP::Systeme::CopierMemoire;
+alias GalacticShrine::GsPP::System::CompareMemory = GalacticShrine::GsPP::Systeme::ComparerMemoire;
+alias GalacticShrine::GsPP::System::MemoryEqual = GalacticShrine::GsPP::Systeme::MemoiresEgales;
+alias GalacticShrine::GsPP::System::MakeByteView = GalacticShrine::GsPP::Systeme::CreerVueOctets;
+alias GalacticShrine::GsPP::System::SubByteView = GalacticShrine::GsPP::Systeme::SousVueOctets;
+alias GalacticShrine::GsPP::System::ByteViewsEqual = GalacticShrine::GsPP::Systeme::VuesOctetsEgales;
+alias GalacticShrine::GsPP::System::FindByte = GalacticShrine::GsPP::Systeme::ChercherOctet;
+alias GalacticShrine::GsPP::System::TextLength = GalacticShrine::GsPP::Systeme::LongueurTexte;
+alias GalacticShrine::GsPP::System::MakeTextView = GalacticShrine::GsPP::Systeme::CreerVueTexte;
+alias GalacticShrine::GsPP::System::TextViewsEqual = GalacticShrine::GsPP::Systeme::VuesTexteEgales;
+alias GalacticShrine::GsPP::System::CompareTextViews = GalacticShrine::GsPP::Systeme::ComparerVuesTexte;
+alias GalacticShrine::GsPP::System::FindCharacter = GalacticShrine::GsPP::Systeme::ChercherCaractere;
+alias GalacticShrine::GsPP::System::RotateLeft32 = GalacticShrine::GsPP::Systeme::RotationGauche32;
+alias GalacticShrine::GsPP::System::RotateLeft64 = GalacticShrine::GsPP::Systeme::RotationGauche64;
+alias GalacticShrine::GsPP::System::RotateRight32 = GalacticShrine::GsPP::Systeme::RotationDroite32;
+alias GalacticShrine::GsPP::System::RotateRight64 = GalacticShrine::GsPP::Systeme::RotationDroite64;
+alias GalacticShrine::GsPP::System::CountOnes32 = GalacticShrine::GsPP::Systeme::CompterBitsUn32;
+alias GalacticShrine::GsPP::System::CountOnes64 = GalacticShrine::GsPP::Systeme::CompterBitsUn64;
+alias GalacticShrine::GsPP::System::ByteSwap32 = GalacticShrine::GsPP::Systeme::InverserOctets32;
+alias GalacticShrine::GsPP::System::ByteSwap64 = GalacticShrine::GsPP::Systeme::InverserOctets64;
+alias GalacticShrine::GsPP::System::IsPowerOfTwo = GalacticShrine::GsPP::Systeme::EstPuissanceDeux;
+alias GalacticShrine::GsPP::System::AlignUp = GalacticShrine::GsPP::Systeme::AlignerSuperieur;
+alias GalacticShrine::GsPP::System::AtomicLoad32 = GalacticShrine::GsPP::Systeme::ChargerAtomique32;
+alias GalacticShrine::GsPP::System::AtomicLoad64 = GalacticShrine::GsPP::Systeme::ChargerAtomique64;
+alias GalacticShrine::GsPP::System::AtomicStore32 = GalacticShrine::GsPP::Systeme::StockerAtomique32;
+alias GalacticShrine::GsPP::System::AtomicStore64 = GalacticShrine::GsPP::Systeme::StockerAtomique64;
+alias GalacticShrine::GsPP::System::AtomicExchange32 = GalacticShrine::GsPP::Systeme::EchangerAtomique32;
+alias GalacticShrine::GsPP::System::AtomicExchange64 = GalacticShrine::GsPP::Systeme::EchangerAtomique64;
+alias GalacticShrine::GsPP::System::AtomicFetchAdd32 = GalacticShrine::GsPP::Systeme::AjouterAtomique32;
+alias GalacticShrine::GsPP::System::AtomicFetchAdd64 = GalacticShrine::GsPP::Systeme::AjouterAtomique64;
+alias GalacticShrine::GsPP::System::AtomicCompareExchange32 = GalacticShrine::GsPP::Systeme::ComparerEchanger32;
+alias GalacticShrine::GsPP::System::AtomicCompareExchange64 = GalacticShrine::GsPP::Systeme::ComparerEchanger64;
+alias GalacticShrine::GsPP::System::MemoryFence = GalacticShrine::GsPP::Systeme::BarriereMemoire;
+alias GalacticShrine::GsPP::System::ProcessorPause = GalacticShrine::GsPP::Systeme::PauseProcesseur;
+alias GalacticShrine::GsPP::System::InitializeLock = GalacticShrine::GsPP::Systeme::InitialiserVerrou;
+alias GalacticShrine::GsPP::System::TryAcquireLock = GalacticShrine::GsPP::Systeme::EssayerAcquerirVerrou;
+alias GalacticShrine::GsPP::System::AcquireLock = GalacticShrine::GsPP::Systeme::AcquerirVerrou;
+alias GalacticShrine::GsPP::System::ReleaseLock = GalacticShrine::GsPP::Systeme::LibererVerrou;

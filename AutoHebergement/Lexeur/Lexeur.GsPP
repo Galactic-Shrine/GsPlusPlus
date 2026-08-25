@@ -1,4 +1,4 @@
-espace Gs::Autohebergement
+espace GalacticShrine::GsPP::Autohebergement
 {
     structure EtatLexeur
     {
@@ -87,8 +87,8 @@ espace Gs::Autohebergement
     naturel64 HacherTranche(
         constante caractère* source, naturel64 debut, naturel64 taille)
     {
-        retourner Gs::Hebergee::HacherVueTexte(
-            Gs::Hebergee::CreerVueTexte(&source[debut], taille));
+        retourner GalacticShrine::GsPP::Hebergee::HacherVueTexte(
+            GalacticShrine::GsPP::Hebergee::CreerVueTexte(&source[debut], taille));
     }
 
     vide InitialiserResultatLexage(ResultatLexage* resultat)
@@ -399,8 +399,8 @@ espace Gs::Autohebergement
             retourner SignalerErreurLexage(
                 requete, ErreurLexage::ArgumentInvalide, 1, 1);
 
-        si (!Gs::Hebergee::ValiderUtf8(
-                Gs::Hebergee::CreerVueTexte(
+        si (!GalacticShrine::GsPP::Hebergee::ValiderUtf8(
+                GalacticShrine::GsPP::Hebergee::CreerVueTexte(
                     requete->Source, requete->Taille)))
             retourner SignalerErreurLexage(
                 requete, ErreurLexage::Utf8Invalide, 1, 1);

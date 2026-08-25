@@ -1,4 +1,4 @@
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     publique VueTexte CreerVueTexte(
         constante caractère* donnees, naturel64 taille)

@@ -1,4 +1,4 @@
-espace Gs::Systeme
+espace GalacticShrine::GsPP::Systeme
 {
     publique vide RemplirMemoire(
         octet* destination, octet valeur, naturel64 taille)

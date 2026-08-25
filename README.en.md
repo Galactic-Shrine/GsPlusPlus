@@ -27,13 +27,14 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — `0.27.0-alpha.6`**
+> **Current status — `0.27.0-alpha.7`**
 >
 > This prerelease can be used to evaluate and develop with the current Gs++
 > toolchain. Binary formats 1.0 and ABI 1 are validated, while the self-hosted
-> frontend remains in development. The lexer and the declaration, block,
-> statement, and expression AST hierarchy are now written and validated in
-> Gs++. The first semantic stages remain to be migrated.
+> frontend remains in development. The lexer, declaration, block, statement,
+> and expression AST hierarchy, as well as a first semantic indexing and name
+> resolution pass, are now written and validated in Gs++. Typed overload
+> selection and the following semantic stages remain to be migrated.
 
 ## Language principles
 
@@ -48,6 +49,10 @@ official aliases with the same semantics and generated code.
 | Execution profiles | Minimal freestanding profile and explicitly linked hosted services |
 | Progressive self-hosting | Compiler components rewritten and validated in Gs++ |
 | Reproducibility | Versioned formats, link maps, and a portable conformance matrix |
+
+Gs++ APIs use the canonical `GalacticShrine::GsPP::` namespace prefix. For
+example, hosted services are exposed under `GalacticShrine::GsPP::Hebergee`,
+while host-provided imports use `GalacticShrine::GsPP::Hote`.
 
 ## A first program
 
@@ -169,7 +174,7 @@ Construction/Ninja/Release/Bin/gsppc \
 
 ## Downloading a prerelease
 
-The [`0.27.0-alpha.6` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.6)
+The [`0.27.0-alpha.7` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.7)
 provides x86-64 packages for Windows and Linux. Each package contains the
 tools, SDK headers, Gs++ libraries, examples, and Markdown documentation. Use
 `SHA256SUMS.txt` to verify downloads.
@@ -196,7 +201,7 @@ GsPlusPlus/
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Conformance matrix](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Self-hosted frontend 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [`0.27.0-alpha.6` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.6.md)
+- [`0.27.0-alpha.7` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md)
 - [Roadmap](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 All normative documentation is maintained in Markdown as its primary source.
@@ -207,8 +212,8 @@ All normative documentation is maintained in Markdown as its primary source.
 - CTest: **3/3** on Windows and **4/4** on Linux;
 - four successful smoke benchmark scenarios on each host;
 - Windows and Linux GitHub CI;
-- reproducible `Lexeur.GsE` and `AnalyseurDeclarations.GsE` across both
-  validated toolchains.
+- all four self-hosted images, including `AnalyseurSemantique.GsE`, are
+  compared across both validated toolchains.
 
 ## License
 

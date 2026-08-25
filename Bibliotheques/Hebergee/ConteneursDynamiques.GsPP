@@ -1,4 +1,4 @@
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     octet* NulOctetsConteneur;
     naturel64* NulNaturelsConteneur;
@@ -44,7 +44,7 @@ espace Gs::Hebergee
     publique vide DetruireVecteurOctetsDynamique(
         VecteurOctetsDynamique* vecteur)
     {
-        si (vecteur->Donnees) Gs::Hote::LibererMemoire(vecteur->Donnees);
+        si (vecteur->Donnees) GalacticShrine::GsPP::Hote::LibererMemoire(vecteur->Donnees);
         InitialiserVecteurOctetsDynamique(vecteur);
     }
 
@@ -53,7 +53,7 @@ espace Gs::Hebergee
     {
         si (capacite <= vecteur->Capacite)
             retourner CodeErreurHebergee::Reussite;
-        octet* nouveau = Gs::Hote::AllouerMemoire(capacite);
+        octet* nouveau = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite);
         si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64 index = 0;
         tantque (index < vecteur->Taille)
@@ -64,7 +64,7 @@ espace Gs::Hebergee
         octet* ancien = vecteur->Donnees;
         vecteur->Donnees = nouveau;
         vecteur->Capacite = capacite;
-        si (ancien) Gs::Hote::LibererMemoire(ancien);
+        si (ancien) GalacticShrine::GsPP::Hote::LibererMemoire(ancien);
         retourner CodeErreurHebergee::Reussite;
     }
 
@@ -91,7 +91,7 @@ espace Gs::Hebergee
 
         naturel64 capacite = CapaciteSuivanteConteneur(
             vecteur->Capacite, requise);
-        octet* nouveau = Gs::Hote::AllouerMemoire(capacite);
+        octet* nouveau = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite);
         si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64 indexAncien = 0;
         tantque (indexAncien < vecteur->Taille)
@@ -109,7 +109,7 @@ espace Gs::Hebergee
         vecteur->Donnees = nouveau;
         vecteur->Taille = requise;
         vecteur->Capacite = capacite;
-        si (ancien) Gs::Hote::LibererMemoire(ancien);
+        si (ancien) GalacticShrine::GsPP::Hote::LibererMemoire(ancien);
         retourner CodeErreurHebergee::Reussite;
     }
 
@@ -125,7 +125,7 @@ espace Gs::Hebergee
         VecteurNaturelsDynamique* vecteur)
     {
         si (vecteur->Donnees)
-            Gs::Hote::LibererMemoire(convertir<octet*>(vecteur->Donnees));
+            GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(vecteur->Donnees));
         InitialiserVecteurNaturelsDynamique(vecteur);
     }
 
@@ -136,7 +136,7 @@ espace Gs::Hebergee
             retourner CodeErreurHebergee::Reussite;
         si (capacite > 2_305_843_009_213_693_951)
             retourner CodeErreurHebergee::CapaciteDepassee;
-        octet* brut = Gs::Hote::AllouerMemoire(capacite * 8);
+        octet* brut = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite * 8);
         si (!brut) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64* nouveau = convertir<naturel64*>(brut);
         naturel64 index = 0;
@@ -148,7 +148,7 @@ espace Gs::Hebergee
         naturel64* ancien = vecteur->Donnees;
         vecteur->Donnees = nouveau;
         vecteur->Capacite = capacite;
-        si (ancien) Gs::Hote::LibererMemoire(convertir<octet*>(ancien));
+        si (ancien) GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(ancien));
         retourner CodeErreurHebergee::Reussite;
     }
 
@@ -234,7 +234,7 @@ espace Gs::Hebergee
         TableSymbolesDynamique* table)
     {
         si (table->Entrees)
-            Gs::Hote::LibererMemoire(convertir<octet*>(table->Entrees));
+            GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(table->Entrees));
         InitialiserTableSymbolesDynamique(table);
     }
 
@@ -247,7 +247,7 @@ espace Gs::Hebergee
             retourner CodeErreurHebergee::CapaciteDepassee;
         si (capacite > 576_460_752_303_423_487)
             retourner CodeErreurHebergee::CapaciteDepassee;
-        octet* brut = Gs::Hote::AllouerMemoire(capacite * 32);
+        octet* brut = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite * 32);
         si (!brut) retourner CodeErreurHebergee::AllocationEchouee;
         TableSymbolesDynamique nouvelle = {
             convertir<EntreeTableSymboles*>(brut), capacite, 0};
@@ -274,7 +274,7 @@ espace Gs::Hebergee
         table->Capacite = nouvelle.Capacite;
         table->Nombre = nouvelle.Nombre;
         si (anciennes)
-            Gs::Hote::LibererMemoire(convertir<octet*>(anciennes));
+            GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(anciennes));
         retourner CodeErreurHebergee::Reussite;
     }
 

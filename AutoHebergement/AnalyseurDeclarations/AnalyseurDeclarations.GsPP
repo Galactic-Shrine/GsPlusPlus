@@ -1,4 +1,4 @@
-espace Gs::Autohebergement
+espace GalacticShrine::GsPP::Autohebergement
 {
     JetonLexe* NulJetonsDeclarations;
     NoeudDeclaration* NulNoeudsDeclarations;
@@ -55,7 +55,7 @@ espace Gs::Autohebergement
         naturel64 NombreNoeuds;
         NoeudExpressionInterne* ExpressionsTravail;
         naturel64 NombreExpressions;
-        Gs::Hebergee::AreneMemoire Arene;
+        GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
     structure ContexteMembreClasseDeclaration
@@ -2295,16 +2295,16 @@ espace Gs::Autohebergement
         etat.NombreNoeuds = 0;
         etat.ExpressionsTravail = NulExpressionsDeclarations;
         etat.NombreExpressions = 0;
-        Gs::Hebergee::InitialiserArene(&etat.Arene, 4096);
+        GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
 
         etat.Jetons = convertir<JetonLexe*>(
-            Gs::Hebergee::AllouerArene(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreJetons * 48, 8));
         etat.NoeudsTravail = convertir<NoeudDeclaration*>(
-            Gs::Hebergee::AllouerArene(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreJetons * 64, 8));
         etat.ExpressionsTravail = convertir<NoeudExpressionInterne*>(
-            Gs::Hebergee::AllouerArene(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreJetons * 72, 8));
         si (!etat.Jetons || !etat.NoeudsTravail
             || !etat.ExpressionsTravail)
@@ -2314,7 +2314,7 @@ espace Gs::Autohebergement
             requete->Resultat.LigneErreur = 1;
             requete->Resultat.ColonneErreur = 1;
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
-            Gs::Hebergee::DetruireArene(&etat.Arene);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
 
@@ -2329,7 +2329,7 @@ espace Gs::Autohebergement
             requete->Resultat.ColonneErreur = lexage.Resultat.ColonneErreur;
             requete->Resultat.Detail = convertir<naturel32>(erreurLexage);
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
-            Gs::Hebergee::DetruireArene(&etat.Arene);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
 
@@ -2339,7 +2339,7 @@ espace Gs::Autohebergement
         si (!AjouterNoeudDeclaration(&etat, programme))
         {
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
-            Gs::Hebergee::DetruireArene(&etat.Arene);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
         ContexteEspaceDeclaration racine = {
@@ -2347,7 +2347,7 @@ espace Gs::Autohebergement
         si (!AnalyserDeclarationsDansEspace(&etat, &racine, faux))
         {
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
-            Gs::Hebergee::DetruireArene(&etat.Arene);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
 
@@ -2362,7 +2362,7 @@ espace Gs::Autohebergement
             requete->Noeuds[index] = etat.NoeudsTravail[index];
             index = index + 1;
         }
-        Gs::Hebergee::DetruireArene(&etat.Arene);
+        GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
 
         si (!requete->Noeuds || requete->Capacite < etat.NombreNoeuds)
         {

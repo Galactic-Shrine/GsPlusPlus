@@ -1,4 +1,5 @@
 #include "GsPP/ChargeurGsE.hpp"
+#include "GsPP/AnalyseurSemantique.hpp"
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
 #include "GsPP/Lexeur.hpp"
@@ -129,6 +130,52 @@ namespace
         ResultatAnalyseDeclarationsHote Resultat;
     };
 
+    struct SymboleSemantiqueHote
+    {
+        std::uint64_t IndexNoeud;
+        std::uint64_t IndexPortee;
+        std::uint64_t HachageNom;
+        std::uint64_t HachageEspace;
+        std::uint64_t HachageType;
+        std::uint32_t Genre;
+        std::uint32_t Drapeaux;
+    };
+
+    struct ResolutionSemantiqueHote
+    {
+        std::uint64_t IndexNoeud;
+        std::uint64_t IndexSymbole;
+        std::uint64_t HachageType;
+        std::uint32_t GenreCible;
+        std::uint32_t Drapeaux;
+    };
+
+    struct ResultatAnalyseSemantiqueHote
+    {
+        std::uint32_t Erreur;
+        std::uint32_t LigneErreur;
+        std::uint32_t ColonneErreur;
+        std::uint32_t Detail;
+        std::uint64_t NombreSymboles;
+        std::uint64_t CapaciteSymbolesRequise;
+        std::uint64_t NombreResolutions;
+        std::uint64_t CapaciteResolutionsRequise;
+        std::uint64_t NombreOctetsArene;
+    };
+
+    struct RequeteAnalyseSemantiqueHote
+    {
+        const char* Source;
+        std::uint64_t TailleSource;
+        const NoeudDeclarationHote* Noeuds;
+        std::uint64_t NombreNoeuds;
+        SymboleSemantiqueHote* Symboles;
+        std::uint64_t CapaciteSymboles;
+        ResolutionSemantiqueHote* Resolutions;
+        std::uint64_t CapaciteResolutions;
+        ResultatAnalyseSemantiqueHote Resultat;
+    };
+
     static_assert(sizeof(VueTexteHote) == 16);
     static_assert(sizeof(RequeteFichierHote) == 32);
     static_assert(sizeof(DiagnosticHote) == 48);
@@ -138,6 +185,10 @@ namespace
     static_assert(sizeof(NoeudDeclarationHote) == 64);
     static_assert(sizeof(ResultatAnalyseDeclarationsHote) == 48);
     static_assert(sizeof(RequeteAnalyseDeclarationsHote) == 80);
+    static_assert(sizeof(SymboleSemantiqueHote) == 48);
+    static_assert(sizeof(ResolutionSemantiqueHote) == 32);
+    static_assert(sizeof(ResultatAnalyseSemantiqueHote) == 56);
+    static_assert(sizeof(RequeteAnalyseSemantiqueHote) == 120);
 
     std::string CheminLu;
     std::string CheminEcrit;
@@ -1379,8 +1430,8 @@ namespace
         const auto resolveur =
             [&](std::string_view nom) -> std::optional<std::uint64_t>
         {
-            if (nom == "Gs::Hote::AllouerMemoire") return allouer;
-            if (nom == "Gs::Hote::LibererMemoire") return liberer;
+            if (nom == "GalacticShrine::GsPP::Hote::AllouerMemoire") return allouer;
+            if (nom == "GalacticShrine::GsPP::Hote::LibererMemoire") return liberer;
             return std::nullopt;
         };
         const auto image = GsPP::ChargeurGsE().Charger(
@@ -1388,14 +1439,14 @@ namespace
         zone.Copier(image.Memoire);
 
         const auto adresse = image.ChercherExport(
-            "Gs::Autohebergement::AnalyserSource");
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSource");
         Exiger(adresse.has_value(), "export du lexeur Gs++ absent");
         const auto lexer = reinterpret_cast<LexeurAutoHeberge>(*adresse);
 
         const std::vector<std::pair<std::string, std::string>> corpus{
             {"vide", ""},
             {"programme", "espace Démonstration { publique entier32 Principal() { naturel64 valeur_1 = 12_345; si (valeur_1 >= 42 && vrai || faux) retourner 7; } }"},
-            {"commentaires", "// ligne ignorée\n/* bloc\nétendu */ classe Exemple : Base { protégée virtuel vide Executer() remplacer; constructeur(); destructeur(); opérateur(); soi; parent; }"},
+            {"commentaires", "// ligne ignorée\n/**\n * bloc\n * étendu\n **/ classe Exemple : Base { protégée virtuel vide Executer() remplacer; constructeur(); destructeur(); opérateur(); soi; parent; }"},
             {"symboles", "( ) { } [ ] ; , . -> :: : = == != < <= > >= ! && || & | ^ ~ << >> + - * / %"},
             {"chaines", R"gs("Gs++\n\t\r\0\"\\ étendu" "simple")gs"},
             {"bom", std::string("\xEF\xBB\xBF", 3) + "namespace Shrine { public uint64 Compteur = 99; }"}
@@ -1621,8 +1672,8 @@ namespace
         const auto resolveur =
             [&](std::string_view nom) -> std::optional<std::uint64_t>
         {
-            if (nom == "Gs::Hote::AllouerMemoire") return allouer;
-            if (nom == "Gs::Hote::LibererMemoire") return liberer;
+            if (nom == "GalacticShrine::GsPP::Hote::AllouerMemoire") return allouer;
+            if (nom == "GalacticShrine::GsPP::Hote::LibererMemoire") return liberer;
             return std::nullopt;
         };
         const auto image = GsPP::ChargeurGsE().Charger(
@@ -1630,7 +1681,7 @@ namespace
         zone.Copier(image.Memoire);
 
         const auto adresse = image.ChercherExport(
-            "Gs::Autohebergement::AnalyserDeclarationsSource");
+            "GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsSource");
         Exiger(adresse.has_value(),
                "export de l’analyseur de déclarations Gs++ absent");
         const auto analyseur =
@@ -1678,8 +1729,8 @@ namespace
         ComparerDeclarations(
             analyseur,
             "espace Galactic {\n"
-            "  publique Gs::Noeud* Copier("
-            "constante Gs::Noeud& source) { retourner source; }\n"
+            "  publique GalacticShrine::GsPP::Noeud* Copier("
+            "constante GalacticShrine::GsPP::Noeud& source) { retourner source; }\n"
             "}\n",
             "types-qualifies");
 
@@ -2383,6 +2434,414 @@ namespace
             "l’AST auto-hébergé ne libère pas proprement son arène");
     }
 
+    using AnalyseurSemantiqueAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequeteAnalyseSemantiqueHote*);
+
+    struct SortieSemantiqueHote
+    {
+        std::vector<NoeudDeclarationHote> Noeuds;
+        std::vector<SymboleSemantiqueHote> Symboles;
+        std::vector<ResolutionSemantiqueHote> Resolutions;
+    };
+
+    SortieSemantiqueHote AnalyserSemantiqueValide(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique,
+        const std::string& source,
+        std::string_view nomCorpus)
+    {
+        auto noeuds = ComparerDeclarations(syntaxe, source, nomCorpus);
+        RequeteAnalyseSemantiqueHote requete{
+            source.data(),
+            static_cast<std::uint64_t>(source.size()),
+            noeuds.data(),
+            static_cast<std::uint64_t>(noeuds.size()),
+            nullptr,
+            0,
+            nullptr,
+            0,
+            {}};
+        const auto interrogation = semantique(&requete);
+        Exiger(
+            interrogation == 4
+                && requete.Resultat.Erreur == 4
+                && requete.Resultat.NombreSymboles != 0
+                && requete.Resultat.CapaciteSymbolesRequise
+                    == requete.Resultat.NombreSymboles
+                && requete.Resultat.CapaciteResolutionsRequise
+                    == requete.Resultat.NombreResolutions
+                && requete.Resultat.NombreOctetsArene != 0,
+            "interrogation de capacité sémantique incorrecte pour "
+                + std::string(nomCorpus));
+
+        std::vector<SymboleSemantiqueHote> symboles(
+            static_cast<std::size_t>(requete.Resultat.NombreSymboles));
+        std::vector<ResolutionSemantiqueHote> resolutions(
+            static_cast<std::size_t>(requete.Resultat.NombreResolutions));
+
+        if (symboles.size() > 1)
+        {
+            requete.Symboles = symboles.data();
+            requete.CapaciteSymboles = symboles.size() - 1;
+            requete.Resolutions = resolutions.data();
+            requete.CapaciteResolutions = resolutions.size();
+            Exiger(
+                semantique(&requete) == 4
+                    && requete.Resultat.Erreur == 4
+                    && requete.Resultat.CapaciteSymbolesRequise
+                        == symboles.size(),
+                "capacité partielle des symboles mal diagnostiquée pour "
+                    + std::string(nomCorpus));
+        }
+
+        if (!resolutions.empty())
+        {
+            requete.Symboles = symboles.data();
+            requete.CapaciteSymboles = symboles.size();
+            requete.Resolutions = nullptr;
+            requete.CapaciteResolutions = 0;
+            Exiger(
+                semantique(&requete) == 5
+                    && requete.Resultat.Erreur == 5
+                    && requete.Resultat.CapaciteResolutionsRequise
+                        == resolutions.size(),
+                "capacité partielle des résolutions mal diagnostiquée pour "
+                    + std::string(nomCorpus));
+        }
+
+        requete.Symboles = symboles.data();
+        requete.CapaciteSymboles = symboles.size();
+        requete.Resolutions = resolutions.data();
+        requete.CapaciteResolutions = resolutions.size();
+        const auto resultat = semantique(&requete);
+        Exiger(
+            resultat == 0
+                && requete.Resultat.Erreur == 0
+                && requete.Resultat.NombreSymboles == symboles.size()
+                && requete.Resultat.NombreResolutions == resolutions.size(),
+            "analyse sémantique auto-hébergée échouée pour "
+                + std::string(nomCorpus));
+
+        auto jetons = GsPP::Lexeur(source, std::string(nomCorpus)).Analyser();
+        auto programme = GsPP::AnalyseurSyntaxique(
+            std::move(jetons), std::string(nomCorpus)).Analyser();
+        GsPP::AnalyseurSemantique().Analyser(programme);
+
+        return {
+            std::move(noeuds),
+            std::move(symboles),
+            std::move(resolutions)};
+    }
+
+    void ComparerErreurSemantique(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique,
+        const std::string& source,
+        std::uint32_t erreurAttendue,
+        std::string_view nomCorpus)
+    {
+        auto noeuds = ComparerDeclarations(syntaxe, source, nomCorpus);
+        std::uint32_t ligne = 0;
+        std::uint32_t colonne = 0;
+        try
+        {
+            auto jetons = GsPP::Lexeur(
+                source, std::string(nomCorpus)).Analyser();
+            auto programme = GsPP::AnalyseurSyntaxique(
+                std::move(jetons), std::string(nomCorpus)).Analyser();
+            GsPP::AnalyseurSemantique().Analyser(programme);
+        }
+        catch (const GsPP::ErreurCompilation& erreur)
+        {
+            ligne = static_cast<std::uint32_t>(erreur.Ligne());
+            colonne = static_cast<std::uint32_t>(erreur.Colonne());
+        }
+        Exiger(
+            ligne != 0 && colonne != 0,
+            "le bootstrap aurait dû refuser le corpus sémantique "
+                + std::string(nomCorpus));
+
+        RequeteAnalyseSemantiqueHote requete{
+            source.data(),
+            static_cast<std::uint64_t>(source.size()),
+            noeuds.data(),
+            static_cast<std::uint64_t>(noeuds.size()),
+            nullptr,
+            0,
+            nullptr,
+            0,
+            {}};
+        const auto obtenu = semantique(&requete);
+        Exiger(
+            obtenu == erreurAttendue
+                && requete.Resultat.Erreur == erreurAttendue
+                && requete.Resultat.LigneErreur == ligne
+                && requete.Resultat.ColonneErreur == colonne,
+            "diagnostic sémantique différent du bootstrap pour "
+                + std::string(nomCorpus));
+    }
+
+    void TesterAnalyseurSemantique(
+        const std::string& chemin,
+        const std::string& cheminSyntaxe)
+    {
+        AllocationsActives.clear();
+        NombreAllocations = 0;
+        NombreLiberations = 0;
+        LiberationInvalide = false;
+
+        const auto contenuSyntaxe = LireFichier(cheminSyntaxe);
+        const auto tailleSyntaxe = Lire64(contenuSyntaxe, 48);
+        const auto trampolinesSyntaxe = AlignerPage(tailleSyntaxe);
+        ZoneExecutable zoneSyntaxe(trampolinesSyntaxe + 4096);
+        const auto allouerSyntaxe = zoneSyntaxe.AjouterTrampoline(
+            trampolinesSyntaxe,
+            reinterpret_cast<std::uintptr_t>(&AllouerMemoireHote));
+        const auto libererSyntaxe = zoneSyntaxe.AjouterTrampoline(
+            trampolinesSyntaxe + 16,
+            reinterpret_cast<std::uintptr_t>(&LibererMemoireHote));
+        const auto resolveurSyntaxe =
+            [&](std::string_view nom) -> std::optional<std::uint64_t>
+        {
+            if (nom == "GalacticShrine::GsPP::Hote::AllouerMemoire") return allouerSyntaxe;
+            if (nom == "GalacticShrine::GsPP::Hote::LibererMemoire") return libererSyntaxe;
+            return std::nullopt;
+        };
+        const auto imageSyntaxe = GsPP::ChargeurGsE().Charger(
+            contenuSyntaxe, zoneSyntaxe.Base(), resolveurSyntaxe);
+        zoneSyntaxe.Copier(imageSyntaxe.Memoire);
+        const auto exportSyntaxe = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsSource");
+        Exiger(exportSyntaxe.has_value(),
+               "export syntaxique requis par la sémantique absent");
+        const auto syntaxe = reinterpret_cast<AnalyseurDeclarationsAutoHeberge>(
+            *exportSyntaxe);
+
+        const auto contenu = LireFichier(chemin);
+        const auto tailleImage = Lire64(contenu, 48);
+        const auto debutTrampolines = AlignerPage(tailleImage);
+        ZoneExecutable zone(debutTrampolines + 4096);
+        const auto allouer = zone.AjouterTrampoline(
+            debutTrampolines,
+            reinterpret_cast<std::uintptr_t>(&AllouerMemoireHote));
+        const auto liberer = zone.AjouterTrampoline(
+            debutTrampolines + 16,
+            reinterpret_cast<std::uintptr_t>(&LibererMemoireHote));
+        const auto resolveur =
+            [&](std::string_view nom) -> std::optional<std::uint64_t>
+        {
+            if (nom == "GalacticShrine::GsPP::Hote::AllouerMemoire") return allouer;
+            if (nom == "GalacticShrine::GsPP::Hote::LibererMemoire") return liberer;
+            return std::nullopt;
+        };
+        const auto image = GsPP::ChargeurGsE().Charger(
+            contenu, zone.Base(), resolveur);
+        zone.Copier(image.Memoire);
+        const auto adresse = image.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantique");
+        Exiger(adresse.has_value(),
+               "export de l’analyseur sémantique Gs++ absent");
+        const auto semantique =
+            reinterpret_cast<AnalyseurSemantiqueAutoHeberge>(*adresse);
+
+        const std::string francais =
+            "espace Semantique {\n"
+            "  structure Point { entier32 X; };\n"
+            "  classe Base { publique: entier32 Lire() { retourner 1; } };\n"
+            "  classe Objet : publique Base { publique: entier32 Valeur; "
+            "entier32 LireValeur() { retourner soi.Valeur; } "
+            "entier32 LireBase() { retourner parent.Lire(); } };\n"
+            "  entier32 Globale = 3;\n"
+            "  publique entier32 Choisir(entier32 valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier64 Choisir(entier64 valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier32 Calculer(entier32 gauche, entier32 droite) {\n"
+            "    entier32 somme = gauche + droite;\n"
+            "    { entier32 copie = somme; somme = copie; }\n"
+            "    retourner Choisir(somme);\n"
+            "  }\n"
+            "}\n"
+            "publique entier32 LireGlobale() { "
+            "retourner Semantique::Globale; }\n";
+        const std::string anglais =
+            "namespace Semantique {\n"
+            "  struct Point { int32 X; };\n"
+            "  class Base { public: int32 Lire() { return 1; } };\n"
+            "  class Objet : public Base { public: int32 Valeur; "
+            "int32 LireValeur() { return this.Valeur; } "
+            "int32 LireBase() { return super.Lire(); } };\n"
+            "  int32 Globale = 3;\n"
+            "  public int32 Choisir(int32 valeur) { return valeur; }\n"
+            "  public int64 Choisir(int64 valeur) { return valeur; }\n"
+            "  public int32 Calculer(int32 gauche, int32 droite) {\n"
+            "    int32 somme = gauche + droite;\n"
+            "    { int32 copie = somme; somme = copie; }\n"
+            "    return Choisir(somme);\n"
+            "  }\n"
+            "}\n"
+            "public int32 LireGlobale() { return Semantique::Globale; }\n";
+
+        const auto resultatFrancais = AnalyserSemantiqueValide(
+            syntaxe, semantique, francais, "semantique-francaise");
+        const auto resultatAnglais = AnalyserSemantiqueValide(
+            syntaxe, semantique, anglais, "semantique-anglaise");
+        Exiger(
+            resultatFrancais.Symboles.size()
+                    == resultatAnglais.Symboles.size()
+                && resultatFrancais.Resolutions.size()
+                    == resultatAnglais.Resolutions.size(),
+            "les sorties sémantiques bilingues ont des tailles différentes");
+
+        const auto nombreReferences = std::count_if(
+            resultatFrancais.Noeuds.begin(),
+            resultatFrancais.Noeuds.end(),
+            [](const NoeudDeclarationHote& noeud)
+            { return noeud.Genre == 24; });
+        Exiger(
+            resultatFrancais.Resolutions.size()
+                == static_cast<std::size_t>(nombreReferences),
+            "toutes les références syntaxiques n’ont pas été résolues");
+        for (const auto& resolution : resultatFrancais.Resolutions)
+        {
+            Exiger(
+                resolution.IndexNoeud < resultatFrancais.Noeuds.size()
+                    && resolution.IndexSymbole
+                        < resultatFrancais.Symboles.size(),
+                "résolution sémantique hors limites");
+            const auto& reference =
+                resultatFrancais.Noeuds[resolution.IndexNoeud];
+            const auto& symbole =
+                resultatFrancais.Symboles[resolution.IndexSymbole];
+            Exiger(
+                reference.Genre == 24
+                    && resolution.GenreCible == symbole.Genre,
+                "genre de cible sémantique incohérent");
+        }
+        const auto groupeChoisir = std::find_if(
+            resultatFrancais.Resolutions.begin(),
+            resultatFrancais.Resolutions.end(),
+            [&](const ResolutionSemantiqueHote& resolution)
+            {
+                return resultatFrancais.Noeuds[resolution.IndexNoeud]
+                            .HachageNom == HacherTexte("Choisir")
+                    && (resolution.Drapeaux & 1U) != 0;
+            });
+        Exiger(
+            groupeChoisir != resultatFrancais.Resolutions.end(),
+            "le groupe de surcharges Choisir n’a pas été identifié");
+        const auto recepteur = std::find_if(
+            resultatFrancais.Resolutions.begin(),
+            resultatFrancais.Resolutions.end(),
+            [](const ResolutionSemantiqueHote& resolution)
+            { return (resolution.Drapeaux & 2U) != 0; });
+        Exiger(
+            recepteur != resultatFrancais.Resolutions.end(),
+            "le récepteur de classe soi/this n’a pas été résolu");
+        const auto base = std::find_if(
+            resultatFrancais.Resolutions.begin(),
+            resultatFrancais.Resolutions.end(),
+            [](const ResolutionSemantiqueHote& resolution)
+            { return (resolution.Drapeaux & 4U) != 0; });
+        Exiger(
+            base != resultatFrancais.Resolutions.end(),
+            "le récepteur de base parent/super n’a pas été résolu");
+
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure A {}; structure A {}; publique vide F() {}",
+            6, "type-duplique");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure A {}; énumération A { V, }; publique vide F() {}",
+            7, "structure-en-conflit-avec-enumeration");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide V() {} entier32 V;",
+            9, "globale-fonction-conflit");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "entier32 V; publique vide V() {}",
+            9, "globale-avant-fonction-conflit");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "entier32 V; entier32 V; publique vide F() {}",
+            8, "globale-dupliquee");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() {} alias F = F;",
+            11, "alias-en-conflit");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() {} alias A = F; alias A = F;",
+            10, "alias-duplique");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure S { entier32 X; entier32 X; }; "
+            "publique vide F() {}",
+            12, "champ-duplique");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure S { entier32 X; alias X = X; }; "
+            "publique vide F() {}",
+            14, "alias-champ-en-conflit");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "énumération E { A, A, }; publique vide F() {}",
+            15, "enumerateur-duplique");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F(entier32 X, entier32 X) {}",
+            16, "parametre-duplique");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F(entier32 X) { entier32 X = 0; }",
+            17, "locale-dupliquee");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique entier32 F() { retourner Inconnue; }",
+            18, "symbole-introuvable");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique entier32 F(entier32 X) { retourner X; } "
+            "publique entier64 F(entier64 X) { retourner X; } "
+            "publique vide G() { F; }",
+            19, "adresse-surcharge-ambigue");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure SansFonction {};",
+            20, "fonction-absente");
+
+        Exiger(
+            semantique(nullptr) == 1,
+            "une requête sémantique nulle aurait dû être refusée");
+        RequeteAnalyseSemantiqueHote requeteInvalide{};
+        Exiger(
+            semantique(&requeteInvalide) == 1,
+            "une source sémantique nulle aurait dû être refusée");
+        const std::string sourceAst = "publique vide F() {}";
+        auto astInvalide = ComparerDeclarations(
+            syntaxe, sourceAst, "ast-semantique-invalide");
+        astInvalide[1].Parent = 1;
+        RequeteAnalyseSemantiqueHote requeteAst{
+            sourceAst.data(),
+            static_cast<std::uint64_t>(sourceAst.size()),
+            astInvalide.data(),
+            static_cast<std::uint64_t>(astInvalide.size()),
+            nullptr, 0, nullptr, 0, {}};
+        Exiger(
+            semantique(&requeteAst) == 2
+                && requeteAst.Resultat.Erreur == 2,
+            "un AST sémantique invalide aurait dû être refusé");
+
+        Exiger(
+            !LiberationInvalide
+                && AllocationsActives.empty()
+                && NombreAllocations == NombreLiberations
+                && NombreAllocations != 0,
+            "l’analyse sémantique auto-hébergée laisse une allocation active");
+    }
+
     void TesterClassificateur(const std::string& chemin)
     {
         const auto contenu = LireFichier(chemin);
@@ -2394,7 +2853,7 @@ namespace
         zone.Copier(image.Memoire);
 
         const auto adresse = image.ChercherExport(
-            "Gs::Autohebergement::ClassifierMotCle");
+            "GalacticShrine::GsPP::Autohebergement::ClassifierMotCle");
         Exiger(adresse.has_value(),
                "export du classificateur Gs++ absent");
 
@@ -2473,11 +2932,11 @@ namespace
         const auto resolveur =
             [&](std::string_view nom) -> std::optional<std::uint64_t>
         {
-            if (nom == "Gs::Hote::AllouerMemoire") return allouer;
-            if (nom == "Gs::Hote::LibererMemoire") return liberer;
-            if (nom == "Gs::Hote::LireFichier") return lire;
-            if (nom == "Gs::Hote::EcrireFichier") return ecrire;
-            if (nom == "Gs::Hote::EmettreDiagnostic")
+            if (nom == "GalacticShrine::GsPP::Hote::AllouerMemoire") return allouer;
+            if (nom == "GalacticShrine::GsPP::Hote::LibererMemoire") return liberer;
+            if (nom == "GalacticShrine::GsPP::Hote::LireFichier") return lire;
+            if (nom == "GalacticShrine::GsPP::Hote::EcrireFichier") return ecrire;
+            if (nom == "GalacticShrine::GsPP::Hote::EmettreDiagnostic")
                 return diagnostiquer;
             return std::nullopt;
         };
@@ -2527,17 +2986,18 @@ int main(int argc, char** argv)
 {
     try
     {
-        if (argc != 5)
+        if (argc != 6)
             throw std::runtime_error(
-                "quatre images GsE de test sont attendues");
+                "cinq images GsE de test sont attendues");
         TesterClassificateur(argv[1]);
         TesterLexeur(argv[2]);
         TesterAnalyseurDeclarations(argv[3]);
-        TesterBibliothequeHebergee(argv[4]);
+        TesterAnalyseurSemantique(argv[4], argv[3]);
+        TesterBibliothequeHebergee(argv[5]);
         std::cout
             << "Auto-hébergement 0.27 : "
             << "83 classifications, lexeur différentiel, "
-            << "AST différentiel des fonctions et données "
+            << "AST et premières résolutions sémantiques différentielles "
             << "et bibliothèque hébergée validés.\n";
         return 0;
     }

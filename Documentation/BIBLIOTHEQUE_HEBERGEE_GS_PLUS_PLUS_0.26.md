@@ -18,16 +18,16 @@ encore l’auto-hébergement du frontend, du backend ou de l’éditeur de liens
 ## Frontière entre profils
 
 `GsSysteme.GsA` reste entièrement freestanding : aucune allocation, aucun
-fichier, aucun diagnostic d’hôte et aucun import `Gs::Hote` ne peut y entrer.
+fichier, aucun diagnostic d’hôte et aucun import `GalacticShrine::GsPP::Hote` ne peut y entrer.
 
 `GsHebergee.GsA` dépend uniquement des cinq imports explicitement déclarés :
 
 ```text
-Gs::Hote::AllouerMemoire(naturel64)
-Gs::Hote::LibererMemoire(octet*)
-Gs::Hote::LireFichier(RequeteFichier*)
-Gs::Hote::EcrireFichier(RequeteFichier*)
-Gs::Hote::EmettreDiagnostic(Diagnostic)
+GalacticShrine::GsPP::Hote::AllouerMemoire(naturel64)
+GalacticShrine::GsPP::Hote::LibererMemoire(octet*)
+GalacticShrine::GsPP::Hote::LireFichier(RequeteFichier*)
+GalacticShrine::GsPP::Hote::EcrireFichier(RequeteFichier*)
+GalacticShrine::GsPP::Hote::EmettreDiagnostic(Diagnostic)
 ```
 
 Une allocation n’est jamais déclenchée par une construction implicite. Elle a
@@ -149,7 +149,7 @@ mais aucune migration de format n’est nécessaire.
 - lecture allouée, écriture et libération sans fuite dans l’hôte de test ;
 - échec d’allocation conservant l’ancien contenu ;
 - présence exacte des cinq imports hébergés nécessaires ;
-- absence de tout import `Gs::Hote` dans `GsSysteme.GsA` ;
+- absence de tout import `GalacticShrine::GsPP::Hote` dans `GsSysteme.GsA` ;
 - reconstruction déterministe de `GsHebergee.GsA` ;
 - validation MSVC, GNU, benchmark et QEMU/OVMF.
 

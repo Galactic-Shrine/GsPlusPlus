@@ -7,14 +7,14 @@ Gs++. Elle peut être liée à un noyau ou à une application native sans tas,
 exception, constructeur global ni runtime implicite. Son interface canonique
 est `GsPlusPlus/Bibliotheques/Systeme/Systeme.HGsPP`.
 
-Les déclarations françaises se trouvent dans `Gs::Systeme`. Les alias anglais
-correspondants sont disponibles dans `Gs::System` et désignent exactement les
+Les déclarations françaises se trouvent dans `GalacticShrine::GsPP::Systeme`. Les alias anglais
+correspondants sont disponibles dans `GalacticShrine::GsPP::System` et désignent exactement les
 mêmes symboles. Les types principaux sont :
 
 ```text
-Gs::Systeme::VueOctets       / Gs::System::ByteView
-Gs::Systeme::VueTexte        / Gs::System::TextView
-Gs::Systeme::VerrouAtomique  / Gs::System::SpinLock
+GalacticShrine::GsPP::Systeme::VueOctets       / GalacticShrine::GsPP::System::ByteView
+GalacticShrine::GsPP::Systeme::VueTexte        / GalacticShrine::GsPP::System::TextView
+GalacticShrine::GsPP::Systeme::VerrouAtomique  / GalacticShrine::GsPP::System::SpinLock
 ```
 
 Les vues ne possèdent pas leur stockage. Leur utilisateur demeure responsable
@@ -61,7 +61,7 @@ addition, décalage, comparaison, égalité, `&`, `^`, `|`, affectation.
 
 ## Atomiques x86-64
 
-Les fonctions réservées de `Gs::Intrinseques` sont reconnues uniquement lors
+Les fonctions réservées de `GalacticShrine::GsPP::Intrinseques` sont reconnues uniquement lors
 d’un appel direct possédant le prototype exact. Le backend les remplace par :
 
 | Primitive | Instruction principale |
@@ -91,11 +91,11 @@ future devra fournir son propre backend pour conserver les mêmes contrats.
 `VerrouAtomique` contient un mot `naturel32` volatile. Son cycle normal est :
 
 ```gspp
-Gs::System::SpinLock verrou = {0};
-Gs::System::InitializeLock(&verrou);
-Gs::System::AcquireLock(&verrou);
+GalacticShrine::GsPP::System::SpinLock verrou = {0};
+GalacticShrine::GsPP::System::InitializeLock(&verrou);
+GalacticShrine::GsPP::System::AcquireLock(&verrou);
 // section critique
-Gs::System::ReleaseLock(&verrou);
+GalacticShrine::GsPP::System::ReleaseLock(&verrou);
 ```
 
 `TryAcquireLock` n’attend pas. `AcquireLock` utilise `pause` entre deux essais.

@@ -1,4 +1,4 @@
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     octet* NulOctetsHeberge;
 
@@ -103,7 +103,7 @@ espace Gs::Hebergee
     publique vide DetruireChaineUtf8(ChaineUtf8* chaine)
     {
         si (chaine->Donnees)
-            Gs::Hote::LibererMemoire(
+            GalacticShrine::GsPP::Hote::LibererMemoire(
                 convertir<octet*>(chaine->Donnees));
         InitialiserChaineUtf8(chaine);
     }
@@ -121,7 +121,7 @@ espace Gs::Hebergee
             || nouvelleCapacite == 18_446_744_073_709_551_615)
             retourner CodeErreurHebergee::CapaciteDepassee;
         octet* nouveau =
-            Gs::Hote::AllouerMemoire(nouvelleCapacite + 1);
+            GalacticShrine::GsPP::Hote::AllouerMemoire(nouvelleCapacite + 1);
         si (!nouveau) retourner CodeErreurHebergee::AllocationEchouee;
         naturel64 index = 0;
         tantque (index < chaine->Taille)
@@ -131,7 +131,7 @@ espace Gs::Hebergee
         }
         nouveau[chaine->Taille] = 0;
         si (chaine->Donnees)
-            Gs::Hote::LibererMemoire(
+            GalacticShrine::GsPP::Hote::LibererMemoire(
                 convertir<octet*>(chaine->Donnees));
         chaine->Donnees = convertir<caractère*>(nouveau);
         chaine->Capacite = nouvelleCapacite;
@@ -157,7 +157,7 @@ espace Gs::Hebergee
                 || nouvelleCapacite == 18_446_744_073_709_551_615)
                 retourner CodeErreurHebergee::CapaciteDepassee;
             octet* nouveau =
-                Gs::Hote::AllouerMemoire(nouvelleCapacite + 1);
+                GalacticShrine::GsPP::Hote::AllouerMemoire(nouvelleCapacite + 1);
             si (!nouveau)
                 retourner CodeErreurHebergee::AllocationEchouee;
             naturel64 indexNouveau = 0;
@@ -173,7 +173,7 @@ espace Gs::Hebergee
             chaine->Taille = texte.Taille;
             chaine->Capacite = nouvelleCapacite;
             si (ancien)
-                Gs::Hote::LibererMemoire(convertir<octet*>(ancien));
+                GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(ancien));
             retourner CodeErreurHebergee::Reussite;
         }
         naturel64 index = 0;
@@ -207,7 +207,7 @@ espace Gs::Hebergee
                 || nouvelleCapacite == 18_446_744_073_709_551_615)
                 retourner CodeErreurHebergee::CapaciteDepassee;
             octet* nouveau =
-                Gs::Hote::AllouerMemoire(nouvelleCapacite + 1);
+                GalacticShrine::GsPP::Hote::AllouerMemoire(nouvelleCapacite + 1);
             si (!nouveau)
                 retourner CodeErreurHebergee::AllocationEchouee;
             naturel64 indexAncien = 0;
@@ -230,7 +230,7 @@ espace Gs::Hebergee
             chaine->Taille = nouvelleTaille;
             chaine->Capacite = nouvelleCapacite;
             si (ancien)
-                Gs::Hote::LibererMemoire(convertir<octet*>(ancien));
+                GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(ancien));
             retourner CodeErreurHebergee::Reussite;
         }
         naturel64 index = 0;
@@ -283,7 +283,7 @@ espace Gs::Hebergee
         tantque (bloc)
         {
             BlocArene* suivant = bloc->Suivant;
-            Gs::Hote::LibererMemoire(convertir<octet*>(bloc));
+            GalacticShrine::GsPP::Hote::LibererMemoire(convertir<octet*>(bloc));
             bloc = suivant;
         }
         InitialiserArene(arene, arene->TailleBloc);
@@ -318,7 +318,7 @@ espace Gs::Hebergee
             si (capacite > 18_446_744_073_709_551_615
                 - convertir<naturel64>(24))
                 retourner PointeurNulOctetsHeberge();
-            octet* brut = Gs::Hote::AllouerMemoire(capacite + 24);
+            octet* brut = GalacticShrine::GsPP::Hote::AllouerMemoire(capacite + 24);
             si (!brut) retourner PointeurNulOctetsHeberge();
             bloc = convertir<BlocArene*>(brut);
             bloc->Suivant = PointeurNulBlocArene();

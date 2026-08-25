@@ -1,4 +1,4 @@
-espace Gs::Systeme
+espace GalacticShrine::GsPP::Systeme
 {
     publique VueOctets CreerVueOctets(octet* donnees, naturel64 taille)
     {

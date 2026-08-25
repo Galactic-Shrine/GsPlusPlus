@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur et AST syntaxique des déclarations, instructions et
-expressions VALIDÉS — 25 août 2026.**
+**EN COURS — lexeur, AST syntaxique et première passe sémantique VALIDÉS —
+25 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -10,8 +10,10 @@ même AST compact aux déclarations de données, l’alpha.4 couvre les méthode
 constructeurs, destructeurs et opérateurs de classes, puis l’alpha.5 construit
 la hiérarchie des blocs et instructions. L’alpha.6 ajoute l’AST interne des
 expressions avec les mêmes priorités et associativités que le bootstrap. Le
-jalon 0.27 complet n’est pas encore validé : les premières étapes sémantiques
-restent à migrer.
+jalon alpha.7 ajoute l’indexation des symboles et la première résolution des
+noms. Le frontend 0.27 complet n’est pas encore validé : la résolution des
+types, la sélection typée des surcharges et les vérifications sémantiques
+suivantes restent à migrer.
 
 ## Lexeur auto-hébergé validé
 
@@ -39,7 +41,7 @@ Le lexeur couvre le même périmètre que `Compiler/src/Lexeur.cpp` :
 L’export public est :
 
 ```text
-Gs::Autohebergement::AnalyserSource(RequeteLexage*) -> ErreurLexage
+GalacticShrine::GsPP::Autohebergement::AnalyserSource(RequeteLexage*) -> ErreurLexage
 ```
 
 La structure de requête regroupe la source, le stockage fourni par l’appelant,
@@ -86,8 +88,8 @@ Ce résultat valide la tranche livrée, pas le frontend 0.27 complet.
 Les images GsE MSVC et GNU sont identiques :
 
 ```text
-taille  : 40 897 octets
-SHA-256 : 3cc82b52d5d55c00284a8074fb5fc8fad6b71aa4ddb6c2437506f68af812d5d2
+taille  : 42 163 octets
+SHA-256 : 25402c05c9d8af94bcf3ededb17f8b81f9f85c1a726e65d3d560e4b3392683a3
 ```
 
 Le vérificateur confirme une image GsE 1.0 valide, ABI 1, avec trois segments,
@@ -116,7 +118,7 @@ Les fichiers canoniques de la deuxième tranche sont :
 L’export public est :
 
 ```text
-Gs::Autohebergement::AnalyserDeclarationsSource(
+GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsSource(
     RequeteAnalyseDeclarations*) -> ErreurAnalyseDeclarations
 ```
 
@@ -203,22 +205,90 @@ au programme produit par `GsPP::AnalyseurSyntaxique` :
 Les constructions MSVC et GNU produisent un `AnalyseurDeclarations.GsE`
 identique bit à bit. La validation détaillée et les empreintes sont consignées
 dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.6.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.6.md).
+[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
 
 Cette tranche construit l’AST des corps, de leurs instructions et de leurs
 expressions. Les classes sont couvertes pour leurs données, leur héritage, leurs
 membres exécutables et leurs corps. Ce périmètre reste volontairement annoncé
-comme `PARTIEL` tant que les premières résolutions sémantiques ne sont pas
-auto-hébergées.
+comme `PARTIEL` : il décrit la tranche syntaxique et ne suffit pas, à lui seul,
+à former un frontend complet.
+
+## Première passe sémantique — alpha.7
+
+Les fichiers canoniques de cette tranche sont :
+
+- `AutoHebergement/AnalyseurSemantique/AnalyseurSemantique.HGsPP` pour le
+  contrat ABI public ;
+- `AutoHebergement/AnalyseurSemantique/AnalyseurSemantique.GsPP` pour
+  l’implémentation Gs++ ;
+- `Tests/AutoHebergement/AutoHebergement.cpp` pour l’exécution réelle de
+  l’image et la comparaison différentielle avec le bootstrap C++.
+
+L’export public est :
+
+```text
+GalacticShrine::GsPP::Autohebergement::AnalyserSemantique(
+    RequeteAnalyseSemantique*) -> ErreurAnalyseSemantique
+```
+
+La passe consomme le tableau de `NoeudDeclaration` sans le modifier. Elle
+indexe les types, fonctions, variables globales, alias, champs, alias de
+champs, énumérateurs, paramètres et variables locales, puis produit une entrée
+de résolution pour chaque référence de variable couverte. Les noms qualifiés,
+les portées imbriquées, le récepteur de classe `soi` / `this`, le récepteur de
+base `parent` / `super` et les groupes de surcharges utilisés comme cibles
+d’appel sont distingués explicitement.
+
+Le stockage de sortie appartient à l’appelant. Une interrogation sans tampon
+retourne les deux capacités exactes ; les sorties partielles restent bornées et
+signalent séparément une capacité insuffisante de symboles ou de résolutions.
+Les tailles ABI sont :
+
+| Structure | Taille |
+| --- | ---: |
+| `SymboleSemantique` | 48 octets |
+| `ResolutionSemantique` | 32 octets |
+| `ResultatAnalyseSemantique` | 56 octets |
+| `RequeteAnalyseSemantique` | 120 octets |
+
+L’image conserve uniquement les imports explicites
+`GalacticShrine::GsPP::Hote::AllouerMemoire` et
+`GalacticShrine::GsPP::Hote::LibererMemoire`, utilisés par l’arène de travail.
+Le test vérifie l’équilibre exact des allocations et libérations.
+
+### Preuve différentielle de la sémantique
+
+Les corpus français et anglais valides vérifient :
+
+- les mêmes nombres de symboles et de résolutions dans les deux syntaxes ;
+- une résolution pour chaque référence de variable du corpus ;
+- la cohérence entre nœud, symbole cible, genre et bornes des index ;
+- les paramètres, variables locales, portée de bloc, globale qualifiée,
+  récepteurs `soi` / `this` et `parent` / `super`, et groupe de surcharges
+  appelé ;
+- l’interrogation de capacité, les deux sorties partielles et les requêtes ou
+  AST invalides.
+
+Quinze corpus négatifs comparent le code, la ligne et la colonne au bootstrap
+C++ : doubles déclarations ou conflits de types, globales et alias ; doublons
+de champs, alias de champs, énumérateurs, paramètres ou variables locales ;
+symbole inconnu ; adresse ambiguë d’une fonction surchargée ; programme sans
+fonction. Ces tests valident la tranche annoncée, pas l’analyse sémantique
+complète du langage.
+
+La matrice complète, les empreintes reproductibles et les contrôles des
+paquets extraits sont consignés dans
+[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
 
 ## Travaux restant dans Gs++ 0.27
 
-- migrer les premières résolutions sémantiques ;
-- définir le contrat public de la première tranche sémantique sans casser le
-  nœud syntaxique compact ;
+- résoudre et comparer les types des expressions ;
+- sélectionner les surcharges à partir des types d’arguments ;
+- étendre la résolution aux membres, conversions et appels de constructeurs ;
+- migrer les vérifications de visibilité, héritage et durée de vie ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.6`. Aucun statut
+Les outils de la tranche publique annoncent `0.27.0-alpha.7`. Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

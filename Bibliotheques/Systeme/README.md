@@ -25,6 +25,6 @@ Construction/Bin/gsppc Application.GsObj GsSysteme.GsA \
     --format gse --point-entree Principal -o Application.GsE
 ```
 
-L’API française est dans `Gs::Systeme`; les alias anglais sont dans
-`Gs::System`. La documentation complète se trouve dans
+L’API française est dans `GalacticShrine::GsPP::Systeme`; les alias anglais sont dans
+`GalacticShrine::GsPP::System`. La documentation complète se trouve dans
 `docs/BIBLIOTHEQUE_SYSTEME_GS_PLUS_PLUS_0.16.md` du paquet compilateur.

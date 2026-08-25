@@ -1,0 +1,848 @@
+espace GalacticShrine::GsPP::Autohebergement
+{
+    constante NoeudDeclaration* NulNoeudsSemantiques;
+    SymboleSemantique* NulSymbolesSemantiques;
+    ResolutionSemantique* NulResolutionsSemantiques;
+    RequeteAnalyseSemantique* NulRequetesAnalyseSemantique;
+    constante caractère* NulCaracteresSemantiques;
+
+    structure EtatAnalyseSemantique
+    {
+        RequeteAnalyseSemantique* Requete;
+        SymboleSemantique* SymbolesTravail;
+        naturel64 NombreSymboles;
+        naturel64 NombreResolutions;
+        GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
+    };
+
+    naturel64 HachageVideSemantique()
+    {
+        retourner 14_695_981_039_346_656_037;
+    }
+
+    naturel64 AjouterOctetSemantique(naturel64 hachage, octet valeur)
+    {
+        retourner (hachage ^ convertir<naturel64>(valeur))
+            * 1_099_511_628_211;
+    }
+
+    naturel64 AjouterNomNoeudSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 hachage,
+        naturel64 indexNoeud)
+    {
+        constante NoeudDeclaration* noeud =
+            &etat->Requete->Noeuds[indexNoeud];
+        naturel64 index = 0;
+        tantque (index < noeud->TailleNom)
+        {
+            hachage = AjouterOctetSemantique(
+                hachage,
+                convertir<octet>(
+                    etat->Requete->Source[noeud->DebutNom + index]));
+            index = index + 1;
+        }
+        retourner hachage;
+    }
+
+    naturel64 HacherNomCompletSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud)
+    {
+        constante NoeudDeclaration* noeud =
+            &etat->Requete->Noeuds[indexNoeud];
+        naturel64 hachage = noeud->HachageEspace;
+        si (hachage != HachageVideSemantique())
+        {
+            hachage = AjouterOctetSemantique(hachage, 58);
+            hachage = AjouterOctetSemantique(hachage, 58);
+        }
+        retourner AjouterNomNoeudSemantique(etat, hachage, indexNoeud);
+    }
+
+    naturel64 HacherSoiSemantique()
+    {
+        naturel64 hachage = HachageVideSemantique();
+        hachage = AjouterOctetSemantique(hachage, 115);
+        hachage = AjouterOctetSemantique(hachage, 111);
+        retourner AjouterOctetSemantique(hachage, 105);
+    }
+
+    booléen EstGenreFonctionSemantique(naturel32 genre)
+    {
+        retourner genre == 1
+            || genre == 12
+            || genre == 13
+            || genre == 14
+            || genre == 15;
+    }
+
+    naturel32 GenreSymboleDepuisNoeudSemantique(naturel32 genre)
+    {
+        si (genre == 4 || genre == 5 || genre == 6 || genre == 8)
+            retourner 1;
+        si (EstGenreFonctionSemantique(genre)) retourner 2;
+        si (genre == 3) retourner 3;
+        si (genre == 10) retourner 4;
+        si (genre == 7) retourner 5;
+        si (genre == 11) retourner 6;
+        si (genre == 9) retourner 7;
+        si (genre == 2) retourner 8;
+        si (genre == 19) retourner 9;
+        retourner 0;
+    }
+
+    ErreurAnalyseSemantique SignalerErreurSemantique(
+        EtatAnalyseSemantique* etat,
+        ErreurAnalyseSemantique erreur,
+        naturel64 indexNoeud,
+        naturel32 detail)
+    {
+        etat->Requete->Resultat.Erreur = erreur;
+        etat->Requete->Resultat.Detail = detail;
+        si (indexNoeud < etat->Requete->NombreNoeuds)
+        {
+            constante NoeudDeclaration* noeud =
+                &etat->Requete->Noeuds[indexNoeud];
+            etat->Requete->Resultat.LigneErreur = noeud->Ligne;
+            etat->Requete->Resultat.ColonneErreur = noeud->Colonne;
+        }
+        sinon
+        {
+            etat->Requete->Resultat.LigneErreur = 1;
+            etat->Requete->Resultat.ColonneErreur = 1;
+        }
+        retourner erreur;
+    }
+
+    booléen ValiderAstSemantique(EtatAnalyseSemantique* etat)
+    {
+        si (etat->Requete->NombreNoeuds == 0
+            || etat->Requete->Noeuds == NulNoeudsSemantiques)
+        {
+            SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::AstInvalide, 0, 0);
+            retourner faux;
+        }
+        si (etat->Requete->Noeuds[0].Genre != 0)
+        {
+            SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::AstInvalide, 0, 1);
+            retourner faux;
+        }
+
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds)
+        {
+            constante NoeudDeclaration* noeud =
+                &etat->Requete->Noeuds[index];
+            si (index != 0 && noeud->Parent >= index)
+            {
+                SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    index,
+                    2);
+                retourner faux;
+            }
+            si (noeud->TailleNom != 0
+                && (noeud->DebutNom > etat->Requete->TailleSource
+                    || noeud->TailleNom
+                        > etat->Requete->TailleSource - noeud->DebutNom))
+            {
+                SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    index,
+                    3);
+                retourner faux;
+            }
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    booléen AjouterSymboleSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud)
+    {
+        constante NoeudDeclaration* noeud =
+            &etat->Requete->Noeuds[indexNoeud];
+        naturel32 genre = GenreSymboleDepuisNoeudSemantique(noeud->Genre);
+        si (genre == 0) retourner vrai;
+        SymboleSemantique symbole = {
+            indexNoeud,
+            noeud->Parent,
+            noeud->HachageNom,
+            noeud->HachageEspace,
+            noeud->HachageType,
+            genre,
+            noeud->Drapeaux};
+        etat->SymbolesTravail[etat->NombreSymboles] = symbole;
+        etat->NombreSymboles = etat->NombreSymboles + 1;
+        retourner vrai;
+    }
+
+    booléen MemesNomsCompletsSemantiques(
+        SymboleSemantique* gauche, SymboleSemantique* droite)
+    {
+        retourner gauche->HachageNom == droite->HachageNom
+            && gauche->HachageEspace == droite->HachageEspace;
+    }
+
+    booléen MemesNomsPorteeSemantiques(
+        SymboleSemantique* gauche, SymboleSemantique* droite)
+    {
+        retourner gauche->IndexPortee == droite->IndexPortee
+            && gauche->HachageNom == droite->HachageNom;
+    }
+
+    booléen EstAncetreSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 ancetre,
+        naturel64 descendant)
+    {
+        naturel64 courant = descendant;
+        tantque (courant != 0 && courant < etat->Requete->NombreNoeuds)
+        {
+            si (courant == ancetre) retourner vrai;
+            courant = etat->Requete->Noeuds[courant].Parent;
+        }
+        retourner ancetre == 0;
+    }
+
+    naturel64 TrouverFonctionAncetreSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud)
+    {
+        naturel64 courant = indexNoeud;
+        tantque (courant != 0 && courant < etat->Requete->NombreNoeuds)
+        {
+            si (EstGenreFonctionSemantique(
+                    etat->Requete->Noeuds[courant].Genre))
+                retourner courant;
+            courant = etat->Requete->Noeuds[courant].Parent;
+        }
+        retourner etat->Requete->NombreNoeuds;
+    }
+
+    ErreurAnalyseSemantique VerifierConflitsSemantiques(
+        EtatAnalyseSemantique* etat)
+    {
+        booléen fonctionPresente = faux;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            si (etat->SymbolesTravail[index].Genre == 2)
+                fonctionPresente = vrai;
+            index = index + 1;
+        }
+
+        /**
+         * Le bootstrap indexe d'abord les énumérations, puis les autres types.
+         * Cet ordre reste stable même si les déclarations sont entrelacées dans
+         * le fichier source.
+         **/
+        index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* courantEnumeration =
+                &etat->SymbolesTravail[index];
+            si (courantEnumeration->Genre == 1
+                && etat->Requete->Noeuds[
+                    courantEnumeration->IndexNoeud].Genre == 8)
+            {
+                naturel64 precedentEnumeration = 0;
+                tantque (precedentEnumeration < index)
+                {
+                    SymboleSemantique* autreEnumeration =
+                        &etat->SymbolesTravail[precedentEnumeration];
+                    si (autreEnumeration->Genre == 1
+                        && etat->Requete->Noeuds[
+                            autreEnumeration->IndexNoeud].Genre == 8
+                        && MemesNomsCompletsSemantiques(
+                            courantEnumeration, autreEnumeration))
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::TypeDeclarePlusieursFois,
+                            courantEnumeration->IndexNoeud,
+                            convertir<naturel32>(
+                                autreEnumeration->IndexNoeud));
+                    precedentEnumeration = precedentEnumeration + 1;
+                }
+            }
+            index = index + 1;
+        }
+
+        index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* courantType = &etat->SymbolesTravail[index];
+            naturel32 genreNoeud =
+                etat->Requete->Noeuds[courantType->IndexNoeud].Genre;
+            si (courantType->Genre == 1 && genreNoeud != 8)
+            {
+                naturel64 precedentType = 0;
+                tantque (precedentType < etat->NombreSymboles)
+                {
+                    SymboleSemantique* autreType =
+                        &etat->SymbolesTravail[precedentType];
+                    si (autreType->Genre == 1
+                        && autreType->IndexNoeud != courantType->IndexNoeud
+                        && MemesNomsCompletsSemantiques(
+                            courantType, autreType))
+                    {
+                        naturel32 genreAutre =
+                            etat->Requete->Noeuds[
+                                autreType->IndexNoeud].Genre;
+                        si (genreAutre == 8)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::NomTypeEnConflit,
+                                courantType->IndexNoeud,
+                                convertir<naturel32>(
+                                    autreType->IndexNoeud));
+                        si (autreType->IndexNoeud < courantType->IndexNoeud)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::TypeDeclarePlusieursFois,
+                                courantType->IndexNoeud,
+                                convertir<naturel32>(
+                                    autreType->IndexNoeud));
+                    }
+                    precedentType = precedentType + 1;
+                }
+            }
+            index = index + 1;
+        }
+
+        // Les fonctions libres sont ensuite confrontées aux noms de types.
+        index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* courantFonction =
+                &etat->SymbolesTravail[index];
+            si (courantFonction->Genre == 2
+                && courantFonction->IndexPortee == 0)
+            {
+                naturel64 precedentFonction = 0;
+                tantque (precedentFonction < etat->NombreSymboles)
+                {
+                    SymboleSemantique* autreFonction =
+                        &etat->SymbolesTravail[precedentFonction];
+                    si (autreFonction->Genre == 1
+                        && MemesNomsCompletsSemantiques(
+                            courantFonction, autreFonction))
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::NomTypeEnConflit,
+                            courantFonction->IndexNoeud,
+                            convertir<naturel32>(
+                                autreFonction->IndexNoeud));
+                    precedentFonction = precedentFonction + 1;
+                }
+            }
+            index = index + 1;
+        }
+
+        // Les globales sont indexées après les fonctions et les types.
+        index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* courantGlobale =
+                &etat->SymbolesTravail[index];
+            si (courantGlobale->Genre == 3
+                && courantGlobale->IndexPortee == 0)
+            {
+                naturel64 precedentGlobale = 0;
+                tantque (precedentGlobale < etat->NombreSymboles)
+                {
+                    SymboleSemantique* autreGlobale =
+                        &etat->SymbolesTravail[precedentGlobale];
+                    si (autreGlobale->IndexPortee == 0
+                        && MemesNomsCompletsSemantiques(
+                            courantGlobale, autreGlobale))
+                    {
+                        si (autreGlobale->Genre == 3
+                            && autreGlobale->IndexNoeud
+                                < courantGlobale->IndexNoeud)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::GlobaleDeclareePlusieursFois,
+                                courantGlobale->IndexNoeud,
+                                convertir<naturel32>(
+                                    autreGlobale->IndexNoeud));
+                        si (autreGlobale->Genre == 1
+                            || autreGlobale->Genre == 2)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::NomGlobalEnConflit,
+                                courantGlobale->IndexNoeud,
+                                convertir<naturel32>(
+                                    autreGlobale->IndexNoeud));
+                    }
+                    precedentGlobale = precedentGlobale + 1;
+                }
+            }
+            index = index + 1;
+        }
+
+        // Les alias ferment l'index des déclarations racines.
+        index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* courantAlias =
+                &etat->SymbolesTravail[index];
+            si (courantAlias->Genre == 4
+                && courantAlias->IndexPortee == 0)
+            {
+                naturel64 precedentAlias = 0;
+                tantque (precedentAlias < etat->NombreSymboles)
+                {
+                    SymboleSemantique* autreAlias =
+                        &etat->SymbolesTravail[precedentAlias];
+                    si (autreAlias->IndexPortee == 0
+                        && autreAlias->IndexNoeud
+                            != courantAlias->IndexNoeud
+                        && MemesNomsCompletsSemantiques(
+                            courantAlias, autreAlias))
+                    {
+                        si (autreAlias->Genre == 4)
+                        {
+                            si (autreAlias->IndexNoeud
+                                < courantAlias->IndexNoeud)
+                                retourner SignalerErreurSemantique(
+                                    etat,
+                                    ErreurAnalyseSemantique::AliasDeclarePlusieursFois,
+                                    courantAlias->IndexNoeud,
+                                    convertir<naturel32>(
+                                        autreAlias->IndexNoeud));
+                        }
+                        sinon
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::AliasEnConflit,
+                                courantAlias->IndexNoeud,
+                                convertir<naturel32>(
+                                    autreAlias->IndexNoeud));
+                    }
+                    precedentAlias = precedentAlias + 1;
+                }
+            }
+            index = index + 1;
+        }
+
+        // Les portées membres et locales suivent l'ordre lexical de l'AST.
+        index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* courantPortee =
+                &etat->SymbolesTravail[index];
+            naturel64 precedentPortee = 0;
+            tantque (precedentPortee < index)
+            {
+                SymboleSemantique* autrePortee =
+                    &etat->SymbolesTravail[precedentPortee];
+                booléen memePorteeLocale = MemesNomsPorteeSemantiques(
+                    courantPortee, autrePortee);
+                si (courantPortee->Genre == 5 && memePorteeLocale
+                    && (autrePortee->Genre == 5 || autrePortee->Genre == 6))
+                {
+                    si (autrePortee->Genre == 5)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::ChampDeclarePlusieursFois,
+                            courantPortee->IndexNoeud,
+                            convertir<naturel32>(autrePortee->IndexNoeud));
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::AliasChampEnConflit,
+                        courantPortee->IndexNoeud,
+                        convertir<naturel32>(autrePortee->IndexNoeud));
+                }
+                sinon si (courantPortee->Genre == 6 && memePorteeLocale
+                    && (autrePortee->Genre == 5 || autrePortee->Genre == 6))
+                {
+                    si (autrePortee->Genre == 6)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::AliasChampDeclarePlusieursFois,
+                            courantPortee->IndexNoeud,
+                            convertir<naturel32>(autrePortee->IndexNoeud));
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::AliasChampEnConflit,
+                        courantPortee->IndexNoeud,
+                        convertir<naturel32>(autrePortee->IndexNoeud));
+                }
+                sinon si (courantPortee->Genre == 7
+                    && autrePortee->Genre == 7 && memePorteeLocale)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::EnumerateurDeclarePlusieursFois,
+                        courantPortee->IndexNoeud,
+                        convertir<naturel32>(autrePortee->IndexNoeud));
+                sinon si (courantPortee->Genre == 8
+                    && autrePortee->Genre == 8 && memePorteeLocale)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::ParametreDeclarePlusieursFois,
+                        courantPortee->IndexNoeud,
+                        convertir<naturel32>(autrePortee->IndexNoeud));
+                sinon si (courantPortee->Genre == 9
+                    && courantPortee->HachageNom == autrePortee->HachageNom)
+                {
+                    naturel64 fonctionCourante =
+                        TrouverFonctionAncetreSemantique(
+                            etat, courantPortee->IndexNoeud);
+                    naturel64 fonctionAutre = TrouverFonctionAncetreSemantique(
+                        etat, autrePortee->IndexNoeud);
+                    si (fonctionCourante == fonctionAutre
+                        && (autrePortee->Genre == 8
+                            || (autrePortee->Genre == 9
+                                && EstAncetreSemantique(
+                                    etat,
+                                    autrePortee->IndexPortee,
+                                    courantPortee->IndexPortee))))
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::VariableLocaleDeclareePlusieursFois,
+                            courantPortee->IndexNoeud,
+                            convertir<naturel32>(autrePortee->IndexNoeud));
+                }
+                precedentPortee = precedentPortee + 1;
+            }
+            index = index + 1;
+        }
+        si (!fonctionPresente)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::FonctionAbsente,
+                0,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    naturel64 TrouverSymboleNoeudSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud)
+    {
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            si (etat->SymbolesTravail[index].IndexNoeud == indexNoeud)
+                retourner index;
+            index = index + 1;
+        }
+        retourner etat->NombreSymboles;
+    }
+
+    booléen ReferenceCorrespondSymboleSemantique(
+        EtatAnalyseSemantique* etat,
+        constante NoeudDeclaration* reference,
+        SymboleSemantique* symbole)
+    {
+        si (reference->HachageNom == symbole->HachageNom
+            && reference->HachageEspace == symbole->HachageEspace)
+            retourner vrai;
+        naturel64 complet = HacherNomCompletSemantique(
+            etat, symbole->IndexNoeud);
+        retourner reference->HachageNom == complet;
+    }
+
+    booléen AjouterResolutionSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeud,
+        naturel64 indexSymbole,
+        naturel32 drapeaux)
+    {
+        SymboleSemantique* symbole = &etat->SymbolesTravail[indexSymbole];
+        ResolutionSemantique resolution = {
+            indexNoeud,
+            indexSymbole,
+            symbole->HachageType,
+            symbole->Genre,
+            drapeaux};
+        si (etat->NombreResolutions < etat->Requete->CapaciteResolutions
+            && etat->Requete->Resolutions != NulResolutionsSemantiques)
+            etat->Requete->Resolutions[etat->NombreResolutions] = resolution;
+        etat->NombreResolutions = etat->NombreResolutions + 1;
+        retourner vrai;
+    }
+
+    naturel64 TrouverRecepteurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexReference)
+    {
+        naturel64 fonction = TrouverFonctionAncetreSemantique(
+            etat, indexReference);
+        si (fonction >= etat->Requete->NombreNoeuds)
+            retourner etat->NombreSymboles;
+        constante NoeudDeclaration* noeudFonction =
+            &etat->Requete->Noeuds[fonction];
+        si (!EstGenreFonctionSemantique(noeudFonction->Genre)
+            || noeudFonction->Parent == 0)
+            retourner etat->NombreSymboles;
+        si (etat->Requete->Noeuds[noeudFonction->Parent].Genre != 6)
+            retourner etat->NombreSymboles;
+        retourner TrouverSymboleNoeudSemantique(
+            etat, noeudFonction->Parent);
+    }
+
+    naturel64 TrouverBaseSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexReference)
+    {
+        naturel64 recepteur = TrouverRecepteurSemantique(
+            etat, indexReference);
+        si (recepteur >= etat->NombreSymboles)
+            retourner recepteur;
+        constante NoeudDeclaration* typeClasse = &etat->Requete->Noeuds[
+            etat->SymbolesTravail[recepteur].IndexNoeud];
+        si (typeClasse->HachageType == 0) retourner etat->NombreSymboles;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 1
+                && (typeClasse->HachageType == candidat->HachageNom
+                    || typeClasse->HachageType == HacherNomCompletSemantique(
+                        etat, candidat->IndexNoeud)))
+                retourner index;
+            index = index + 1;
+        }
+        retourner etat->NombreSymboles;
+    }
+
+    naturel64 TrouverVariableSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexReference)
+    {
+        constante NoeudDeclaration* reference =
+            &etat->Requete->Noeuds[indexReference];
+        naturel64 fonction = TrouverFonctionAncetreSemantique(
+            etat, indexReference);
+        naturel64 index = etat->NombreSymboles;
+        tantque (index != 0)
+        {
+            index = index - 1;
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->IndexNoeud < indexReference
+                && candidat->HachageNom == reference->HachageNom)
+            {
+                si (candidat->Genre == 9
+                    && TrouverFonctionAncetreSemantique(
+                        etat, candidat->IndexNoeud) == fonction
+                    && EstAncetreSemantique(
+                        etat, candidat->IndexPortee, indexReference))
+                    retourner index;
+                si (candidat->Genre == 8
+                    && candidat->IndexPortee == fonction)
+                    retourner index;
+            }
+        }
+        retourner etat->NombreSymboles;
+    }
+
+    naturel64 TrouverDeclarationRacineSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexReference)
+    {
+        constante NoeudDeclaration* reference =
+            &etat->Requete->Noeuds[indexReference];
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->IndexPortee == 0
+                && (candidat->Genre == 2
+                    || candidat->Genre == 3
+                    || candidat->Genre == 4)
+                && ReferenceCorrespondSymboleSemantique(
+                    etat, reference, candidat))
+                retourner index;
+            index = index + 1;
+        }
+        retourner etat->NombreSymboles;
+    }
+
+    naturel64 CompterFonctionsCorrespondantesSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexReference)
+    {
+        constante NoeudDeclaration* reference =
+            &etat->Requete->Noeuds[indexReference];
+        naturel64 nombre = 0;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles)
+        {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 2
+                && candidat->IndexPortee == 0
+                && ReferenceCorrespondSymboleSemantique(
+                    etat, reference, candidat))
+                nombre = nombre + 1;
+            index = index + 1;
+        }
+        retourner nombre;
+    }
+
+    ErreurAnalyseSemantique ResoudreReferencesSemantiques(
+        EtatAnalyseSemantique* etat)
+    {
+        naturel64 indexNoeud = 0;
+        tantque (indexNoeud < etat->Requete->NombreNoeuds)
+        {
+            constante NoeudDeclaration* reference =
+                &etat->Requete->Noeuds[indexNoeud];
+            si (reference->Genre == 24)
+            {
+                naturel64 cible = etat->NombreSymboles;
+                naturel32 drapeaux = 0;
+                si ((reference->Drapeaux & 65_536) != 0)
+                {
+                    cible = TrouverBaseSemantique(etat, indexNoeud);
+                    drapeaux = 2 | 4;
+                }
+                sinon si (reference->HachageNom == HacherSoiSemantique())
+                {
+                    cible = TrouverRecepteurSemantique(etat, indexNoeud);
+                    drapeaux = 2;
+                }
+                sinon
+                {
+                    cible = TrouverVariableSemantique(etat, indexNoeud);
+                    si (cible >= etat->NombreSymboles)
+                        cible = TrouverDeclarationRacineSemantique(
+                            etat, indexNoeud);
+                }
+
+                si (cible >= etat->NombreSymboles)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::SymboleIntrouvable,
+                        indexNoeud,
+                        0);
+
+                si (etat->SymbolesTravail[cible].Genre == 2)
+                {
+                    naturel64 nombre =
+                        CompterFonctionsCorrespondantesSemantique(
+                            etat, indexNoeud);
+                    constante NoeudDeclaration* noeudParent =
+                        &etat->Requete->Noeuds[reference->Parent];
+                    booléen cibleAppel = noeudParent->Genre == 28
+                        && indexNoeud == reference->Parent + 1;
+                    si (nombre > 1 && !cibleAppel)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::AdresseSurchargeAmbigue,
+                            indexNoeud,
+                            convertir<naturel32>(nombre));
+                    si (nombre > 1) drapeaux = drapeaux | 1;
+                }
+                AjouterResolutionSemantique(
+                    etat, indexNoeud, cible, drapeaux);
+            }
+            indexNoeud = indexNoeud + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    publique ErreurAnalyseSemantique AnalyserSemantique(
+        RequeteAnalyseSemantique* requete)
+    {
+        si (requete == NulRequetesAnalyseSemantique)
+            retourner ErreurAnalyseSemantique::ArgumentInvalide;
+
+        requete->Resultat.Erreur = ErreurAnalyseSemantique::Reussite;
+        requete->Resultat.LigneErreur = 0;
+        requete->Resultat.ColonneErreur = 0;
+        requete->Resultat.Detail = 0;
+        requete->Resultat.NombreSymboles = 0;
+        requete->Resultat.CapaciteSymbolesRequise = 0;
+        requete->Resultat.NombreResolutions = 0;
+        requete->Resultat.CapaciteResolutionsRequise = 0;
+        requete->Resultat.NombreOctetsArene = 0;
+
+        EtatAnalyseSemantique etat;
+        etat.Requete = requete;
+        etat.SymbolesTravail = NulSymbolesSemantiques;
+        etat.NombreSymboles = 0;
+        etat.NombreResolutions = 0;
+        GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
+
+        si (requete->Source == NulCaracteresSemantiques
+            || (requete->CapaciteSymboles != 0
+                && requete->Symboles == NulSymbolesSemantiques)
+            || (requete->CapaciteResolutions != 0
+                && requete->Resolutions == NulResolutionsSemantiques))
+        {
+            SignalerErreurSemantique(
+                &etat, ErreurAnalyseSemantique::ArgumentInvalide, 0, 0);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+        si (!ValiderAstSemantique(&etat))
+        {
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+        si (requete->NombreNoeuds
+            > 384_307_168_202_282_325)
+        {
+            SignalerErreurSemantique(
+                &etat, ErreurAnalyseSemantique::AllocationImpossible, 0, 0);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+        etat.SymbolesTravail = convertir<SymboleSemantique*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene,
+                requete->NombreNoeuds * 48,
+                8));
+        si (etat.SymbolesTravail == NulSymbolesSemantiques)
+        {
+            SignalerErreurSemantique(
+                &etat, ErreurAnalyseSemantique::AllocationImpossible, 0, 0);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+
+        naturel64 index = 0;
+        tantque (index < requete->NombreNoeuds)
+        {
+            AjouterSymboleSemantique(&etat, index);
+            index = index + 1;
+        }
+        requete->Resultat.NombreSymboles = etat.NombreSymboles;
+        requete->Resultat.CapaciteSymbolesRequise = etat.NombreSymboles;
+
+        ErreurAnalyseSemantique erreur = VerifierConflitsSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = ResoudreReferencesSemantiques(&etat);
+
+        requete->Resultat.NombreResolutions = etat.NombreResolutions;
+        requete->Resultat.CapaciteResolutionsRequise = etat.NombreResolutions;
+        requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+
+        naturel64 nombreCopie = etat.NombreSymboles;
+        si (nombreCopie > requete->CapaciteSymboles)
+            nombreCopie = requete->CapaciteSymboles;
+        index = 0;
+        tantque (index < nombreCopie)
+        {
+            requete->Symboles[index] = etat.SymbolesTravail[index];
+            index = index + 1;
+        }
+
+        si (erreur == ErreurAnalyseSemantique::Reussite
+            && requete->CapaciteSymboles < etat.NombreSymboles)
+            erreur = SignalerErreurSemantique(
+                &etat,
+                ErreurAnalyseSemantique::CapaciteSymbolesInsuffisante,
+                0,
+                convertir<naturel32>(etat.NombreSymboles));
+        sinon si (erreur == ErreurAnalyseSemantique::Reussite
+            && requete->CapaciteResolutions < etat.NombreResolutions)
+            erreur = SignalerErreurSemantique(
+                &etat,
+                ErreurAnalyseSemantique::CapaciteResolutionsInsuffisante,
+                0,
+                convertir<naturel32>(etat.NombreResolutions));
+
+        GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+        retourner erreur;
+    }
+}

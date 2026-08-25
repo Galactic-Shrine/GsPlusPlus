@@ -10,6 +10,29 @@
 
 # Journal des modifications
 
+## Compilateur Gs++ 0.27.0-alpha.7 — 2026-08-25
+
+- ajout de la première passe sémantique auto-hébergée, consommant l’AST compact
+  sans le modifier et produisant une table de symboles et des résolutions ;
+- indexation des types, fonctions, globales, alias, champs, alias de champs,
+  énumérateurs, paramètres et variables locales ;
+- résolution des portées locales et imbriquées, paramètres, globales
+  qualifiées, récepteurs `soi` / `this` et `parent` / `super`, et groupes de
+  surcharges appelés ;
+- ajout de quinze corpus négatifs dont les diagnostics positionnés sont
+  comparés au bootstrap C++ ;
+- maintien d’un contrat à stockage fourni par l’appelant, avec tailles ABI de
+  48 octets pour un symbole, 32 pour une résolution, 56 pour le résultat et
+  120 pour la requête ;
+- ajout de `AnalyseurSemantique.GsE` à la construction, aux tests, à
+  l’installation et aux paquets ;
+- migration volontaire de tous les symboles Gs++ actuels de `Gs::…` vers le
+  préfixe canonique `GalacticShrine::GsPP::…`, sans alias de compatibilité ;
+- adoption de la forme `/** … **/` pour les commentaires de bloc multilignes
+  du code Gs++ actif et ajout de cette forme au corpus différentiel du lexeur ;
+- conservation des formats GsObj/GsA/GsE en version 1.0, des champs ABI à 1 et
+  des signatures `GSOBJ:0`, `GSA:0` et `GSE:0`.
+
 ## Compilateur Gs++ 0.27.0-alpha.6 — 2026-08-25
 
 - extension de l’AST auto-hébergé aux onze genres d’expressions du frontend

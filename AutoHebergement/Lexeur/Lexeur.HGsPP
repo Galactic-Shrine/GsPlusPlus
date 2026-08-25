@@ -1,8 +1,10 @@
-// Frontend auto-hébergé Gs++ 0.27 : contrat public du lexeur.
-// Le stockage des jetons appartient à l'appelant. Un premier appel avec une
-// capacité nulle retourne CapaciteInsuffisante et la capacité exacte requise.
+/**
+ * Frontend auto-hébergé Gs++ 0.27 : contrat public du lexeur.
+ * Le stockage des jetons appartient à l'appelant. Un premier appel avec une
+ * capacité nulle retourne CapaciteInsuffisante et la capacité exacte requise.
+ **/
 
-espace Gs::Autohebergement
+espace GalacticShrine::GsPP::Autohebergement
 {
     énumération ErreurLexage
     {

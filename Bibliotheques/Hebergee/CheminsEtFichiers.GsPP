@@ -1,4 +1,4 @@
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     octet* NulOctetsFichier;
 
@@ -116,31 +116,31 @@ espace Gs::Hebergee
 
         RequeteFichier mesure = {
             chemin, PointeurNulOctetsFichier(), 0, 0};
-        si (Gs::Hote::LireFichier(&mesure) == 0)
+        si (GalacticShrine::GsPP::Hote::LireFichier(&mesure) == 0)
             retourner CodeErreurHebergee::LectureEchouee;
 
         si (mesure.Taille == 0)
         {
             si (fichier->Donnees)
-                Gs::Hote::LibererMemoire(fichier->Donnees);
+                GalacticShrine::GsPP::Hote::LibererMemoire(fichier->Donnees);
             fichier->Donnees = PointeurNulOctetsFichier();
             fichier->Taille = 0;
             retourner CodeErreurHebergee::Reussite;
         }
 
-        octet* donnees = Gs::Hote::AllouerMemoire(mesure.Taille);
+        octet* donnees = GalacticShrine::GsPP::Hote::AllouerMemoire(mesure.Taille);
         si (!donnees) retourner CodeErreurHebergee::AllocationEchouee;
         RequeteFichier lecture = {
             chemin, donnees, 0, mesure.Taille};
-        si (Gs::Hote::LireFichier(&lecture) == 0
+        si (GalacticShrine::GsPP::Hote::LireFichier(&lecture) == 0
             || lecture.Taille != mesure.Taille)
         {
-            Gs::Hote::LibererMemoire(donnees);
+            GalacticShrine::GsPP::Hote::LibererMemoire(donnees);
             retourner CodeErreurHebergee::LectureEchouee;
         }
 
         si (fichier->Donnees)
-            Gs::Hote::LibererMemoire(fichier->Donnees);
+            GalacticShrine::GsPP::Hote::LibererMemoire(fichier->Donnees);
         fichier->Donnees = donnees;
         fichier->Taille = lecture.Taille;
         retourner CodeErreurHebergee::Reussite;
@@ -155,7 +155,7 @@ espace Gs::Hebergee
     publique vide LibererFichierAlloue(FichierAlloue* fichier)
     {
         si (fichier->Donnees)
-            Gs::Hote::LibererMemoire(fichier->Donnees);
+            GalacticShrine::GsPP::Hote::LibererMemoire(fichier->Donnees);
         fichier->Donnees = PointeurNulOctetsFichier();
         fichier->Taille = 0;
     }
@@ -169,7 +169,7 @@ espace Gs::Hebergee
         si (!VueCheminValide(cheminVue))
             retourner CodeErreurHebergee::CheminInvalide;
         RequeteFichier requete = {chemin, source, taille, taille};
-        si (Gs::Hote::EcrireFichier(&requete) == 0)
+        si (GalacticShrine::GsPP::Hote::EcrireFichier(&requete) == 0)
             retourner CodeErreurHebergee::EcritureEchouee;
         retourner CodeErreurHebergee::Reussite;
     }

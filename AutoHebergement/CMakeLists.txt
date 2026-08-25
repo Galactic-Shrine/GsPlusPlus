@@ -13,6 +13,12 @@ set(GS_ANALYSEUR_DECLARATIONS_OBJET
     "${GS_AUTO_REPERTOIRE}/AnalyseurDeclarations.GsObj")
 set(GS_ANALYSEUR_DECLARATIONS_GSE
     "${GS_AUTO_REPERTOIRE}/AnalyseurDeclarations.GsE")
+set(GS_ANALYSEUR_SEMANTIQUE_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/AnalyseurSemantique")
+set(GS_ANALYSEUR_SEMANTIQUE_OBJET
+    "${GS_AUTO_REPERTOIRE}/AnalyseurSemantique.GsObj")
+set(GS_ANALYSEUR_SEMANTIQUE_GSE
+    "${GS_AUTO_REPERTOIRE}/AnalyseurSemantique.GsE")
 
 add_custom_command(
     OUTPUT "${GS_CLASSIFICATEUR_OBJET}"
@@ -35,9 +41,9 @@ add_custom_command(
     COMMAND $<TARGET_FILE:gsppc>
         "${GS_CLASSIFICATEUR_OBJET}" "${GS_HEBERGEE_GSA}"
         --format gse
-        --point-entree Gs::Autohebergement::ClassifierMotCle
+        --point-entree GalacticShrine::GsPP::Autohebergement::ClassifierMotCle
         --nom "Classificateur Gs++"
-        --version-application 0.27.0-alpha.6
+        --version-application 0.27.0-alpha.7
         -o "${GS_CLASSIFICATEUR_GSE}"
     DEPENDS
         gsppc
@@ -71,9 +77,9 @@ add_custom_command(
     COMMAND $<TARGET_FILE:gsppc>
         "${GS_LEXEUR_OBJET}" "${GS_HEBERGEE_GSA}"
         --format gse
-        --point-entree Gs::Autohebergement::AnalyserSource
+        --point-entree GalacticShrine::GsPP::Autohebergement::AnalyserSource
         --nom "Lexeur auto-hébergé Gs++"
-        --version-application 0.27.0-alpha.6
+        --version-application 0.27.0-alpha.7
         -o "${GS_LEXEUR_GSE}"
     DEPENDS
         gsppc
@@ -111,13 +117,47 @@ add_custom_command(
     COMMAND $<TARGET_FILE:gsppc>
         "${GS_ANALYSEUR_DECLARATIONS_OBJET}" "${GS_HEBERGEE_GSA}"
         --format gse
-        --point-entree Gs::Autohebergement::AnalyserDeclarationsSource
+        --point-entree GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsSource
         --nom "Analyseur de déclarations auto-hébergé Gs++"
-        --version-application 0.27.0-alpha.6
+        --version-application 0.27.0-alpha.7
         -o "${GS_ANALYSEUR_DECLARATIONS_GSE}"
     DEPENDS
         gsppc
         "${GS_ANALYSEUR_DECLARATIONS_OBJET}"
+        bibliotheque_hebergee
+    VERBATIM
+)
+
+add_custom_command(
+    OUTPUT "${GS_ANALYSEUR_SEMANTIQUE_OBJET}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${GS_AUTO_REPERTOIRE}"
+    COMMAND $<TARGET_FILE:gsppc>
+        "${GS_HEBERGEE_INTERFACE}"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
+        "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.HGsPP"
+        "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.GsPP"
+        --format gsobj -o "${GS_ANALYSEUR_SEMANTIQUE_OBJET}"
+    DEPENDS
+        gsppc
+        "${GS_HEBERGEE_INTERFACE}"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
+        "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.HGsPP"
+        "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.GsPP"
+    VERBATIM
+)
+
+add_custom_command(
+    OUTPUT "${GS_ANALYSEUR_SEMANTIQUE_GSE}"
+    COMMAND $<TARGET_FILE:gsppc>
+        "${GS_ANALYSEUR_SEMANTIQUE_OBJET}" "${GS_HEBERGEE_GSA}"
+        --format gse
+        --point-entree GalacticShrine::GsPP::Autohebergement::AnalyserSemantique
+        --nom "Analyseur sémantique auto-hébergé Gs++"
+        --version-application 0.27.0-alpha.7
+        -o "${GS_ANALYSEUR_SEMANTIQUE_GSE}"
+    DEPENDS
+        gsppc
+        "${GS_ANALYSEUR_SEMANTIQUE_OBJET}"
         bibliotheque_hebergee
     VERBATIM
 )
@@ -128,9 +168,12 @@ add_custom_target(
         "${GS_CLASSIFICATEUR_GSE}"
         "${GS_LEXEUR_GSE}"
         "${GS_ANALYSEUR_DECLARATIONS_GSE}"
+        "${GS_ANALYSEUR_SEMANTIQUE_GSE}"
 )
 add_dependencies(autohebergement_images bibliotheque_hebergee)
 set(GS_CLASSIFICATEUR_GSE "${GS_CLASSIFICATEUR_GSE}" CACHE INTERNAL "")
 set(GS_LEXEUR_GSE "${GS_LEXEUR_GSE}" CACHE INTERNAL "")
 set(GS_ANALYSEUR_DECLARATIONS_GSE
     "${GS_ANALYSEUR_DECLARATIONS_GSE}" CACHE INTERNAL "")
+set(GS_ANALYSEUR_SEMANTIQUE_GSE
+    "${GS_ANALYSEUR_SEMANTIQUE_GSE}" CACHE INTERNAL "")

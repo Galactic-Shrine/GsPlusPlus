@@ -1,0 +1,144 @@
+/**
+ * Frontend auto-hébergé Gs++ 0.27 : première tranche sémantique.
+ *
+ * Le passage consomme l'AST syntaxique compact sans le modifier. Le stockage
+ * des symboles et des résolutions appartient à l'appelant.
+ **/
+
+espace GalacticShrine::GsPP::Autohebergement
+{
+    énumération ErreurAnalyseSemantique
+    {
+        Reussite = 0,
+        Success = 0,
+        ArgumentInvalide = 1,
+        InvalidArgument = 1,
+        AstInvalide = 2,
+        InvalidAst = 2,
+        AllocationImpossible = 3,
+        AllocationFailure = 3,
+        CapaciteSymbolesInsuffisante = 4,
+        InsufficientSymbolCapacity = 4,
+        CapaciteResolutionsInsuffisante = 5,
+        InsufficientResolutionCapacity = 5,
+        TypeDeclarePlusieursFois = 6,
+        TypeDeclaredMoreThanOnce = 6,
+        NomTypeEnConflit = 7,
+        TypeNameConflict = 7,
+        GlobaleDeclareePlusieursFois = 8,
+        GlobalDeclaredMoreThanOnce = 8,
+        NomGlobalEnConflit = 9,
+        GlobalNameConflict = 9,
+        AliasDeclarePlusieursFois = 10,
+        AliasDeclaredMoreThanOnce = 10,
+        AliasEnConflit = 11,
+        AliasConflict = 11,
+        ChampDeclarePlusieursFois = 12,
+        FieldDeclaredMoreThanOnce = 12,
+        AliasChampDeclarePlusieursFois = 13,
+        FieldAliasDeclaredMoreThanOnce = 13,
+        AliasChampEnConflit = 14,
+        FieldAliasConflict = 14,
+        EnumerateurDeclarePlusieursFois = 15,
+        EnumeratorDeclaredMoreThanOnce = 15,
+        ParametreDeclarePlusieursFois = 16,
+        ParameterDeclaredMoreThanOnce = 16,
+        VariableLocaleDeclareePlusieursFois = 17,
+        LocalVariableDeclaredMoreThanOnce = 17,
+        SymboleIntrouvable = 18,
+        UnknownSymbol = 18,
+        AdresseSurchargeAmbigue = 19,
+        AmbiguousOverloadAddress = 19,
+        FonctionAbsente = 20,
+        MissingFunction = 20,
+    };
+
+    énumération GenreSymboleSemantique
+    {
+        Inconnu = 0,
+        Unknown = 0,
+        Type = 1,
+        Fonction = 2,
+        Function = 2,
+        VariableGlobale = 3,
+        GlobalVariable = 3,
+        Alias = 4,
+        Champ = 5,
+        Field = 5,
+        AliasChamp = 6,
+        FieldAlias = 6,
+        Enumerateur = 7,
+        Enumerator = 7,
+        Parametre = 8,
+        Parameter = 8,
+        VariableLocale = 9,
+        LocalVariable = 9,
+    };
+
+    énumération DrapeauResolutionSemantique
+    {
+        Aucun = 0,
+        None = 0,
+        GroupeSurcharges = 1,
+        OverloadGroup = 1,
+        RecepteurClasse = 2,
+        ClassReceiver = 2,
+        RecepteurBase = 4,
+        BaseReceiver = 4,
+    };
+
+    structure SymboleSemantique
+    {
+        naturel64 IndexNoeud;
+        naturel64 IndexPortee;
+        naturel64 HachageNom;
+        naturel64 HachageEspace;
+        naturel64 HachageType;
+        naturel32 Genre;
+        naturel32 Drapeaux;
+    };
+
+    structure ResolutionSemantique
+    {
+        naturel64 IndexNoeud;
+        naturel64 IndexSymbole;
+        naturel64 HachageType;
+        naturel32 GenreCible;
+        naturel32 Drapeaux;
+    };
+
+    structure ResultatAnalyseSemantique
+    {
+        ErreurAnalyseSemantique Erreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+        naturel32 Detail;
+        naturel64 NombreSymboles;
+        naturel64 CapaciteSymbolesRequise;
+        naturel64 NombreResolutions;
+        naturel64 CapaciteResolutionsRequise;
+        naturel64 NombreOctetsArene;
+    };
+
+    structure RequeteAnalyseSemantique
+    {
+        constante caractère* Source;
+        naturel64 TailleSource;
+        constante NoeudDeclaration* Noeuds;
+        naturel64 NombreNoeuds;
+        SymboleSemantique* Symboles;
+        naturel64 CapaciteSymboles;
+        ResolutionSemantique* Resolutions;
+        naturel64 CapaciteResolutions;
+        ResultatAnalyseSemantique Resultat;
+    };
+
+    publique ErreurAnalyseSemantique AnalyserSemantique(
+        RequeteAnalyseSemantique* requete);
+
+    alias SemanticSymbol = SymboleSemantique;
+    alias SemanticResolution = ResolutionSemantique;
+    alias SemanticAnalysisResult = ResultatAnalyseSemantique;
+    alias SemanticAnalysisRequest = RequeteAnalyseSemantique;
+    alias AnalyzeSemantics = AnalyserSemantique;
+}

@@ -1,4 +1,4 @@
-espace Gs::Systeme
+espace GalacticShrine::GsPP::Systeme
 {
     publique naturel32 RotationGauche32(naturel32 valeur, naturel32 distance)
     {

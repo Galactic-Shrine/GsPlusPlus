@@ -578,7 +578,7 @@ namespace
     void TesterBitsEtIntrinseques()
     {
         const auto programme = Analyser(R"(
-            espace Gs::Intrinseques
+            espace GalacticShrine::GsPP::Intrinseques
             {
                 externe naturel32 ChargerAtomique32(volatile naturel32* cible);
                 externe naturel64 ChargerAtomique64(volatile naturel64* cible);
@@ -600,13 +600,13 @@ namespace
 
             publique naturel32 TesterAtomiques(volatile naturel32* cible)
             {
-                naturel32 avant = Gs::Intrinseques::ChargerAtomique32(cible);
-                Gs::Intrinseques::StockerAtomique32(cible, avant + 1);
-                avant = Gs::Intrinseques::EchangerAtomique32(cible, 2);
-                avant = Gs::Intrinseques::AjouterAtomique32(cible, 3);
-                avant = Gs::Intrinseques::ComparerEchanger32(cible, 5, 8);
-                Gs::Intrinseques::BarriereMemoire();
-                Gs::Intrinseques::PauseProcesseur();
+                naturel32 avant = GalacticShrine::GsPP::Intrinseques::ChargerAtomique32(cible);
+                GalacticShrine::GsPP::Intrinseques::StockerAtomique32(cible, avant + 1);
+                avant = GalacticShrine::GsPP::Intrinseques::EchangerAtomique32(cible, 2);
+                avant = GalacticShrine::GsPP::Intrinseques::AjouterAtomique32(cible, 3);
+                avant = GalacticShrine::GsPP::Intrinseques::ComparerEchanger32(cible, 5, 8);
+                GalacticShrine::GsPP::Intrinseques::BarriereMemoire();
+                GalacticShrine::GsPP::Intrinseques::PauseProcesseur();
                 retourner (~avant & 255) | (avant ^ 7);
             }
         )");
@@ -650,13 +650,13 @@ namespace
                    [](const GsPP::SymboleMachine& symbole)
                    {
                        return !symbole.EstDefini
-                           && symbole.Nom.starts_with("Gs::Intrinseques::");
+                           && symbole.Nom.starts_with("GalacticShrine::GsPP::Intrinseques::");
                    }),
                "une intrinsèque intégrée subsiste comme import externe");
         Exiger(std::none_of(
                    machine.Relocalisations.begin(), machine.Relocalisations.end(),
                    [](const GsPP::CodeMachine::Relocalisation& relocalisation)
-                   { return relocalisation.Symbole.starts_with("Gs::Intrinseques::"); }),
+                   { return relocalisation.Symbole.starts_with("GalacticShrine::GsPP::Intrinseques::"); }),
                "une intrinsèque intégrée possède encore une relocalisation");
 
         const auto sansImportInutile = Compiler(R"(
@@ -682,14 +682,14 @@ namespace
         try
         {
             (void)Compiler(R"(
-                espace Gs::Intrinseques
+                espace GalacticShrine::GsPP::Intrinseques
                 {
                     externe naturel64 ChargerAtomique32(
                         volatile naturel32* cible);
                 }
                 publique naturel64 Principal(volatile naturel32* cible)
                 {
-                    retourner Gs::Intrinseques::ChargerAtomique32(cible);
+                    retourner GalacticShrine::GsPP::Intrinseques::ChargerAtomique32(cible);
                 }
             )");
         }
@@ -3133,7 +3133,7 @@ int main()
         TesterChargeurGsE();
         TesterObjetNatifGsO();
         TesterBibliothequeEtEditionLiens();
-        std::cout << "Tous les tests Gs++ 0.27.0-alpha.6 ont réussi.\n";
+        std::cout << "Tous les tests Gs++ 0.27.0-alpha.7 ont réussi.\n";
         return 0;
     }
     catch (const GsPP::ErreurCompilation& erreur)

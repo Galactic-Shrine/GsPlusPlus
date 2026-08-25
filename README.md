@@ -29,13 +29,15 @@ Le français est la syntaxe canonique du langage. Les mots-clés anglais
 documentés sont des alias officiels avec la même sémantique et la même
 génération de code.
 
-> **État actuel — `0.27.0-alpha.6`**
+> **État actuel — `0.27.0-alpha.7`**
 >
 > Cette préversion permet d’évaluer et de développer avec la chaîne Gs++
 > actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais le frontend
 > auto-hébergé reste en développement. Le lexeur, l’AST des déclarations et la
-> hiérarchie des blocs, instructions et expressions sont désormais écrits et
-> validés en Gs++. Les premières étapes sémantiques restent à migrer.
+> hiérarchie des blocs, instructions et expressions ainsi qu’une première
+> passe d’indexation et de résolution sémantique sont désormais écrits et
+> validés en Gs++. La sélection typée des surcharges et les étapes sémantiques
+> suivantes restent à migrer.
 
 ## Principes du langage
 
@@ -50,6 +52,11 @@ génération de code.
 | Profils d’exécution | Profil freestanding minimal et services hébergés explicitement liés |
 | Auto-hébergement progressif | Composants du compilateur réécrits et validés en Gs++ |
 | Reproductibilité | Formats versionnés, cartes de liens et matrice de conformité portable |
+
+Les API livrées par Gs++ utilisent le préfixe d’espace de noms canonique
+`GalacticShrine::GsPP::`. Par exemple, les services hébergés sont exposés sous
+`GalacticShrine::GsPP::Hebergee` et les imports fournis par l’hôte sous
+`GalacticShrine::GsPP::Hote`.
 
 ## Un premier programme
 
@@ -171,7 +178,7 @@ Construction/Ninja/Release/Bin/gsppc \
 
 ## Télécharger une préversion
 
-La [release `0.27.0-alpha.6`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.6)
+La [release `0.27.0-alpha.7`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.7)
 propose des paquets x86-64 pour Windows et Linux. Chaque paquet contient les
 outils, les en-têtes SDK, les bibliothèques Gs++, les exemples et la
 documentation Markdown. Le fichier `SHA256SUMS.txt` permet de vérifier les
@@ -199,7 +206,7 @@ GsPlusPlus/
 - [ABI native x86-64](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Matrice de conformité](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [Validation de `0.27.0-alpha.6`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.6.md)
+- [Validation de `0.27.0-alpha.7`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md)
 - [Feuille de route](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 Toute la documentation normative est maintenue en Markdown comme source
@@ -211,8 +218,8 @@ principale.
 - CTest : **3/3** sous Windows et **4/4** sous Linux ;
 - quatre scénarios de benchmark smoke réussis sur chaque hôte ;
 - CI GitHub Windows et Linux ;
-- `Lexeur.GsE` et `AnalyseurDeclarations.GsE` reproductibles entre les deux
-  chaînes validées.
+- les quatre images auto-hébergées, dont `AnalyseurSemantique.GsE`, sont
+  comparées entre les deux chaînes validées.
 
 ## Licence
 

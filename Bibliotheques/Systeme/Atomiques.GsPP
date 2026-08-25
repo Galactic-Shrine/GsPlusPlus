@@ -1,71 +1,71 @@
-espace Gs::Systeme
+espace GalacticShrine::GsPP::Systeme
 {
     publique naturel32 ChargerAtomique32(volatile naturel32* cible)
     {
-        retourner Gs::Intrinseques::ChargerAtomique32(cible);
+        retourner GalacticShrine::GsPP::Intrinseques::ChargerAtomique32(cible);
     }
 
     publique naturel64 ChargerAtomique64(volatile naturel64* cible)
     {
-        retourner Gs::Intrinseques::ChargerAtomique64(cible);
+        retourner GalacticShrine::GsPP::Intrinseques::ChargerAtomique64(cible);
     }
 
     publique vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur)
     {
-        Gs::Intrinseques::StockerAtomique32(cible, valeur);
+        GalacticShrine::GsPP::Intrinseques::StockerAtomique32(cible, valeur);
     }
 
     publique vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur)
     {
-        Gs::Intrinseques::StockerAtomique64(cible, valeur);
+        GalacticShrine::GsPP::Intrinseques::StockerAtomique64(cible, valeur);
     }
 
     publique naturel32 EchangerAtomique32(
         volatile naturel32* cible, naturel32 valeur)
     {
-        retourner Gs::Intrinseques::EchangerAtomique32(cible, valeur);
+        retourner GalacticShrine::GsPP::Intrinseques::EchangerAtomique32(cible, valeur);
     }
 
     publique naturel64 EchangerAtomique64(
         volatile naturel64* cible, naturel64 valeur)
     {
-        retourner Gs::Intrinseques::EchangerAtomique64(cible, valeur);
+        retourner GalacticShrine::GsPP::Intrinseques::EchangerAtomique64(cible, valeur);
     }
 
     publique naturel32 AjouterAtomique32(
         volatile naturel32* cible, naturel32 valeur)
     {
-        retourner Gs::Intrinseques::AjouterAtomique32(cible, valeur);
+        retourner GalacticShrine::GsPP::Intrinseques::AjouterAtomique32(cible, valeur);
     }
 
     publique naturel64 AjouterAtomique64(
         volatile naturel64* cible, naturel64 valeur)
     {
-        retourner Gs::Intrinseques::AjouterAtomique64(cible, valeur);
+        retourner GalacticShrine::GsPP::Intrinseques::AjouterAtomique64(cible, valeur);
     }
 
     publique naturel32 ComparerEchanger32(
         volatile naturel32* cible, naturel32 attendu, naturel32 desire)
     {
-        retourner Gs::Intrinseques::ComparerEchanger32(
+        retourner GalacticShrine::GsPP::Intrinseques::ComparerEchanger32(
             cible, attendu, desire);
     }
 
     publique naturel64 ComparerEchanger64(
         volatile naturel64* cible, naturel64 attendu, naturel64 desire)
     {
-        retourner Gs::Intrinseques::ComparerEchanger64(
+        retourner GalacticShrine::GsPP::Intrinseques::ComparerEchanger64(
             cible, attendu, desire);
     }
 
     publique vide BarriereMemoire()
     {
-        Gs::Intrinseques::BarriereMemoire();
+        GalacticShrine::GsPP::Intrinseques::BarriereMemoire();
     }
 
     publique vide PauseProcesseur()
     {
-        Gs::Intrinseques::PauseProcesseur();
+        GalacticShrine::GsPP::Intrinseques::PauseProcesseur();
     }
 
     publique vide InitialiserVerrou(VerrouAtomique* verrou)

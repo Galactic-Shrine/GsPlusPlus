@@ -172,9 +172,9 @@ test "$(od -An -tu2 -j20 -N2 "$bibliotheque_systeme" | tr -d ' \n')" = "1"
 "$verificateur" "$sortie_bibliotheque_systeme" | grep -q "GsE valide"
 "$chargeur" "$sortie_bibliotheque_systeme" --executer \
     | grep -q "Code de retour : 64"
-grep -aq "Gs::Systeme::CopierMemoire" "$sortie_bibliotheque_systeme"
-grep -aq "Gs::System::AtomicFetchAdd64" "$sortie_bibliotheque_systeme"
-if grep -aq "Gs::Intrinseques::" "$sortie_bibliotheque_systeme"
+grep -aq "GalacticShrine::GsPP::Systeme::CopierMemoire" "$sortie_bibliotheque_systeme"
+grep -aq "GalacticShrine::GsPP::System::AtomicFetchAdd64" "$sortie_bibliotheque_systeme"
+if grep -aq "GalacticShrine::GsPP::Intrinseques::" "$sortie_bibliotheque_systeme"
 then
     echo "Une intrinsèque intégrée subsiste comme import dans le GsE." >&2
     exit 1
@@ -189,8 +189,8 @@ cmp "$repertoire_systeme/GsSysteme-premiere.GsA" \
 test "$(od -An -tx1 -N5 "$bibliotheque_hebergee" | tr -d ' \n')" = "4753413a30"
 "$verificateur" "$classificateur" | grep -q "GsE valide"
 "$verificateur" "$test_hebergee" | grep -q "GsE valide"
-grep -aq "Gs::Autohebergement::ClassifierMotCle" "$classificateur"
-grep -aq "Gs::Hote::EmettreDiagnostic" "$test_hebergee"
+grep -aq "GalacticShrine::GsPP::Autohebergement::ClassifierMotCle" "$classificateur"
+grep -aq "GalacticShrine::GsPP::Hote::EmettreDiagnostic" "$test_hebergee"
 cp "$bibliotheque_hebergee" "$repertoire_hebergee/GsHebergee-premiere.GsA"
 "$compilateur" Bibliotheques/Hebergee/GsHebergee.GsPj \
     -o "$repertoire_hebergee/GsHebergee-reconstruite.GsA" \

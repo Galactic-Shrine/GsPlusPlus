@@ -1,4 +1,4 @@
-espace Gs::Hebergee
+espace GalacticShrine::GsPP::Hebergee
 {
     publique booléen ChargerFichier(
         constante caractère* chemin,
@@ -7,7 +7,7 @@ espace Gs::Hebergee
         naturel64* taille)
     {
         RequeteFichier requete = {chemin, destination, 0, capacite};
-        naturel32 resultat = Gs::Hote::LireFichier(&requete);
+        naturel32 resultat = GalacticShrine::GsPP::Hote::LireFichier(&requete);
         si (resultat == 0 || requete.Taille > capacite)
         {
             *taille = 0;
@@ -21,11 +21,11 @@ espace Gs::Hebergee
         constante caractère* chemin, octet* source, naturel64 taille)
     {
         RequeteFichier requete = {chemin, source, taille, taille};
-        retourner Gs::Hote::EcrireFichier(&requete) != 0;
+        retourner GalacticShrine::GsPP::Hote::EcrireFichier(&requete) != 0;
     }
 
     publique vide SignalerDiagnostic(Diagnostic diagnostic)
     {
-        Gs::Hote::EmettreDiagnostic(diagnostic);
+        GalacticShrine::GsPP::Hote::EmettreDiagnostic(diagnostic);
     }
 }

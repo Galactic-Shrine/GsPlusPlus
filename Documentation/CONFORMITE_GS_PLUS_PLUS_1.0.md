@@ -1,7 +1,7 @@
 # Conformité Gs++ 1.0
 
 **NORMATIF — suite initiale livrée en 0.24, étendue en 0.27.0-alpha.1 et
-revalidée par Gs++ 0.27.0-alpha.6.**
+revalidée par Gs++ 0.27.0-alpha.7.**
 
 La conformité distingue le contrat produit des tests de développement. Une
 construction Gs++ n’est pas déclarée conforme parce qu’elle compile : elle
@@ -22,7 +22,7 @@ chaque exigence obligatoire.
 Le manifeste est lisible par machine. Le présent document explique la portée
 des exigences ; il ne remplace ni le manifeste ni les contrats de format.
 
-## Matrice obligatoire de Gs++ 0.27.0-alpha.6
+## Matrice obligatoire de Gs++ 0.27.0-alpha.7
 
 | Identifiant | Domaine | Preuve |
 | --- | --- | --- |
@@ -35,8 +35,8 @@ des exigences ; il ne remplace ni le manifeste ni les contrats de format.
 | `CONF-ABI-001` | ABI | présence de `GsAbi:x64-ms-v1` dans GsObj |
 | `CONF-LANG-001` | langage | programmes français et anglais retournant tous deux 24 |
 | `CONF-LIFE-001` | durée de vie | valeurs par défaut, délégation, tableaux avec arguments, construction `123`, destruction `321` et retour 25 |
-| `CONF-HOST-001` | profil hébergé | primitives 0.26 et exactement cinq imports `Gs::Hote` dans `GsHebergee.GsA` et le GsE de test |
-| `CONF-HOST-002` | profil système | absence de tout import `Gs::Hote` dans `GsSysteme.GsA` |
+| `CONF-HOST-001` | profil hébergé | primitives 0.26 et exactement cinq imports `GalacticShrine::GsPP::Hote` dans `GsHebergee.GsA` et le GsE de test |
+| `CONF-HOST-002` | profil système | absence de tout import `GalacticShrine::GsPP::Hote` dans `GsSysteme.GsA` |
 | `CONF-DET-001` | reproductibilité | égalité binaire de deux GsObj, GsA et GsE produits à entrées identiques |
 | `CONF-PROJ-001` | projets | construction et exécution d’une solution XML 1.0 contenant des projets français et anglais |
 | `CONF-NEG-001` | refus | refus de la sortie obsolète `.GsO` |

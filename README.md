@@ -35,8 +35,9 @@ génération de code.
 > chaîne Gs++ actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais
 > le frontend auto-hébergé reste en développement. Le lexeur, l’AST compact et
 > la première passe sémantique sont écrits en Gs++. La branche courante ajoute
-> une première sélection typée des surcharges libres ; la résolution complète
-> des types et les étapes sémantiques suivantes restent à migrer.
+> la sélection typée des fonctions libres et méthodes, les accès membres,
+> références, agrégats et conversions d’héritage couvertes par cette tranche ;
+> la résolution complète des types et les étapes suivantes restent à migrer.
 
 ## Principes du langage
 

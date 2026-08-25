@@ -27,8 +27,14 @@
   tabulations et formes de commentaires ;
 - première sélection typée des surcharges libres à partir des paramètres,
   variables, conversions explicites et littéraux représentables ;
+- résolution des champs, alias de champs et méthodes par `.` ou `->`, avec
+  parcours de la chaîne d’héritage et identification des membres hérités ;
+- extension du classement des surcharges aux paramètres par référence,
+  agrégats temporaires et conversions `Dérivée → Base&` ou
+  `Dérivée* → Base*` ;
 - ajout des diagnostics `AucuneSurchargeCompatible` et
-  `AppelSurchargeAmbigu`, comparés au bootstrap C++ ;
+  `AppelSurchargeAmbigu`, `RecepteurMembreInvalide` et `MembreIntrouvable`,
+  comparés au bootstrap C++ ;
 - validation complète avec Visual Studio 2026 et GNU/Linux, avec quatre images
   auto-hébergées identiques bit à bit entre les deux chaînes.
 

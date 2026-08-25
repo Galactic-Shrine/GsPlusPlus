@@ -2647,15 +2647,43 @@ namespace
         const std::string francais =
             "espace Semantique {\n"
             "  structure Point { entier32 X; };\n"
-            "  classe Base { publique: entier32 Lire() { retourner 1; } };\n"
+            "  classe Base { publique: entier32 Heritee; "
+            "entier32 Lire() { retourner 1; } "
+            "entier32 Transformer(entier32 valeur) { retourner valeur; } "
+            "entier64 Transformer(entier64 valeur) { retourner valeur; } };\n"
             "  classe Objet : publique Base { publique: entier32 Valeur; "
             "entier32 LireValeur() { retourner soi.Valeur; } "
-            "entier32 LireBase() { retourner parent.Lire(); } };\n"
+            "entier32 LireBase() { retourner parent.Lire(); } "
+            "entier32 LireHeritee() { retourner soi.Heritee; } "
+            "entier64 Transformer64(entier32 valeur) { "
+            "retourner soi.Transformer(convertir<entier64>(valeur)); } };\n"
             "  entier32 Globale = 3;\n"
             "  publique entier32 Choisir(entier32 valeur) { "
             "retourner valeur; }\n"
             "  publique entier64 Choisir(entier64 valeur) { "
             "retourner valeur; }\n"
+            "  publique entier32 LireReference(entier32& valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier64 LireReference(entier64& valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier32 Mesurer(Point valeur) { "
+            "retourner valeur.X; }\n"
+            "  publique entier32 Mesurer(Point& valeur) { "
+            "retourner valeur.X; }\n"
+            "  publique entier32 LireBaseReference(Base& valeur) { "
+            "retourner valeur.Heritee; }\n"
+            "  publique naturel64 LireBaseReference(naturel64 valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier32 PrendreBase(Base* valeur) { "
+            "retourner valeur->Heritee; }\n"
+            "  publique naturel64 PrendreBase(naturel64 valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier32 TesterMembres(Objet* objet, entier32 valeur) {\n"
+            "    Objet locale;\n"
+            "    retourner objet->Transformer(valeur) "
+            "+ LireReference(valeur) + Mesurer({1}) "
+            "+ LireBaseReference(locale) + PrendreBase(objet);\n"
+            "  }\n"
             "  publique entier32 Calculer(entier32 gauche, entier32 droite) {\n"
             "    entier32 somme = gauche + droite;\n"
             "    { entier32 copie = somme; somme = copie; }\n"
@@ -2668,13 +2696,36 @@ namespace
         const std::string anglais =
             "namespace Semantique {\n"
             "  struct Point { int32 X; };\n"
-            "  class Base { public: int32 Lire() { return 1; } };\n"
+            "  class Base { public: int32 Heritee; "
+            "int32 Lire() { return 1; } "
+            "int32 Transformer(int32 valeur) { return valeur; } "
+            "int64 Transformer(int64 valeur) { return valeur; } };\n"
             "  class Objet : public Base { public: int32 Valeur; "
             "int32 LireValeur() { return this.Valeur; } "
-            "int32 LireBase() { return super.Lire(); } };\n"
+            "int32 LireBase() { return super.Lire(); } "
+            "int32 LireHeritee() { return this.Heritee; } "
+            "int64 Transformer64(int32 valeur) { "
+            "return this.Transformer(cast<int64>(valeur)); } };\n"
             "  int32 Globale = 3;\n"
             "  public int32 Choisir(int32 valeur) { return valeur; }\n"
             "  public int64 Choisir(int64 valeur) { return valeur; }\n"
+            "  public int32 LireReference(int32& valeur) { return valeur; }\n"
+            "  public int64 LireReference(int64& valeur) { return valeur; }\n"
+            "  public int32 Mesurer(Point valeur) { return valeur.X; }\n"
+            "  public int32 Mesurer(Point& valeur) { return valeur.X; }\n"
+            "  public int32 LireBaseReference(Base& valeur) { "
+            "return valeur.Heritee; }\n"
+            "  public uint64 LireBaseReference(uint64 valeur) { "
+            "return valeur; }\n"
+            "  public int32 PrendreBase(Base* valeur) { "
+            "return valeur->Heritee; }\n"
+            "  public uint64 PrendreBase(uint64 valeur) { return valeur; }\n"
+            "  public int32 TesterMembres(Objet* objet, int32 valeur) {\n"
+            "    Objet locale;\n"
+            "    return objet->Transformer(valeur) "
+            "+ LireReference(valeur) + Mesurer({1}) "
+            "+ LireBaseReference(locale) + PrendreBase(objet);\n"
+            "  }\n"
             "  public int32 Calculer(int32 gauche, int32 droite) {\n"
             "    int32 somme = gauche + droite;\n"
             "    { int32 copie = somme; somme = copie; }\n"
@@ -2695,15 +2746,15 @@ namespace
                     == resultatAnglais.Resolutions.size(),
             "les sorties sémantiques bilingues ont des tailles différentes");
 
-        const auto nombreReferences = std::count_if(
+        const auto nombreCiblesSemantiques = std::count_if(
             resultatFrancais.Noeuds.begin(),
             resultatFrancais.Noeuds.end(),
             [](const NoeudDeclarationHote& noeud)
-            { return noeud.Genre == 24; });
+            { return noeud.Genre == 24 || noeud.Genre == 29; });
         Exiger(
             resultatFrancais.Resolutions.size()
-                == static_cast<std::size_t>(nombreReferences),
-            "toutes les références syntaxiques n’ont pas été résolues");
+                == static_cast<std::size_t>(nombreCiblesSemantiques),
+            "toutes les références et tous les membres n’ont pas été résolus");
         for (const auto& resolution : resultatFrancais.Resolutions)
         {
             Exiger(
@@ -2716,9 +2767,13 @@ namespace
             const auto& symbole =
                 resultatFrancais.Symboles[resolution.IndexSymbole];
             Exiger(
-                reference.Genre == 24
+                (reference.Genre == 24 || reference.Genre == 29)
                     && resolution.GenreCible == symbole.Genre,
                 "genre de cible sémantique incohérent");
+            if (reference.Genre == 29)
+                Exiger(
+                    (resolution.Drapeaux & 8U) != 0,
+                    "une résolution de membre ne porte pas son drapeau");
         }
         const auto typeEntier32 = HacherTypeDeclaration(
             GsPP::TypeGs(GsPP::GenreType::Entier32));
@@ -2772,6 +2827,110 @@ namespace
         Exiger(
             base != resultatFrancais.Resolutions.end(),
             "le récepteur de base parent/super n’a pas été résolu");
+
+        const auto methodeHeritee = std::find_if(
+            resultatFrancais.Resolutions.begin(),
+            resultatFrancais.Resolutions.end(),
+            [&](const ResolutionSemantiqueHote& resolution)
+            {
+                const auto& noeud =
+                    resultatFrancais.Noeuds[resolution.IndexNoeud];
+                return noeud.Genre == 29
+                    && noeud.HachageNom == HacherTexte("Transformer")
+                    && (resolution.Drapeaux & (1U | 8U | 16U | 32U))
+                        == (1U | 8U | 16U | 32U);
+            });
+        Exiger(
+            methodeHeritee != resultatFrancais.Resolutions.end(),
+            "la surcharge de méthode héritée n’a pas été sélectionnée");
+
+        const auto champHerite = std::find_if(
+            resultatFrancais.Resolutions.begin(),
+            resultatFrancais.Resolutions.end(),
+            [&](const ResolutionSemantiqueHote& resolution)
+            {
+                const auto& noeud =
+                    resultatFrancais.Noeuds[resolution.IndexNoeud];
+                return noeud.Genre == 29
+                    && noeud.HachageNom == HacherTexte("Heritee")
+                    && (resolution.Drapeaux & (8U | 16U))
+                        == (8U | 16U)
+                    && (resolution.Drapeaux & 32U) == 0;
+            });
+        Exiger(
+            champHerite != resultatFrancais.Resolutions.end(),
+            "le champ hérité n’a pas été résolu");
+
+        const auto hachageParametreCible =
+            [&](const ResolutionSemantiqueHote& resolution)
+            -> std::uint64_t
+        {
+            const auto indexFonction = resultatFrancais.Symboles[
+                resolution.IndexSymbole].IndexNoeud;
+            const auto parametre = std::find_if(
+                resultatFrancais.Noeuds.begin(),
+                resultatFrancais.Noeuds.end(),
+                [&](const NoeudDeclarationHote& noeud)
+                {
+                    return noeud.Genre == 2
+                        && noeud.Parent == indexFonction;
+                });
+            Exiger(
+                parametre != resultatFrancais.Noeuds.end(),
+                "la fonction sélectionnée n’a aucun paramètre explicite");
+            return parametre->HachageType;
+        };
+
+        const auto exigerSurcharge =
+            [&](std::string_view nom, std::uint64_t typeParametre)
+        {
+            const auto resolution = std::find_if(
+                resultatFrancais.Resolutions.begin(),
+                resultatFrancais.Resolutions.end(),
+                [&](const ResolutionSemantiqueHote& valeur)
+                {
+                    return resultatFrancais.Noeuds[valeur.IndexNoeud]
+                                .HachageNom == HacherTexte(nom)
+                        && (valeur.Drapeaux & 1U) != 0
+                        && hachageParametreCible(valeur) == typeParametre;
+                });
+            Exiger(
+                resolution != resultatFrancais.Resolutions.end(),
+                "la surcharge exacte n’a pas été sélectionnée pour "
+                    + std::string(nom));
+        };
+
+        auto entier32Reference = GsPP::TypeGs(GsPP::GenreType::Entier32);
+        entier32Reference.EstReference = true;
+        auto pointValeur = GsPP::TypeGs(GsPP::GenreType::Structure, "Point");
+        auto baseReference = GsPP::TypeGs(GsPP::GenreType::Structure, "Base");
+        baseReference.EstReference = true;
+        auto basePointeur = GsPP::TypeGs(
+            GsPP::GenreType::Structure, "Base", 1);
+        exigerSurcharge(
+            "LireReference", HacherTypeDeclaration(entier32Reference));
+        exigerSurcharge("Mesurer", HacherTypeDeclaration(pointValeur));
+        exigerSurcharge(
+            "LireBaseReference", HacherTypeDeclaration(baseReference));
+        exigerSurcharge(
+            "PrendreBase", HacherTypeDeclaration(basePointeur));
+
+        bool methodeEntier32 = false;
+        bool methodeEntier64 = false;
+        for (const auto& resolution : resultatFrancais.Resolutions)
+        {
+            const auto& noeud =
+                resultatFrancais.Noeuds[resolution.IndexNoeud];
+            if (noeud.Genre != 29
+                || noeud.HachageNom != HacherTexte("Transformer"))
+                continue;
+            const auto type = hachageParametreCible(resolution);
+            methodeEntier32 |= type == typeEntier32;
+            methodeEntier64 |= type == typeEntier64;
+        }
+        Exiger(
+            methodeEntier32 && methodeEntier64,
+            "les deux surcharges de méthode n’ont pas été distinguées");
 
         ComparerErreurSemantique(
             syntaxe, semantique,
@@ -2845,6 +3004,28 @@ namespace
             "publique entier64 F(naturel64 X, entier64 Y) { retourner Y; } "
             "publique vide G() { F(1, 1); }",
             22, "appel-surcharge-ambigu");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique entier32 F(entier32 X) { retourner X.Y; }",
+            23, "recepteur-membre-invalide");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure S { entier32 X; }; "
+            "publique entier32 F(S valeur) { retourner valeur.Y; }",
+            24, "membre-introuvable");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: entier32 M(entier32 X) { retourner X; } "
+            "entier64 M(entier64 X) { retourner X; } "
+            "entier32 F() { retourner soi.M(vrai); } };",
+            21, "aucune-surcharge-methode-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: "
+            "entier64 M(entier64 X, naturel64 Y) { retourner X; } "
+            "entier64 M(naturel64 X, entier64 Y) { retourner Y; } "
+            "entier64 F() { retourner soi.M(1, 1); } };",
+            22, "appel-methode-surcharge-ambigu");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure SansFonction {};",

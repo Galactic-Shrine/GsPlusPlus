@@ -283,9 +283,9 @@ paquets extraits sont consignés dans
 
 ## Première sélection typée des surcharges — après alpha.7
 
-La passe auto-hébergée sélectionne désormais une fonction libre précise
-lorsqu’une référence placée en cible d’appel désigne plusieurs surcharges. Le
-choix tient compte :
+La passe auto-hébergée sélectionne désormais une fonction libre ou une méthode
+précise lorsqu’une cible d’appel désigne plusieurs surcharges. Le choix tient
+compte :
 
 - du nombre de paramètres ;
 - des empreintes de type des paramètres et des arguments déjà résolus ;
@@ -294,28 +294,43 @@ choix tient compte :
 - du type canonique des littéraux booléens, chaînes et entiers ;
 - de l’adaptation d’un littéral entier lorsque sa valeur est représentable
   dans le type du paramètre ;
+- des paramètres par référence et de l’exigence d’une valeur gauche ;
+- des agrégats temporaires, refusés pour une référence et classés derrière une
+  correspondance de type exacte ;
+- des conversions d’héritage `Dérivée → Base&` et
+  `Dérivée* → Base*` ;
 - du score minimal de conversion, avec détection des ex æquo.
 
-La résolution produite conserve le drapeau `GroupeSurcharges`, mais son
-`IndexSymbole` désigne maintenant la surcharge effectivement choisie et son
-`HachageType` le type de retour de cette fonction. Deux appels bilingues
-sélectionnent différentiellement les variantes `entier32` et `entier64` de
-`Choisir`. Deux corpus négatifs supplémentaires vérifient les diagnostics
-`AucuneSurchargeCompatible` et `AppelSurchargeAmbigu`, portant le total courant
-à dix-sept corpus sémantiques négatifs.
+Les accès par `.` et `->` déterminent le type du récepteur, recherchent les
+champs, alias de champs et groupes de méthodes, puis parcourent la chaîne de
+base lorsque le membre n’est pas déclaré par le type courant. Les drapeaux
+`Membre`, `MembreHerite` et `Methode` décrivent la résolution produite.
+
+Une résolution de surcharge conserve le drapeau `GroupeSurcharges`, mais son
+`IndexSymbole` désigne la fonction ou méthode effectivement choisie et son
+`HachageType` son type de retour. Les corpus bilingues sélectionnent
+différentiellement les variantes `entier32` et `entier64` de `Choisir` et
+`Transformer`, ainsi que les variantes compatibles avec une référence, un
+agrégat et une conversion d’héritage.
+
+Les diagnostics `AucuneSurchargeCompatible`, `AppelSurchargeAmbigu`,
+`RecepteurMembreInvalide` et `MembreIntrouvable` sont comparés au bootstrap
+C++. Les variantes libres et membres portent le total courant à vingt et un
+corpus sémantiques négatifs.
 
 Cette tranche est validée localement par la reconstruction réelle de
 `AnalyseurSemantique.GsE` et par les suites complètes MSVC et GNU. Elle ne
-couvre pas encore les surcharges de membres, les références, les agrégats,
-l’héritage ni toutes les conversions implicites du bootstrap C++.
+couvre pas encore les appels de constructeurs, la sélection complète des
+opérateurs, les règles fines de qualification des références, la visibilité
+des membres ni toutes les conversions implicites du bootstrap C++.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter la résolution et la comparaison des types de toutes les
   expressions ;
-- étendre la sélection typée aux membres, références, agrégats, conversions
-  implicites et relations d’héritage ;
-- étendre la résolution aux membres, conversions et appels de constructeurs ;
+- étendre la résolution aux appels de constructeurs et aux opérateurs ;
+- compléter les conversions implicites, qualifications et liaisons de
+  références ;
 - migrer les vérifications de visibilité, héritage et durée de vie ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;

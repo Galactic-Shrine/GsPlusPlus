@@ -53,6 +53,10 @@ espace GalacticShrine::GsPP::Autohebergement {
         NoMatchingOverload = 21,
         AppelSurchargeAmbigu = 22,
         AmbiguousOverloadCall = 22,
+        RecepteurMembreInvalide = 23,
+        InvalidMemberReceiver = 23,
+        MembreIntrouvable = 24,
+        UnknownMember = 24,
     };
 
     énumération GenreSymboleSemantique {
@@ -85,6 +89,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         ClassReceiver = 2,
         RecepteurBase = 4,
         BaseReceiver = 4,
+        Membre = 8,
+        Member = 8,
+        MembreHerite = 16,
+        InheritedMember = 16,
+        Methode = 32,
+        Method = 32,
     };
 
     structure SymboleSemantique {
@@ -130,7 +140,7 @@ espace GalacticShrine::GsPP::Autohebergement {
     };
 
     /**
-     * <résumé>Indexe et résout la tranche sémantique auto-hébergée.</résumé>
+     * <résumé>Indexe les symboles et résout les types de la tranche auto-hébergée.</résumé>
      * @Paramètre(RequeteAnalyseSemantique*: requete) Entrée et sorties de la passe.
      * @Retourner(ErreurAnalyseSemantique) État final ou capacité requise.
      **/

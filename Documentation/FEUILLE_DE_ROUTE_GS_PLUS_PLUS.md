@@ -247,7 +247,8 @@ Les prochains jalons sont donc réservés à Gs++ :
 4. 0.27 — frontend auto-hébergé — actif, lexeur et AST compact complet validés
    sous MSVC/GNU ; première passe sémantique partielle couvrant symboles,
    références, surcharges, membres, visibilité, constructeurs locaux et
-   opérateurs membres ; typage exhaustif et durée de vie encore à migrer ;
+   opérateurs membres, initialiseurs directs de sous-objets et bases
+   implicites ; typage exhaustif et durée de vie encore à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.

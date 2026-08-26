@@ -68,6 +68,19 @@
 - conservation des quatre `.GsObj` de construction comme modules internes et
   retrait des quatre images GsE spécialisées de la construction, de
   l’installation et des paquets ;
+- validation de l’arité et du type connu des initialiseurs de champs
+  scalaires, avec adaptation des littéraux entiers représentables et retrait
+  des qualificatifs de valeur comme dans le bootstrap ;
+- sélection surchargée et contrôle d’accès du constructeur des champs objets
+  de classe directs, avec une résolution distincte du champ et de son
+  constructeur ;
+- résolution du constructeur sans argument de la base directe lorsque le
+  constructeur dérivé n’utilise ni `parent(...)` ni une délégation `soi(...)` ;
+- ajout des diagnostics `AriteInitialiseurChampInvalide` et
+  `TypeInitialiseurChampIncompatible`, ainsi que de huit corpus négatifs
+  différentiels, portant leur total à quarante-neuf ;
+- correction du graphe CMake afin que toute modification des objets syntaxique
+  ou sémantique force réellement la nouvelle liaison de `Frontend.GsE` ;
 - validation complète 4/4 avec Visual Studio 2026 et 5/5 sous GNU/Linux,
   conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
   chaîne, avec `Frontend.GsE` identique bit à bit.

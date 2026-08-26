@@ -427,6 +427,47 @@ positif bilingue vérifie séparément une délégation, une construction de bas
 deux initialisations de champs, en plus des constructions locales déjà
 couvertes.
 
+## Champs objets, valeurs scalaires et base implicite — après alpha.7
+
+La résolution des initialiseurs de champs couvre maintenant leur première
+sémantique de valeur :
+
+- un champ scalaire exige exactement une expression ;
+- le type calculable de cette expression doit correspondre au type du champ,
+  après retrait des qualificatifs de valeur pour les types non-adresse ;
+- un littéral entier est accepté seulement s’il est représentable dans le type
+  de destination ;
+- une conversion d’héritage de pointeur reste admise selon les mêmes règles que
+  pour les paramètres ;
+- un champ objet de classe direct sélectionne sa surcharge de constructeur et
+  en contrôle la visibilité ;
+- le nœud d’initialisation conserve une résolution vers le champ et reçoit une
+  seconde résolution vers le constructeur lorsqu’il existe.
+
+Lorsqu’un constructeur de classe dérivée ne porte ni initialiseur explicite de
+base ni délégation, la passe sélectionne désormais le constructeur sans
+argument de la base directe. Cette résolution porte `Constructeur` et
+`InitialisationBase`, mais pas `ConstructionExplicite`. Une base sans
+constructeur déclaré conserve sa construction implicite triviale ; une base
+qui ne possède aucune surcharge sans argument ou dont cette surcharge est
+inaccessible est refusée au même emplacement que par le bootstrap.
+
+Deux diagnostics complètent le contrat sans modifier les structures ABI :
+
+| Code | Diagnostic | Signification |
+| ---: | --- | --- |
+| 36 | `AriteInitialiseurChampInvalide` | un champ scalaire ne reçoit pas exactement une expression |
+| 37 | `TypeInitialiseurChampIncompatible` | l’expression connue ne peut pas initialiser le type scalaire du champ |
+
+Un corpus positif bilingue vérifie quatre champs directs, dont un objet classe,
+une valeur constante et des littéraux entiers positifs et négatifs adaptés,
+ainsi que la construction implicite de la base. Huit corpus négatifs couvrent
+l’arité, le type, le dépassement d’un entier étroit, les constructeurs de
+champs absents,
+incompatibles ou privés et les constructeurs de base implicites incompatibles
+ou privés. Le total courant atteint quarante-neuf corpus sémantiques négatifs
+comparés au bootstrap pour le code, la ligne et la colonne.
+
 La matrice locale du 26 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
 smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
@@ -434,7 +475,7 @@ livré dans une seule image, identique bit à bit entre les chaînes :
 
 | Image | Taille | SHA-256 |
 | --- | ---: | --- |
-| `Frontend.GsE` | 169 793 | `72b62c5082816838cc118a6e856bdbd5ed62bead50967a6c91bd63c8d7156eaf` |
+| `Frontend.GsE` | 181 057 | `fcfc1e2cf44efca0215840c975d7c866a837661b8dd3910cb2b70a9402ebb8f2` |
 
 Les fichiers `ClassificateurMotsCles.GsObj`, `Lexeur.GsObj`,
 `AnalyseurDeclarations.GsObj` et `AnalyseurSemantique.GsObj` restent des
@@ -443,9 +484,8 @@ comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
 d’entrée publics afin que les tests différentiels puissent encore valider
 chaque étape séparément.
 
-Cette tranche ne couvre pas encore la validation complète de l’arité et du
-type des valeurs de champs scalaires, la sélection des constructeurs de champs
-objets ou de tableaux, les constructions de base implicites sans nœud source,
+Cette tranche ne couvre pas encore les constructeurs communs des éléments de
+champs tableaux, les valeurs par défaut de champs, les agrégats non scalaires,
 les destructeurs et plans de durée de vie, les opérateurs libres, ni le typage
 récursif complet des appels et opérateurs imbriqués.
 
@@ -453,8 +493,8 @@ récursif complet des appels et opérateurs imbriqués.
 
 - compléter la résolution et la comparaison des types de toutes les
   expressions ;
-- compléter les initialiseurs de champs objets, les tableaux et les
-  constructions implicites de bases ;
+- compléter les champs tableaux d’objets, les valeurs par défaut et les
+  agrégats non scalaires ;
 - migrer les opérateurs libres et le typage des opérateurs imbriqués ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;

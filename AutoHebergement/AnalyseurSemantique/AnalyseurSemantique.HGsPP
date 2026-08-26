@@ -79,6 +79,10 @@ espace GalacticShrine::GsPP::Autohebergement {
         FieldInitializedMoreThanOnce = 34,
         OrdreInitialisationChampInvalide = 35,
         InvalidFieldInitializationOrder = 35,
+        AriteInitialiseurChampInvalide = 36,
+        InvalidFieldInitializerArity = 36,
+        TypeInitialiseurChampIncompatible = 37,
+        IncompatibleFieldInitializerType = 37,
     };
 
     énumération GenreSymboleSemantique {

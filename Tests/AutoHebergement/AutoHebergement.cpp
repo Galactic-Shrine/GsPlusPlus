@@ -3097,6 +3097,7 @@ namespace
                 { return noeud.Genre == 2 && noeud.Parent == indexFonction; });
         };
         std::size_t nombreConstructeurs = 0;
+        std::size_t nombreBasesImplicites = 0;
         bool constructeurDefaut = false;
         bool constructeurEntier32 = false;
         std::size_t nombreOperateurs = 0;
@@ -3115,28 +3116,40 @@ namespace
                 resultatObjetFrancais.Noeuds[cible.IndexNoeud];
             if ((resolution.Drapeaux & 64U) != 0)
             {
-                ++nombreConstructeurs;
-                Exiger(
-                    noeud.Genre == 19 && declarationCible.Genre == 13,
-                    "une construction ne cible pas un constructeur");
-                const auto nombre = nombreParametresCible(
-                    resultatObjetFrancais, resolution);
-                constructeurDefaut |= nombre == 0
-                    && (resolution.Drapeaux & 128U) == 0;
-                if (nombre == 1)
+                if (noeud.Genre == 19)
                 {
-                    const auto parametre = std::find_if(
-                        resultatObjetFrancais.Noeuds.begin(),
-                        resultatObjetFrancais.Noeuds.end(),
-                        [&](const NoeudDeclarationHote& valeur)
-                        {
-                            return valeur.Genre == 2
-                                && valeur.Parent == cible.IndexNoeud;
-                        });
-                    constructeurEntier32 |=
-                        parametre != resultatObjetFrancais.Noeuds.end()
-                        && parametre->HachageType == typeEntier32
-                        && (resolution.Drapeaux & 128U) != 0;
+                    ++nombreConstructeurs;
+                    Exiger(
+                        declarationCible.Genre == 13,
+                        "une construction ne cible pas un constructeur");
+                    const auto nombre = nombreParametresCible(
+                        resultatObjetFrancais, resolution);
+                    constructeurDefaut |= nombre == 0
+                        && (resolution.Drapeaux & 128U) == 0;
+                    if (nombre == 1)
+                    {
+                        const auto parametre = std::find_if(
+                            resultatObjetFrancais.Noeuds.begin(),
+                            resultatObjetFrancais.Noeuds.end(),
+                            [&](const NoeudDeclarationHote& valeur)
+                            {
+                                return valeur.Genre == 2
+                                    && valeur.Parent == cible.IndexNoeud;
+                            });
+                        constructeurEntier32 |=
+                            parametre != resultatObjetFrancais.Noeuds.end()
+                            && parametre->HachageType == typeEntier32
+                            && (resolution.Drapeaux & 128U) != 0;
+                    }
+                }
+                else if (noeud.Genre == 13
+                    && (resolution.Drapeaux & 1024U) != 0
+                    && (resolution.Drapeaux & 128U) == 0)
+                {
+                    ++nombreBasesImplicites;
+                    Exiger(
+                        declarationCible.Genre == 13,
+                        "une base implicite ne cible pas un constructeur");
                 }
             }
             if ((resolution.Drapeaux & 256U) != 0)
@@ -3182,6 +3195,9 @@ namespace
                 && constructeurDefaut
                 && constructeurEntier32,
             "la sélection des constructeurs locaux est incorrecte");
+        Exiger(
+            nombreBasesImplicites == 2,
+            "les constructeurs de base implicites sont incomplets");
         Exiger(
             nombreOperateurs == 3
                 && operateurEntier32
@@ -3277,6 +3293,102 @@ namespace
                 && nombreInitialisationsBase == 1
                 && nombreInitialisationsChamps == 2,
             "les résolutions d’initialisation de constructeurs sont incomplètes");
+
+        const std::string sousObjetsFrancais =
+            "classe BaseAutomatique {\n"
+            "  publique: constructeur() {}\n"
+            "};\n"
+            "classe Composant {\n"
+            "  publique: constructeur() {} "
+            "constructeur(entier32 valeur) {}\n"
+            "};\n"
+            "classe Conteneur : publique BaseAutomatique {\n"
+            "  privée: Composant Element; constante entier32 Code; "
+            "entier8 Petit; entier8 Negatif;\n"
+            "  publique: constructeur(entier32 valeur)\n"
+            "    : Element(valeur), Code(valeur + 1), Petit(127), "
+            "Negatif(-128) {}\n"
+            "};\n"
+            "publique vide ConstruireSousObjets(entier32 valeur) { "
+            "Conteneur objet(valeur); }\n";
+        const std::string sousObjetsAnglais =
+            "class BaseAutomatique {\n"
+            "  public: constructor() {}\n"
+            "};\n"
+            "class Composant {\n"
+            "  public: constructor() {} constructor(int32 valeur) {}\n"
+            "};\n"
+            "class Conteneur : public BaseAutomatique {\n"
+            "  private: Composant Element; const int32 Code; int8 Petit; "
+            "int8 Negatif;\n"
+            "  public: constructor(int32 valeur)\n"
+            "    : Element(valeur), Code(valeur + 1), Petit(127), "
+            "Negatif(-128) {}\n"
+            "};\n"
+            "public void ConstruireSousObjets(int32 valeur) { "
+            "Conteneur objet(valeur); }\n";
+        const auto resultatSousObjetsFrancais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            sousObjetsFrancais,
+            "sous-objets-francais");
+        const auto resultatSousObjetsAnglais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            sousObjetsAnglais,
+            "sous-objets-anglais");
+        Exiger(
+            resultatSousObjetsFrancais.Symboles.size()
+                    == resultatSousObjetsAnglais.Symboles.size()
+                && resultatSousObjetsFrancais.Resolutions.size()
+                    == resultatSousObjetsAnglais.Resolutions.size(),
+            "les constructions de sous-objets bilingues divergent");
+
+        std::size_t nombreChampsSousObjets = 0;
+        std::size_t nombreConstructeursChamps = 0;
+        std::size_t nombreBasesSousObjets = 0;
+        for (const auto& resolution : resultatSousObjetsFrancais.Resolutions)
+        {
+            const auto& noeud = resultatSousObjetsFrancais.Noeuds[
+                resolution.IndexNoeud];
+            const auto& cible = resultatSousObjetsFrancais.Symboles[
+                resolution.IndexSymbole];
+            const auto& declarationCible = resultatSousObjetsFrancais.Noeuds[
+                cible.IndexNoeud];
+            if (noeud.Genre == 35
+                && (resolution.Drapeaux & (8U | 2048U))
+                    == (8U | 2048U))
+            {
+                ++nombreChampsSousObjets;
+                Exiger(
+                    declarationCible.Genre == 7,
+                    "un initialiseur de sous-objet ne cible pas son champ");
+            }
+            if (noeud.Genre == 35
+                && (resolution.Drapeaux & (64U | 128U | 2048U))
+                    == (64U | 128U | 2048U))
+            {
+                ++nombreConstructeursChamps;
+                Exiger(
+                    declarationCible.Genre == 13,
+                    "un champ objet ne cible pas son constructeur");
+            }
+            if (noeud.Genre == 13
+                && (resolution.Drapeaux & (64U | 1024U))
+                    == (64U | 1024U)
+                && (resolution.Drapeaux & 128U) == 0)
+            {
+                ++nombreBasesSousObjets;
+                Exiger(
+                    declarationCible.Genre == 13,
+                    "la construction implicite de base cible un symbole invalide");
+            }
+        }
+        Exiger(
+            nombreChampsSousObjets == 4
+                && nombreConstructeursChamps == 1
+                && nombreBasesSousObjets == 1,
+            "les résolutions des sous-objets sont incomplètes");
 
         ComparerErreurSemantique(
             syntaxe, semantique,
@@ -3435,6 +3547,48 @@ namespace
             "classe A { privée: entier32 X; entier32 Y; publique: "
             "constructeur() : Y(1), X(2) {} };",
             35, "ordre-initialisation-champ-invalide");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X; publique: "
+            "constructeur() : X() {} };",
+            36, "arite-initialiseur-champ-invalide");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X; publique: "
+            "constructeur() : X(vrai) {} };",
+            37, "type-initialiseur-champ-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier8 X; publique: "
+            "constructeur() : X(128) {} };",
+            37, "constante-initialiseur-champ-hors-plage");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Membre {}; classe A { privée: Membre X; publique: "
+            "constructeur() : X(1) {} };",
+            27, "constructeur-champ-non-declare");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Membre { publique: constructeur(entier32 valeur) {} }; "
+            "classe A { privée: Membre X; publique: "
+            "constructeur() : X(vrai) {} };",
+            21, "aucun-constructeur-champ-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Membre { privée: constructeur(entier32 valeur) {} }; "
+            "classe A { privée: Membre X; publique: "
+            "constructeur() : X(1) {} };",
+            26, "constructeur-champ-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Base { publique: constructeur(entier32 valeur) {} }; "
+            "classe A : publique Base { publique: constructeur() {} };",
+            21, "aucun-constructeur-base-implicite-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Base { privée: constructeur() {} }; "
+            "classe A : publique Base { publique: constructeur() {} };",
+            26, "constructeur-base-implicite-prive");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A {}; publique vide F() { A valeur(); }",

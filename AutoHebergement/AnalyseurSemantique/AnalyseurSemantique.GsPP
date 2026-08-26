@@ -792,6 +792,158 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner hachageType;
     }
 
+    naturel64 SansQualificatifsValeurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 hachageType) {
+        naturel32 genre = 1;
+        tantque (genre <= 12) {
+            naturel32 qualificatifs = 0;
+            tantque (qualificatifs < 4) {
+                naturel32 pointeurs = 0;
+                tantque (pointeurs <= 2) {
+                    si (hachageType == HacherTypeSimpleSemantique(
+                            genre, qualificatifs, pointeurs))
+                        retourner HacherTypeSimpleSemantique(
+                            genre, 0, pointeurs);
+                    pointeurs = pointeurs + 1;
+                }
+                qualificatifs = qualificatifs + 1;
+            }
+            genre = genre + 1;
+        }
+
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 1) {
+                naturel64 nomSimple = candidat->HachageNom;
+                naturel64 nomComplet = HacherNomCompletSemantique(
+                    etat, candidat->IndexNoeud);
+                naturel32 qualificatifsNommes = 0;
+                tantque (qualificatifsNommes < 4) {
+                    naturel32 pointeursNommes = 0;
+                    tantque (pointeursNommes <= 2) {
+                        si (hachageType == HacherTypeNommeSemantique(
+                                nomSimple,
+                                qualificatifsNommes,
+                                pointeursNommes))
+                            retourner HacherTypeNommeSemantique(
+                                nomSimple, 0, pointeursNommes);
+                        si (hachageType == HacherTypeNommeSemantique(
+                                nomComplet,
+                                qualificatifsNommes,
+                                pointeursNommes))
+                            retourner HacherTypeNommeSemantique(
+                                nomComplet, 0, pointeursNommes);
+                        pointeursNommes = pointeursNommes + 1;
+                    }
+                    qualificatifsNommes = qualificatifsNommes + 1;
+                }
+            }
+            index = index + 1;
+        }
+        retourner hachageType;
+    }
+
+    booléen EstTypeAdresseSemantique(
+        EtatAnalyseSemantique* etat, naturel64 hachageType) {
+        naturel32 genre = 1;
+        tantque (genre <= 12) {
+            naturel32 qualificatifs = 0;
+            tantque (qualificatifs < 4) {
+                naturel32 pointeurs = 1;
+                tantque (pointeurs <= 2) {
+                    si (hachageType == HacherTypeSimpleSemantique(
+                            genre, qualificatifs, pointeurs))
+                        retourner vrai;
+                    pointeurs = pointeurs + 1;
+                }
+                qualificatifs = qualificatifs + 1;
+            }
+            genre = genre + 1;
+        }
+
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 1) {
+                naturel64 nomSimple = candidat->HachageNom;
+                naturel64 nomComplet = HacherNomCompletSemantique(
+                    etat, candidat->IndexNoeud);
+                naturel32 qualificatifsNommes = 0;
+                tantque (qualificatifsNommes < 4) {
+                    naturel32 pointeursNommes = 1;
+                    tantque (pointeursNommes <= 2) {
+                        si (hachageType == HacherTypeNommeSemantique(
+                                nomSimple,
+                                qualificatifsNommes,
+                                pointeursNommes)
+                            || hachageType == HacherTypeNommeSemantique(
+                                nomComplet,
+                                qualificatifsNommes,
+                                pointeursNommes))
+                            retourner vrai;
+                        pointeursNommes = pointeursNommes + 1;
+                    }
+                    qualificatifsNommes = qualificatifsNommes + 1;
+                }
+            }
+            index = index + 1;
+        }
+        retourner faux;
+    }
+
+    booléen EstTypeScalaireSemantique(
+        EtatAnalyseSemantique* etat, naturel64 hachageType) {
+        naturel32 genre = 1;
+        tantque (genre <= 12) {
+            naturel32 qualificatifs = 0;
+            tantque (qualificatifs < 4) {
+                naturel32 pointeurs = 0;
+                tantque (pointeurs <= 2) {
+                    si ((genre <= 11 || pointeurs != 0)
+                        && hachageType == HacherTypeSimpleSemantique(
+                            genre, qualificatifs, pointeurs))
+                        retourner vrai;
+                    pointeurs = pointeurs + 1;
+                }
+                qualificatifs = qualificatifs + 1;
+            }
+            genre = genre + 1;
+        }
+
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 1) {
+                naturel64 nomSimple = candidat->HachageNom;
+                naturel64 nomComplet = HacherNomCompletSemantique(
+                    etat, candidat->IndexNoeud);
+                naturel32 qualificatifsNommes = 0;
+                tantque (qualificatifsNommes < 4) {
+                    naturel32 pointeursNommes = 0;
+                    tantque (pointeursNommes <= 2) {
+                        booléen typeEnumeration = etat->Requete->Noeuds[
+                            candidat->IndexNoeud].Genre == 8;
+                        si ((typeEnumeration || pointeursNommes != 0)
+                            && (hachageType == HacherTypeNommeSemantique(
+                                    nomSimple,
+                                    qualificatifsNommes,
+                                    pointeursNommes)
+                                || hachageType == HacherTypeNommeSemantique(
+                                    nomComplet,
+                                    qualificatifsNommes,
+                                    pointeursNommes)))
+                            retourner vrai;
+                        pointeursNommes = pointeursNommes + 1;
+                    }
+                    qualificatifsNommes = qualificatifsNommes + 1;
+                }
+            }
+            index = index + 1;
+        }
+        retourner faux;
+    }
+
     booléen EstTypeReferenceSemantique(
         EtatAnalyseSemantique* etat, naturel64 hachageType) {
         retourner SansReferenceTypeSemantique(etat, hachageType)
@@ -901,6 +1053,48 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner faux;
     }
 
+    booléen LitteralExpressionCompatibleTypeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 hachageType) {
+        si (indexExpression >= etat->Requete->NombreNoeuds)
+            retourner faux;
+        constante NoeudDeclaration* expression =
+            &etat->Requete->Noeuds[indexExpression];
+        si (LitteralCompatibleTypeSemantique(expression, hachageType))
+            retourner vrai;
+        si (expression->Genre != 25) retourner faux;
+
+        naturel64 plus = AjouterOctetSemantique(
+            HachageVideSemantique(), 43);
+        naturel64 moins = AjouterOctetSemantique(
+            HachageVideSemantique(), 45);
+        naturel64 operande = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 0);
+        si (operande >= etat->Requete->NombreNoeuds)
+            retourner faux;
+        constante NoeudDeclaration* litteral =
+            &etat->Requete->Noeuds[operande];
+        si (litteral->Genre != 22
+            || (litteral->Drapeaux & 16_384) != 0)
+            retourner faux;
+        si (expression->HachageNom == plus)
+            retourner LitteralCompatibleTypeSemantique(
+                litteral, hachageType);
+        si (expression->HachageNom != moins) retourner faux;
+
+        naturel64 valeur = litteral->HachageType;
+        si (hachageType == HacherTypeSimpleSemantique(1, 0, 0))
+            retourner valeur <= 128;
+        si (hachageType == HacherTypeSimpleSemantique(2, 0, 0))
+            retourner valeur <= 32_768;
+        si (hachageType == HacherTypeSimpleSemantique(3, 0, 0))
+            retourner valeur <= 2_147_483_648;
+        si (hachageType == HacherTypeSimpleSemantique(4, 0, 0))
+            retourner valeur <= 9_223_372_036_854_775_808;
+        retourner faux;
+    }
+
     naturel64 TrouverTypeBaseSymboleSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexType) {
         si (indexType >= etat->NombreSymboles) retourner etat->NombreSymboles;
@@ -981,6 +1175,36 @@ espace GalacticShrine::GsPP::Autohebergement {
             niveauPointeur = niveauPointeur + 1;
         }
         retourner faux;
+    }
+
+    booléen InitialiseurCompatibleTypeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 typeDestination) {
+        naturel64 typeSource = HachageTypeExpressionSemantique(
+            etat, indexExpression);
+        si (typeSource == 0) retourner vrai;
+        typeSource = SansReferenceTypeSemantique(etat, typeSource);
+        typeDestination = SansReferenceTypeSemantique(
+            etat, typeDestination);
+        si (typeSource == typeDestination) retourner vrai;
+
+        booléen sourceAdresse = EstTypeAdresseSemantique(
+            etat, typeSource);
+        booléen destinationAdresse = EstTypeAdresseSemantique(
+            etat, typeDestination);
+        naturel64 sourceValeur = SansQualificatifsValeurSemantique(
+            etat, typeSource);
+        naturel64 destinationValeur = SansQualificatifsValeurSemantique(
+            etat, typeDestination);
+        si (!sourceAdresse && !destinationAdresse
+            && sourceValeur == destinationValeur)
+            retourner vrai;
+        si (ConversionHeritageSemantique(
+                etat, typeSource, typeDestination, faux))
+            retourner vrai;
+        retourner LitteralExpressionCompatibleTypeSemantique(
+            etat, indexExpression, destinationValeur);
     }
 
     booléen EstValeurGaucheSemantique(
@@ -1648,6 +1872,69 @@ espace GalacticShrine::GsPP::Autohebergement {
                 indexInitialiseurChamp,
                 convertir<naturel32>(cibleChampInitialise));
 
+        SymboleSemantique* symboleChamp = &etat->SymbolesTravail[
+            cibleChampInitialise];
+        naturel64 typeChamp = TrouverTypeDepuisHachageSemantique(
+            etat, symboleChamp->HachageType, 0);
+        booléen champObjetClasse = typeChamp < etat->NombreSymboles
+            && etat->Requete->Noeuds[
+                etat->SymbolesTravail[typeChamp].IndexNoeud].Genre == 6;
+        naturel64 nombreArgumentsChamp = CompterEnfantsDirectsSemantique(
+            etat, indexInitialiseurChamp);
+        naturel64 cibleConstructeurChamp = etat->NombreSymboles;
+
+        si (champObjetClasse) {
+            naturel64 nombreConstructeursChamp =
+                CompterConstructeursTypeSemantique(etat, typeChamp);
+            si (nombreConstructeursChamp == 0) {
+                si (nombreArgumentsChamp != 0)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::ConstructeurNonDeclare,
+                        indexInitialiseurChamp,
+                        convertir<naturel32>(nombreArgumentsChamp));
+            }
+            sinon {
+                cibleConstructeurChamp = SelectionnerConstructeurSemantique(
+                    etat, indexInitialiseurChamp, typeChamp);
+                si (cibleConstructeurChamp >= etat->NombreSymboles)
+                    retourner etat->Requete->Resultat.Erreur;
+                si (!AccesMembreAutoriseSemantique(
+                        etat,
+                        cibleConstructeurChamp,
+                        indexInitialiseurChamp))
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::ConstructeurInaccessible,
+                        indexInitialiseurChamp,
+                        convertir<naturel32>(cibleConstructeurChamp));
+            }
+        }
+        sinon si (EstTypeScalaireSemantique(
+                etat, symboleChamp->HachageType)) {
+            si (nombreArgumentsChamp != 1)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AriteInitialiseurChampInvalide,
+                    indexInitialiseurChamp,
+                    convertir<naturel32>(nombreArgumentsChamp));
+            naturel64 argumentChamp = TrouverEnfantDirectSemantique(
+                etat, indexInitialiseurChamp, 0);
+            si (argumentChamp >= etat->Requete->NombreNoeuds)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    indexInitialiseurChamp,
+                    36);
+            si (!InitialiseurCompatibleTypeSemantique(
+                    etat, argumentChamp, symboleChamp->HachageType))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::TypeInitialiseurChampIncompatible,
+                    argumentChamp,
+                    convertir<naturel32>(cibleChampInitialise));
+        }
+
         etat->CiblesInitialiseurs[indexInitialiseurChamp] =
             cibleChampInitialise;
         AjouterResolutionSemantique(
@@ -1655,6 +1942,91 @@ espace GalacticShrine::GsPP::Autohebergement {
             indexInitialiseurChamp,
             cibleChampInitialise,
             8 | 2_048);
+        si (cibleConstructeurChamp < etat->NombreSymboles) {
+            naturel32 drapeauxConstructeurChamp = 64 | 128 | 2_048;
+            si (CompterConstructeursTypeSemantique(
+                    etat, typeChamp) > 1)
+                drapeauxConstructeurChamp =
+                    drapeauxConstructeurChamp | 1;
+            AjouterResolutionSemantique(
+                etat,
+                indexInitialiseurChamp,
+                cibleConstructeurChamp,
+                drapeauxConstructeurChamp);
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ResoudreBaseImpliciteConstructeurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexConstructeur) {
+        constante NoeudDeclaration* noeudConstructeur =
+            &etat->Requete->Noeuds[indexConstructeur];
+        si ((noeudConstructeur->Drapeaux & 256) != 0
+            || (noeudConstructeur->Drapeaux & 512) != 0)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 typeConstructeur = TrouverSymboleNoeudSemantique(
+            etat, noeudConstructeur->Parent);
+        si (typeConstructeur >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexConstructeur,
+                13);
+        naturel64 typeBase = TrouverTypeBaseSymboleSemantique(
+            etat, typeConstructeur);
+        si (typeBase >= etat->NombreSymboles)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 nombreConstructeursBase =
+            CompterConstructeursTypeSemantique(etat, typeBase);
+        si (nombreConstructeursBase == 0)
+            retourner ErreurAnalyseSemantique::Reussite;
+
+        naturel64 indexNoeudBase = etat->SymbolesTravail[
+            typeBase].IndexNoeud;
+        naturel64 cibleConstructeurBase = etat->NombreSymboles;
+        naturel32 nombreCibles = 0;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 2
+                && candidat->IndexPortee == indexNoeudBase
+                && etat->Requete->Noeuds[candidat->IndexNoeud].Genre == 13
+                && CompterParametresFonctionSemantique(
+                    etat, candidat->IndexNoeud) == 0) {
+                si (cibleConstructeurBase >= etat->NombreSymboles)
+                    cibleConstructeurBase = index;
+                nombreCibles = nombreCibles + 1;
+            }
+            index = index + 1;
+        }
+        si (cibleConstructeurBase >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AucuneSurchargeCompatible,
+                indexConstructeur,
+                0);
+        si (nombreCibles > 1)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AppelSurchargeAmbigu,
+                indexConstructeur,
+                nombreCibles);
+        si (!AccesMembreAutoriseSemantique(
+                etat, cibleConstructeurBase, indexConstructeur))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ConstructeurInaccessible,
+                indexConstructeur,
+                convertir<naturel32>(cibleConstructeurBase));
+
+        naturel32 drapeauxBase = 64 | 1_024;
+        si (nombreConstructeursBase > 1)
+            drapeauxBase = drapeauxBase | 1;
+        AjouterResolutionSemantique(
+            etat,
+            indexConstructeur,
+            cibleConstructeurBase,
+            drapeauxBase);
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
@@ -1703,7 +2075,15 @@ espace GalacticShrine::GsPP::Autohebergement {
         tantque (indexVariable < etat->Requete->NombreNoeuds) {
             constante NoeudDeclaration* variable =
                 &etat->Requete->Noeuds[indexVariable];
-            si (variable->Genre == 33) {
+            si (variable->Genre == 13) {
+                ErreurAnalyseSemantique erreurBaseImplicite =
+                    ResoudreBaseImpliciteConstructeurSemantique(
+                        etat, indexVariable);
+                si (erreurBaseImplicite
+                    != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurBaseImplicite;
+            }
+            sinon si (variable->Genre == 33) {
                 ErreurAnalyseSemantique erreurDelegation =
                     ResoudreInitialiseurDelegueSemantique(
                         etat, indexVariable);

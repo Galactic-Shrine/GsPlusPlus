@@ -116,6 +116,8 @@ add_custom_command(
     DEPENDS
         gsppc
         autohebergement_objets
+        "${GS_ANALYSEUR_DECLARATIONS_OBJET}"
+        "${GS_ANALYSEUR_SEMANTIQUE_OBJET}"
         bibliotheque_hebergee
     VERBATIM
 )

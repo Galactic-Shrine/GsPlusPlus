@@ -2932,6 +2932,201 @@ namespace
             methodeEntier32 && methodeEntier64,
             "les deux surcharges de méthode n’ont pas été distinguées");
 
+        const std::string objetFrancais =
+            "classe BaseAcces {\n"
+            "  protégée: entier32 Protegee; "
+            "entier32 LireProtegee() { retourner soi.Protegee; }\n"
+            "  privée: entier32 PriveeBase;\n"
+            "  publique: constructeur() {}\n"
+            "};\n"
+            "classe ObjetComplet : publique BaseAcces {\n"
+            "  privée: entier32 Secret;\n"
+            "  publique:\n"
+            "    constructeur() {}\n"
+            "    constructeur(entier32 initiale) { soi.Secret = initiale; }\n"
+            "    entier32 opérateur +(entier32 delta) { "
+            "retourner soi.Secret + delta; }\n"
+            "    entier64 opérateur +(entier64 delta) { "
+            "retourner convertir<entier64>(soi.Secret) + delta; }\n"
+            "    booléen opérateur !() { retourner faux; }\n"
+            "    entier32 LireAcces() { "
+            "retourner soi.Secret + soi.Protegee + soi.LireProtegee(); }\n"
+            "};\n"
+            "publique entier32 TesterObjet(entier32 valeur) {\n"
+            "  ObjetComplet explicite(valeur);\n"
+            "  ObjetComplet implicite;\n"
+            "  entier32 somme32 = explicite + valeur;\n"
+            "  entier64 somme64 = explicite + convertir<entier64>(valeur);\n"
+            "  booléen inverse = !implicite;\n"
+            "  retourner somme32;\n"
+            "}\n";
+        const std::string objetAnglais =
+            "class BaseAcces {\n"
+            "  protected: int32 Protegee; "
+            "int32 LireProtegee() { return this.Protegee; }\n"
+            "  private: int32 PriveeBase;\n"
+            "  public: constructor() {}\n"
+            "};\n"
+            "class ObjetComplet : public BaseAcces {\n"
+            "  private: int32 Secret;\n"
+            "  public:\n"
+            "    constructor() {}\n"
+            "    constructor(int32 initiale) { this.Secret = initiale; }\n"
+            "    int32 operator +(int32 delta) { "
+            "return this.Secret + delta; }\n"
+            "    int64 operator +(int64 delta) { "
+            "return cast<int64>(this.Secret) + delta; }\n"
+            "    bool operator !() { return false; }\n"
+            "    int32 LireAcces() { "
+            "return this.Secret + this.Protegee + this.LireProtegee(); }\n"
+            "};\n"
+            "public int32 TesterObjet(int32 valeur) {\n"
+            "  ObjetComplet explicite(valeur);\n"
+            "  ObjetComplet implicite;\n"
+            "  int32 somme32 = explicite + valeur;\n"
+            "  int64 somme64 = explicite + cast<int64>(valeur);\n"
+            "  bool inverse = !implicite;\n"
+            "  return somme32;\n"
+            "}\n";
+        const auto resultatObjetFrancais = AnalyserSemantiqueValide(
+            syntaxe, semantique, objetFrancais, "objet-semantique-francais");
+        const auto resultatObjetAnglais = AnalyserSemantiqueValide(
+            syntaxe, semantique, objetAnglais, "objet-semantique-anglais");
+        Exiger(
+            resultatObjetFrancais.Symboles.size()
+                    == resultatObjetAnglais.Symboles.size()
+                && resultatObjetFrancais.Resolutions.size()
+                    == resultatObjetAnglais.Resolutions.size(),
+            "les résolutions objet bilingues ont des tailles différentes");
+        for (std::size_t index = 0;
+             index < resultatObjetFrancais.Resolutions.size();
+             ++index)
+        {
+            const auto& francaisResolution =
+                resultatObjetFrancais.Resolutions[index];
+            const auto& anglaisResolution =
+                resultatObjetAnglais.Resolutions[index];
+            Exiger(
+                francaisResolution.IndexNoeud == anglaisResolution.IndexNoeud
+                    && francaisResolution.IndexSymbole
+                        == anglaisResolution.IndexSymbole
+                    && francaisResolution.HachageType
+                        == anglaisResolution.HachageType
+                    && francaisResolution.GenreCible
+                        == anglaisResolution.GenreCible
+                    && francaisResolution.Drapeaux
+                        == anglaisResolution.Drapeaux,
+                "une résolution objet diffère entre français et anglais");
+        }
+
+        const auto nombreParametresCible =
+            [&](const SortieSemantiqueHote& resultat,
+                const ResolutionSemantiqueHote& resolution)
+        {
+            const auto indexFonction =
+                resultat.Symboles[resolution.IndexSymbole].IndexNoeud;
+            return std::count_if(
+                resultat.Noeuds.begin(),
+                resultat.Noeuds.end(),
+                [&](const NoeudDeclarationHote& noeud)
+                { return noeud.Genre == 2 && noeud.Parent == indexFonction; });
+        };
+        std::size_t nombreConstructeurs = 0;
+        bool constructeurDefaut = false;
+        bool constructeurEntier32 = false;
+        std::size_t nombreOperateurs = 0;
+        bool operateurEntier32 = false;
+        bool operateurEntier64 = false;
+        bool operateurUnaire = false;
+        bool accesPriveAutorise = false;
+        bool accesProtegeHeriteAutorise = false;
+        for (const auto& resolution : resultatObjetFrancais.Resolutions)
+        {
+            const auto& noeud =
+                resultatObjetFrancais.Noeuds[resolution.IndexNoeud];
+            const auto& cible = resultatObjetFrancais.Symboles[
+                resolution.IndexSymbole];
+            const auto& declarationCible =
+                resultatObjetFrancais.Noeuds[cible.IndexNoeud];
+            if ((resolution.Drapeaux & 64U) != 0)
+            {
+                ++nombreConstructeurs;
+                Exiger(
+                    noeud.Genre == 19 && declarationCible.Genre == 13,
+                    "une construction ne cible pas un constructeur");
+                const auto nombre = nombreParametresCible(
+                    resultatObjetFrancais, resolution);
+                constructeurDefaut |= nombre == 0
+                    && (resolution.Drapeaux & 128U) == 0;
+                if (nombre == 1)
+                {
+                    const auto parametre = std::find_if(
+                        resultatObjetFrancais.Noeuds.begin(),
+                        resultatObjetFrancais.Noeuds.end(),
+                        [&](const NoeudDeclarationHote& valeur)
+                        {
+                            return valeur.Genre == 2
+                                && valeur.Parent == cible.IndexNoeud;
+                        });
+                    constructeurEntier32 |=
+                        parametre != resultatObjetFrancais.Noeuds.end()
+                        && parametre->HachageType == typeEntier32
+                        && (resolution.Drapeaux & 128U) != 0;
+                }
+            }
+            if ((resolution.Drapeaux & 256U) != 0)
+            {
+                ++nombreOperateurs;
+                Exiger(
+                    (noeud.Genre == 25 || noeud.Genre == 26)
+                        && declarationCible.Genre == 15,
+                    "une expression d’opérateur cible un symbole invalide");
+                const auto nombre = nombreParametresCible(
+                    resultatObjetFrancais, resolution);
+                if (nombre == 0) operateurUnaire = noeud.Genre == 25;
+                if (nombre == 1)
+                {
+                    const auto parametre = std::find_if(
+                        resultatObjetFrancais.Noeuds.begin(),
+                        resultatObjetFrancais.Noeuds.end(),
+                        [&](const NoeudDeclarationHote& valeur)
+                        {
+                            return valeur.Genre == 2
+                                && valeur.Parent == cible.IndexNoeud;
+                        });
+                    if (parametre != resultatObjetFrancais.Noeuds.end())
+                    {
+                        operateurEntier32 |=
+                            parametre->HachageType == typeEntier32;
+                        operateurEntier64 |=
+                            parametre->HachageType == typeEntier64;
+                    }
+                }
+            }
+            accesPriveAutorise |= noeud.Genre == 29
+                && noeud.HachageNom == HacherTexte("Secret")
+                && (declarationCible.Drapeaux & 16U) != 0;
+            accesProtegeHeriteAutorise |= noeud.Genre == 29
+                && (noeud.HachageNom == HacherTexte("Protegee")
+                    || noeud.HachageNom == HacherTexte("LireProtegee"))
+                && (declarationCible.Drapeaux & 8U) != 0
+                && (resolution.Drapeaux & 16U) != 0;
+        }
+        Exiger(
+            nombreConstructeurs == 2
+                && constructeurDefaut
+                && constructeurEntier32,
+            "la sélection des constructeurs locaux est incorrecte");
+        Exiger(
+            nombreOperateurs == 3
+                && operateurEntier32
+                && operateurEntier64
+                && operateurUnaire,
+            "la sélection des opérateurs membres est incorrecte");
+        Exiger(
+            accesPriveAutorise && accesProtegeHeriteAutorise,
+            "un accès privé ou protégé valide n’a pas été conservé");
+
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure A {}; structure A {}; publique vide F() {}",
@@ -3026,6 +3221,75 @@ namespace
             "entier64 M(naturel64 X, entier64 Y) { retourner Y; } "
             "entier64 F() { retourner soi.M(1, 1); } };",
             22, "appel-methode-surcharge-ambigu");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 Secret; "
+            "publique: constructeur() {} }; "
+            "publique entier32 F() { A valeur; retourner valeur.Secret; }",
+            25, "champ-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { protégée: entier32 Protegee; "
+            "publique: constructeur() {} }; "
+            "publique entier32 F() { A valeur; retourner valeur.Protegee; }",
+            25, "champ-protege-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 M() { retourner 1; } "
+            "publique: constructeur() {} }; "
+            "publique entier32 F() { A valeur; retourner valeur.M(); }",
+            25, "methode-privee-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: constructeur() {} }; "
+            "publique vide F() { A valeur; }",
+            26, "constructeur-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A {}; publique vide F() { A valeur(); }",
+            27, "constructeur-non-declare");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() {} }; "
+            "publique vide F() { A valeur = {}; }",
+            29, "initialiseur-classe-interdit");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur(entier32 valeur) {} }; "
+            "publique vide F() { A valeur(vrai); }",
+            21, "aucun-constructeur-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: "
+            "constructeur(entier64 x, naturel64 y) {} "
+            "constructeur(naturel64 x, entier64 y) {} }; "
+            "publique vide F() { A valeur(1, 1); }",
+            22, "appel-constructeur-ambigu");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() {} }; "
+            "publique vide F() { A valeur; valeur + 1; }",
+            28, "operateur-membre-introuvable");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() {} "
+            "entier32 opérateur +(entier32 valeur) { retourner valeur; } }; "
+            "publique vide F() { A objet; objet + vrai; }",
+            21, "aucun-operateur-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() {} "
+            "entier64 opérateur +(entier64 valeur) { retourner valeur; } "
+            "naturel64 opérateur +(naturel64 valeur) { retourner valeur; } }; "
+            "publique vide F() { A objet; objet + 1; }",
+            22, "appel-operateur-ambigu");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: "
+            "entier32 opérateur +(entier32 valeur) { retourner valeur; } "
+            "publique: constructeur() {} }; "
+            "publique vide F() { A objet; objet + 1; }",
+            25, "operateur-prive-inaccessible");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure SansFonction {};",

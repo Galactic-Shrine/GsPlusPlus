@@ -35,6 +35,19 @@
 - ajout des diagnostics `AucuneSurchargeCompatible` et
   `AppelSurchargeAmbigu`, `RecepteurMembreInvalide` et `MembreIntrouvable`,
   comparés au bootstrap C++ ;
+- application de la visibilité `publique`, `protégée` et `privée` aux champs,
+  méthodes et opérateurs, en autorisant la classe propriétaire et les classes
+  dérivées dans le cas protégé ;
+- résolution surchargée des constructeurs de variables locales de classes,
+  avec distinction entre construction implicite et syntaxe explicite ;
+- première sélection des opérateurs membres unaires et binaires à partir du
+  type de l’opérande gauche et des paramètres explicites ;
+- ajout des diagnostics `MembreInaccessible`, `ConstructeurInaccessible`,
+  `ConstructeurNonDeclare`, `OperateurIntrouvable` et
+  `InitialiseurClasseInterdit`, portant à trente-trois le nombre de corpus
+  sémantiques négatifs comparés au bootstrap ;
+- ajout des drapeaux de résolution `Constructeur`, `ConstructionExplicite` et
+  `Operateur`, sans modification des tailles du contrat ABI ;
 - validation complète avec Visual Studio 2026 et GNU/Linux, avec quatre images
   auto-hébergées identiques bit à bit entre les deux chaînes.
 

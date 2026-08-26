@@ -319,19 +319,75 @@ C++. Les variantes libres et membres portent le total courant à vingt et un
 corpus sémantiques négatifs.
 
 Cette tranche est validée localement par la reconstruction réelle de
-`AnalyseurSemantique.GsE` et par les suites complètes MSVC et GNU. Elle ne
-couvre pas encore les appels de constructeurs, la sélection complète des
-opérateurs, les règles fines de qualification des références, la visibilité
-des membres ni toutes les conversions implicites du bootstrap C++.
+`AnalyseurSemantique.GsE` et par les suites complètes MSVC et GNU. Les étapes
+objet qui prolongent cette sélection sont décrites dans la section suivante.
+
+## Visibilité, constructeurs locaux et opérateurs membres — après alpha.7
+
+La passe auto-hébergée applique désormais les sections `publique`, `protégée`
+et `privée` aux champs et méthodes sélectionnés. Un membre privé est accessible
+depuis sa classe propriétaire ; un membre protégé l’est également depuis une
+classe dérivée. La règle est appliquée après la sélection de surcharge, comme
+dans le bootstrap C++.
+
+Les variables locales de type classe sont reliées au constructeur exact :
+
+- une déclaration sans parenthèses sélectionne le constructeur sans argument
+  lorsqu’un constructeur est déclaré ;
+- une déclaration avec parenthèses sélectionne la surcharge selon les mêmes
+  règles typées que les fonctions et méthodes ;
+- la résolution distingue `Constructeur`, `ConstructionExplicite` et
+  `GroupeSurcharges` ;
+- une classe sans constructeur déclaré reste constructible implicitement sans
+  argument, mais la forme explicite ou tout argument est refusé ;
+- la visibilité du constructeur sélectionné est contrôlée dans le contexte de
+  la fonction englobante.
+
+Les expressions unaires et binaires dont l’opérande gauche est une classe
+recherchent maintenant un opérateur membre direct ou hérité. Le récepteur
+implicite `soi` n’est pas compté parmi les paramètres explicites de l’AST. Le
+score distingue les variantes `entier32` et `entier64`, les ex æquo restent
+ambigus et les opérateurs `&` ou `*` conservent leur sens intrinsèque. Une
+résolution d’opérateur porte les drapeaux `Membre`, `Methode` et `Operateur`,
+ainsi que `MembreHerite` ou `GroupeSurcharges` lorsque nécessaire.
+
+Les nouveaux diagnostics sont :
+
+| Code | Diagnostic | Signification |
+| ---: | --- | --- |
+| 25 | `MembreInaccessible` | champ, méthode ou opérateur non accessible |
+| 26 | `ConstructeurInaccessible` | surcharge trouvée mais non accessible |
+| 27 | `ConstructeurNonDeclare` | construction explicite sans constructeur déclaré |
+| 28 | `OperateurIntrouvable` | aucun opérateur membre correspondant dans la hiérarchie |
+| 29 | `InitialiseurClasseInterdit` | utilisation interdite de `Classe objet = expression` |
+
+`AucuneSurchargeCompatible` et `AppelSurchargeAmbigu` restent communs aux
+fonctions, méthodes, constructeurs et opérateurs. Douze nouveaux corpus
+négatifs contrôlent les accès privés ou protégés, l’initialisation de classe
+avec `=`, les constructeurs absents, inaccessibles, incompatibles ou ambigus,
+et les opérateurs absents, inaccessibles, incompatibles ou ambigus. Le total
+courant est de trente-trois corpus sémantiques négatifs, tous comparés au
+bootstrap C++ pour le code, la ligne et la colonne.
+
+Le corpus bilingue valide sélectionne deux constructeurs et trois opérateurs
+distincts, puis vérifie les accès privé dans la classe propriétaire et protégé
+depuis une classe dérivée. Les tailles ABI restent inchangées : 48 octets pour
+un symbole, 32 pour une résolution, 56 pour le résultat et 120 pour la requête.
+
+Cette tranche ne couvre pas encore les constructeurs délégués, les
+initialiseurs de base ou de champs, les tableaux locaux d’objets, les
+destructeurs et plans de durée de vie, les opérateurs libres, ni le typage
+récursif complet des appels et opérateurs imbriqués.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter la résolution et la comparaison des types de toutes les
   expressions ;
-- étendre la résolution aux appels de constructeurs et aux opérateurs ;
+- étendre les constructeurs aux délégations, bases, champs et tableaux ;
+- migrer les opérateurs libres et le typage des opérateurs imbriqués ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;
-- migrer les vérifications de visibilité, héritage et durée de vie ;
+- migrer les destructeurs et les plans de durée de vie ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;

@@ -214,13 +214,14 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF. Le rapport est
 
 - **VALIDÉ** : lexeur Gs++ complet, API bornée et comparaison différentielle
   MSVC/GNU avec le bootstrap C++ ;
-- **PARTIEL — TRANCHES VALIDÉES** : AST compact des fonctions libres,
-  paramètres, globales, structures, unions, classes de données, champs,
-  énumérations et alias, construit dans l’arène 0.26 et comparé
-  différentiellement au bootstrap C++ ;
-- **EN COURS** : migrer les méthodes de classes, puis les instructions et
-  expressions de l’analyseur syntaxique ;
-- **PRÉVU** : migrer les premières étapes sémantiques ;
+- **PARTIEL — TRANCHE SYNTAXIQUE VALIDÉE** : AST compact des déclarations,
+  membres exécutables, instructions et expressions, construit dans l’arène
+  0.26 et comparé différentiellement au bootstrap C++ ;
+- **PARTIEL — TRANCHE SÉMANTIQUE VALIDÉE** : tables de symboles, références,
+  sélection typée des fonctions et méthodes, accès aux membres, visibilité,
+  constructeurs locaux et opérateurs membres ;
+- **EN COURS** : compléter le typage récursif, les qualifications, les
+  initialiseurs de classes, destructeurs et plans de durée de vie ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

@@ -57,6 +57,16 @@ espace GalacticShrine::GsPP::Autohebergement {
         InvalidMemberReceiver = 23,
         MembreIntrouvable = 24,
         UnknownMember = 24,
+        MembreInaccessible = 25,
+        InaccessibleMember = 25,
+        ConstructeurInaccessible = 26,
+        InaccessibleConstructor = 26,
+        ConstructeurNonDeclare = 27,
+        UndeclaredConstructor = 27,
+        OperateurIntrouvable = 28,
+        MissingOperator = 28,
+        InitialiseurClasseInterdit = 29,
+        ClassInitializerForbidden = 29,
     };
 
     énumération GenreSymboleSemantique {
@@ -95,6 +105,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         InheritedMember = 16,
         Methode = 32,
         Method = 32,
+        Constructeur = 64,
+        Constructor = 64,
+        ConstructionExplicite = 128,
+        ExplicitConstruction = 128,
+        Operateur = 256,
+        Operator = 256,
     };
 
     structure SymboleSemantique {

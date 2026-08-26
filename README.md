@@ -36,8 +36,9 @@ génération de code.
 > le frontend auto-hébergé reste en développement. Le lexeur, l’AST compact et
 > la première passe sémantique sont écrits en Gs++. La branche courante ajoute
 > la sélection typée des fonctions libres et méthodes, les accès membres,
-> références, agrégats et conversions d’héritage couvertes par cette tranche ;
-> la résolution complète des types et les étapes suivantes restent à migrer.
+> références, agrégats, conversions d’héritage, contrôle de visibilité,
+> constructeurs locaux et opérateurs membres couverts par cette tranche ; la
+> résolution complète des types et les étapes suivantes restent à migrer.
 
 ## Principes du langage
 

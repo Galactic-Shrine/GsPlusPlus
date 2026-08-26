@@ -37,8 +37,9 @@ génération de code.
 > la première passe sémantique sont écrits en Gs++. La branche courante ajoute
 > la sélection typée des fonctions libres et méthodes, les accès membres,
 > références, agrégats, conversions d’héritage, contrôle de visibilité,
-> constructeurs locaux et opérateurs membres couverts par cette tranche ; la
-> résolution complète des types et les étapes suivantes restent à migrer.
+> constructeurs locaux, initialiseurs explicites de constructeurs et opérateurs
+> membres couverts par cette tranche ; la résolution complète des types et les
+> étapes suivantes restent à migrer.
 
 ## Principes du langage
 

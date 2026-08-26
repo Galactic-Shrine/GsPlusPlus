@@ -2,6 +2,7 @@ espace GalacticShrine::GsPP::Autohebergement {
     constante NoeudDeclaration* NulNoeudsSemantiques;
     SymboleSemantique* NulSymbolesSemantiques;
     ResolutionSemantique* NulResolutionsSemantiques;
+    naturel64* NulCiblesInitialiseursSemantiques;
     RequeteAnalyseSemantique* NulRequetesAnalyseSemantique;
     constante caractère* NulCaracteresSemantiques;
 
@@ -10,6 +11,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         SymboleSemantique* SymbolesTravail;
         naturel64 NombreSymboles;
         naturel64 NombreResolutions;
+        naturel64* CiblesInitialiseurs;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
@@ -1404,7 +1406,7 @@ espace GalacticShrine::GsPP::Autohebergement {
 
     naturel64 SelectionnerConstructeurSemantique(
         EtatAnalyseSemantique* etat,
-        naturel64 indexVariable,
+        naturel64 indexArguments,
         naturel64 indexType) {
         naturel64 indexNoeudType = etat->SymbolesTravail[
             indexType].IndexNoeud;
@@ -1419,7 +1421,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 && etat->Requete->Noeuds[candidat->IndexNoeud].Genre == 13) {
                 naturel32 score = EvaluerArgumentsFonctionSemantique(
                         etat,
-                        indexVariable,
+                        indexArguments,
                         candidat->IndexNoeud,
                         0);
                 si (score != 4_294_967_295) {
@@ -1439,20 +1441,260 @@ espace GalacticShrine::GsPP::Autohebergement {
             SignalerErreurSemantique(
                 etat,
                 ErreurAnalyseSemantique::AucuneSurchargeCompatible,
-                indexVariable,
+                indexArguments,
                 convertir<naturel32>(
-                    CompterEnfantsDirectsSemantique(etat, indexVariable)));
+                    CompterEnfantsDirectsSemantique(etat, indexArguments)));
             retourner etat->NombreSymboles;
         }
         si (nombreMeilleures > 1) {
             SignalerErreurSemantique(
                 etat,
                 ErreurAnalyseSemantique::AppelSurchargeAmbigu,
-                indexVariable,
+                indexArguments,
                 nombreMeilleures);
             retourner etat->NombreSymboles;
         }
         retourner meilleure;
+    }
+
+    naturel64 TrouverTypeConstructeurInitialiseurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexInitialiseur) {
+        si (indexInitialiseur >= etat->Requete->NombreNoeuds)
+            retourner etat->NombreSymboles;
+        constante NoeudDeclaration* initialiseur =
+            &etat->Requete->Noeuds[indexInitialiseur];
+        si (initialiseur->Parent >= etat->Requete->NombreNoeuds)
+            retourner etat->NombreSymboles;
+        constante NoeudDeclaration* noeudConstructeurInitialiseur =
+            &etat->Requete->Noeuds[initialiseur->Parent];
+        si (noeudConstructeurInitialiseur->Genre != 13
+            || noeudConstructeurInitialiseur->Parent
+                >= etat->Requete->NombreNoeuds)
+            retourner etat->NombreSymboles;
+        retourner TrouverSymboleNoeudSemantique(
+            etat, noeudConstructeurInitialiseur->Parent);
+    }
+
+    naturel64 TrouverInitialiseurDelegueConstructeurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexConstructeur) {
+        naturel64 indexInitialiseurDelegue = indexConstructeur + 1;
+        tantque (indexInitialiseurDelegue < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* candidatInitialiseurDelegue =
+                &etat->Requete->Noeuds[indexInitialiseurDelegue];
+            si (candidatInitialiseurDelegue->Genre == 33
+                && candidatInitialiseurDelegue->Parent == indexConstructeur)
+                retourner indexInitialiseurDelegue;
+            indexInitialiseurDelegue = indexInitialiseurDelegue + 1;
+        }
+        retourner etat->Requete->NombreNoeuds;
+    }
+
+    ErreurAnalyseSemantique ResoudreInitialiseurDelegueSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexInitialiseurDelegue) {
+        naturel64 typeConstructeurDelegue =
+            TrouverTypeConstructeurInitialiseurSemantique(
+                etat, indexInitialiseurDelegue);
+        si (typeConstructeurDelegue >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexInitialiseurDelegue,
+                33);
+        naturel64 cibleConstructeurDelegue =
+            SelectionnerConstructeurSemantique(
+                etat,
+                indexInitialiseurDelegue,
+                typeConstructeurDelegue);
+        si (cibleConstructeurDelegue >= etat->NombreSymboles)
+            retourner etat->Requete->Resultat.Erreur;
+        naturel64 indexConstructeurDelegant =
+            etat->Requete->Noeuds[indexInitialiseurDelegue].Parent;
+        si (etat->SymbolesTravail[
+                cibleConstructeurDelegue].IndexNoeud
+            == indexConstructeurDelegant)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::DelegationConstructeurDirecte,
+                indexInitialiseurDelegue,
+                convertir<naturel32>(cibleConstructeurDelegue));
+        etat->CiblesInitialiseurs[indexInitialiseurDelegue] =
+            cibleConstructeurDelegue;
+        naturel32 drapeauxDelegation = 64 | 128 | 512;
+        si (CompterConstructeursTypeSemantique(
+                etat, typeConstructeurDelegue) > 1)
+            drapeauxDelegation = drapeauxDelegation | 1;
+        AjouterResolutionSemantique(
+            etat,
+            indexInitialiseurDelegue,
+            cibleConstructeurDelegue,
+            drapeauxDelegation);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ResoudreInitialiseurBaseSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexInitialiseurBase) {
+        naturel64 typeConstructeurBase =
+            TrouverTypeConstructeurInitialiseurSemantique(
+                etat, indexInitialiseurBase);
+        si (typeConstructeurBase >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexInitialiseurBase,
+                34);
+        naturel64 typeBaseInitialisee = TrouverTypeBaseSymboleSemantique(
+            etat, typeConstructeurBase);
+        si (typeBaseInitialisee >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::InitialiseurBaseSansClasseBase,
+                indexInitialiseurBase,
+                0);
+        naturel64 nombreConstructeursBase =
+            CompterConstructeursTypeSemantique(etat, typeBaseInitialisee);
+        naturel64 nombreArgumentsBase = CompterEnfantsDirectsSemantique(
+            etat, indexInitialiseurBase);
+        si (nombreConstructeursBase == 0) {
+            si (nombreArgumentsBase != 0)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::ConstructeurNonDeclare,
+                    indexInitialiseurBase,
+                    convertir<naturel32>(nombreArgumentsBase));
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        naturel64 cibleConstructeurBase = SelectionnerConstructeurSemantique(
+            etat, indexInitialiseurBase, typeBaseInitialisee);
+        si (cibleConstructeurBase >= etat->NombreSymboles)
+            retourner etat->Requete->Resultat.Erreur;
+        si (!AccesMembreAutoriseSemantique(
+                etat, cibleConstructeurBase, indexInitialiseurBase))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ConstructeurInaccessible,
+                indexInitialiseurBase,
+                convertir<naturel32>(cibleConstructeurBase));
+        etat->CiblesInitialiseurs[indexInitialiseurBase] =
+            cibleConstructeurBase;
+        naturel32 drapeauxBase = 64 | 128 | 1_024;
+        si (nombreConstructeursBase > 1)
+            drapeauxBase = drapeauxBase | 1;
+        AjouterResolutionSemantique(
+            etat,
+            indexInitialiseurBase,
+            cibleConstructeurBase,
+            drapeauxBase);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ResoudreInitialiseurChampSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexInitialiseurChamp) {
+        naturel64 typeConstructeurChamp =
+            TrouverTypeConstructeurInitialiseurSemantique(
+                etat, indexInitialiseurChamp);
+        si (typeConstructeurChamp >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexInitialiseurChamp,
+                35);
+        constante NoeudDeclaration* initialiseurChamp =
+            &etat->Requete->Noeuds[indexInitialiseurChamp];
+        naturel64 cibleChampInitialise = TrouverPremierMembreTypeSemantique(
+            etat,
+            typeConstructeurChamp,
+            initialiseurChamp->HachageNom,
+            1);
+        si (cibleChampInitialise < etat->NombreSymboles)
+            cibleChampInitialise = ResoudreAliasChampSemantique(
+                etat, cibleChampInitialise, typeConstructeurChamp);
+        si (cibleChampInitialise >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ChampInitialiseurIntrouvable,
+                indexInitialiseurChamp,
+                0);
+
+        naturel64 indexConstructeurChamp = initialiseurChamp->Parent;
+        naturel64 indexInitialiseurChampPrecedent = indexConstructeurChamp + 1;
+        naturel64 derniereCibleChamp = etat->NombreSymboles;
+        tantque (indexInitialiseurChampPrecedent < indexInitialiseurChamp) {
+            constante NoeudDeclaration* candidatChampPrecedent =
+                &etat->Requete->Noeuds[indexInitialiseurChampPrecedent];
+            si (candidatChampPrecedent->Genre == 35
+                && candidatChampPrecedent->Parent == indexConstructeurChamp) {
+                naturel64 cibleChampPrecedente = etat->CiblesInitialiseurs[
+                    indexInitialiseurChampPrecedent];
+                si (cibleChampPrecedente == cibleChampInitialise)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::ChampInitialisePlusieursFois,
+                        indexInitialiseurChamp,
+                        convertir<naturel32>(cibleChampInitialise));
+                si (cibleChampPrecedente < etat->NombreSymboles)
+                    derniereCibleChamp = cibleChampPrecedente;
+            }
+            indexInitialiseurChampPrecedent =
+                indexInitialiseurChampPrecedent + 1;
+        }
+        si (derniereCibleChamp < etat->NombreSymboles
+            && etat->SymbolesTravail[
+                derniereCibleChamp].IndexNoeud
+                >= etat->SymbolesTravail[
+                    cibleChampInitialise].IndexNoeud)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::OrdreInitialisationChampInvalide,
+                indexInitialiseurChamp,
+                convertir<naturel32>(cibleChampInitialise));
+
+        etat->CiblesInitialiseurs[indexInitialiseurChamp] =
+            cibleChampInitialise;
+        AjouterResolutionSemantique(
+            etat,
+            indexInitialiseurChamp,
+            cibleChampInitialise,
+            8 | 2_048);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique VerifierCyclesDelegationConstructeurSemantique(
+        EtatAnalyseSemantique* etat) {
+        naturel64 indexDepartDelegation = 0;
+        tantque (indexDepartDelegation < etat->Requete->NombreNoeuds) {
+            si (etat->Requete->Noeuds[indexDepartDelegation].Genre == 33) {
+                naturel64 indexCourantDelegation = indexDepartDelegation;
+                naturel64 profondeurDelegation = 0;
+                tantque (indexCourantDelegation
+                        < etat->Requete->NombreNoeuds
+                    && profondeurDelegation < etat->NombreSymboles) {
+                    naturel64 cibleCouranteDelegation =
+                        etat->CiblesInitialiseurs[indexCourantDelegation];
+                    si (cibleCouranteDelegation >= etat->NombreSymboles) {
+                        indexCourantDelegation =
+                            etat->Requete->NombreNoeuds;
+                    }
+                    sinon {
+                        naturel64 constructeurCourantDelegation =
+                            etat->SymbolesTravail[
+                                cibleCouranteDelegation].IndexNoeud;
+                        indexCourantDelegation =
+                            TrouverInitialiseurDelegueConstructeurSemantique(
+                                etat, constructeurCourantDelegation);
+                        profondeurDelegation = profondeurDelegation + 1;
+                    }
+                }
+                si (indexCourantDelegation
+                    < etat->Requete->NombreNoeuds)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::CycleDelegationConstructeur,
+                        indexDepartDelegation,
+                        convertir<naturel32>(profondeurDelegation));
+            }
+            indexDepartDelegation = indexDepartDelegation + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
     }
 
     ErreurAnalyseSemantique ResoudreConstructionsSemantiques(
@@ -1461,7 +1703,28 @@ espace GalacticShrine::GsPP::Autohebergement {
         tantque (indexVariable < etat->Requete->NombreNoeuds) {
             constante NoeudDeclaration* variable =
                 &etat->Requete->Noeuds[indexVariable];
-            si (variable->Genre == 19) {
+            si (variable->Genre == 33) {
+                ErreurAnalyseSemantique erreurDelegation =
+                    ResoudreInitialiseurDelegueSemantique(
+                        etat, indexVariable);
+                si (erreurDelegation != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurDelegation;
+            }
+            sinon si (variable->Genre == 34) {
+                ErreurAnalyseSemantique erreurBase =
+                    ResoudreInitialiseurBaseSemantique(
+                        etat, indexVariable);
+                si (erreurBase != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurBase;
+            }
+            sinon si (variable->Genre == 35) {
+                ErreurAnalyseSemantique erreurChamp =
+                    ResoudreInitialiseurChampSemantique(
+                        etat, indexVariable);
+                si (erreurChamp != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurChamp;
+            }
+            sinon si (variable->Genre == 19) {
                 naturel64 type = TrouverTypeDepuisHachageSemantique(
                     etat, variable->HachageType, 0);
                 si (type < etat->NombreSymboles
@@ -1513,7 +1776,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             }
             indexVariable = indexVariable + 1;
         }
-        retourner ErreurAnalyseSemantique::Reussite;
+        retourner VerifierCyclesDelegationConstructeurSemantique(etat);
     }
 
     naturel64 CompterOperateursTypeSemantique(
@@ -1777,7 +2040,9 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.SymbolesTravail = NulSymbolesSemantiques;
         etat.NombreSymboles = 0;
         etat.NombreResolutions = 0;
+        etat.CiblesInitialiseurs = NulCiblesInitialiseursSemantiques;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
+        naturel64 index = 0;
 
         si (requete->Source == NulCaracteresSemantiques
             || (requete->CapaciteSymboles != 0
@@ -1811,8 +2076,25 @@ espace GalacticShrine::GsPP::Autohebergement {
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
+        etat.CiblesInitialiseurs = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene,
+                requete->NombreNoeuds * 8,
+                8));
+        si (etat.CiblesInitialiseurs
+            == NulCiblesInitialiseursSemantiques) {
+            SignalerErreurSemantique(
+                &etat, ErreurAnalyseSemantique::AllocationImpossible, 0, 0);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+        index = 0;
+        tantque (index < requete->NombreNoeuds) {
+            etat.CiblesInitialiseurs[index] = requete->NombreNoeuds;
+            index = index + 1;
+        }
 
-        naturel64 index = 0;
+        index = 0;
         tantque (index < requete->NombreNoeuds) {
             AjouterSymboleSemantique(&etat, index);
             index = index + 1;

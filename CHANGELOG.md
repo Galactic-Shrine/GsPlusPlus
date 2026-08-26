@@ -48,8 +48,23 @@
   sémantiques négatifs comparés au bootstrap ;
 - ajout des drapeaux de résolution `Constructeur`, `ConstructionExplicite` et
   `Operateur`, sans modification des tailles du contrat ABI ;
-- validation complète avec Visual Studio 2026 et GNU/Linux, avec quatre images
-  auto-hébergées identiques bit à bit entre les deux chaînes.
+- ajout des genres AST compacts `InitialiseurConstructeurDelegue`,
+  `InitialiseurConstructeurBase` et `InitialiseurChampConstructeur`, avec les
+  arguments rattachés à leur initialiseur plutôt qu’aplatis sous la fonction ;
+- résolution typée des délégations `soi(...)` / `this(...)` et des
+  constructeurs de base explicites `parent(...)` / `super(...)`, avec contrôle
+  d’accès et détection des délégations directes ou cycliques ;
+- résolution des initialiseurs vers les champs directs canoniques, y compris
+  au travers d’un alias, avec refus des champs inconnus, doublons et ordres de
+  déclaration inversés ;
+- ajout des diagnostics sémantiques 30 à 35 et de huit corpus négatifs
+  différentiels, portant leur total à quarante et un ;
+- ajout des drapeaux de résolution `DelegationConstructeur`,
+  `InitialisationBase` et `InitialisationChamp`, sans agrandir les nœuds,
+  symboles, résolutions, résultats ou requêtes ABI ;
+- validation complète 4/4 avec Visual Studio 2026 et 5/5 sous GNU/Linux,
+  conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
+  chaîne, avec quatre images auto-hébergées identiques bit à bit.
 
 ## Compilateur Gs++ 0.27.0-alpha.7 — 2026-08-25
 

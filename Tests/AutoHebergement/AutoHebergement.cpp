@@ -1007,32 +1007,79 @@ namespace
                          }
                         if (fonction.DelegueConstructeur)
                         {
+                            const auto indexInitialiseur = resultat.size();
+                            resultat.push_back({
+                                33,
+                                static_cast<std::uint32_t>(
+                                    fonction.Position.Ligne),
+                                static_cast<std::uint32_t>(
+                                    fonction.Position.Colonne),
+                                0,
+                                indexFonction,
+                                0,
+                                0,
+                                0,
+                                HacherTexte(structure.Espace),
+                                0});
                             for (const auto& argument :
                                  fonction.ArgumentsConstructeurDelegue)
                                 AjouterExpressionReference(
                                     *argument,
-                                    indexFonction,
+                                    indexInitialiseur,
                                     HacherTexte(structure.Espace),
                                     resultat);
                         }
                         else
                         {
-                            for (const auto& argument :
-                                 fonction.ArgumentsConstructeurBase)
-                                AjouterExpressionReference(
-                                    *argument,
+                            if (fonction.InitialiseurBaseExplicite)
+                            {
+                                const auto indexInitialiseur = resultat.size();
+                                resultat.push_back({
+                                    34,
+                                    static_cast<std::uint32_t>(
+                                        fonction.Position.Ligne),
+                                    static_cast<std::uint32_t>(
+                                        fonction.Position.Colonne),
+                                    0,
                                     indexFonction,
+                                    0,
+                                    0,
+                                    0,
                                     HacherTexte(structure.Espace),
-                                    resultat);
+                                    0});
+                                for (const auto& argument :
+                                     fonction.ArgumentsConstructeurBase)
+                                    AjouterExpressionReference(
+                                        *argument,
+                                        indexInitialiseur,
+                                        HacherTexte(structure.Espace),
+                                        resultat);
+                            }
                             for (const auto& initialiseur :
                                  fonction.InitialiseursChamps)
+                            {
+                                const auto indexInitialiseur = resultat.size();
+                                resultat.push_back({
+                                    35,
+                                    static_cast<std::uint32_t>(
+                                        initialiseur.Position.Ligne),
+                                    static_cast<std::uint32_t>(
+                                        initialiseur.Position.Colonne),
+                                    0,
+                                    indexFonction,
+                                    0,
+                                    0,
+                                    HacherTexte(initialiseur.Nom),
+                                    HacherTexte(structure.Espace),
+                                    0});
                                 for (const auto& argument :
                                      initialiseur.Arguments)
                                     AjouterExpressionReference(
                                         *argument,
-                                        indexFonction,
+                                        indexInitialiseur,
                                         HacherTexte(structure.Espace),
                                         resultat);
+                            }
                         }
                          if (fonction.Corps)
                              AjouterInstructionReference(
@@ -1561,7 +1608,9 @@ namespace
                 || courant.Genre == 28
                 || courant.Genre == 30
                 || courant.Genre == 31
-                || courant.Genre == 32;
+                || courant.Genre == 32
+                || courant.Genre == 33
+                || courant.Genre == 34;
             if (nomAnonyme)
             {
                 Exiger(
@@ -1896,6 +1945,21 @@ namespace
                         && (noeud.Drapeaux & 512U) != 0;
                 }),
             "le constructeur délégué n’est pas décrit");
+        for (std::uint32_t genre = 33; genre <= 35; ++genre)
+            Exiger(
+                std::any_of(
+                    astMembresFrancais.begin(),
+                    astMembresFrancais.end(),
+                    [genre](const NoeudDeclarationHote& noeud)
+                    { return noeud.Genre == genre; }),
+                "genre d’initialiseur de constructeur absent : "
+                    + std::to_string(genre));
+        for (const auto& noeud : astMembresFrancais)
+            if (noeud.Genre >= 33 && noeud.Genre <= 35)
+                Exiger(
+                    noeud.Parent < astMembresFrancais.size()
+                        && astMembresFrancais[noeud.Parent].Genre == 13,
+                    "initialiseur non rattaché à son constructeur");
 
         const std::string instructionsFrancaises =
             "espace Demo {\n"
@@ -2219,7 +2283,8 @@ namespace
                 || genreParent == 18
                 || genreParent == 19
                 || genreParent == 20
-                || genreParent == 21;
+                || genreParent == 21
+                || (genreParent >= 33 && genreParent <= 35);
             Exiger(
                 parentExpression || parentSyntaxique,
                 "expression rattachée à un parent syntaxique invalide");
@@ -3127,6 +3192,92 @@ namespace
             accesPriveAutorise && accesProtegeHeriteAutorise,
             "un accès privé ou protégé valide n’a pas été conservé");
 
+        const std::string initialisationConstructeursFrancais =
+            "classe BaseInitialisee {\n"
+            "  protégée: constructeur(entier32 valeur) {}\n"
+            "};\n"
+            "classe ObjetInitialise : publique BaseInitialisee {\n"
+            "  privée: entier32 Premier; entier32 Second;\n"
+            "  publique:\n"
+            "    constructeur() : soi(1) {}\n"
+            "    constructeur(entier32 valeur)\n"
+            "      : parent(valeur), Premier(valeur), Second(valeur + 1) {}\n"
+            "};\n"
+            "publique vide ConstruireInitialise() { ObjetInitialise objet; }\n";
+        const std::string initialisationConstructeursAnglais =
+            "class BaseInitialisee {\n"
+            "  protected: constructor(int32 valeur) {}\n"
+            "};\n"
+            "class ObjetInitialise : public BaseInitialisee {\n"
+            "  private: int32 Premier; int32 Second;\n"
+            "  public:\n"
+            "    constructor() : this(1) {}\n"
+            "    constructor(int32 valeur)\n"
+            "      : super(valeur), Premier(valeur), Second(valeur + 1) {}\n"
+            "};\n"
+            "public void ConstruireInitialise() { ObjetInitialise objet; }\n";
+        const auto resultatInitialisationFrancais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            initialisationConstructeursFrancais,
+            "initialisation-constructeurs-francais");
+        const auto resultatInitialisationAnglais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            initialisationConstructeursAnglais,
+            "initialisation-constructeurs-anglais");
+        Exiger(
+            resultatInitialisationFrancais.Symboles.size()
+                    == resultatInitialisationAnglais.Symboles.size()
+                && resultatInitialisationFrancais.Resolutions.size()
+                    == resultatInitialisationAnglais.Resolutions.size(),
+            "les initialisations de constructeurs bilingues divergent");
+        std::size_t nombreDelegationsConstructeurs = 0;
+        std::size_t nombreInitialisationsBase = 0;
+        std::size_t nombreInitialisationsChamps = 0;
+        for (const auto& resolution :
+             resultatInitialisationFrancais.Resolutions)
+        {
+            const auto& noeud = resultatInitialisationFrancais.Noeuds[
+                resolution.IndexNoeud];
+            const auto& cible = resultatInitialisationFrancais.Symboles[
+                resolution.IndexSymbole];
+            const auto& declarationCible =
+                resultatInitialisationFrancais.Noeuds[cible.IndexNoeud];
+            if (noeud.Genre == 33)
+            {
+                ++nombreDelegationsConstructeurs;
+                Exiger(
+                    (resolution.Drapeaux & (64U | 128U | 512U))
+                            == (64U | 128U | 512U)
+                        && declarationCible.Genre == 13,
+                    "la délégation ne cible pas un constructeur local");
+            }
+            else if (noeud.Genre == 34)
+            {
+                ++nombreInitialisationsBase;
+                Exiger(
+                    (resolution.Drapeaux & (64U | 128U | 1024U))
+                            == (64U | 128U | 1024U)
+                        && declarationCible.Genre == 13,
+                    "l’initialisation de base ne cible pas son constructeur");
+            }
+            else if (noeud.Genre == 35)
+            {
+                ++nombreInitialisationsChamps;
+                Exiger(
+                    (resolution.Drapeaux & (8U | 2048U))
+                            == (8U | 2048U)
+                        && declarationCible.Genre == 7,
+                    "l’initialisation de champ ne cible pas un champ direct");
+            }
+        }
+        Exiger(
+            nombreDelegationsConstructeurs == 1
+                && nombreInitialisationsBase == 1
+                && nombreInitialisationsChamps == 2,
+            "les résolutions d’initialisation de constructeurs sont incomplètes");
+
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure A {}; structure A {}; publique vide F() {}",
@@ -3244,6 +3395,46 @@ namespace
             "classe A { privée: constructeur() {} }; "
             "publique vide F() { A valeur; }",
             26, "constructeur-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() : soi() {} };",
+            31, "delegation-constructeur-directe");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: "
+            "constructeur() : soi(1) {} "
+            "constructeur(entier32 valeur) : soi() {} };",
+            32, "cycle-delegation-constructeur");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() : parent() {} };",
+            30, "initialiseur-base-sans-classe-base");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Base { publique: constructeur(entier32 valeur) {} }; "
+            "classe A : publique Base { publique: "
+            "constructeur() : parent(vrai) {} };",
+            21, "aucun-constructeur-base-compatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Base { privée: constructeur() {} }; "
+            "classe A : publique Base { publique: "
+            "constructeur() : parent() {} };",
+            26, "constructeur-base-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { publique: constructeur() : Inconnu(1) {} };",
+            33, "champ-initialiseur-introuvable");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X; publique: "
+            "constructeur() : X(1), X(2) {} };",
+            34, "champ-initialise-plusieurs-fois");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X; entier32 Y; publique: "
+            "constructeur() : Y(1), X(2) {} };",
+            35, "ordre-initialisation-champ-invalide");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A {}; publique vide F() { A valeur(); }",

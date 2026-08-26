@@ -1592,9 +1592,24 @@ espace GalacticShrine::GsPP::Autohebergement {
                         retourner faux;
                     }
                     drapeaux = drapeaux | 512;
+                    naturel64 indexInitialiseurDelegue = etat->NombreNoeuds;
+                    NoeudDeclaration noeudInitialiseurDelegue = {
+                        33,
+                        position.Ligne,
+                        position.Colonne,
+                        0,
+                        indexMembre,
+                        0,
+                        0,
+                        0,
+                        contexte->Espace->Hachage,
+                        0};
+                    si (!AjouterNoeudDeclaration(
+                            etat, noeudInitialiseurDelegue))
+                        retourner faux;
                     si (!AnalyserArgumentsExpressionsDeclaration(
                             etat,
-                            indexMembre,
+                            indexInitialiseurDelegue,
                             contexte->Espace->Hachage))
                         retourner faux;
                     si (EstJetonDeclaration(etat, 41)) {
@@ -1619,9 +1634,24 @@ espace GalacticShrine::GsPP::Autohebergement {
                         retourner faux;
                     }
                     drapeaux = drapeaux | 256;
+                    naturel64 indexInitialiseurBase = etat->NombreNoeuds;
+                    NoeudDeclaration noeudInitialiseurBase = {
+                        34,
+                        position.Ligne,
+                        position.Colonne,
+                        0,
+                        indexMembre,
+                        0,
+                        0,
+                        0,
+                        contexte->Espace->Hachage,
+                        0};
+                    si (!AjouterNoeudDeclaration(
+                            etat, noeudInitialiseurBase))
+                        retourner faux;
                     si (!AnalyserArgumentsExpressionsDeclaration(
                             etat,
-                            indexMembre,
+                            indexInitialiseurBase,
                             contexte->Espace->Hachage))
                         retourner faux;
                 }
@@ -1632,9 +1662,24 @@ espace GalacticShrine::GsPP::Autohebergement {
                             ErreurAnalyseDeclarations::IdentifiantAttendu))
                         retourner faux;
                     drapeaux = drapeaux | 1024;
+                    naturel64 indexInitialiseurChamp = etat->NombreNoeuds;
+                    NoeudDeclaration noeudInitialiseurChamp = {
+                        35,
+                        initialiseur->Ligne,
+                        initialiseur->Colonne,
+                        0,
+                        indexMembre,
+                        initialiseur->Debut,
+                        initialiseur->TailleSource,
+                        initialiseur->HachageTexte,
+                        contexte->Espace->Hachage,
+                        0};
+                    si (!AjouterNoeudDeclaration(
+                            etat, noeudInitialiseurChamp))
+                        retourner faux;
                     si (!AnalyserArgumentsExpressionsDeclaration(
                             etat,
-                            indexMembre,
+                            indexInitialiseurChamp,
                             contexte->Espace->Hachage))
                         retourner faux;
                 }

@@ -67,6 +67,18 @@ espace GalacticShrine::GsPP::Autohebergement {
         MissingOperator = 28,
         InitialiseurClasseInterdit = 29,
         ClassInitializerForbidden = 29,
+        InitialiseurBaseSansClasseBase = 30,
+        BaseInitializerWithoutBaseClass = 30,
+        DelegationConstructeurDirecte = 31,
+        DirectConstructorDelegation = 31,
+        CycleDelegationConstructeur = 32,
+        ConstructorDelegationCycle = 32,
+        ChampInitialiseurIntrouvable = 33,
+        UnknownInitializerField = 33,
+        ChampInitialisePlusieursFois = 34,
+        FieldInitializedMoreThanOnce = 34,
+        OrdreInitialisationChampInvalide = 35,
+        InvalidFieldInitializationOrder = 35,
     };
 
     énumération GenreSymboleSemantique {
@@ -111,6 +123,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         ExplicitConstruction = 128,
         Operateur = 256,
         Operator = 256,
+        DelegationConstructeur = 512,
+        ConstructorDelegation = 512,
+        InitialisationBase = 1024,
+        BaseInitialization = 1024,
+        InitialisationChamp = 2048,
+        FieldInitialization = 2048,
     };
 
     structure SymboleSemantique {

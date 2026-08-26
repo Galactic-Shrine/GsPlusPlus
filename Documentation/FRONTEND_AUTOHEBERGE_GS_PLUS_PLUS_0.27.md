@@ -11,8 +11,10 @@ constructeurs, destructeurs et opérateurs de classes, puis l’alpha.5 construi
 la hiérarchie des blocs et instructions. L’alpha.6 ajoute l’AST interne des
 expressions avec les mêmes priorités et associativités que le bootstrap. Le
 jalon alpha.7 ajoute l’indexation des symboles et la première résolution des
-noms. La branche de développement suivante sélectionne maintenant les
-surcharges libres à partir des types déjà déterminables dans l’AST compact.
+noms. La branche de développement suivante sélectionne les surcharges libres et
+membres à partir des types déjà déterminables dans l’AST compact, contrôle la
+visibilité et résout maintenant les constructeurs locaux ainsi que leurs
+initialiseurs explicites.
 Le frontend 0.27 complet n’est pas encore validé : la résolution exhaustive
 des types et les vérifications sémantiques suivantes restent à migrer.
 
@@ -133,7 +135,8 @@ appel correctement dimensionné retourne l’AST complet. Chaque
   constructeur, destructeur, surcharge d’opérateur, bloc, retour, instruction
   d’expression, variable locale, conditionnelle, boucle `tantque`, littéral,
   référence de variable, expression unaire ou binaire, affectation, appel,
-  accès membre, indexation, conversion ou agrégat ;
+  accès membre, indexation, conversion, agrégat, initialiseur de constructeur
+  délégué, initialiseur de base ou initialiseur de champ ;
 - la ligne et la colonne du début de la déclaration ;
 - le parent et les drapeaux de visibilité, caractère externe, définition ou
   initialiseur présent, héritage, virtualité, remplacement et forme de liste
@@ -374,16 +377,76 @@ distincts, puis vérifie les accès privé dans la classe propriétaire et prot�
 depuis une classe dérivée. Les tailles ABI restent inchangées : 48 octets pour
 un symbole, 32 pour une résolution, 56 pour le résultat et 120 pour la requête.
 
-Cette tranche ne couvre pas encore les constructeurs délégués, les
-initialiseurs de base ou de champs, les tableaux locaux d’objets, les
-destructeurs et plans de durée de vie, les opérateurs libres, ni le typage
+## Initialiseurs explicites de constructeurs — après alpha.7
+
+L’AST compact ne confond plus les arguments de la liste d’initialisation avec
+les enfants directs du constructeur. Trois genres bilingues, numérotés sans
+modifier les genres 0 à 32, matérialisent désormais chaque entrée :
+
+| Genre | Français | Anglais | Contenu |
+| ---: | --- | --- | --- |
+| 33 | `InitialiseurConstructeurDelegue` | `DelegatingConstructorInitializer` | arguments de `soi(...)` / `this(...)` |
+| 34 | `InitialiseurConstructeurBase` | `BaseConstructorInitializer` | arguments de `parent(...)` / `super(...)` |
+| 35 | `InitialiseurChampConstructeur` | `ConstructorFieldInitializer` | nom source du champ et arguments |
+
+Chaque nœud est enfant direct du constructeur ; ses expressions sont ses
+propres enfants. Les catégories délégation et base sont anonymes et restent
+normalisées entre les syntaxes française et anglaise. L’initialiseur de champ
+conserve sa tranche source et son hachage. `NoeudDeclaration` reste strictement
+à 64 octets.
+
+La passe sémantique sélectionne la surcharge de constructeur de la classe
+courante pour une délégation, puis celle de la base directe pour un
+initialiseur explicite. Elle contrôle l’accès public ou protégé au constructeur
+de base, refuse une délégation directe et parcourt la chaîne complète pour
+détecter les cycles. Une résolution porte alors `Constructeur`,
+`ConstructionExplicite` et respectivement `DelegationConstructeur` ou
+`InitialisationBase`.
+
+Un initialiseur de champ est limité aux champs déclarés directement dans la
+classe du constructeur. Les alias de champs sont normalisés vers le stockage
+canonique ; les champs inconnus ou hérités, les doublons et un ordre différent
+de l’ordre de déclaration sont refusés. La résolution cible le symbole du champ
+et porte `Membre | InitialisationChamp`.
+
+Les diagnostics supplémentaires sont :
+
+| Code | Diagnostic | Signification |
+| ---: | --- | --- |
+| 30 | `InitialiseurBaseSansClasseBase` | `parent(...)` / `super(...)` utilisé dans une classe racine |
+| 31 | `DelegationConstructeurDirecte` | un constructeur se sélectionne lui-même comme cible directe |
+| 32 | `CycleDelegationConstructeur` | la chaîne de délégation revient sur un constructeur déjà visité |
+| 33 | `ChampInitialiseurIntrouvable` | aucun champ direct ou alias canonique ne correspond |
+| 34 | `ChampInitialisePlusieursFois` | deux entrées ciblent le même champ canonique |
+| 35 | `OrdreInitialisationChampInvalide` | les champs ne suivent pas leur ordre de déclaration |
+
+Huit nouveaux corpus négatifs portent le total à quarante et un. Le corpus
+positif bilingue vérifie séparément une délégation, une construction de base et
+deux initialisations de champs, en plus des constructions locales déjà
+couvertes.
+
+La matrice locale du 26 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
+smoke réussissent sur chaque chaîne. Les quatre images sont identiques bit à
+bit entre les chaînes. Les images modifiées par cette tranche sont :
+
+| Image | Taille | SHA-256 |
+| --- | ---: | --- |
+| `AnalyseurDeclarations.GsE` | 107 523 | `f25a2b118bb04c8c62a9dcca3d8c2a269705e203f2ab157ba1061af724ad91d5` |
+| `AnalyseurSemantique.GsE` | 77 622 | `3aa3c0df41bc2e732c4b181e166523980ec20382d63c15cd622c2cdda6537041` |
+
+Cette tranche ne couvre pas encore la validation complète de l’arité et du
+type des valeurs de champs scalaires, la sélection des constructeurs de champs
+objets ou de tableaux, les constructions de base implicites sans nœud source,
+les destructeurs et plans de durée de vie, les opérateurs libres, ni le typage
 récursif complet des appels et opérateurs imbriqués.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter la résolution et la comparaison des types de toutes les
   expressions ;
-- étendre les constructeurs aux délégations, bases, champs et tableaux ;
+- compléter les initialiseurs de champs objets, les tableaux et les
+  constructions implicites de bases ;
 - migrer les opérateurs libres et le typage des opérateurs imbriqués ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;

@@ -136,6 +136,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         Cast = 31,
         Agregat = 32,
         Aggregate = 32,
+        InitialiseurConstructeurDelegue = 33,
+        DelegatingConstructorInitializer = 33,
+        InitialiseurConstructeurBase = 34,
+        BaseConstructorInitializer = 34,
+        InitialiseurChampConstructeur = 35,
+        ConstructorFieldInitializer = 35,
     };
 
     énumération DrapeauNoeudDeclaration {

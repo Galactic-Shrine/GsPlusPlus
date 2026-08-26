@@ -35,8 +35,9 @@ official aliases with the same semantics and generated code.
 > first semantic pass are written in Gs++. The current branch adds typed
 > selection for free functions and methods, member access, references,
 > aggregates, inheritance conversions, visibility checks, local constructors,
-> and member operators covered by this stage; complete type resolution and the
-> following semantic stages remain to be migrated.
+> explicit constructor initializers, and member operators covered by this
+> stage; complete type resolution and the following semantic stages remain to
+> be migrated.
 
 ## Language principles
 

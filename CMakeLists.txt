@@ -96,11 +96,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/GsPlusPlus"
     )
     install(
-        FILES
-            "${GS_CLASSIFICATEUR_GSE}"
-            "${GS_LEXEUR_GSE}"
-            "${GS_ANALYSEUR_DECLARATIONS_GSE}"
-            "${GS_ANALYSEUR_SEMANTIQUE_GSE}"
+        FILES "${GS_FRONTEND_GSE}"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/GsPlusPlus/AutoHebergement"
     )
     install(

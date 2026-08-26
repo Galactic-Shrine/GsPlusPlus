@@ -62,9 +62,15 @@
 - ajout des drapeaux de résolution `DelegationConstructeur`,
   `InitialisationBase` et `InitialisationChamp`, sans agrandir les nœuds,
   symboles, résolutions, résultats ou requêtes ABI ;
+- regroupement des étapes auto-hébergées dans l’unique exécutable
+  `Frontend.GsE`, qui exporte le classificateur, le lexeur, l’analyseur
+  syntaxique et l’analyseur sémantique ;
+- conservation des quatre `.GsObj` de construction comme modules internes et
+  retrait des quatre images GsE spécialisées de la construction, de
+  l’installation et des paquets ;
 - validation complète 4/4 avec Visual Studio 2026 et 5/5 sous GNU/Linux,
   conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
-  chaîne, avec quatre images auto-hébergées identiques bit à bit.
+  chaîne, avec `Frontend.GsE` identique bit à bit.
 
 ## Compilateur Gs++ 0.27.0-alpha.7 — 2026-08-25
 

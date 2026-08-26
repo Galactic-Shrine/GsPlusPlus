@@ -64,8 +64,9 @@ aucune allocation.
 
 ## Preuve différentielle actuelle
 
-Le test charge réellement `Lexeur.GsE`, résout ses imports avec l’ABI
-`GsAbi:x64-ms-v1` et compare chaque résultat à `GsPP::Lexeur` :
+Le test charge réellement `Frontend.GsE`, sélectionne son export de lexage,
+résout ses imports avec l’ABI `GsAbi:x64-ms-v1` et compare chaque résultat à
+`GsPP::Lexeur` :
 
 - six corpus valides, dont source vide, programme accentué, commentaires,
   totalité des opérateurs, chaînes échappées et BOM ;
@@ -167,8 +168,8 @@ allocation active ne subsiste.
 
 ### Preuve différentielle de la tranche
 
-Le test charge réellement `AnalyseurDeclarations.GsE` et compare chaque nœud
-au programme produit par `GsPP::AnalyseurSyntaxique` :
+Le test charge réellement `Frontend.GsE`, sélectionne son export syntaxique et
+compare chaque nœud au programme produit par `GsPP::AnalyseurSyntaxique` :
 
 - paires de corpus français/anglais structurellement équivalents pour les
   fonctions, les déclarations de données, les membres de classes et les
@@ -206,9 +207,9 @@ au programme produit par `GsPP::AnalyseurSyntaxique` :
 - relations parent-enfant vérifiées entre classes, membres exécutables et
   paramètres explicites.
 
-Les constructions MSVC et GNU produisent un `AnalyseurDeclarations.GsE`
-identique bit à bit. La validation détaillée et les empreintes sont consignées
-dans
+Les constructions MSVC et GNU produisent un `Frontend.GsE` identique bit à
+bit. La validation détaillée de la préversion et ses empreintes historiques
+sont consignées dans
 [`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
 
 Cette tranche construit l’AST des corps, de leurs instructions et de leurs
@@ -322,8 +323,9 @@ C++. Les variantes libres et membres portent le total courant à vingt et un
 corpus sémantiques négatifs.
 
 Cette tranche est validée localement par la reconstruction réelle de
-`AnalyseurSemantique.GsE` et par les suites complètes MSVC et GNU. Les étapes
-objet qui prolongent cette sélection sont décrites dans la section suivante.
+`Frontend.GsE`, la sélection de son export sémantique et les suites complètes
+MSVC et GNU. Les étapes objet qui prolongent cette sélection sont décrites dans
+la section suivante.
 
 ## Visibilité, constructeurs locaux et opérateurs membres — après alpha.7
 
@@ -427,13 +429,19 @@ couvertes.
 
 La matrice locale du 26 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
-smoke réussissent sur chaque chaîne. Les quatre images sont identiques bit à
-bit entre les chaînes. Les images modifiées par cette tranche sont :
+smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
+livré dans une seule image, identique bit à bit entre les chaînes :
 
 | Image | Taille | SHA-256 |
 | --- | ---: | --- |
-| `AnalyseurDeclarations.GsE` | 107 523 | `f25a2b118bb04c8c62a9dcca3d8c2a269705e203f2ab157ba1061af724ad91d5` |
-| `AnalyseurSemantique.GsE` | 77 622 | `3aa3c0df41bc2e732c4b181e166523980ec20382d63c15cd622c2cdda6537041` |
+| `Frontend.GsE` | 169 793 | `72b62c5082816838cc118a6e856bdbd5ed62bead50967a6c91bd63c8d7156eaf` |
+
+Les fichiers `ClassificateurMotsCles.GsObj`, `Lexeur.GsObj`,
+`AnalyseurDeclarations.GsObj` et `AnalyseurSemantique.GsObj` restent des
+modules intermédiaires de construction. Ils ne sont ni installés ni présentés
+comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
+d’entrée publics afin que les tests différentiels puissent encore valider
+chaque étape séparément.
 
 Cette tranche ne couvre pas encore la validation complète de l’arité et du
 type des valeurs de champs scalaires, la sélection des constructeurs de champs

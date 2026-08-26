@@ -58,10 +58,7 @@ add_custom_command(
 add_custom_target(
     gspp_images_tests
     DEPENDS
-        "${GS_CLASSIFICATEUR_GSE}"
-        "${GS_LEXEUR_GSE}"
-        "${GS_ANALYSEUR_DECLARATIONS_GSE}"
-        "${GS_ANALYSEUR_SEMANTIQUE_GSE}"
+        "${GS_FRONTEND_GSE}"
         "${GS_TEST_HEBERGE_GSE}"
 )
 add_dependencies(gspp_images_tests autohebergement_images bibliotheque_hebergee)
@@ -71,10 +68,7 @@ add_test(NAME gspp_tests COMMAND gspp_tests)
 add_test(
     NAME gspp_autohebergement_tests
     COMMAND gspp_autohebergement_tests
-        "${GS_CLASSIFICATEUR_GSE}"
-        "${GS_LEXEUR_GSE}"
-        "${GS_ANALYSEUR_DECLARATIONS_GSE}"
-        "${GS_ANALYSEUR_SEMANTIQUE_GSE}"
+        "${GS_FRONTEND_GSE}"
         "${GS_TEST_HEBERGE_GSE}"
 )
 
@@ -124,7 +118,7 @@ if(UNIX AND NOT MSVC)
             $<TARGET_FILE:gsechargeur>
             "${GS_SYSTEME_GSA}"
             "${GS_HEBERGEE_GSA}"
-            "${GS_CLASSIFICATEUR_GSE}"
+            "${GS_FRONTEND_GSE}"
             "${GS_TEST_HEBERGE_GSE}"
     )
 else()

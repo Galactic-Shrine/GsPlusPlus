@@ -8,7 +8,7 @@ verificateur="${4:?vérificateur GsE manquant}"
 chargeur="${5:?chargeur GsE manquant}"
 bibliotheque_systeme="${6:?bibliothèque système manquante}"
 bibliotheque_hebergee="${7:?bibliothèque hébergée manquante}"
-classificateur="${8:?classificateur manquant}"
+frontend="${8:?frontend auto-hébergé manquant}"
 test_hebergee="${9:?test hébergé manquant}"
 
 repertoire_test="$racine_construction/Tests/Integration"
@@ -187,9 +187,14 @@ cmp "$repertoire_systeme/GsSysteme-premiere.GsA" \
     "$repertoire_systeme/GsSysteme-reconstruite.GsA"
 
 test "$(od -An -tx1 -N5 "$bibliotheque_hebergee" | tr -d ' \n')" = "4753413a30"
-"$verificateur" "$classificateur" | grep -q "GsE valide"
+"$verificateur" "$frontend" | grep -q "GsE valide"
 "$verificateur" "$test_hebergee" | grep -q "GsE valide"
-grep -aq "GalacticShrine::GsPP::Autohebergement::ClassifierMotCle" "$classificateur"
+grep -aq "GalacticShrine::GsPP::Autohebergement::ClassifierMotCle" "$frontend"
+grep -aq "GalacticShrine::GsPP::Autohebergement::AnalyserSource" "$frontend"
+grep -aq \
+    "GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsSource" \
+    "$frontend"
+grep -aq "GalacticShrine::GsPP::Autohebergement::AnalyserSemantique" "$frontend"
 grep -aq "GalacticShrine::GsPP::Hote::EmettreDiagnostic" "$test_hebergee"
 cp "$bibliotheque_hebergee" "$repertoire_hebergee/GsHebergee-premiere.GsA"
 "$compilateur" Bibliotheques/Hebergee/GsHebergee.GsPj \

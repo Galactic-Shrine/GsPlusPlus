@@ -226,8 +226,8 @@ All normative documentation is maintained in Markdown as its primary source.
 - CTest: **4/4** on Windows and **5/5** on Linux;
 - four successful smoke benchmark scenarios on each host;
 - Windows and Linux GitHub CI;
-- all four self-hosted images, including `AnalyseurSemantique.GsE`, are
-  compared across both validated toolchains.
+- the single self-hosted `Frontend.GsE` image, which combines all four frontend
+  stages, is compared across both validated toolchains.
 
 ## License
 

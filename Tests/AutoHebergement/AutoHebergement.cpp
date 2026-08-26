@@ -3522,8 +3522,23 @@ namespace
         const auto tailleImage = Lire64(contenu, 48);
         const auto debutTrampolines = AlignerPage(tailleImage);
         ZoneExecutable zone(debutTrampolines + 4096);
+        const auto allouer = zone.AjouterTrampoline(
+            debutTrampolines,
+            reinterpret_cast<std::uintptr_t>(&AllouerMemoireHote));
+        const auto liberer = zone.AjouterTrampoline(
+            debutTrampolines + 16,
+            reinterpret_cast<std::uintptr_t>(&LibererMemoireHote));
+        const auto resolveur =
+            [&](std::string_view nom) -> std::optional<std::uint64_t>
+        {
+            if (nom == "GalacticShrine::GsPP::Hote::AllouerMemoire")
+                return allouer;
+            if (nom == "GalacticShrine::GsPP::Hote::LibererMemoire")
+                return liberer;
+            return std::nullopt;
+        };
         const auto image = GsPP::ChargeurGsE().Charger(
-            contenu, zone.Base());
+            contenu, zone.Base(), resolveur);
         zone.Copier(image.Memoire);
 
         const auto adresse = image.ChercherExport(
@@ -3660,17 +3675,17 @@ int main(int argc, char** argv)
 {
     try
     {
-        if (argc != 6)
+        if (argc != 3)
             throw std::runtime_error(
-                "cinq images GsE de test sont attendues");
+                "Frontend.GsE et l’image GsE de test sont attendus");
         TesterClassificateur(argv[1]);
-        TesterLexeur(argv[2]);
-        TesterAnalyseurDeclarations(argv[3]);
-        TesterAnalyseurSemantique(argv[4], argv[3]);
-        TesterBibliothequeHebergee(argv[5]);
+        TesterLexeur(argv[1]);
+        TesterAnalyseurDeclarations(argv[1]);
+        TesterAnalyseurSemantique(argv[1], argv[1]);
+        TesterBibliothequeHebergee(argv[2]);
         std::cout
             << "Auto-hébergement 0.27 : "
-            << "83 classifications, lexeur différentiel, "
+            << "Frontend.GsE unique, 83 classifications, lexeur différentiel, "
             << "AST et premières résolutions sémantiques différentielles "
             << "et bibliothèque hébergée validés.\n";
         return 0;

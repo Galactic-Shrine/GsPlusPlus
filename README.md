@@ -232,8 +232,8 @@ principale.
 - CTest : **4/4** sous Windows et **5/5** sous Linux ;
 - quatre scénarios de benchmark smoke réussis sur chaque hôte ;
 - CI GitHub Windows et Linux ;
-- les quatre images auto-hébergées, dont `AnalyseurSemantique.GsE`, sont
-  comparées entre les deux chaînes validées.
+- l’unique image auto-hébergée `Frontend.GsE`, qui réunit les quatre étapes du
+  frontend, est comparée entre les deux chaînes validées.
 
 ## Licence
 

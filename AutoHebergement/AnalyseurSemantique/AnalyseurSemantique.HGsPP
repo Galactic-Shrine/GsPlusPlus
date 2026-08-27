@@ -83,6 +83,14 @@ espace GalacticShrine::GsPP::Autohebergement {
         InvalidFieldInitializerArity = 36,
         TypeInitialiseurChampIncompatible = 37,
         IncompatibleFieldInitializerType = 37,
+        ValeurChampParDefautObjetClasseInterdite = 38,
+        ClassObjectDefaultFieldValueForbidden = 38,
+        ClasseValeurChampParDefautSansConstructeur = 39,
+        ClassWithDefaultFieldValueWithoutConstructor = 39,
+        ChampConstantNonInitialise = 40,
+        UninitializedConstField = 40,
+        InitialiseurChampTableauNonAgrege = 41,
+        NonAggregateArrayFieldInitializer = 41,
     };
 
     énumération GenreSymboleSemantique {
@@ -133,6 +141,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         BaseInitialization = 1024,
         InitialisationChamp = 2048,
         FieldInitialization = 2048,
+        InitialisationImplicite = 4096,
+        ImplicitInitialization = 4096,
+        InitialisationTableau = 8192,
+        ArrayInitialization = 8192,
+        ValeurChampParDefaut = 16384,
+        DefaultFieldValue = 16384,
     };
 
     structure SymboleSemantique {

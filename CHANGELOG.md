@@ -79,6 +79,21 @@
 - ajout des diagnostics `AriteInitialiseurChampInvalide` et
   `TypeInitialiseurChampIncompatible`, ainsi que de huit corpus négatifs
   différentiels, portant leur total à quarante-neuf ;
+- reconstruction sémantique des dimensions de tableaux depuis la source sans
+  agrandir l’AST compact, afin de retrouver le type final des éléments natifs
+  ou nommés ;
+- sélection du constructeur uniforme des tableaux locaux et des tableaux de
+  champs objets, ainsi que construction implicite des champs objets omis de la
+  liste du constructeur ;
+- application des valeurs de champs par défaut lorsqu’aucun initialiseur
+  explicite ne les remplace, validation de leurs types scalaires, de la forme
+  agrégée des tableaux et de l’initialisation obligatoire des champs constants ;
+- ajout des diagnostics de valeurs par défaut d’objets classes, de classe sans
+  constructeur, de champ constant non initialisé et de tableau non agrégé,
+  avec quatorze corpus négatifs supplémentaires portant le total à
+  soixante-trois ;
+- correction des chemins automatiques du banc de mesure vers les constructions
+  et sessions permanentes situées dans `../Construction` ;
 - correction du graphe CMake afin que toute modification des objets syntaxique
   ou sémantique force réellement la nouvelle liaison de `Frontend.GsE` ;
 - validation complète 4/4 avec Visual Studio 2026 et 5/5 sous GNU/Linux,

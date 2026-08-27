@@ -68,7 +68,7 @@ Benchmarks/invoke-gsplusplus-benchmark.sh \
 Chaque invocation crée une nouvelle session sans écraser les précédentes :
 
 ```text
-Construction/Benchmarks/GsPlusPlus/<session>/
+../Construction/Benchmarks/GsPlusPlus/<plateforme>/<session>/
 ├── session.json
 ├── results.jsonl
 ├── summary.json

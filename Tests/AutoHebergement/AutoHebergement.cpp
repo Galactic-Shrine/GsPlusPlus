@@ -3390,6 +3390,157 @@ namespace
                 && nombreBasesSousObjets == 1,
             "les résolutions des sous-objets sont incomplètes");
 
+        const std::string champsImplicitesFrancais =
+            "classe ElementImplicite {\n"
+            "  publique: constructeur() {} "
+            "constructeur(entier32 valeur) {}\n"
+            "};\n"
+            "classe ConfigurationImplicite {\n"
+            "  privée: ElementImplicite Objet; "
+            "ElementImplicite Elements[2];\n"
+            "  entier32 Code = 7; constante entier32 Limite = 9; "
+            "entier32 Codes[3] = {1, 2}; entier32 Remplacee = 5;\n"
+            "  publique: constructeur() {}\n"
+            "  constructeur(entier32 valeur) "
+            ": Elements(valeur), Codes({valeur, 2}), "
+            "Remplacee(valeur) {}\n"
+            "};\n"
+            "publique vide ConstruireConfiguration(entier32 valeur) { "
+            "ConfigurationImplicite a; ConfigurationImplicite b(valeur); "
+            "ElementImplicite locaux[2](valeur); "
+            "ElementImplicite defauts[2]; "
+            "ElementImplicite grille /* dimensions */ [1_0][2]; }\n";
+        const std::string champsImplicitesAnglais =
+            "class ElementImplicite {\n"
+            "  public: constructor() {} constructor(int32 valeur) {}\n"
+            "};\n"
+            "class ConfigurationImplicite {\n"
+            "  private: ElementImplicite Objet; "
+            "ElementImplicite Elements[2];\n"
+            "  int32 Code = 7; const int32 Limite = 9; "
+            "int32 Codes[3] = {1, 2}; int32 Remplacee = 5;\n"
+            "  public: constructor() {}\n"
+            "  constructor(int32 valeur) "
+            ": Elements(valeur), Codes({valeur, 2}), "
+            "Remplacee(valeur) {}\n"
+            "};\n"
+            "public void ConstruireConfiguration(int32 valeur) { "
+            "ConfigurationImplicite a; ConfigurationImplicite b(valeur); "
+            "ElementImplicite locaux[2](valeur); "
+            "ElementImplicite defauts[2]; "
+            "ElementImplicite grille /* dimensions */ [1_0][2]; }\n";
+        const auto resultatChampsImplicitesFrancais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                champsImplicitesFrancais,
+                "champs-implicites-francais");
+        const auto resultatChampsImplicitesAnglais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                champsImplicitesAnglais,
+                "champs-implicites-anglais");
+        Exiger(
+            resultatChampsImplicitesFrancais.Symboles.size()
+                    == resultatChampsImplicitesAnglais.Symboles.size()
+                && resultatChampsImplicitesFrancais.Resolutions.size()
+                    == resultatChampsImplicitesAnglais.Resolutions.size(),
+            "les champs implicites bilingues divergent");
+
+        std::size_t nombreValeursParDefaut = 0;
+        std::size_t nombreChampsObjetsImplicites = 0;
+        std::size_t nombreConstructeursObjetsImplicites = 0;
+        std::size_t nombreChampsTableauxExplicites = 0;
+        std::size_t nombreConstructeursTableauxExplicites = 0;
+        std::size_t nombreTableauxLocauxExplicites = 0;
+        std::size_t nombreTableauxLocauxImplicites = 0;
+        for (const auto& resolution :
+             resultatChampsImplicitesFrancais.Resolutions)
+        {
+            const auto& noeud = resultatChampsImplicitesFrancais.Noeuds[
+                resolution.IndexNoeud];
+            const auto& cible = resultatChampsImplicitesFrancais.Symboles[
+                resolution.IndexSymbole];
+            const auto& declarationCible =
+                resultatChampsImplicitesFrancais.Noeuds[cible.IndexNoeud];
+            if (noeud.Genre == 13
+                && declarationCible.Genre == 7
+                && (resolution.Drapeaux
+                    & (8U | 2048U | 4096U | 16384U))
+                    == (8U | 2048U | 4096U | 16384U))
+                ++nombreValeursParDefaut;
+            if (noeud.Genre == 13
+                && declarationCible.Genre == 7
+                && (resolution.Drapeaux & (8U | 2048U | 4096U))
+                    == (8U | 2048U | 4096U)
+                && (resolution.Drapeaux & 16384U) == 0)
+                ++nombreChampsObjetsImplicites;
+            if (noeud.Genre == 13
+                && declarationCible.Genre == 13
+                && (resolution.Drapeaux & (64U | 2048U | 4096U))
+                    == (64U | 2048U | 4096U))
+            {
+                ++nombreConstructeursObjetsImplicites;
+                Exiger(
+                    nombreParametresCible(
+                        resultatChampsImplicitesFrancais,
+                        resolution) == 0,
+                    "un champ implicite ne cible pas le constructeur sans argument");
+            }
+            if (noeud.Genre == 35
+                && declarationCible.Genre == 7
+                && (resolution.Drapeaux & (8U | 2048U | 8192U))
+                    == (8U | 2048U | 8192U))
+                ++nombreChampsTableauxExplicites;
+            if (noeud.Genre == 35
+                && declarationCible.Genre == 13
+                && (resolution.Drapeaux & (64U | 128U | 2048U | 8192U))
+                    == (64U | 128U | 2048U | 8192U))
+            {
+                ++nombreConstructeursTableauxExplicites;
+                Exiger(
+                    nombreParametresCible(
+                        resultatChampsImplicitesFrancais,
+                        resolution) == 1,
+                    "le tableau explicite ne cible pas son constructeur uniforme");
+            }
+            if (noeud.Genre == 19
+                && declarationCible.Genre == 13
+                && (resolution.Drapeaux & (64U | 128U | 8192U))
+                    == (64U | 128U | 8192U))
+            {
+                ++nombreTableauxLocauxExplicites;
+                Exiger(
+                    nombreParametresCible(
+                        resultatChampsImplicitesFrancais,
+                        resolution) == 1,
+                    "le tableau local explicite cible une mauvaise surcharge");
+            }
+            if (noeud.Genre == 19
+                && declarationCible.Genre == 13
+                && (resolution.Drapeaux & (64U | 4096U | 8192U))
+                    == (64U | 4096U | 8192U)
+                && (resolution.Drapeaux & 128U) == 0)
+            {
+                ++nombreTableauxLocauxImplicites;
+                Exiger(
+                    nombreParametresCible(
+                        resultatChampsImplicitesFrancais,
+                        resolution) == 0,
+                    "le tableau local implicite cible une mauvaise surcharge");
+            }
+        }
+        Exiger(
+            nombreValeursParDefaut == 6
+                && nombreChampsObjetsImplicites == 3
+                && nombreConstructeursObjetsImplicites == 3
+                && nombreChampsTableauxExplicites == 2
+                && nombreConstructeursTableauxExplicites == 1
+                && nombreTableauxLocauxExplicites == 1
+                && nombreTableauxLocauxImplicites == 2,
+            "les résolutions des champs implicites sont incomplètes");
+
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure A {}; structure A {}; publique vide F() {}",
@@ -3589,6 +3740,75 @@ namespace
             "classe Base { privée: constructeur() {} }; "
             "classe A : publique Base { publique: constructeur() {} };",
             26, "constructeur-base-implicite-prive");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element { publique: constructeur() {} }; "
+            "classe A { privée: Element X = {}; publique: constructeur() {} };",
+            38, "valeur-par-defaut-objet-classe-interdite");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X = 1; }; publique vide F() {}",
+            39, "valeur-par-defaut-sans-constructeur");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: constante entier32 X; publique: "
+            "constructeur() {} };",
+            40, "champ-constant-non-initialise");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X[2]; publique: "
+            "constructeur() : X(1) {} };",
+            41, "initialiseur-explicite-tableau-non-agrege");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X = vrai; publique: "
+            "constructeur() {} };",
+            37, "valeur-par-defaut-type-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Membre { publique: constructeur(entier32 valeur) {} }; "
+            "classe A { privée: Membre X; publique: constructeur() {} };",
+            21, "constructeur-champ-implicite-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Membre { privée: constructeur() {} }; "
+            "classe A { privée: Membre X; publique: constructeur() {} };",
+            26, "constructeur-champ-implicite-prive");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element { publique: constructeur(entier32 valeur) {} }; "
+            "classe A { privée: Element X[2]; publique: "
+            "constructeur() : X(vrai) {} };",
+            21, "constructeur-tableau-explicite-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element {}; classe A { privée: Element X[2]; publique: "
+            "constructeur() : X(1) {} };",
+            27, "constructeur-tableau-explicite-non-declare");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X[2] = 1; publique: "
+            "constructeur() {} };",
+            41, "valeur-par-defaut-tableau-non-agregee");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element { publique: constructeur(entier32 valeur) {} }; "
+            "publique vide F() { Element valeurs[2]; }",
+            21, "constructeur-tableau-local-implicite-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element { privée: constructeur() {} }; "
+            "publique vide F() { Element valeurs[2]; }",
+            26, "constructeur-tableau-local-prive");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element {}; publique vide F() { Element valeurs[2](1); }",
+            27, "constructeur-tableau-local-non-declare");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe Element { publique: constructeur() {} }; "
+            "publique vide F() { Element valeurs[2] = {{}, {}}; }",
+            29, "agregat-tableau-local-objet-interdit");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A {}; publique vide F() { A valeur(); }",

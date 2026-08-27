@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
 **EN COURS — lexeur, AST syntaxique, indexation et première sélection typée
-VALIDÉS — 26 août 2026.**
+VALIDÉS — 27 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -468,14 +468,58 @@ incompatibles ou privés et les constructeurs de base implicites incompatibles
 ou privés. Le total courant atteint quarante-neuf corpus sémantiques négatifs
 comparés au bootstrap pour le code, la ligne et la colonne.
 
-La matrice locale du 26 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
+## Tableaux et valeurs de champs par défaut — après alpha.7
+
+La passe sémantique retrouve maintenant le type final d’un tableau sans
+modifier le nœud AST public de 64 octets. Elle relit les dimensions qui suivent
+le nom dans la source, reproduit leur hachage canonique puis compare le hachage
+complet du type aux types natifs et nommés indexés. Les séparateurs, les
+commentaires et les séparateurs `_` des tailles entières sont acceptés comme
+par l’analyseur de déclarations.
+
+Cette reconstruction permet de couvrir les contrats suivants :
+
+- un tableau local d’objets classes sélectionne le constructeur sans argument
+  ou la surcharge correspondant à ses arguments uniformes ;
+- un tableau de champ objet applique la même sélection lorsqu’il apparaît dans
+  la liste du constructeur ;
+- un champ objet direct ou tableau omis de la liste reçoit une construction
+  implicite, sauf dans un constructeur délégué ;
+- une valeur de champ par défaut est appliquée à chaque constructeur qui ne la
+  remplace pas explicitement ;
+- le type connu d’une valeur scalaire par défaut est validé avec les mêmes
+  adaptations de littéraux que les initialiseurs explicites ;
+- un tableau scalaire explicite ou par défaut exige une expression agrégée ;
+- un champ constant non-adresse doit être initialisé explicitement ou posséder
+  une valeur par défaut ;
+- un champ objet classe ne peut pas utiliser la forme `= expression` et une
+  classe possédant une valeur par défaut doit déclarer un constructeur.
+
+Les résolutions distinguent désormais l’initialisation implicite, les tableaux
+et les valeurs par défaut sans agrandir `ResolutionSemantique`. Un corpus
+positif bilingue exerce les champs objets directs, les tableaux d’objets avec
+et sans argument, les tableaux scalaires agrégés, le remplacement explicite
+d’une valeur et les champs constants. Quatorze corpus négatifs supplémentaires
+portent le total à soixante-trois et comparent toujours le code, la ligne et la
+colonne au bootstrap.
+
+Quatre diagnostics complètent le contrat :
+
+| Code | Diagnostic | Signification |
+| ---: | --- | --- |
+| 38 | `ValeurChampParDefautObjetClasseInterdite` | un objet classe utilise son constructeur et non `= expression` |
+| 39 | `ClasseValeurChampParDefautSansConstructeur` | une classe avec valeur de champ par défaut ne déclare aucun constructeur |
+| 40 | `ChampConstantNonInitialise` | un champ constant non-adresse reste sans valeur |
+| 41 | `InitialiseurChampTableauNonAgrege` | un tableau scalaire reçoit une expression non agrégée |
+
+La matrice locale du 27 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
 smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
 livré dans une seule image, identique bit à bit entre les chaînes :
 
 | Image | Taille | SHA-256 |
 | --- | ---: | --- |
-| `Frontend.GsE` | 181 057 | `fcfc1e2cf44efca0215840c975d7c866a837661b8dd3910cb2b70a9402ebb8f2` |
+| `Frontend.GsE` | 196 705 | `0404bdba7de522428647ee900de982cd4d37e7669f1afaf69f93cdebff63fa37` |
 
 Les fichiers `ClassificateurMotsCles.GsObj`, `Lexeur.GsObj`,
 `AnalyseurDeclarations.GsObj` et `AnalyseurSemantique.GsObj` restent des
@@ -484,17 +528,17 @@ comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
 d’entrée publics afin que les tests différentiels puissent encore valider
 chaque étape séparément.
 
-Cette tranche ne couvre pas encore les constructeurs communs des éléments de
-champs tableaux, les valeurs par défaut de champs, les agrégats non scalaires,
-les destructeurs et plans de durée de vie, les opérateurs libres, ni le typage
+Cette tranche ne couvre pas encore la validation récursive de la capacité et du
+type de chaque élément des agrégats, les plans exécutables complets de
+construction et destruction auto-hébergés, les opérateurs libres, ni le typage
 récursif complet des appels et opérateurs imbriqués.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter la résolution et la comparaison des types de toutes les
   expressions ;
-- compléter les champs tableaux d’objets, les valeurs par défaut et les
-  agrégats non scalaires ;
+- compléter le typage récursif des agrégats et leurs contrôles de capacité ;
+- migrer les plans complets de construction, destruction et durée de vie ;
 - migrer les opérateurs libres et le typage des opérateurs imbriqués ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;

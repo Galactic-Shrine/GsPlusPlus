@@ -91,6 +91,16 @@ espace GalacticShrine::GsPP::Autohebergement {
         UninitializedConstField = 40,
         InitialiseurChampTableauNonAgrege = 41,
         NonAggregateArrayFieldInitializer = 41,
+        TropElementsInitialiseurTableau = 42,
+        TooManyArrayInitializerElements = 42,
+        TropElementsInitialiseurStructure = 43,
+        TooManyStructInitializerElements = 43,
+        TropElementsInitialiseurScalaire = 44,
+        TooManyScalarInitializerElements = 44,
+        TypeElementInitialiseurAgregeIncompatible = 45,
+        IncompatibleAggregateInitializerElementType = 45,
+        InitialiseurTableauNonAgrege = 46,
+        NonAggregateArrayInitializer = 46,
     };
 
     énumération GenreSymboleSemantique {

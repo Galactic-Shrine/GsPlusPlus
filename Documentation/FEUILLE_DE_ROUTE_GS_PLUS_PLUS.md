@@ -248,8 +248,9 @@ Les prochains jalons sont donc réservés à Gs++ :
    sous MSVC/GNU ; première passe sémantique partielle couvrant symboles,
    références, surcharges, membres, visibilité, constructeurs locaux et
    opérateurs membres, initialiseurs directs de sous-objets et bases
-   implicites, tableaux d’objets et valeurs de champs par défaut ; typage
-   exhaustif et plans complets de durée de vie encore à migrer ;
+   implicites, tableaux d’objets, valeurs de champs par défaut et agrégats
+   imbriqués avec contrôle de capacité ; typage exhaustif des expressions et
+   plans complets de durée de vie encore à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.

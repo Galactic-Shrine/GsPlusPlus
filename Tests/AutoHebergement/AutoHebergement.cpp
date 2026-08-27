@@ -3541,6 +3541,126 @@ namespace
                 && nombreTableauxLocauxImplicites == 2,
             "les résolutions des champs implicites sont incomplètes");
 
+        const std::string agregatsRecursifsFrancais =
+            "structure CoordonneesAgregat { entier32 X; "
+            "entier32 Valeurs[2]; };\n"
+            "union ChoixAgregat { entier32 Entier; booléen Etat; };\n"
+            "classe ConteneurAgregat { privée: entier32 Grille[2][2] = "
+            "{{1}, {2}}; publique: constructeur() {} "
+            "constructeur(entier32 valeur) : "
+            "Grille({{valeur}, {2}}) {} };\n"
+            "publique entier32 MatriceGlobale[2][2] = "
+            "{{1, 2}, {3}};\n"
+            "publique CoordonneesAgregat PositionGlobale = "
+            "{7, {8, 9}};\n"
+            "publique vide TesterAgregatsRecursifs() { "
+            "entier32 matrice[2][3] = {{1, 2}, {3}}; "
+            "CoordonneesAgregat position = {4, {5, 6}}; "
+            "ChoixAgregat choix = {9}; "
+            "entier32 scalaire = {{{10}}}; ConteneurAgregat defaut; "
+            "ConteneurAgregat explicite(3); }\n";
+        const std::string agregatsRecursifsAnglais =
+            "struct CoordonneesAgregat { int32 X; int32 Valeurs[2]; };\n"
+            "union ChoixAgregat { int32 Entier; bool Etat; };\n"
+            "class ConteneurAgregat { private: int32 Grille[2][2] = "
+            "{{1}, {2}}; public: constructor() {} "
+            "constructor(int32 valeur) : Grille({{valeur}, {2}}) {} };\n"
+            "public int32 MatriceGlobale[2][2] = {{1, 2}, {3}};\n"
+            "public CoordonneesAgregat PositionGlobale = "
+            "{7, {8, 9}};\n"
+            "public void TesterAgregatsRecursifs() { "
+            "int32 matrice[2][3] = {{1, 2}, {3}}; "
+            "CoordonneesAgregat position = {4, {5, 6}}; "
+            "ChoixAgregat choix = {9}; int32 scalaire = {{{10}}}; "
+            "ConteneurAgregat defaut; ConteneurAgregat explicite(3); }\n";
+        const auto resultatAgregatsFrancais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            agregatsRecursifsFrancais,
+            "agregats-recursifs-francais");
+        const auto resultatAgregatsAnglais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            agregatsRecursifsAnglais,
+            "agregats-recursifs-anglais");
+        std::size_t nombreAgregatsFrancais = 0;
+        std::size_t nombreAgregatsAnglais = 0;
+        for (const auto& noeud : resultatAgregatsFrancais.Noeuds)
+            if (noeud.Genre == 32) ++nombreAgregatsFrancais;
+        for (const auto& noeud : resultatAgregatsAnglais.Noeuds)
+            if (noeud.Genre == 32) ++nombreAgregatsAnglais;
+        Exiger(
+            nombreAgregatsFrancais == 20
+                && nombreAgregatsAnglais == nombreAgregatsFrancais
+                && resultatAgregatsFrancais.Symboles.size()
+                    == resultatAgregatsAnglais.Symboles.size()
+                && resultatAgregatsFrancais.Resolutions.size()
+                    == resultatAgregatsAnglais.Resolutions.size(),
+            "les agrégats récursifs bilingues divergent");
+
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() { entier32 X[2] = {1, 2, 3}; }",
+            42, "agregat-tableau-local-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() { entier32 X[2][1] = {{1, 2}, {3}}; }",
+            42, "agregat-tableau-imbrique-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure Paire { entier32 A; entier32 B; }; "
+            "publique vide F() { Paire X = {1, 2, 3}; }",
+            43, "agregat-structure-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "union Choix { entier32 A; entier32 B; }; "
+            "publique vide F() { Choix X = {1, 2}; }",
+            43, "agregat-union-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() { entier32 X = {1, 2}; }",
+            44, "agregat-scalaire-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() { entier32 X[2] = {1, \"texte\"}; }",
+            45, "element-agregat-tableau-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() { entier32 X[1][1] = {1}; }",
+            45, "dimension-agregat-tableau-manquante");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure Paire { entier32 A; entier32 B; }; "
+            "publique vide F() { Paire X = {1, \"texte\"}; }",
+            45, "element-agregat-structure-incompatible");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "publique vide F() { entier32 X[2] = 1; }",
+            46, "initialiseur-tableau-local-non-agrege");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "entier32 X[2] = 1; publique vide F() {}",
+            46, "initialiseur-tableau-global-non-agrege");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X[2]; publique: "
+            "constructeur() : X({1, 2, 3}) {} };",
+            42, "agregat-champ-explicite-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "classe A { privée: entier32 X[1][1] = {{1, 2}}; "
+            "publique: constructeur() {} };",
+            42, "agregat-champ-par-defaut-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "entier32 X[2] = {1, 2, 3}; publique vide F() {}",
+            42, "agregat-tableau-global-trop-long");
+        ComparerErreurSemantique(
+            syntaxe, semantique,
+            "structure Ligne { entier32 Valeurs[2]; }; "
+            "publique vide F() { Ligne X = {{1, \"texte\"}}; }",
+            45, "element-agregat-champ-tableau-incompatible");
+
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure A {}; structure A {}; publique vide F() {}",

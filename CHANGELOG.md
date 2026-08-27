@@ -10,7 +10,7 @@
 
 # Journal des modifications
 
-## Développement après Gs++ 0.27.0-alpha.7 — 2026-08-26
+## Développement après Gs++ 0.27.0-alpha.7 — 2026-08-27
 
 - adoption de `GalacticShrine::GsPP::` comme préfixe public et ABI canonique,
   `GsPP::` seul restant exclu des contrats exportés ;
@@ -92,6 +92,16 @@
   constructeur, de champ constant non initialisé et de tableau non agrégé,
   avec quatorze corpus négatifs supplémentaires portant le total à
   soixante-trois ;
+- validation récursive des agrégats selon chaque dimension de tableau, avec
+  contrôle de capacité à tous les niveaux et vérification du type connu de
+  chaque feuille ;
+- application du même contrat aux tableaux globaux et locaux, aux structures,
+  unions, agrégats scalaires, valeurs de champs par défaut et initialiseurs de
+  champs explicites, sans modifier l’ABI publique ;
+- ajout des diagnostics 42 à 46 pour les dépassements de tableaux, structures
+  ou scalaires, les éléments incompatibles et les tableaux non agrégés, avec
+  quatorze corpus négatifs supplémentaires portant le total à
+  soixante-dix-sept ;
 - correction des chemins automatiques du banc de mesure vers les constructions
   et sessions permanentes situées dans `../Construction` ;
 - correction du graphe CMake afin que toute modification des objets syntaxique

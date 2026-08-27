@@ -512,6 +512,48 @@ Quatre diagnostics complètent le contrat :
 | 40 | `ChampConstantNonInitialise` | un champ constant non-adresse reste sans valeur |
 | 41 | `InitialiseurChampTableauNonAgrege` | un tableau scalaire reçoit une expression non agrégée |
 
+## Typage récursif des agrégats — après alpha.7
+
+Le frontend parcourt désormais récursivement chaque nœud `Agregat` avec une
+description interne de son type de destination. Pour un tableau, la profondeur
+courante sélectionne la dimension correspondante relue depuis la déclaration ;
+chaque niveau contrôle donc sa propre capacité avant de descendre vers le type
+final de l’élément. Cette description reste interne et ne modifie ni le nœud
+AST public de 64 octets, ni les structures ABI sémantiques.
+
+Le contrat rejoint maintenant le bootstrap pour les types déjà déterminables
+dans l’AST compact :
+
+- les agrégats vides ou partiels sont acceptés et les éléments absents restent
+  destinés à la mise à zéro ;
+- chaque dimension d’un tableau multidimensionnel exige son niveau d’agrégat
+  et refuse un nombre d’éléments supérieur à sa capacité ;
+- une structure consomme ses champs directs dans leur ordre lexical ;
+- une union accepte au plus une valeur, associée à son premier champ ;
+- un scalaire agrégé accepte au plus une valeur, y compris au travers
+  d’accolades imbriquées ;
+- chaque feuille dont le type est connu réutilise les adaptations de littéraux,
+  qualifications de valeur et conversions d’héritage déjà prises en charge ;
+- le même parcours s’applique aux globales, variables locales, valeurs de
+  champs par défaut et initialiseurs explicites de champs.
+
+Le corpus positif bilingue couvre vingt nœuds agrégats : tableaux globaux et
+locaux multidimensionnels, structure contenant un tableau, union, scalaire
+imbriqué, champ multidimensionnel par défaut et remplacement du même champ dans
+un constructeur. Quatorze corpus négatifs supplémentaires portent le total à
+soixante-dix-sept ; ils vérifient le code auto-hébergé attendu ainsi que la
+ligne et la colonne fournies par le bootstrap.
+
+Cinq diagnostics complètent le contrat :
+
+| Code | Diagnostic | Signification |
+| ---: | --- | --- |
+| 42 | `TropElementsInitialiseurTableau` | un niveau de tableau dépasse la capacité de sa dimension |
+| 43 | `TropElementsInitialiseurStructure` | une structure ou une union reçoit trop de valeurs |
+| 44 | `TropElementsInitialiseurScalaire` | un scalaire agrégé reçoit plus d’une valeur |
+| 45 | `TypeElementInitialiseurAgregeIncompatible` | une feuille connue ne peut pas initialiser sa destination ou une dimension imbriquée manque |
+| 46 | `InitialiseurTableauNonAgrege` | un tableau global ou local reçoit une expression non agrégée |
+
 La matrice locale du 27 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
 smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
@@ -519,7 +561,7 @@ livré dans une seule image, identique bit à bit entre les chaînes :
 
 | Image | Taille | SHA-256 |
 | --- | ---: | --- |
-| `Frontend.GsE` | 196 705 | `0404bdba7de522428647ee900de982cd4d37e7669f1afaf69f93cdebff63fa37` |
+| `Frontend.GsE` | 205 809 | `6d391208cfcf444ec062446be9e1926469031fd815e463121198c96e3d280772` |
 
 Les fichiers `ClassificateurMotsCles.GsObj`, `Lexeur.GsObj`,
 `AnalyseurDeclarations.GsObj` et `AnalyseurSemantique.GsObj` restent des
@@ -528,16 +570,17 @@ comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
 d’entrée publics afin que les tests différentiels puissent encore valider
 chaque étape séparément.
 
-Cette tranche ne couvre pas encore la validation récursive de la capacité et du
-type de chaque élément des agrégats, les plans exécutables complets de
-construction et destruction auto-hébergés, les opérateurs libres, ni le typage
-récursif complet des appels et opérateurs imbriqués.
+Cette tranche ne détermine pas encore les feuilles dont le type dépend d’un
+appel ou d’un opérateur imbriqué non résolu. Elle ne couvre pas non plus les
+plans exécutables complets de construction et destruction auto-hébergés, les
+opérateurs libres, ni le typage récursif complet des appels et opérateurs.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter la résolution et la comparaison des types de toutes les
   expressions ;
-- compléter le typage récursif des agrégats et leurs contrôles de capacité ;
+- propager dans les agrégats les types futurs des appels et opérateurs
+  imbriqués ;
 - migrer les plans complets de construction, destruction et durée de vie ;
 - migrer les opérateurs libres et le typage des opérateurs imbriqués ;
 - compléter les conversions implicites, qualifications et liaisons de

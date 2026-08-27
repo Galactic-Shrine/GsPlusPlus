@@ -22,6 +22,13 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 HachageDimensions;
     };
 
+    structure DestinationInitialiseurSemantique {
+        naturel64 HachageElement;
+        naturel64 IndexNoeudDeclaration;
+        naturel32 ProfondeurTableau;
+        naturel32 NombreDimensions;
+    };
+
     naturel64 HachageVideSemantique() {
         retourner 14_695_981_039_346_656_037;
     }
@@ -166,6 +173,43 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner position;
     }
 
+    booléen LireDimensionSourceSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64* position,
+        naturel64* valeur) {
+        *position = IgnorerSeparateursSourceSemantique(etat, *position);
+        si (*position >= etat->Requete->TailleSource
+            || etat->Requete->Source[*position] != 91)
+            retourner faux;
+        *position = IgnorerSeparateursSourceSemantique(
+            etat, *position + 1);
+        *valeur = 0;
+        booléen possedeChiffre = faux;
+        booléen lireDimension = vrai;
+        tantque (lireDimension
+            && *position < etat->Requete->TailleSource) {
+            octet courant = convertir<octet>(
+                etat->Requete->Source[*position]);
+            si (courant >= 48 && courant <= 57) {
+                *valeur = *valeur * 10
+                    + convertir<naturel64>(courant - 48);
+                possedeChiffre = vrai;
+                *position = *position + 1;
+            }
+            sinon si (courant == 95)
+                *position = *position + 1;
+            sinon lireDimension = faux;
+        }
+        *position = IgnorerSeparateursSourceSemantique(etat, *position);
+        si (!possedeChiffre
+            || *position >= etat->Requete->TailleSource
+            || etat->Requete->Source[*position] != 93)
+            retourner faux;
+        *position = IgnorerSeparateursSourceSemantique(
+            etat, *position + 1);
+        retourner vrai;
+    }
+
     booléen LireDimensionsNoeudSemantique(
         EtatAnalyseSemantique* etat,
         naturel64 indexNoeud,
@@ -180,40 +224,39 @@ espace GalacticShrine::GsPP::Autohebergement {
             &etat->Requete->Noeuds[indexNoeud];
         naturel64 position = IgnorerSeparateursSourceSemantique(
             etat, noeud->DebutNom + noeud->TailleNom);
-        tantque (position < etat->Requete->TailleSource
-            && etat->Requete->Source[position] == 91) {
-            position = IgnorerSeparateursSourceSemantique(
-                etat, position + 1);
-            naturel64 valeur = 0;
-            booléen possedeChiffre = faux;
-            booléen lireDimension = vrai;
-            tantque (lireDimension
-                && position < etat->Requete->TailleSource) {
-                octet courant = convertir<octet>(
-                    etat->Requete->Source[position]);
-                si (courant >= 48 && courant <= 57) {
-                    valeur = valeur * 10
-                        + convertir<naturel64>(courant - 48);
-                    possedeChiffre = vrai;
-                    position = position + 1;
-                }
-                sinon si (courant == 95)
-                    position = position + 1;
-                sinon lireDimension = faux;
-            }
-            position = IgnorerSeparateursSourceSemantique(etat, position);
-            si (!possedeChiffre
-                || position >= etat->Requete->TailleSource
-                || etat->Requete->Source[position] != 93)
-                retourner faux;
+        naturel64 valeur = 0;
+        tantque (LireDimensionSourceSemantique(
+                etat, &position, &valeur)) {
             description->NombreDimensions =
                 description->NombreDimensions + 1;
             description->HachageDimensions = AjouterNaturel64Semantique(
                 description->HachageDimensions, valeur);
-            position = IgnorerSeparateursSourceSemantique(
-                etat, position + 1);
         }
         retourner description->NombreDimensions != 0;
+    }
+
+    booléen LireDimensionNoeudSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeud,
+        naturel32 indexDimension,
+        naturel64* valeur) {
+        si (indexNoeud >= etat->Requete->NombreNoeuds)
+            retourner faux;
+        constante NoeudDeclaration* noeud =
+            &etat->Requete->Noeuds[indexNoeud];
+        naturel64 position = IgnorerSeparateursSourceSemantique(
+            etat, noeud->DebutNom + noeud->TailleNom);
+        naturel32 courant = 0;
+        naturel64 dimension = 0;
+        tantque (LireDimensionSourceSemantique(
+                etat, &position, &dimension)) {
+            si (courant == indexDimension) {
+                *valeur = dimension;
+                retourner vrai;
+            }
+            courant = courant + 1;
+        }
+        retourner faux;
     }
 
     naturel64 HacherTypeNommeSemantique(
@@ -1489,6 +1532,332 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner vrai;
         retourner LitteralExpressionCompatibleTypeSemantique(
             etat, indexExpression, destinationValeur);
+    }
+
+    booléen InitialiserDestinationInitialiseurSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeudDeclaration,
+        DestinationInitialiseurSemantique* destination) {
+        si (indexNoeudDeclaration >= etat->Requete->NombreNoeuds)
+            retourner faux;
+        destination->IndexNoeudDeclaration = indexNoeudDeclaration;
+        destination->ProfondeurTableau = 0;
+        DescriptionHachageTypeSemantique dimensions;
+        si (LireDimensionsNoeudSemantique(
+                etat, indexNoeudDeclaration, &dimensions)) {
+            destination->NombreDimensions = dimensions.NombreDimensions;
+            destination->HachageElement =
+                HachageElementFinalTableauSemantique(
+                    etat, indexNoeudDeclaration);
+            retourner destination->HachageElement != 0;
+        }
+        destination->NombreDimensions = 0;
+        destination->HachageElement = etat->Requete->Noeuds[
+            indexNoeudDeclaration].HachageType;
+        retourner destination->HachageElement != 0;
+    }
+
+    booléen EstDestinationClasseSemantique(
+        EtatAnalyseSemantique* etat,
+        DestinationInitialiseurSemantique* destination) {
+        naturel64 type = TrouverTypeDepuisHachageSemantique(
+            etat, destination->HachageElement, 0);
+        retourner type < etat->NombreSymboles
+            && etat->Requete->Noeuds[
+                etat->SymbolesTravail[type].IndexNoeud].Genre == 6;
+    }
+
+    naturel64 CompterChampsTypeAgregeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexType) {
+        si (indexType >= etat->NombreSymboles)
+            retourner 0;
+        naturel64 indexNoeudType = etat->SymbolesTravail[
+            indexType].IndexNoeud;
+        naturel64 nombre = 0;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 5
+                && candidat->IndexPortee == indexNoeudType)
+                nombre = nombre + 1;
+            index = index + 1;
+        }
+        retourner nombre;
+    }
+
+    naturel64 TrouverChampTypeAgregeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexType,
+        naturel64 position) {
+        si (indexType >= etat->NombreSymboles)
+            retourner etat->NombreSymboles;
+        naturel64 indexNoeudType = etat->SymbolesTravail[
+            indexType].IndexNoeud;
+        naturel64 nombre = 0;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 5
+                && candidat->IndexPortee == indexNoeudType) {
+                si (nombre == position) retourner index;
+                nombre = nombre + 1;
+            }
+            index = index + 1;
+        }
+        retourner etat->NombreSymboles;
+    }
+
+    externe ErreurAnalyseSemantique
+        ValiderInitialiseurDestinationSemantique(
+            EtatAnalyseSemantique* etat,
+            naturel64 indexExpression,
+            DestinationInitialiseurSemantique* destination);
+
+    ErreurAnalyseSemantique ValiderInitialiseurDestinationSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        DestinationInitialiseurSemantique* destination) {
+        si (indexExpression >= etat->Requete->NombreNoeuds)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                destination->IndexNoeudDeclaration,
+                42);
+        constante NoeudDeclaration* expression =
+            &etat->Requete->Noeuds[indexExpression];
+
+        si (destination->ProfondeurTableau
+            < destination->NombreDimensions) {
+            si (expression->Genre != 32)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::
+                        TypeElementInitialiseurAgregeIncompatible,
+                    indexExpression,
+                    destination->ProfondeurTableau);
+            naturel64 capaciteTableau = 0;
+            si (!LireDimensionNoeudSemantique(
+                    etat,
+                    destination->IndexNoeudDeclaration,
+                    destination->ProfondeurTableau,
+                    &capaciteTableau))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    destination->IndexNoeudDeclaration,
+                    43);
+            naturel64 nombreElementsTableau =
+                CompterEnfantsDirectsSemantique(
+                etat, indexExpression);
+            si (nombreElementsTableau > capaciteTableau)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::
+                        TropElementsInitialiseurTableau,
+                    indexExpression,
+                    convertir<naturel32>(nombreElementsTableau));
+            DestinationInitialiseurSemantique destinationElement =
+                *destination;
+            destinationElement.ProfondeurTableau =
+                destinationElement.ProfondeurTableau + 1;
+            naturel64 indexElementTableau = 0;
+            tantque (indexElementTableau < nombreElementsTableau) {
+                naturel64 elementTableau = TrouverEnfantDirectSemantique(
+                    etat, indexExpression, indexElementTableau);
+                ErreurAnalyseSemantique erreurElementTableau =
+                    ValiderInitialiseurDestinationSemantique(
+                        etat, elementTableau, &destinationElement);
+                si (erreurElementTableau
+                    != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurElementTableau;
+                indexElementTableau = indexElementTableau + 1;
+            }
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        si (expression->Genre == 32) {
+            naturel64 type = TrouverTypeDepuisHachageSemantique(
+                etat, destination->HachageElement, 0);
+            si (type < etat->NombreSymboles) {
+                naturel32 genreType = etat->Requete->Noeuds[
+                    etat->SymbolesTravail[type].IndexNoeud].Genre;
+                si (genreType == 6)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::InitialiseurClasseInterdit,
+                        indexExpression,
+                        convertir<naturel32>(type));
+                si (genreType == 4 || genreType == 5) {
+                    naturel64 nombreChamps =
+                        CompterChampsTypeAgregeSemantique(etat, type);
+                    naturel64 capaciteStructure = nombreChamps;
+                    si (genreType == 5 && capaciteStructure > 1)
+                        capaciteStructure = 1;
+                    naturel64 nombreElementsStructure =
+                        CompterEnfantsDirectsSemantique(
+                            etat, indexExpression);
+                    si (nombreElementsStructure > capaciteStructure)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::
+                                TropElementsInitialiseurStructure,
+                            indexExpression,
+                            convertir<naturel32>(
+                                nombreElementsStructure));
+                    naturel64 indexElementStructure = 0;
+                    tantque (indexElementStructure
+                        < nombreElementsStructure) {
+                        naturel64 champ = TrouverChampTypeAgregeSemantique(
+                            etat, type, indexElementStructure);
+                        si (champ >= etat->NombreSymboles)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::AstInvalide,
+                                indexExpression,
+                                44);
+                        DestinationInitialiseurSemantique destinationChamp;
+                        si (InitialiserDestinationInitialiseurSemantique(
+                                etat,
+                                etat->SymbolesTravail[champ].IndexNoeud,
+                                &destinationChamp)) {
+                            naturel64 elementStructure =
+                                TrouverEnfantDirectSemantique(
+                                    etat,
+                                    indexExpression,
+                                    indexElementStructure);
+                            ErreurAnalyseSemantique erreurChamp =
+                                ValiderInitialiseurDestinationSemantique(
+                                    etat,
+                                    elementStructure,
+                                    &destinationChamp);
+                            si (erreurChamp
+                                != ErreurAnalyseSemantique::Reussite)
+                                retourner erreurChamp;
+                        }
+                        indexElementStructure =
+                            indexElementStructure + 1;
+                    }
+                    retourner ErreurAnalyseSemantique::Reussite;
+                }
+            }
+
+            naturel64 nombreValeurs = CompterEnfantsDirectsSemantique(
+                etat, indexExpression);
+            si (nombreValeurs > 1)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::
+                        TropElementsInitialiseurScalaire,
+                    indexExpression,
+                    convertir<naturel32>(nombreValeurs));
+            si (nombreValeurs == 1) {
+                naturel64 valeur = TrouverEnfantDirectSemantique(
+                    etat, indexExpression, 0);
+                retourner ValiderInitialiseurDestinationSemantique(
+                    etat, valeur, destination);
+            }
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        si (!InitialiseurCompatibleTypeSemantique(
+                etat, indexExpression, destination->HachageElement))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::
+                    TypeElementInitialiseurAgregeIncompatible,
+                indexExpression,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderInitialiseurDeclarationSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexDeclaration,
+        naturel64 indexExpression) {
+        DestinationInitialiseurSemantique destination;
+        si (!InitialiserDestinationInitialiseurSemantique(
+                etat, indexDeclaration, &destination))
+            retourner ErreurAnalyseSemantique::Reussite;
+        si (destination.NombreDimensions != 0
+            && etat->Requete->Noeuds[indexExpression].Genre != 32)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::InitialiseurTableauNonAgrege,
+                indexDeclaration,
+                destination.NombreDimensions);
+        retourner ValiderInitialiseurDestinationSemantique(
+            etat, indexExpression, &destination);
+    }
+
+    ErreurAnalyseSemantique ValiderInitialiseursAgregesSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* noeud =
+                &etat->Requete->Noeuds[index];
+            si ((noeud->Genre == 3
+                    || noeud->Genre == 7
+                    || noeud->Genre == 19)
+                && (noeud->Drapeaux & 4) != 0) {
+                naturel64 expressionDeclaration =
+                    TrouverEnfantDirectSemantique(
+                    etat, index, 0);
+                si (expressionDeclaration >= etat->Requete->NombreNoeuds)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::AstInvalide,
+                        index,
+                        45);
+                DestinationInitialiseurSemantique destinationDeclaration;
+                si (InitialiserDestinationInitialiseurSemantique(
+                        etat, index, &destinationDeclaration)
+                    && (destinationDeclaration.NombreDimensions != 0
+                        || etat->Requete->Noeuds[
+                            expressionDeclaration].Genre == 32)) {
+                    si (!(noeud->Genre == 3
+                            && EstDestinationClasseSemantique(
+                                etat, &destinationDeclaration))) {
+                        ErreurAnalyseSemantique erreurDeclaration =
+                            ValiderInitialiseurDeclarationSemantique(
+                                etat, index, expressionDeclaration);
+                        si (erreurDeclaration
+                            != ErreurAnalyseSemantique::Reussite)
+                            retourner erreurDeclaration;
+                    }
+                }
+            }
+            sinon si (noeud->Genre == 35) {
+                naturel64 cible = etat->CiblesInitialiseurs[index];
+                si (cible < etat->NombreSymboles
+                    && etat->SymbolesTravail[cible].Genre == 5) {
+                    naturel64 indexChamp = etat->SymbolesTravail[
+                        cible].IndexNoeud;
+                    naturel64 expressionChamp =
+                        TrouverEnfantDirectSemantique(
+                        etat, index, 0);
+                    DestinationInitialiseurSemantique destinationChamp;
+                    si (expressionChamp < etat->Requete->NombreNoeuds
+                        && InitialiserDestinationInitialiseurSemantique(
+                            etat, indexChamp, &destinationChamp)
+                        && !EstDestinationClasseSemantique(
+                            etat, &destinationChamp)
+                        && (destinationChamp.NombreDimensions != 0
+                            || etat->Requete->Noeuds[
+                                expressionChamp].Genre == 32)) {
+                        ErreurAnalyseSemantique erreurInitialiseurChamp =
+                            ValiderInitialiseurDestinationSemantique(
+                                etat,
+                                expressionChamp,
+                                &destinationChamp);
+                        si (erreurInitialiseurChamp
+                            != ErreurAnalyseSemantique::Reussite)
+                            retourner erreurInitialiseurChamp;
+                    }
+                }
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
     }
 
     booléen EstValeurGaucheSemantique(
@@ -3063,6 +3432,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             erreur = ResoudreMembresSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreConstructionsSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = ValiderInitialiseursAgregesSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreOperateursSemantiques(&etat);
 

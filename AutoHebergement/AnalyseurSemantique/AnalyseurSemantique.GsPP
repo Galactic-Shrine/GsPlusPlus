@@ -3,6 +3,7 @@ espace GalacticShrine::GsPP::Autohebergement {
     SymboleSemantique* NulSymbolesSemantiques;
     ResolutionSemantique* NulResolutionsSemantiques;
     naturel64* NulCiblesInitialiseursSemantiques;
+    naturel64* NulCiblesExpressionsSemantiques;
     RequeteAnalyseSemantique* NulRequetesAnalyseSemantique;
     constante caractère* NulCaracteresSemantiques;
 
@@ -12,6 +13,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 NombreSymboles;
         naturel64 NombreResolutions;
         naturel64* CiblesInitialiseurs;
+        naturel64* CiblesExpressions;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
@@ -743,6 +745,9 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner reference->HachageNom == complet;
     }
 
+    externe naturel64 SansReferenceTypeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 hachageType);
+
     booléen AjouterResolutionSemantique(
         EtatAnalyseSemantique* etat,
         naturel64 indexNoeud,
@@ -758,8 +763,22 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (etat->NombreResolutions < etat->Requete->CapaciteResolutions
             && etat->Requete->Resolutions != NulResolutionsSemantiques)
             etat->Requete->Resolutions[etat->NombreResolutions] = resolution;
+        si (etat->CiblesExpressions != NulCiblesExpressionsSemantiques
+            && indexNoeud < etat->Requete->NombreNoeuds)
+            etat->CiblesExpressions[indexNoeud] = indexSymbole;
         etat->NombreResolutions = etat->NombreResolutions + 1;
         retourner vrai;
+    }
+
+    naturel64 HachageTypeResolutionExpressionSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        si (indexExpression >= etat->Requete->NombreNoeuds
+            || etat->CiblesExpressions == NulCiblesExpressionsSemantiques)
+            retourner 0;
+        naturel64 cible = etat->CiblesExpressions[indexExpression];
+        si (cible >= etat->NombreSymboles) retourner 0;
+        retourner SansReferenceTypeSemantique(
+            etat, etat->SymbolesTravail[cible].HachageType);
     }
 
     naturel64 TrouverRecepteurSemantique(
@@ -1315,6 +1334,34 @@ espace GalacticShrine::GsPP::Autohebergement {
     externe naturel64 HachageTypeMembreSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexMembre);
 
+    naturel64 HacherOperateurExpressionSemantique(
+        octet premier, octet second) {
+        naturel64 hachage = AjouterOctetSemantique(
+            HachageVideSemantique(), premier);
+        si (second != 0)
+            hachage = AjouterOctetSemantique(hachage, second);
+        retourner hachage;
+    }
+
+    booléen EstOperateurComparaisonExpressionSemantique(
+        constante NoeudDeclaration* expression) {
+        naturel64 nom = expression->HachageNom;
+        retourner nom == HacherOperateurExpressionSemantique(61, 61)
+            || nom == HacherOperateurExpressionSemantique(33, 61)
+            || nom == HacherOperateurExpressionSemantique(60, 0)
+            || nom == HacherOperateurExpressionSemantique(60, 61)
+            || nom == HacherOperateurExpressionSemantique(62, 0)
+            || nom == HacherOperateurExpressionSemantique(62, 61);
+    }
+
+    booléen EstOperateurLogiqueExpressionSemantique(
+        constante NoeudDeclaration* expression) {
+        naturel64 nom = expression->HachageNom;
+        retourner nom == HacherOperateurExpressionSemantique(33, 0)
+            || nom == HacherOperateurExpressionSemantique(38, 38)
+            || nom == HacherOperateurExpressionSemantique(124, 124);
+    }
+
     naturel64 HachageTypeExpressionSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexExpression) {
         si (indexExpression >= etat->Requete->NombreNoeuds)
@@ -1337,14 +1384,36 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (expression->Genre == 24)
             retourner HachageTypeReferenceSemantique(
                 etat, indexExpression);
-        si (expression->Genre == 29)
+        si (expression->Genre == 28) {
+            naturel64 cible = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            retourner HachageTypeResolutionExpressionSemantique(
+                etat, cible);
+        }
+        si (expression->Genre == 29) {
+            naturel64 typeResolutionMembre =
+                HachageTypeResolutionExpressionSemantique(
+                    etat, indexExpression);
+            si (typeResolutionMembre != 0) retourner typeResolutionMembre;
             retourner HachageTypeMembreSemantique(
                 etat, indexExpression);
+        }
         si (expression->Genre == 31)
             retourner expression->HachageType;
-        si (expression->Genre == 25
-            || expression->Genre == 26
-            || expression->Genre == 27) {
+        si (expression->Genre == 25 || expression->Genre == 26) {
+            naturel64 typeResolutionOperateur =
+                HachageTypeResolutionExpressionSemantique(
+                    etat, indexExpression);
+            si (typeResolutionOperateur != 0)
+                retourner typeResolutionOperateur;
+            si (EstOperateurComparaisonExpressionSemantique(expression)
+                || EstOperateurLogiqueExpressionSemantique(expression))
+                retourner HacherTypeSimpleSemantique(9, 0, 0);
+            naturel64 operande = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            retourner HachageTypeExpressionSemantique(etat, operande);
+        }
+        si (expression->Genre == 27) {
             naturel64 enfant = TrouverEnfantDirectSemantique(
                 etat, indexExpression, 0);
             retourner HachageTypeExpressionSemantique(etat, enfant);
@@ -2179,88 +2248,72 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner meilleure;
     }
 
-    ErreurAnalyseSemantique ResoudreMembresSemantiques(
-        EtatAnalyseSemantique* etat) {
-        naturel64 indexMembre = 0;
-        tantque (indexMembre < etat->Requete->NombreNoeuds) {
-            constante NoeudDeclaration* membre =
-                &etat->Requete->Noeuds[indexMembre];
-            si (membre->Genre == 29) {
-                naturel64 typeObjet = TrouverTypeObjetMembreSemantique(
-                    etat, indexMembre);
-                si (typeObjet >= etat->NombreSymboles)
-                    retourner SignalerErreurSemantique(
-                        etat,
-                        ErreurAnalyseSemantique::RecepteurMembreInvalide,
-                        indexMembre,
-                        0);
+    ErreurAnalyseSemantique ResoudreMembreSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexMembre) {
+        constante NoeudDeclaration* membre =
+            &etat->Requete->Noeuds[indexMembre];
+        si (membre->Genre != 29)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 typeObjet = TrouverTypeObjetMembreSemantique(
+            etat, indexMembre);
+        si (typeObjet >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::RecepteurMembreInvalide,
+                indexMembre,
+                0);
 
-                constante NoeudDeclaration* noeudParentMembre =
-                    &etat->Requete->Noeuds[membre->Parent];
-                booléen cibleAppel = noeudParentMembre->Genre == 28
-                    && indexMembre == membre->Parent + 1;
-                naturel32 masque = 1;
-                si (cibleAppel) masque = 2;
-                naturel64 typeDeclarant =
-                    TrouverTypeDeclarantMembreSemantique(
-                        etat,
-                        typeObjet,
-                        membre->HachageNom,
-                        masque);
-                si (typeDeclarant >= etat->NombreSymboles)
-                    retourner SignalerErreurSemantique(
-                        etat,
-                        ErreurAnalyseSemantique::MembreIntrouvable,
-                        indexMembre,
-                        0);
+        constante NoeudDeclaration* noeudParentMembre =
+            &etat->Requete->Noeuds[membre->Parent];
+        booléen cibleAppel = noeudParentMembre->Genre == 28
+            && indexMembre == membre->Parent + 1;
+        naturel32 masque = 1;
+        si (cibleAppel) masque = 2;
+        naturel64 typeDeclarant = TrouverTypeDeclarantMembreSemantique(
+            etat, typeObjet, membre->HachageNom, masque);
+        si (typeDeclarant >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::MembreIntrouvable,
+                indexMembre,
+                0);
 
-                naturel64 cible = etat->NombreSymboles;
-                naturel32 drapeaux = 8;
-                si (typeDeclarant != typeObjet)
-                    drapeaux = drapeaux | 16;
-                si (cibleAppel) {
-                    cible = SelectionnerSurchargeMembreSemantique(
-                        etat,
-                        indexMembre,
-                        membre->Parent,
-                        typeDeclarant);
-                    si (cible >= etat->NombreSymboles)
-                        retourner etat->Requete->Resultat.Erreur;
-                    drapeaux = drapeaux | 32;
-                    si (CompterMembresTypeSemantique(
-                            etat,
-                            typeDeclarant,
-                            membre->HachageNom,
-                            2) > 1)
-                        drapeaux = drapeaux | 1;
-                }
-                sinon {
-                    cible = TrouverPremierMembreTypeSemantique(
-                        etat,
-                        typeDeclarant,
-                        membre->HachageNom,
-                        1);
-                    cible = ResoudreAliasChampSemantique(
-                        etat, cible, typeDeclarant);
-                }
-                si (cible >= etat->NombreSymboles)
-                    retourner SignalerErreurSemantique(
-                        etat,
-                        ErreurAnalyseSemantique::MembreIntrouvable,
-                        indexMembre,
-                        0);
-                si (!AccesMembreAutoriseSemantique(
-                        etat, cible, indexMembre))
-                    retourner SignalerErreurSemantique(
-                        etat,
-                        ErreurAnalyseSemantique::MembreInaccessible,
-                        indexMembre,
-                        convertir<naturel32>(cible));
-                AjouterResolutionSemantique(
-                    etat, indexMembre, cible, drapeaux);
-            }
-            indexMembre = indexMembre + 1;
+        naturel64 cible = etat->NombreSymboles;
+        naturel32 drapeaux = 8;
+        si (typeDeclarant != typeObjet) drapeaux = drapeaux | 16;
+        si (cibleAppel) {
+            cible = SelectionnerSurchargeMembreSemantique(
+                etat, indexMembre, membre->Parent, typeDeclarant);
+            si (cible >= etat->NombreSymboles)
+                retourner etat->Requete->Resultat.Erreur;
+            drapeaux = drapeaux | 32;
+            si (CompterMembresTypeSemantique(
+                    etat,
+                    typeDeclarant,
+                    membre->HachageNom,
+                    2) > 1)
+                drapeaux = drapeaux | 1;
         }
+        sinon {
+            cible = TrouverPremierMembreTypeSemantique(
+                etat, typeDeclarant, membre->HachageNom, 1);
+            cible = ResoudreAliasChampSemantique(
+                etat, cible, typeDeclarant);
+        }
+        si (cible >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::MembreIntrouvable,
+                indexMembre,
+                0);
+        si (!AccesMembreAutoriseSemantique(etat, cible, indexMembre))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::MembreInaccessible,
+                indexMembre,
+                convertir<naturel32>(cible));
+        AjouterResolutionSemantique(
+            etat, indexMembre, cible, drapeaux);
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
@@ -3207,60 +3260,52 @@ espace GalacticShrine::GsPP::Autohebergement {
                 || expression->HachageNom == dereferencement);
     }
 
-    ErreurAnalyseSemantique ResoudreOperateursSemantiques(
-        EtatAnalyseSemantique* etat) {
-        naturel64 indexExpression = 0;
-        tantque (indexExpression < etat->Requete->NombreNoeuds) {
-            constante NoeudDeclaration* expression =
-                &etat->Requete->Noeuds[indexExpression];
-            si ((expression->Genre == 25 || expression->Genre == 26)
-                && !EstOperateurUnaireIntrinsequeSemantique(expression)) {
-                naturel64 gauche = TrouverEnfantDirectSemantique(
-                    etat, indexExpression, 0);
-                naturel64 typeGauche = TrouverTypeDepuisHachageSemantique(
-                    etat,
-                    HachageTypeExpressionSemantique(etat, gauche),
-                    0);
-                booléen classeGauche = typeGauche < etat->NombreSymboles
-                    && etat->Requete->Noeuds[
-                        etat->SymbolesTravail[typeGauche].IndexNoeud].Genre == 6;
-                si (classeGauche) {
-                    naturel64 typeDeclarant =
-                        TrouverTypeDeclarantOperateurSemantique(
-                            etat,
-                            typeGauche,
-                            expression->HachageNom);
-                    si (typeDeclarant >= etat->NombreSymboles)
-                        retourner SignalerErreurSemantique(
-                            etat,
-                            ErreurAnalyseSemantique::OperateurIntrouvable,
-                            indexExpression,
-                            0);
-                    naturel64 cibleOperateur = SelectionnerOperateurSemantique(
-                        etat, indexExpression, typeDeclarant);
-                    si (cibleOperateur >= etat->NombreSymboles)
-                        retourner etat->Requete->Resultat.Erreur;
-                    si (!AccesMembreAutoriseSemantique(
-                            etat, cibleOperateur, indexExpression))
-                        retourner SignalerErreurSemantique(
-                            etat,
-                            ErreurAnalyseSemantique::MembreInaccessible,
-                            indexExpression,
-                            convertir<naturel32>(cibleOperateur));
-                    naturel32 drapeaux = 8 | 32 | 256;
-                    si (typeDeclarant != typeGauche)
-                        drapeaux = drapeaux | 16;
-                    si (CompterOperateursTypeSemantique(
-                            etat,
-                            typeDeclarant,
-                            expression->HachageNom) > 1)
-                        drapeaux = drapeaux | 1;
-                    AjouterResolutionSemantique(
-                        etat, indexExpression, cibleOperateur, drapeaux);
-                }
-            }
-            indexExpression = indexExpression + 1;
-        }
+    ErreurAnalyseSemantique ResoudreOperateurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        constante NoeudDeclaration* expression =
+            &etat->Requete->Noeuds[indexExpression];
+        si ((expression->Genre != 25 && expression->Genre != 26)
+            || EstOperateurUnaireIntrinsequeSemantique(expression))
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 gauche = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 0);
+        naturel64 typeGauche = TrouverTypeDepuisHachageSemantique(
+            etat,
+            HachageTypeExpressionSemantique(etat, gauche),
+            0);
+        booléen classeGauche = typeGauche < etat->NombreSymboles
+            && etat->Requete->Noeuds[
+                etat->SymbolesTravail[typeGauche].IndexNoeud].Genre == 6;
+        si (!classeGauche) retourner ErreurAnalyseSemantique::Reussite;
+
+        naturel64 typeDeclarant = TrouverTypeDeclarantOperateurSemantique(
+            etat, typeGauche, expression->HachageNom);
+        si (typeDeclarant >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::OperateurIntrouvable,
+                indexExpression,
+                0);
+        naturel64 cibleOperateur = SelectionnerOperateurSemantique(
+            etat, indexExpression, typeDeclarant);
+        si (cibleOperateur >= etat->NombreSymboles)
+            retourner etat->Requete->Resultat.Erreur;
+        si (!AccesMembreAutoriseSemantique(
+                etat, cibleOperateur, indexExpression))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::MembreInaccessible,
+                indexExpression,
+                convertir<naturel32>(cibleOperateur));
+        naturel32 drapeaux = 8 | 32 | 256;
+        si (typeDeclarant != typeGauche) drapeaux = drapeaux | 16;
+        si (CompterOperateursTypeSemantique(
+                etat,
+                typeDeclarant,
+                expression->HachageNom) > 1)
+            drapeaux = drapeaux | 1;
+        AjouterResolutionSemantique(
+            etat, indexExpression, cibleOperateur, drapeaux);
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
@@ -3282,63 +3327,81 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner nombre;
     }
 
-    ErreurAnalyseSemantique ResoudreReferencesSemantiques(
-        EtatAnalyseSemantique* etat) {
-        naturel64 indexNoeud = 0;
-        tantque (indexNoeud < etat->Requete->NombreNoeuds) {
-            constante NoeudDeclaration* reference =
-                &etat->Requete->Noeuds[indexNoeud];
-            si (reference->Genre == 24) {
-                naturel64 cible = etat->NombreSymboles;
-                naturel32 drapeaux = 0;
-                si ((reference->Drapeaux & 65_536) != 0) {
-                    cible = TrouverBaseSemantique(etat, indexNoeud);
-                    drapeaux = 2 | 4;
-                }
-                sinon si (reference->HachageNom == HacherSoiSemantique()) {
-                    cible = TrouverRecepteurSemantique(etat, indexNoeud);
-                    drapeaux = 2;
-                }
-                sinon {
-                    cible = TrouverVariableSemantique(etat, indexNoeud);
-                    si (cible >= etat->NombreSymboles)
-                        cible = TrouverDeclarationRacineSemantique(
-                            etat, indexNoeud);
-                }
+    ErreurAnalyseSemantique ResoudreReferenceSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud) {
+        constante NoeudDeclaration* reference =
+            &etat->Requete->Noeuds[indexNoeud];
+        si (reference->Genre != 24)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 cible = etat->NombreSymboles;
+        naturel32 drapeaux = 0;
+        si ((reference->Drapeaux & 65_536) != 0) {
+            cible = TrouverBaseSemantique(etat, indexNoeud);
+            drapeaux = 2 | 4;
+        }
+        sinon si (reference->HachageNom == HacherSoiSemantique()) {
+            cible = TrouverRecepteurSemantique(etat, indexNoeud);
+            drapeaux = 2;
+        }
+        sinon {
+            cible = TrouverVariableSemantique(etat, indexNoeud);
+            si (cible >= etat->NombreSymboles)
+                cible = TrouverDeclarationRacineSemantique(etat, indexNoeud);
+        }
 
-                si (cible >= etat->NombreSymboles)
+        si (cible >= etat->NombreSymboles)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::SymboleIntrouvable,
+                indexNoeud,
+                0);
+
+        si (etat->SymbolesTravail[cible].Genre == 2) {
+            naturel64 nombre = CompterFonctionsCorrespondantesSemantique(
+                etat, indexNoeud);
+            constante NoeudDeclaration* noeudParent =
+                &etat->Requete->Noeuds[reference->Parent];
+            booléen cibleAppel = noeudParent->Genre == 28
+                && indexNoeud == reference->Parent + 1;
+            si (nombre > 1) {
+                si (!cibleAppel)
                     retourner SignalerErreurSemantique(
                         etat,
-                        ErreurAnalyseSemantique::SymboleIntrouvable,
+                        ErreurAnalyseSemantique::AdresseSurchargeAmbigue,
                         indexNoeud,
-                        0);
-
-                si (etat->SymbolesTravail[cible].Genre == 2) {
-                    naturel64 nombre =
-                        CompterFonctionsCorrespondantesSemantique(
-                            etat, indexNoeud);
-                    constante NoeudDeclaration* noeudParent =
-                        &etat->Requete->Noeuds[reference->Parent];
-                    booléen cibleAppel = noeudParent->Genre == 28
-                        && indexNoeud == reference->Parent + 1;
-                    si (nombre > 1) {
-                        si (!cibleAppel)
-                            retourner SignalerErreurSemantique(
-                                etat,
-                                ErreurAnalyseSemantique::AdresseSurchargeAmbigue,
-                                indexNoeud,
-                                convertir<naturel32>(nombre));
-                        cible = SelectionnerSurchargeSemantique(
-                            etat, indexNoeud, reference->Parent);
-                        si (cible >= etat->NombreSymboles)
-                            retourner etat->Requete->Resultat.Erreur;
-                        drapeaux = drapeaux | 1;
-                    }
-                }
-                AjouterResolutionSemantique(
-                    etat, indexNoeud, cible, drapeaux);
+                        convertir<naturel32>(nombre));
+                cible = SelectionnerSurchargeSemantique(
+                    etat, indexNoeud, reference->Parent);
+                si (cible >= etat->NombreSymboles)
+                    retourner etat->Requete->Resultat.Erreur;
+                drapeaux = drapeaux | 1;
             }
-            indexNoeud = indexNoeud + 1;
+        }
+        AjouterResolutionSemantique(etat, indexNoeud, cible, drapeaux);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ResoudreExpressionsSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 indexExpression = etat->Requete->NombreNoeuds;
+        tantque (indexExpression != 0) {
+            indexExpression = indexExpression - 1;
+            constante NoeudDeclaration* expressionCourante =
+                &etat->Requete->Noeuds[indexExpression];
+            ErreurAnalyseSemantique erreurExpression =
+                ErreurAnalyseSemantique::Reussite;
+            si (expressionCourante->Genre == 24)
+                erreurExpression = ResoudreReferenceSemantique(
+                    etat, indexExpression);
+            sinon si (expressionCourante->Genre == 29)
+                erreurExpression = ResoudreMembreSemantique(
+                    etat, indexExpression);
+            sinon si (expressionCourante->Genre == 25
+                || expressionCourante->Genre == 26)
+                erreurExpression = ResoudreOperateurSemantique(
+                    etat, indexExpression);
+            si (erreurExpression != ErreurAnalyseSemantique::Reussite)
+                retourner erreurExpression;
         }
         retourner ErreurAnalyseSemantique::Reussite;
     }
@@ -3364,6 +3427,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.NombreSymboles = 0;
         etat.NombreResolutions = 0;
         etat.CiblesInitialiseurs = NulCiblesInitialiseursSemantiques;
+        etat.CiblesExpressions = NulCiblesExpressionsSemantiques;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
         naturel64 index = 0;
 
@@ -3411,9 +3475,21 @@ espace GalacticShrine::GsPP::Autohebergement {
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
         }
+        etat.CiblesExpressions = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene,
+                requete->NombreNoeuds * 8,
+                8));
+        si (etat.CiblesExpressions == NulCiblesExpressionsSemantiques) {
+            SignalerErreurSemantique(
+                &etat, ErreurAnalyseSemantique::AllocationImpossible, 0, 0);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
         index = 0;
         tantque (index < requete->NombreNoeuds) {
             etat.CiblesInitialiseurs[index] = requete->NombreNoeuds;
+            etat.CiblesExpressions[index] = requete->NombreNoeuds;
             index = index + 1;
         }
 
@@ -3427,15 +3503,11 @@ espace GalacticShrine::GsPP::Autohebergement {
 
         ErreurAnalyseSemantique erreur = VerifierConflitsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
-            erreur = ResoudreReferencesSemantiques(&etat);
-        si (erreur == ErreurAnalyseSemantique::Reussite)
-            erreur = ResoudreMembresSemantiques(&etat);
+            erreur = ResoudreExpressionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreConstructionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ValiderInitialiseursAgregesSemantiques(&etat);
-        si (erreur == ErreurAnalyseSemantique::Reussite)
-            erreur = ResoudreOperateursSemantiques(&etat);
 
         requete->Resultat.NombreResolutions = etat.NombreResolutions;
         requete->Resultat.CapaciteResolutionsRequise = etat.NombreResolutions;

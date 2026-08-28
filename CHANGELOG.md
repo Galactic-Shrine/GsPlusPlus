@@ -10,7 +10,7 @@
 
 # Journal des modifications
 
-## Développement après Gs++ 0.27.0-alpha.7 — 2026-08-27
+## Développement après Gs++ 0.27.0-alpha.7 — 2026-08-28
 
 - adoption de `GalacticShrine::GsPP::` comme préfixe public et ABI canonique,
   `GsPP::` seul restant exclu des contrats exportés ;
@@ -102,13 +102,27 @@
   ou scalaires, les éléments incompatibles et les tableaux non agrégés, avec
   quatorze corpus négatifs supplémentaires portant le total à
   soixante-dix-sept ;
+- ajout d’un cache interne des cibles de résolution, alloué dans l’arène de la
+  passe sans modifier l’AST ni les structures ABI publiques ;
+- remplacement des trois parcours séparés des références, membres et
+  opérateurs par un parcours descendant unique de l’AST compact, afin de
+  résoudre les enfants avant leurs expressions parentes ;
+- propagation du type de retour des fonctions, méthodes et opérateurs membres
+  sélectionnés, ainsi que du type booléen des comparaisons et opérateurs
+  logiques, jusque dans le classement des surcharges et les feuilles
+  d’agrégats ;
+- ajout d’un corpus positif bilingue combinant appels de méthodes, surcharges
+  libres et opérateurs membres imbriqués, puis de trois corpus négatifs
+  différentiels portant le total à quatre-vingts ;
 - correction des chemins automatiques du banc de mesure vers les constructions
   et sessions permanentes situées dans `../Construction` ;
 - correction du graphe CMake afin que toute modification des objets syntaxique
   ou sémantique force réellement la nouvelle liaison de `Frontend.GsE` ;
 - validation complète 4/4 avec Visual Studio 2026 et 5/5 sous GNU/Linux,
   conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
-  chaîne, avec `Frontend.GsE` identique bit à bit.
+  chaîne, avec `Frontend.GsE` identique bit à bit, valide au format GsE 1.0,
+  de 208 865 octets et de SHA-256
+  `db9cfabf1bbebabb610e6d54e730389c0cd6876b0080bdf6b640f23647ddf8fd`.
 
 ## Compilateur Gs++ 0.27.0-alpha.7 — 2026-08-25
 

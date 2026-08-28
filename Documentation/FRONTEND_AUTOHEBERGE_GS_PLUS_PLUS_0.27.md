@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
 **EN COURS — lexeur, AST syntaxique, indexation et première sélection typée
-VALIDÉS — 27 août 2026.**
+VALIDÉS — 28 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -14,7 +14,8 @@ jalon alpha.7 ajoute l’indexation des symboles et la première résolution des
 noms. La branche de développement suivante sélectionne les surcharges libres et
 membres à partir des types déjà déterminables dans l’AST compact, contrôle la
 visibilité et résout maintenant les constructeurs locaux ainsi que leurs
-initialiseurs explicites.
+initialiseurs explicites. Elle propage également les types de retour des appels
+et opérateurs déjà sélectionnables à travers les expressions imbriquées.
 Le frontend 0.27 complet n’est pas encore validé : la résolution exhaustive
 des types et les vérifications sémantiques suivantes restent à migrer.
 
@@ -554,14 +555,43 @@ Cinq diagnostics complètent le contrat :
 | 45 | `TypeElementInitialiseurAgregeIncompatible` | une feuille connue ne peut pas initialiser sa destination ou une dimension imbriquée manque |
 | 46 | `InitialiseurTableauNonAgrege` | un tableau global ou local reçoit une expression non agrégée |
 
-La matrice locale du 27 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
+## Propagation récursive des appels et opérateurs — après alpha.7
+
+La passe conserve maintenant, dans son arène privée, la cible sélectionnée pour
+chaque référence, membre ou opérateur résolu. Ce cache n’est ni exposé ni relu
+depuis le tampon public de résolutions : l’interrogation de capacité et
+l’analyse avec stockage fourni par l’appelant suivent donc exactement le même
+chemin, sans modification des tailles ABI.
+
+Les références, membres et opérateurs sont résolus au cours d’un parcours
+descendant unique de l’AST compact. Comme l’AST est aplati en préordre, ce sens
+de parcours traite les enfants avant leur parent. Le type d’un appel interne ou
+d’un opérateur surchargé est ainsi disponible lorsque l’expression englobante
+classe ses propres surcharges. La propagation couvre maintenant :
+
+- le type de retour sans marqueur de référence d’une fonction libre appelée ;
+- le type de retour d’une méthode directe ou héritée sélectionnée ;
+- le type de retour d’un opérateur membre unaire ou binaire sélectionné ;
+- le type `booléen` des comparaisons et opérateurs logiques intrinsèques ;
+- la réutilisation de ces types dans les appels englobants et dans les feuilles
+  d’initialiseurs agrégés.
+
+Le corpus positif bilingue combine une méthode imbriquée dans un appel
+surchargé, un opérateur membre imbriqué dans une autre sélection de surcharge,
+deux opérateurs en feuilles d’un tableau et une comparaison booléenne. Trois
+refus différentiels supplémentaires vérifient les retours incompatibles d’un
+appel, d’un opérateur membre et d’une comparaison dans un agrégat. Le total
+courant atteint quatre-vingts corpus sémantiques négatifs comparés au bootstrap
+pour le code, la ligne et la colonne.
+
+La matrice locale du 28 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
 smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
 livré dans une seule image, identique bit à bit entre les chaînes :
 
 | Image | Taille | SHA-256 |
 | --- | ---: | --- |
-| `Frontend.GsE` | 205 809 | `6d391208cfcf444ec062446be9e1926469031fd815e463121198c96e3d280772` |
+| `Frontend.GsE` | 208 865 | `db9cfabf1bbebabb610e6d54e730389c0cd6876b0080bdf6b640f23647ddf8fd` |
 
 Les fichiers `ClassificateurMotsCles.GsObj`, `Lexeur.GsObj`,
 `AnalyseurDeclarations.GsObj` et `AnalyseurSemantique.GsObj` restent des
@@ -570,19 +600,20 @@ comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
 d’entrée publics afin que les tests différentiels puissent encore valider
 chaque étape séparément.
 
-Cette tranche ne détermine pas encore les feuilles dont le type dépend d’un
-appel ou d’un opérateur imbriqué non résolu. Elle ne couvre pas non plus les
-plans exécutables complets de construction et destruction auto-hébergés, les
-opérateurs libres, ni le typage récursif complet des appels et opérateurs.
+Cette tranche reste volontairement bornée aux appels et opérateurs que la passe
+sait déjà sélectionner. Elle ne couvre pas encore les opérateurs libres, la
+transformation complète des types d’indexation, d’adresse et de
+déréférencement, la validation exhaustive des combinaisons d’opérandes
+intrinsèques, ni les plans exécutables complets de construction et destruction
+auto-hébergés.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter la résolution et la comparaison des types de toutes les
-  expressions ;
-- propager dans les agrégats les types futurs des appels et opérateurs
-  imbriqués ;
+  expressions, notamment indexation, adresse et déréférencement ;
 - migrer les plans complets de construction, destruction et durée de vie ;
-- migrer les opérateurs libres et le typage des opérateurs imbriqués ;
+- migrer les opérateurs libres et valider exhaustivement les opérateurs
+  intrinsèques ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;
 - migrer les destructeurs et les plans de durée de vie ;

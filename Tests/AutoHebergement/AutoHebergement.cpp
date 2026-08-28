@@ -2643,7 +2643,14 @@ namespace
                 && requete.Resultat.LigneErreur == ligne
                 && requete.Resultat.ColonneErreur == colonne,
             "diagnostic sémantique différent du bootstrap pour "
-                + std::string(nomCorpus));
+                + std::string(nomCorpus)
+                + " (attendu " + std::to_string(erreurAttendue)
+                + " à " + std::to_string(ligne)
+                + ":" + std::to_string(colonne)
+                + ", obtenu " + std::to_string(obtenu)
+                + " à " + std::to_string(requete.Resultat.LigneErreur)
+                + ":" + std::to_string(requete.Resultat.ColonneErreur)
+                + ")");
     }
 
     void TesterAnalyseurSemantique(
@@ -3597,6 +3604,118 @@ namespace
                 && resultatAgregatsFrancais.Resolutions.size()
                     == resultatAgregatsAnglais.Resolutions.size(),
             "les agrégats récursifs bilingues divergent");
+
+        const std::string expressionsRecursivesFrancais =
+            "classe ValeurRecursive {\n"
+            "  privée: entier32 Valeur;\n"
+            "  publique: constructeur(entier32 valeur) : Valeur(valeur) {}\n"
+            "  entier32 Lire() { retourner soi.Valeur; }\n"
+            "  entier64 opérateur +(entier32 delta) { "
+            "retourner convertir<entier64>(soi.Valeur + delta); }\n"
+            "};\n"
+            "publique entier32 Produire(entier32 valeur) { retourner valeur; }\n"
+            "publique entier64 Produire(entier64 valeur) { retourner valeur; }\n"
+            "publique vide TesterExpressionsRecursives() {\n"
+            "  ValeurRecursive objet(4);\n"
+            "  entier32 entiers[3] = {Produire(objet.Lire()), "
+            "objet.Lire(), Produire(1)};\n"
+            "  entier64 longs[2] = {Produire(objet + 2), objet + 3};\n"
+            "  booléen etats[2] = {Produire(1) == 1, !faux};\n"
+            "}\n";
+        const std::string expressionsRecursivesAnglais =
+            "class ValeurRecursive {\n"
+            "  private: int32 Valeur;\n"
+            "  public: constructor(int32 valeur) : Valeur(valeur) {}\n"
+            "  int32 Lire() { return this.Valeur; }\n"
+            "  int64 operator +(int32 delta) { "
+            "return cast<int64>(this.Valeur + delta); }\n"
+            "};\n"
+            "public int32 Produire(int32 valeur) { return valeur; }\n"
+            "public int64 Produire(int64 valeur) { return valeur; }\n"
+            "public void TesterExpressionsRecursives() {\n"
+            "  ValeurRecursive objet(4);\n"
+            "  int32 entiers[3] = {Produire(objet.Lire()), "
+            "objet.Lire(), Produire(1)};\n"
+            "  int64 longs[2] = {Produire(objet + 2), objet + 3};\n"
+            "  bool etats[2] = {Produire(1) == 1, !false};\n"
+            "}\n";
+        const auto resultatExpressionsFrancais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            expressionsRecursivesFrancais,
+            "expressions-recursives-francais");
+        const auto resultatExpressionsAnglais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            expressionsRecursivesAnglais,
+            "expressions-recursives-anglais");
+        Exiger(
+            resultatExpressionsFrancais.Symboles.size()
+                    == resultatExpressionsAnglais.Symboles.size()
+                && resultatExpressionsFrancais.Resolutions.size()
+                    == resultatExpressionsAnglais.Resolutions.size(),
+            "les expressions récursives bilingues divergent");
+
+        std::size_t appelsProduireEntier32 = 0;
+        std::size_t appelsProduireEntier64 = 0;
+        std::size_t operateursRecursifs = 0;
+        for (const auto& resolution :
+             resultatExpressionsFrancais.Resolutions)
+        {
+            const auto& noeudExpression = resultatExpressionsFrancais.Noeuds[
+                resolution.IndexNoeud];
+            if (noeudExpression.HachageNom == HacherTexte("Produire")
+                && (resolution.Drapeaux & 1U) != 0)
+            {
+                const auto indexFonction = resultatExpressionsFrancais.Symboles[
+                    resolution.IndexSymbole].IndexNoeud;
+                const auto parametre = std::find_if(
+                    resultatExpressionsFrancais.Noeuds.begin(),
+                    resultatExpressionsFrancais.Noeuds.end(),
+                    [&](const NoeudDeclarationHote& valeur)
+                    {
+                        return valeur.Genre == 2
+                            && valeur.Parent == indexFonction;
+                    });
+                Exiger(
+                    parametre != resultatExpressionsFrancais.Noeuds.end(),
+                    "une surcharge Produire n’expose pas son paramètre");
+                appelsProduireEntier32 +=
+                    parametre->HachageType == typeEntier32;
+                appelsProduireEntier64 +=
+                    parametre->HachageType == typeEntier64;
+            }
+            if ((resolution.Drapeaux & 256U) != 0)
+                ++operateursRecursifs;
+        }
+        Exiger(
+            appelsProduireEntier32 == 3
+                && appelsProduireEntier64 == 1
+                && operateursRecursifs == 2,
+            "la propagation récursive des appels et opérateurs est incomplète");
+
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier64 Long() { retourner 1; } "
+            "publique vide F() { entier32 X[1] = {Long()}; }",
+            45,
+            "agregat-retour-appel-incompatible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe A { publique: constructeur() {} "
+            "entier64 opérateur +(entier32 valeur) { "
+            "retourner convertir<entier64>(valeur); } }; "
+            "publique vide F() { A objet; entier32 X[1] = {objet + 1}; }",
+            45,
+            "agregat-retour-operateur-incompatible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 X[1] = {1 == 1}; }",
+            45,
+            "agregat-retour-comparaison-incompatible");
 
         ComparerErreurSemantique(
             syntaxe, semantique,

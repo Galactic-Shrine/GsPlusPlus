@@ -27,16 +27,15 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — development after `0.27.0-alpha.7`**
+> **Current status — `0.27.0-alpha.8`**
 >
-> The latest public prerelease can be used to evaluate and develop with the
-> current Gs++ toolchain. Binary formats 1.0 and ABI 1 are validated, while the
-> self-hosted frontend remains in development. The lexer, compact AST, and
-> first semantic pass are written in Gs++. The current branch adds typed
-> selection for free functions and methods, member access, references,
-> aggregates, inheritance conversions, visibility checks, local constructors,
-> explicit constructor initializers, and member operators covered by this
-> stage; complete type resolution and the following semantic stages remain to
+> This prerelease can be used to evaluate and develop with the current Gs++
+> toolchain. Binary formats 1.0 and ABI 1 are validated, while the self-hosted
+> frontend remains in development. Its single `Frontend.GsE` image combines
+> keyword classification, lexing, the compact AST, and semantic analysis. The
+> semantic stage now covers resolvable overloads, members, constructors,
+> initializers, nested aggregates, indexing, addresses, dereferences, and
+> indirect calls; exhaustive resolution and complete lifetime plans remain to
 > be migrated.
 
 ## Language principles
@@ -187,7 +186,7 @@ On Linux:
 
 ## Downloading a prerelease
 
-The [`0.27.0-alpha.7` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.7)
+The [`0.27.0-alpha.8` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.8)
 provides x86-64 packages for Windows and Linux. Each package contains the
 tools, SDK headers, Gs++ libraries, examples, and Markdown documentation. Use
 `SHA256SUMS.txt` to verify downloads.
@@ -215,7 +214,7 @@ GsPlusPlus/
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Conformance matrix](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Self-hosted frontend 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [`0.27.0-alpha.7` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md)
+- [`0.27.0-alpha.8` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md)
 - [Roadmap](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 All normative documentation is maintained in Markdown as its primary source.

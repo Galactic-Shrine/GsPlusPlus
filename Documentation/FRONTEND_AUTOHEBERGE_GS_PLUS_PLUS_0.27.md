@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
 **EN COURS — lexeur, AST syntaxique, indexation et première sélection typée
-VALIDÉS — 28 août 2026.**
+VALIDÉS — 29 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -11,11 +11,11 @@ constructeurs, destructeurs et opérateurs de classes, puis l’alpha.5 construi
 la hiérarchie des blocs et instructions. L’alpha.6 ajoute l’AST interne des
 expressions avec les mêmes priorités et associativités que le bootstrap. Le
 jalon alpha.7 ajoute l’indexation des symboles et la première résolution des
-noms. La branche de développement suivante sélectionne les surcharges libres et
-membres à partir des types déjà déterminables dans l’AST compact, contrôle la
-visibilité et résout maintenant les constructeurs locaux ainsi que leurs
-initialiseurs explicites. Elle propage également les types de retour des appels
-et opérateurs déjà sélectionnables à travers les expressions imbriquées.
+noms. L’alpha.8 sélectionne les surcharges libres et membres à partir des types
+déjà déterminables dans l’AST compact, contrôle la visibilité, résout les
+constructeurs et leurs initialiseurs, puis propage les types à travers les
+agrégats et expressions imbriqués, y compris les indexations, adresses,
+déréférencements et appels indirects.
 Le frontend 0.27 complet n’est pas encore validé : la résolution exhaustive
 des types et les vérifications sémantiques suivantes restent à migrer.
 
@@ -286,7 +286,7 @@ La matrice complète, les empreintes reproductibles et les contrôles des
 paquets extraits sont consignés dans
 [`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
 
-## Première sélection typée des surcharges — après alpha.7
+## Première sélection typée des surcharges — alpha.8
 
 La passe auto-hébergée sélectionne désormais une fonction libre ou une méthode
 précise lorsqu’une cible d’appel désigne plusieurs surcharges. Le choix tient
@@ -328,7 +328,7 @@ Cette tranche est validée localement par la reconstruction réelle de
 MSVC et GNU. Les étapes objet qui prolongent cette sélection sont décrites dans
 la section suivante.
 
-## Visibilité, constructeurs locaux et opérateurs membres — après alpha.7
+## Visibilité, constructeurs locaux et opérateurs membres — alpha.8
 
 La passe auto-hébergée applique désormais les sections `publique`, `protégée`
 et `privée` aux champs et méthodes sélectionnés. Un membre privé est accessible
@@ -380,7 +380,7 @@ distincts, puis vérifie les accès privé dans la classe propriétaire et prot�
 depuis une classe dérivée. Les tailles ABI restent inchangées : 48 octets pour
 un symbole, 32 pour une résolution, 56 pour le résultat et 120 pour la requête.
 
-## Initialiseurs explicites de constructeurs — après alpha.7
+## Initialiseurs explicites de constructeurs — alpha.8
 
 L’AST compact ne confond plus les arguments de la liste d’initialisation avec
 les enfants directs du constructeur. Trois genres bilingues, numérotés sans
@@ -428,7 +428,7 @@ positif bilingue vérifie séparément une délégation, une construction de bas
 deux initialisations de champs, en plus des constructions locales déjà
 couvertes.
 
-## Champs objets, valeurs scalaires et base implicite — après alpha.7
+## Champs objets, valeurs scalaires et base implicite — alpha.8
 
 La résolution des initialiseurs de champs couvre maintenant leur première
 sémantique de valeur :
@@ -469,7 +469,7 @@ incompatibles ou privés et les constructeurs de base implicites incompatibles
 ou privés. Le total courant atteint quarante-neuf corpus sémantiques négatifs
 comparés au bootstrap pour le code, la ligne et la colonne.
 
-## Tableaux et valeurs de champs par défaut — après alpha.7
+## Tableaux et valeurs de champs par défaut — alpha.8
 
 La passe sémantique retrouve maintenant le type final d’un tableau sans
 modifier le nœud AST public de 64 octets. Elle relit les dimensions qui suivent
@@ -513,7 +513,7 @@ Quatre diagnostics complètent le contrat :
 | 40 | `ChampConstantNonInitialise` | un champ constant non-adresse reste sans valeur |
 | 41 | `InitialiseurChampTableauNonAgrege` | un tableau scalaire reçoit une expression non agrégée |
 
-## Typage récursif des agrégats — après alpha.7
+## Typage récursif des agrégats — alpha.8
 
 Le frontend parcourt désormais récursivement chaque nœud `Agregat` avec une
 description interne de son type de destination. Pour un tableau, la profondeur
@@ -555,7 +555,7 @@ Cinq diagnostics complètent le contrat :
 | 45 | `TypeElementInitialiseurAgregeIncompatible` | une feuille connue ne peut pas initialiser sa destination ou une dimension imbriquée manque |
 | 46 | `InitialiseurTableauNonAgrege` | un tableau global ou local reçoit une expression non agrégée |
 
-## Propagation récursive des appels et opérateurs — après alpha.7
+## Propagation récursive des appels et opérateurs — alpha.8
 
 La passe conserve maintenant, dans son arène privée, la cible sélectionnée pour
 chaque référence, membre ou opérateur résolu. Ce cache n’est ni exposé ni relu
@@ -584,7 +584,7 @@ appel, d’un opérateur membre et d’une comparaison dans un agrégat. Le tota
 courant atteint quatre-vingts corpus sémantiques négatifs comparés au bootstrap
 pour le code, la ligne et la colonne.
 
-## Indexations, adresses et appels indirects — après alpha.7
+## Indexations, adresses et appels indirects — alpha.8
 
 L’empreinte compacte des types couvre maintenant
 `pointeur_fonction<retour(paramètres)>` et sa forme anglaise
@@ -618,7 +618,7 @@ indexation, une adresse, un déréférencement et un retour d’appel indirect
 incompatibles dans un agrégat. Le total atteint quatre-vingt-quatre corpus
 sémantiques négatifs positionnés.
 
-La matrice locale du 28 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
+La matrice de publication du 29 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
 smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
 livré dans une seule image, identique bit à bit entre les chaînes :
@@ -655,5 +655,5 @@ destruction restent aussi à migrer.
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.7`. Aucun statut
+Les outils de la tranche publique annoncent `0.27.0-alpha.8`. Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

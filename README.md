@@ -29,17 +29,16 @@ Le français est la syntaxe canonique du langage. Les mots-clés anglais
 documentés sont des alias officiels avec la même sémantique et la même
 génération de code.
 
-> **État actuel — développement après `0.27.0-alpha.7`**
+> **État actuel — `0.27.0-alpha.8`**
 >
-> La dernière préversion publique permet d’évaluer et de développer avec la
-> chaîne Gs++ actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais
-> le frontend auto-hébergé reste en développement. Le lexeur, l’AST compact et
-> la première passe sémantique sont écrits en Gs++. La branche courante ajoute
-> la sélection typée des fonctions libres et méthodes, les accès membres,
-> références, agrégats, conversions d’héritage, contrôle de visibilité,
-> constructeurs locaux, initialiseurs explicites de constructeurs et opérateurs
-> membres couverts par cette tranche ; la résolution complète des types et les
-> étapes suivantes restent à migrer.
+> Cette préversion permet d’évaluer et de développer avec la chaîne Gs++
+> actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais le frontend
+> auto-hébergé reste en développement. Son image unique `Frontend.GsE` regroupe
+> le classificateur, le lexeur, l’AST compact et la passe sémantique. Celle-ci
+> couvre maintenant les surcharges, membres, constructeurs, initialiseurs,
+> agrégats imbriqués, indexations, adresses, déréférencements et appels
+> indirects déjà typables ; la résolution exhaustive et les plans complets de
+> durée de vie restent à migrer.
 
 ## Principes du langage
 
@@ -191,7 +190,7 @@ Sous Linux :
 
 ## Télécharger une préversion
 
-La [release `0.27.0-alpha.7`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.7)
+La [release `0.27.0-alpha.8`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.8)
 propose des paquets x86-64 pour Windows et Linux. Chaque paquet contient les
 outils, les en-têtes SDK, les bibliothèques Gs++, les exemples et la
 documentation Markdown. Le fichier `SHA256SUMS.txt` permet de vérifier les
@@ -220,7 +219,7 @@ GsPlusPlus/
 - [ABI native x86-64](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Matrice de conformité](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [Validation de `0.27.0-alpha.7`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md)
+- [Validation de `0.27.0-alpha.8`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md)
 - [Feuille de route](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 Toute la documentation normative est maintenue en Markdown comme source

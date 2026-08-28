@@ -10,7 +10,7 @@
 
 # Journal des modifications
 
-## Développement après Gs++ 0.27.0-alpha.7 — 2026-08-28
+## Compilateur Gs++ 0.27.0-alpha.8 — 2026-08-29
 
 - adoption de `GalacticShrine::GsPP::` comme préfixe public et ABI canonique,
   `GsPP::` seul restant exclu des contrats exportés ;

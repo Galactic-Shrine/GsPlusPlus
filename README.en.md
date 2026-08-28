@@ -227,7 +227,9 @@ All normative documentation is maintained in Markdown as its primary source.
 - four successful smoke benchmark scenarios on each host;
 - Windows and Linux GitHub CI;
 - the single self-hosted `Frontend.GsE` image, which combines all four frontend
-  stages, is compared across both validated toolchains.
+  stages, is compared across both validated toolchains;
+- differential recursive typing for indexing, `&`, `*`, and indirect calls,
+  including nested callbacks.
 
 ## License
 

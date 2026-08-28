@@ -233,7 +233,9 @@ principale.
 - quatre scénarios de benchmark smoke réussis sur chaque hôte ;
 - CI GitHub Windows et Linux ;
 - l’unique image auto-hébergée `Frontend.GsE`, qui réunit les quatre étapes du
-  frontend, est comparée entre les deux chaînes validées.
+  frontend, est comparée entre les deux chaînes validées ;
+- typage récursif différentiel des indexations, de `&`, de `*` et des appels
+  indirects, y compris les callbacks imbriqués.
 
 ## Licence
 

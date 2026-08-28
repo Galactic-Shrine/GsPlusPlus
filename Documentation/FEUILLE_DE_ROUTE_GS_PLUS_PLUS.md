@@ -250,9 +250,10 @@ Les prochains jalons sont donc réservés à Gs++ :
    opérateurs membres, initialiseurs directs de sous-objets et bases
    implicites, tableaux d’objets, valeurs de champs par défaut et agrégats
    imbriqués avec contrôle de capacité, puis propagation récursive des types de
-   retour des appels et opérateurs déjà sélectionnables ; indexation complète,
-   typage exhaustif des expressions, opérateurs libres et plans complets de
-   durée de vie encore à migrer ;
+   retour des appels et opérateurs déjà sélectionnables, des indexations,
+   adresses, déréférencements et appels indirects ; validation exhaustive des
+   opérandes, opérateurs libres et plans complets de durée de vie encore à
+   migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.

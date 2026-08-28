@@ -195,6 +195,29 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner faux;
     }
 
+    booléen ExigerFermetureTypeDeclaration(
+        EtatAnalyseDeclarations* etat) {
+        si (AccepterJetonDeclaration(etat, 50)) retourner vrai;
+        si (EstJetonDeclaration(etat, 60)) {
+            JetonLexe* fermetureDouble = JetonCourantDeclaration(etat);
+            fermetureDouble->Genre = 50;
+            fermetureDouble->Colonne = fermetureDouble->Colonne + 1;
+            fermetureDouble->Debut = fermetureDouble->Debut + 1;
+            fermetureDouble->TailleSource = 1;
+            fermetureDouble->TailleTexte = 1;
+            fermetureDouble->HachageTexte = AjouterOctetDeclaration(
+                HachageVideDeclaration(), 62);
+            retourner vrai;
+        }
+        JetonLexe* fermetureManquante = JetonCourantDeclaration(etat);
+        SignalerErreurDeclaration(
+            etat,
+            ErreurAnalyseDeclarations::TypeAttendu,
+            fermetureManquante->Ligne,
+            fermetureManquante->Colonne);
+        retourner faux;
+    }
+
     booléen AnalyserNomQualifieDeclaration(
         EtatAnalyseDeclarations* etat,
         NomQualifieDeclaration* resultat) {
@@ -313,6 +336,57 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (genreJeton >= 14 && genreJeton <= 25) {
             type->Genre = genreJeton - 13;
             etat->Position = etat->Position + 1;
+        }
+        sinon si (genreJeton == 26) {
+            type->Genre = 14;
+            etat->Position = etat->Position + 1;
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    48,
+                    ErreurAnalyseDeclarations::TypeAttendu))
+                retourner faux;
+
+            TypeDeclarationInterne retourPointeurFonction;
+            si (!AnalyserTypeDeclaration(etat, &retourPointeurFonction))
+                retourner faux;
+            naturel64 hachageSignaturePointeurFonction =
+                AjouterNaturel64Declaration(
+                    HachageVideDeclaration(),
+                    HacherTypeDeclaration(&retourPointeurFonction));
+
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    34,
+                    ErreurAnalyseDeclarations::ParentheseOuvranteAttendue))
+                retourner faux;
+            naturel32 nombreParametresPointeurFonction = 0;
+            booléen continuerParametresPointeurFonction =
+                !EstJetonDeclaration(etat, 35);
+            tantque (continuerParametresPointeurFonction) {
+                TypeDeclarationInterne parametrePointeurFonction;
+                si (!AnalyserTypeDeclaration(
+                        etat, &parametrePointeurFonction))
+                    retourner faux;
+                hachageSignaturePointeurFonction =
+                    AjouterNaturel64Declaration(
+                        hachageSignaturePointeurFonction,
+                        HacherTypeDeclaration(&parametrePointeurFonction));
+                nombreParametresPointeurFonction =
+                    nombreParametresPointeurFonction + 1;
+                si (!AccepterJetonDeclaration(etat, 41))
+                    continuerParametresPointeurFonction = faux;
+            }
+            si (!ExigerJetonDeclaration(
+                    etat,
+                    35,
+                    ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
+                retourner faux;
+            si (!ExigerFermetureTypeDeclaration(etat)) retourner faux;
+            hachageSignaturePointeurFonction =
+                AjouterNaturel32Declaration(
+                    hachageSignaturePointeurFonction,
+                    nombreParametresPointeurFonction);
+            type->HachageNom = hachageSignaturePointeurFonction;
         }
         sinon si (genreJeton == 1) {
             type->Genre = 13;
@@ -1035,7 +1109,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         EtatAnalyseDeclarations* etat) {
         naturel32 genre = JetonCourantDeclaration(etat)->Genre;
         si (genre == 12 || genre == 13
-            || (genre >= 14 && genre <= 25))
+            || (genre >= 14 && genre <= 26))
             retourner vrai;
         si (genre != 1) retourner faux;
 

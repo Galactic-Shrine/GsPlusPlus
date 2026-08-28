@@ -79,6 +79,7 @@ add_custom_command(
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${GS_AUTO_REPERTOIRE}"
     COMMAND $<TARGET_FILE:gsppc>
         "${GS_HEBERGEE_INTERFACE}"
+        "${GS_LEXEUR_SOURCE}/Lexeur.HGsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.GsPP"
@@ -86,6 +87,7 @@ add_custom_command(
     DEPENDS
         gsppc
         "${GS_HEBERGEE_INTERFACE}"
+        "${GS_LEXEUR_SOURCE}/Lexeur.HGsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.GsPP"

@@ -114,6 +114,17 @@
 - ajout d’un corpus positif bilingue combinant appels de méthodes, surcharges
   libres et opérateurs membres imbriqués, puis de trois corpus négatifs
   différentiels portant le total à quatre-vingts ;
+- extension du hachage compact des types aux pointeurs de fonction, y compris
+  les signatures imbriquées fermées par `>>`, sans modifier le nœud AST ni les
+  structures sémantiques publiques ;
+- propagation récursive du type d’une indexation de tableau ou de pointeur, de
+  l’adresse `&`, du déréférencement `*` et du retour des appels indirects ;
+- reconstruction privée des signatures de callbacks depuis les jetons de la
+  source afin de typer aussi un tableau de callbacks et un callback retournant
+  un autre callback ;
+- ajout d’un corpus positif bilingue couvrant cinq compositions de ces
+  expressions et de quatre refus différentiels supplémentaires, portant le
+  total à quatre-vingt-quatre ;
 - correction des chemins automatiques du banc de mesure vers les constructions
   et sessions permanentes situées dans `../Construction` ;
 - correction du graphe CMake afin que toute modification des objets syntaxique
@@ -121,8 +132,8 @@
 - validation complète 4/4 avec Visual Studio 2026 et 5/5 sous GNU/Linux,
   conformité 20/20 et quatre scénarios de benchmark smoke réussis sur chaque
   chaîne, avec `Frontend.GsE` identique bit à bit, valide au format GsE 1.0,
-  de 208 865 octets et de SHA-256
-  `db9cfabf1bbebabb610e6d54e730389c0cd6876b0080bdf6b640f23647ddf8fd`.
+  de 231 809 octets et de SHA-256
+  `e798a3fae8903a1788d66c0c2ef4187a64bd136d9a99131d170044a8a65c301a`.
 
 ## Compilateur Gs++ 0.27.0-alpha.7 — 2026-08-25
 

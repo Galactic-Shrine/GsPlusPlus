@@ -584,6 +584,40 @@ appel, d’un opérateur membre et d’une comparaison dans un agrégat. Le tota
 courant atteint quatre-vingts corpus sémantiques négatifs comparés au bootstrap
 pour le code, la ligne et la colonne.
 
+## Indexations, adresses et appels indirects — après alpha.7
+
+L’empreinte compacte des types couvre maintenant
+`pointeur_fonction<retour(paramètres)>` et sa forme anglaise
+`function_pointer<return(parameters)>`. La signature interne hache le type de
+retour, les paramètres dans leur ordre lexical et leur nombre. Cette
+représentation est récursive : un callback peut retourner ou recevoir un autre
+callback, y compris avec la fermeture lexicale `>>`.
+
+Le passage sémantique relit les jetons de type dans son arène privée. Il peut
+ainsi retrouver le retour d’un callback sans ajouter de champ à
+`NoeudDeclaration`, `SymboleSemantique` ou `ResolutionSemantique`. Les tailles
+ABI publiques restent donc inchangées. Cette description interne permet les
+transformations suivantes :
+
+- une indexation de tableau retire exactement sa première dimension et
+  conserve les dimensions restantes ;
+- une indexation de pointeur retire un niveau de pointeur ;
+- `&` ajoute un niveau de pointeur à une valeur adressable, tandis que
+  l’adresse d’une fonction produit sa signature de callback complète ;
+- `*` retire un niveau de pointeur et conserve un pointeur de fonction direct,
+  conformément au bootstrap ;
+- un appel direct conserve le type de retour de la fonction sélectionnée ;
+- un appel indirect extrait le retour de la signature du callback, y compris
+  après une indexation ou lorsqu’un premier callback retourne le callback
+  appelé.
+
+Le corpus positif bilingue classe cinq appels surchargés à partir d’une double
+indexation, de `*(&valeur)`, d’un callback local, d’un tableau de callbacks et
+d’un callback imbriqué. Quatre refus supplémentaires comparent au bootstrap une
+indexation, une adresse, un déréférencement et un retour d’appel indirect
+incompatibles dans un agrégat. Le total atteint quatre-vingt-quatre corpus
+sémantiques négatifs positionnés.
+
 La matrice locale du 28 août 2026 passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux, la conformité reste à 20/20 et les quatre scénarios de benchmark
 smoke réussissent sur chaque chaîne. Le frontend auto-hébergé est désormais
@@ -591,7 +625,7 @@ livré dans une seule image, identique bit à bit entre les chaînes :
 
 | Image | Taille | SHA-256 |
 | --- | ---: | --- |
-| `Frontend.GsE` | 208 865 | `db9cfabf1bbebabb610e6d54e730389c0cd6876b0080bdf6b640f23647ddf8fd` |
+| `Frontend.GsE` | 231 809 | `e798a3fae8903a1788d66c0c2ef4187a64bd136d9a99131d170044a8a65c301a` |
 
 Les fichiers `ClassificateurMotsCles.GsObj`, `Lexeur.GsObj`,
 `AnalyseurDeclarations.GsObj` et `AnalyseurSemantique.GsObj` restent des
@@ -600,17 +634,17 @@ comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
 d’entrée publics afin que les tests différentiels puissent encore valider
 chaque étape séparément.
 
-Cette tranche reste volontairement bornée aux appels et opérateurs que la passe
-sait déjà sélectionner. Elle ne couvre pas encore les opérateurs libres, la
-transformation complète des types d’indexation, d’adresse et de
-déréférencement, la validation exhaustive des combinaisons d’opérandes
-intrinsèques, ni les plans exécutables complets de construction et destruction
-auto-hébergés.
+Cette tranche reste volontairement bornée au typage récursif des formes
+couvertes. Elle ne valide pas encore exhaustivement la valeur gauche exigée par
+`&`, la nature entière de chaque indice, l’arité et les paramètres de tous les
+appels indirects ni toutes les combinaisons d’opérandes intrinsèques. Les
+opérateurs libres et les plans exécutables complets de construction et de
+destruction restent aussi à migrer.
 
 ## Travaux restant dans Gs++ 0.27
 
-- compléter la résolution et la comparaison des types de toutes les
-  expressions, notamment indexation, adresse et déréférencement ;
+- valider exhaustivement les contraintes des indexations, adresses,
+  déréférencements et appels indirects désormais typés ;
 - migrer les plans complets de construction, destruction et durée de vie ;
 - migrer les opérateurs libres et valider exhaustivement les opérateurs
   intrinsèques ;

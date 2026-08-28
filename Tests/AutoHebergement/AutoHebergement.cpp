@@ -456,6 +456,7 @@ namespace
             case GsPP::GenreType::Caractere: return 11;
             case GsPP::GenreType::Vide: return 12;
             case GsPP::GenreType::Structure: return 13;
+            case GsPP::GenreType::PointeurFonction: return 14;
             default:
                 throw std::runtime_error(
                     "type absent de la tranche AST des déclarations");
@@ -473,6 +474,27 @@ namespace
         for (const auto dimension : type.DimensionsTableau)
             dimensions = AjouterNaturel64Empreinte(dimensions, dimension);
 
+        std::uint64_t hachageNom = HacherTexte({});
+        if (type.Genre == GsPP::GenreType::Structure)
+            hachageNom = HacherTexte(type.Nom);
+        else if (type.Genre == GsPP::GenreType::PointeurFonction)
+        {
+            if (!type.RetourFonction)
+                throw std::runtime_error(
+                    "retour absent du pointeur de fonction compact");
+            hachageNom = AjouterNaturel64Empreinte(
+                hachageNom,
+                HacherTypeDeclaration(*type.RetourFonction));
+            for (const auto& parametre : type.ParametresFonction)
+                hachageNom = AjouterNaturel64Empreinte(
+                    hachageNom,
+                    HacherTypeDeclaration(parametre));
+            hachageNom = AjouterNaturel32Empreinte(
+                hachageNom,
+                static_cast<std::uint32_t>(
+                    type.ParametresFonction.size()));
+        }
+
         std::uint64_t hachage = HacherTexte({});
         hachage = AjouterNaturel32Empreinte(
             hachage, CodeTypeDeclaration(type));
@@ -484,9 +506,7 @@ namespace
             static_cast<std::uint32_t>(type.DimensionsTableau.size()));
         hachage = AjouterNaturel64Empreinte(
             hachage,
-            type.Genre == GsPP::GenreType::Structure
-                ? HacherTexte(type.Nom)
-                : HacherTexte({}));
+            hachageNom);
         hachage = AjouterNaturel64Empreinte(hachage, dimensions);
         return hachage;
     }
@@ -1556,7 +1576,13 @@ namespace
                 && requete.Resultat.CapaciteRequise == reference.size()
                 && requete.Resultat.NombreOctetsArene != 0,
             "interrogation de capacité de l’AST Gs++ incorrecte pour "
-                + std::string(nomCorpus));
+                + std::string(nomCorpus)
+                + " (erreur " + std::to_string(interrogation)
+                + " à " + std::to_string(requete.Resultat.LigneErreur)
+                + ":" + std::to_string(requete.Resultat.ColonneErreur)
+                + ", noeuds "
+                + std::to_string(requete.Resultat.NombreNoeuds)
+                + "/" + std::to_string(reference.size()) + ")");
 
         if (reference.size() > 1)
         {
@@ -3694,6 +3720,97 @@ namespace
                 && operateursRecursifs == 2,
             "la propagation récursive des appels et opérateurs est incomplète");
 
+        const std::string adressesIndexationsFrancais =
+            "publique entier32 DoublerType(entier32 valeur) { "
+            "retourner valeur * 2; }\n"
+            "publique entier32 ChoisirType(entier32 valeur) { "
+            "retourner valeur; }\n"
+            "publique entier64 ChoisirType(entier64 valeur) { "
+            "retourner valeur; }\n"
+            "publique vide TesterAdressesIndexations() {\n"
+            "  entier32 valeur = 7; entier32 matrice[2][2] = {{1, 2}, {3, 4}};\n"
+            "  pointeur_fonction<entier32(entier32)> operation = &DoublerType;\n"
+            "  pointeur_fonction<entier32(entier32)> operations[1] = "
+            "{&DoublerType};\n"
+            "  pointeur_fonction<pointeur_fonction<entier32(entier32)>()> "
+            "fournisseur;\n"
+            "  entier32 resultats[5] = {ChoisirType(matrice[0][1]), "
+            "ChoisirType(*(&valeur)), ChoisirType(operation(3)), "
+            "ChoisirType(operations[0](4)), "
+            "ChoisirType(fournisseur()(5))};\n"
+            "}\n";
+        const std::string adressesIndexationsAnglais =
+            "public int32 DoublerType(int32 valeur) { return valeur * 2; }\n"
+            "public int32 ChoisirType(int32 valeur) { return valeur; }\n"
+            "public int64 ChoisirType(int64 valeur) { return valeur; }\n"
+            "public void TesterAdressesIndexations() {\n"
+            "  int32 valeur = 7; int32 matrice[2][2] = {{1, 2}, {3, 4}};\n"
+            "  function_pointer<int32(int32)> operation = &DoublerType;\n"
+            "  function_pointer<int32(int32)> operations[1] = "
+            "{&DoublerType};\n"
+            "  function_pointer<function_pointer<int32(int32)>()> "
+            "fournisseur;\n"
+            "  int32 resultats[5] = {ChoisirType(matrice[0][1]), "
+            "ChoisirType(*(&valeur)), ChoisirType(operation(3)), "
+            "ChoisirType(operations[0](4)), "
+            "ChoisirType(fournisseur()(5))};\n"
+            "}\n";
+        const auto resultatAdressesIndexationsFrancais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                adressesIndexationsFrancais,
+                "adresses-indexations-francais");
+        const auto resultatAdressesIndexationsAnglais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                adressesIndexationsAnglais,
+                "adresses-indexations-anglais");
+        Exiger(
+            resultatAdressesIndexationsFrancais.Symboles.size()
+                    == resultatAdressesIndexationsAnglais.Symboles.size()
+                && resultatAdressesIndexationsFrancais.Resolutions.size()
+                    == resultatAdressesIndexationsAnglais.Resolutions.size(),
+            "les adresses, indexations et appels indirects bilingues divergent");
+
+        std::size_t appelsChoisirTypeEntier32 = 0;
+        std::size_t appelsChoisirTypeEntier64 = 0;
+        for (const auto& resolution :
+             resultatAdressesIndexationsFrancais.Resolutions)
+        {
+            const auto& noeudType = resultatAdressesIndexationsFrancais.Noeuds[
+                resolution.IndexNoeud];
+            if (noeudType.HachageNom == HacherTexte("ChoisirType")
+                && (resolution.Drapeaux & 1U) != 0)
+            {
+                const auto indexFonctionType =
+                    resultatAdressesIndexationsFrancais.Symboles[
+                        resolution.IndexSymbole].IndexNoeud;
+                const auto parametreType = std::find_if(
+                    resultatAdressesIndexationsFrancais.Noeuds.begin(),
+                    resultatAdressesIndexationsFrancais.Noeuds.end(),
+                    [&](const NoeudDeclarationHote& valeurType)
+                    {
+                        return valeurType.Genre == 2
+                            && valeurType.Parent == indexFonctionType;
+                    });
+                Exiger(
+                    parametreType
+                        != resultatAdressesIndexationsFrancais.Noeuds.end(),
+                    "une surcharge ChoisirType n'expose pas son paramètre");
+                appelsChoisirTypeEntier32 +=
+                    parametreType->HachageType == typeEntier32;
+                appelsChoisirTypeEntier64 +=
+                    parametreType->HachageType == typeEntier64;
+            }
+        }
+        Exiger(
+            appelsChoisirTypeEntier32 == 5
+                && appelsChoisirTypeEntier64 == 0,
+            "la propagation des indexations, adresses, déréférencements "
+            "ou appels indirects est incomplète");
+
         ComparerErreurSemantique(
             syntaxe,
             semantique,
@@ -3716,6 +3833,36 @@ namespace
             "publique vide F() { entier32 X[1] = {1 == 1}; }",
             45,
             "agregat-retour-comparaison-incompatible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier64 source[1] = {1}; "
+            "entier32 cible[1] = {source[0]}; }",
+            45,
+            "agregat-indexation-incompatible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier64 valeur = 1; "
+            "entier32* cible[1] = {&valeur}; }",
+            45,
+            "agregat-adresse-incompatible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier64* valeur) { "
+            "entier32 cible[1] = {*valeur}; }",
+            45,
+            "agregat-dereferencement-incompatible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier64 LongCallback(entier64 valeur) { retourner valeur; } "
+            "publique vide F() { "
+            "pointeur_fonction<entier64(entier64)> operation = &LongCallback; "
+            "entier32 cible[1] = {operation(1)}; }",
+            45,
+            "agregat-appel-indirect-incompatible");
 
         ComparerErreurSemantique(
             syntaxe, semantique,

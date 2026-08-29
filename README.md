@@ -38,10 +38,12 @@ génération de code.
 > couvre maintenant les surcharges, membres, constructeurs, initialiseurs,
 > agrégats imbriqués, indexations, adresses, déréférencements et appels
 > indirects déjà typables. Le développement suivant l’alpha.8 valide aussi les
-> valeurs gauches, indices, cibles, arités, types et références de ces formes ;
-> il produit désormais les plans ordonnés de construction, de destruction et
-> de tables virtuelles des objets locaux et sous-objets de constructeurs. La
-> résolution globale et les autres familles sémantiques restent à migrer.
+> valeurs gauches, indices, cibles, arités, types et références de ces formes,
+> ainsi que la résolution typée des opérateurs libres binaires et unaires. Il
+> produit désormais les plans ordonnés de construction, de destruction et de
+> tables virtuelles des objets locaux et sous-objets de constructeurs. Les
+> combinaisons intrinsèques exhaustives, la résolution globale et les autres
+> familles sémantiques restent à migrer.
 
 ## Principes du langage
 
@@ -237,7 +239,9 @@ principale.
 - l’unique image auto-hébergée `Frontend.GsE`, qui réunit les quatre étapes du
   frontend, est comparée entre les deux chaînes validées ;
 - typage récursif différentiel des indexations, de `&`, de `*` et des appels
-  indirects, y compris les callbacks imbriqués.
+  indirects, y compris les callbacks imbriqués ;
+- sélection différentielle des opérateurs libres, y compris les surcharges,
+  références qualifiées, ambiguïtés, arités et opérateurs unaires.
 
 ## Licence
 

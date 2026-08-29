@@ -1217,19 +1217,23 @@ namespace
                 const auto& fonction = *static_cast<const GsPP::Fonction*>(
                     racine.Declaration);
                 const auto indexFonction = resultat.size();
+                const auto genreFonction = fonction.EstOperateur ? 15U : 1U;
+                const auto hachageNom = fonction.EstOperateur
+                    ? HacherTexte(fonction.Operateur)
+                    : HacherTexte(fonction.Nom);
                 std::uint32_t drapeaux = 0;
                 if (fonction.EstPublique) drapeaux |= 1U;
                 if (fonction.EstExterne) drapeaux |= 2U;
                 if (fonction.Corps) drapeaux |= 4U;
                 resultat.push_back({
-                    1,
+                    genreFonction,
                     static_cast<std::uint32_t>(fonction.Position.Ligne),
                     static_cast<std::uint32_t>(fonction.Position.Colonne),
                     drapeaux,
                     0,
                     0,
                     0,
-                    HacherTexte(fonction.Nom),
+                    hachageNom,
                     HacherTexte(fonction.Espace),
                     HacherTypeDeclaration(fonction.TypeRetour)});
                 for (const auto& parametre : fonction.Parametres)
@@ -3241,6 +3245,119 @@ namespace
             accesPriveAutorise && accesProtegeHeriteAutorise,
             "un accès privé ou protégé valide n’a pas été conservé");
 
+        const std::string operateursLibresFrancais =
+            "espace Calcul {\n"
+            "  classe ValeurLibre { publique: constructeur() {} };\n"
+            "  publique entier32 opérateur +(constante ValeurLibre& gauche, "
+            "entier32 droite) { retourner droite; }\n"
+            "  publique entier64 opérateur +(constante ValeurLibre& gauche, "
+            "entier64 droite) { retourner droite; }\n"
+            "  publique entier32 opérateur +(entier32 gauche, "
+            "constante ValeurLibre& droite) { retourner gauche; }\n"
+            "  publique booléen opérateur !(constante ValeurLibre& valeur) { "
+            "retourner faux; }\n"
+            "  publique vide TesterLibre(entier32 valeur) {\n"
+            "    ValeurLibre objet;\n"
+            "    entier32 somme32 = objet + valeur;\n"
+            "    entier64 somme64 = objet + convertir<entier64>(valeur);\n"
+            "    entier32 inverse = valeur + objet;\n"
+            "    booléen negation = !objet;\n"
+            "  }\n"
+            "}\n";
+        const std::string operateursLibresAnglais =
+            "namespace Calcul {\n"
+            "  class ValeurLibre { public: constructor() {} };\n"
+            "  public int32 operator +(const ValeurLibre& gauche, "
+            "int32 droite) { return droite; }\n"
+            "  public int64 operator +(const ValeurLibre& gauche, "
+            "int64 droite) { return droite; }\n"
+            "  public int32 operator +(int32 gauche, "
+            "const ValeurLibre& droite) { return gauche; }\n"
+            "  public bool operator !(const ValeurLibre& valeur) { "
+            "return false; }\n"
+            "  public void TesterLibre(int32 valeur) {\n"
+            "    ValeurLibre objet;\n"
+            "    int32 somme32 = objet + valeur;\n"
+            "    int64 somme64 = objet + cast<int64>(valeur);\n"
+            "    int32 inverse = valeur + objet;\n"
+            "    bool negation = !objet;\n"
+            "  }\n"
+            "}\n";
+        const auto resultatOperateursLibresFrancais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                operateursLibresFrancais,
+                "operateurs-libres-francais");
+        const auto resultatOperateursLibresAnglais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                operateursLibresAnglais,
+                "operateurs-libres-anglais");
+        Exiger(
+            resultatOperateursLibresFrancais.Symboles.size()
+                    == resultatOperateursLibresAnglais.Symboles.size()
+                && resultatOperateursLibresFrancais.Resolutions.size()
+                    == resultatOperateursLibresAnglais.Resolutions.size(),
+            "les opérateurs libres bilingues divergent");
+        std::size_t nombreOperateursLibres = 0;
+        std::size_t nombreOperateursLibresSurcharges = 0;
+        bool operateurLibreUnaire = false;
+        bool operateurLibreDroite = false;
+        bool retourLibreEntier32 = false;
+        bool retourLibreEntier64 = false;
+        for (const auto& resolution :
+             resultatOperateursLibresFrancais.Resolutions)
+        {
+            if ((resolution.Drapeaux & 256U) == 0
+                || (resolution.Drapeaux & 32U) != 0)
+                continue;
+            ++nombreOperateursLibres;
+            const auto& expressionLibre =
+                resultatOperateursLibresFrancais.Noeuds[
+                    resolution.IndexNoeud];
+            const auto& symboleLibre =
+                resultatOperateursLibresFrancais.Symboles[
+                    resolution.IndexSymbole];
+            const auto& declarationLibre =
+                resultatOperateursLibresFrancais.Noeuds[
+                    symboleLibre.IndexNoeud];
+            Exiger(
+                symboleLibre.IndexPortee == 0
+                    && declarationLibre.Genre == 15
+                    && (resolution.Drapeaux & 8U) == 0,
+                "un opérateur libre a été marqué comme membre");
+            nombreOperateursLibresSurcharges +=
+                (resolution.Drapeaux & 1U) != 0;
+            operateurLibreUnaire |= expressionLibre.Genre == 25;
+            retourLibreEntier32 |= resolution.HachageType == typeEntier32;
+            retourLibreEntier64 |= resolution.HachageType == typeEntier64;
+            if (expressionLibre.Genre == 26)
+            {
+                const auto gaucheLibre = std::find_if(
+                    resultatOperateursLibresFrancais.Noeuds.begin(),
+                    resultatOperateursLibresFrancais.Noeuds.end(),
+                    [&](const NoeudDeclarationHote& noeud)
+                    {
+                        return noeud.Parent == resolution.IndexNoeud;
+                    });
+                operateurLibreDroite |=
+                    gaucheLibre
+                        != resultatOperateursLibresFrancais.Noeuds.end()
+                    && gaucheLibre->Genre == 24
+                    && gaucheLibre->HachageNom == HacherTexte("valeur");
+            }
+        }
+        Exiger(
+            nombreOperateursLibres == 4
+                && nombreOperateursLibresSurcharges == 3
+                && operateurLibreUnaire
+                && operateurLibreDroite
+                && retourLibreEntier32
+                && retourLibreEntier64,
+            "la sélection typée des opérateurs libres est incomplète");
+
         const std::string initialisationConstructeursFrancais =
             "classe BaseInitialisee {\n"
             "  protégée: constructeur(entier32 valeur) {}\n"
@@ -4634,12 +4751,80 @@ namespace
             "publique vide F() { A objet; objet + vrai; }",
             21, "aucun-operateur-compatible");
         ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe A { publique: constructeur() {} }; "
+            "publique entier32 opérateur +(A& gauche, entier32 droite) { "
+            "retourner droite; } "
+            "publique vide F() { A objet; objet + vrai; }",
+            21,
+            "aucun-operateur-libre-compatible-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "class A { public: constructor() {} }; "
+            "public int32 operator +(A& gauche, int32 droite) { "
+            "return droite; } "
+            "public void F() { A objet; objet + true; }",
+            21,
+            "aucun-operateur-libre-compatible-anglais");
+        ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A { publique: constructeur() {} "
             "entier64 opérateur +(entier64 valeur) { retourner valeur; } "
             "naturel64 opérateur +(naturel64 valeur) { retourner valeur; } }; "
             "publique vide F() { A objet; objet + 1; }",
             22, "appel-operateur-ambigu");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe A { publique: constructeur() {} }; "
+            "publique entier64 opérateur +(A& gauche, entier64 droite) { "
+            "retourner droite; } "
+            "publique naturel64 opérateur +(A& gauche, naturel64 droite) { "
+            "retourner droite; } "
+            "publique vide F() { A objet; objet + 1; }",
+            22,
+            "appel-operateur-libre-ambigu-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "class A { public: constructor() {} }; "
+            "public int64 operator +(A& gauche, int64 droite) { "
+            "return droite; } "
+            "public uint64 operator +(A& gauche, uint64 droite) { "
+            "return droite; } "
+            "public void F() { A objet; objet + 1; }",
+            22,
+            "appel-operateur-libre-ambigu-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe A { publique: booléen opérateur !(entier32 valeur) { "
+            "retourner faux; } }; publique vide F() {}",
+            59,
+            "arite-operateur-membre-invalide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "class A { public: bool operator !(int32 valeur) { "
+            "return false; } }; public void F() {}",
+            59,
+            "arite-operateur-membre-invalide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe A {}; publique entier32 opérateur +(A& valeur) { "
+            "retourner 0; } publique vide F() {}",
+            59,
+            "arite-operateur-libre-invalide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "class A {}; public int32 operator +(A& valeur) { "
+            "return 0; } public void F() {}",
+            59,
+            "arite-operateur-libre-invalide-anglais");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A { privée: "

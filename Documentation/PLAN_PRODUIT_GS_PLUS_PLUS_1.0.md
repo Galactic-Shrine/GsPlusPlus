@@ -219,11 +219,11 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF. Le rapport est
   0.26 et comparé différentiellement au bootstrap C++ ;
 - **PARTIEL — TRANCHE SÉMANTIQUE VALIDÉE** : tables de symboles, références,
   sélection typée des fonctions et méthodes, accès aux membres, visibilité,
-  constructeurs locaux, opérateurs membres, contraintes des expressions
-  indirectes et plans ordonnés de construction, destruction et tables
-  virtuelles des objets locaux et sous-objets de constructeurs ;
+  constructeurs locaux, opérateurs membres et libres, contraintes des
+  expressions indirectes et plans ordonnés de construction, destruction et
+  tables virtuelles des objets locaux et sous-objets de constructeurs ;
 - **EN COURS** : compléter le typage récursif, les qualifications, les
-  conversions, les opérateurs libres et la résolution globale ;
+  conversions, les opérateurs intrinsèques et la résolution globale ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

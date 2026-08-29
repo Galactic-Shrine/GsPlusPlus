@@ -28,8 +28,19 @@
 - extension du corpus positif bilingue aux références, adresses explicites de
   fonctions et pointeurs vers callbacks, puis ajout de vingt-quatre corpus
   négatifs différentiels portant le total à cent huit ;
+- représentation compacte des opérateurs libres dans l’AST auto-hébergé et
+  alignement du bootstrap afin d’identifier aussi ces déclarations comme des
+  opérateurs véritables ;
+- sélection typée des opérateurs libres binaires et unaires lorsque aucun
+  opérateur membre prioritaire n’existe, avec classement des littéraux,
+  héritages et références `constante` / `const` ;
+- ajout du diagnostic sémantique 59 pour les arités invalides des opérateurs
+  membres ou libres, puis de huit corpus négatifs différentiels portant le
+  total à cent dix-neuf ;
 - validation locale 4/4 sous Visual Studio 2026 et 5/5 sous GNU/Linux, avec une
-  image `Frontend.GsE` GsE 1.0 identique bit à bit entre les deux chaînes.
+  image `Frontend.GsE` GsE 1.0 de 275 345 octets, identique bit à bit entre les
+  deux chaînes, dont le SHA-256 est
+  `f3762720abf876c24d0a4e2da0a81f75026425b6f2048c84bfe1449a0b7b1963`.
 
 ## Compilateur Gs++ 0.27.0-alpha.8 — 2026-08-29
 

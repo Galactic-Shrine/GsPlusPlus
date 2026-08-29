@@ -36,10 +36,11 @@ official aliases with the same semantics and generated code.
 > semantic stage now covers resolvable overloads, members, constructors,
 > initializers, nested aggregates, indexing, addresses, dereferences, and
 > indirect calls. Development after alpha.8 also validates the lvalues,
-> indices, targets, arities, types, and references of those forms. It now emits
+> indices, targets, arities, types, and references of those forms, together
+> with typed resolution for binary and unary free operators. It now emits
 > ordered construction, destruction, and virtual-table plans for local objects
-> and constructor subobjects; global resolution and other semantic families
-> remain to be migrated.
+> and constructor subobjects. Exhaustive intrinsic combinations, global
+> resolution, and other semantic families remain to be migrated.
 
 ## Language principles
 
@@ -231,7 +232,9 @@ All normative documentation is maintained in Markdown as its primary source.
 - the single self-hosted `Frontend.GsE` image, which combines all four frontend
   stages, is compared across both validated toolchains;
 - differential recursive typing for indexing, `&`, `*`, and indirect calls,
-  including nested callbacks.
+  including nested callbacks;
+- differential selection of free operators, including overloads, qualified
+  references, ambiguities, arities, and unary operators.
 
 ## License
 

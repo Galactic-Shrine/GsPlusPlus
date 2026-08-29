@@ -735,10 +735,58 @@ Cette preuve valide la tranche de durée de vie annoncée ; elle ne constitue pa
 encore un frontend auto-hébergé complet ni un compilateur reconstruit par
 Gs++ lui-même.
 
+## Opérateurs libres et qualifications de valeur — développement après alpha.8
+
+Le parseur auto-hébergé représente maintenant une déclaration libre
+`opérateur` / `operator` par le genre compact `SurchargeOperateur`, à la racine
+de son espace de noms. Le bootstrap marque lui aussi explicitement ces
+fonctions comme opérateurs. Cette convergence permet de comparer la même forme
+d’AST au lieu de déduire artificiellement l’opérateur pendant les tests.
+
+La résolution conserve l’ordre du langage : elle recherche d’abord un
+opérateur membre sur le type de l’opérande gauche, y compris dans ses bases. Si
+aucun groupe membre n’existe, elle classe les opérateurs libres visibles dans
+l’espace global ou dans l’espace courant. Un opérateur binaire est recherché
+dès que l’un des deux opérandes est une classe ; les opérateurs libres unaires
+`!` et `~` sont également pris en charge. Un groupe membre présent mais
+incompatible reste prioritaire et produit le même diagnostic que le bootstrap,
+sans repli silencieux sur un groupe libre.
+
+Le classement réutilise l’arité exacte, les références exigeant une valeur
+gauche, les conversions d’héritage et les littéraux entiers représentables.
+Pour les valeurs non pointeurs, `constante` / `const` et `volatile` ne changent
+plus l’identité de valeur employée par le classement, conformément à
+`TypesValeurEgaux` du bootstrap. Les pointeurs conservent en revanche leurs
+qualifications exactes. Le diagnostic `59` (`AriteOperateurInvalide`) refuse à
+présent les déclarations membres et libres dont l’arité ne correspond pas à
+l’opérateur, sans renuméroter les codes précédents ni modifier l’ABI publique.
+
+Le corpus positif bilingue sélectionne quatre opérateurs libres : deux
+surcharges `classe + entier`, une forme `entier + classe` et un `!` unaire. Les
+paramètres objets sont liés par `constante T&` / `const T&`. Huit refus
+français et anglais couvrent l’absence de surcharge compatible, l’ambiguïté et
+les arités invalides, ce qui porte le total à cent dix-neuf corpus sémantiques
+négatifs dont le code, la ligne et la colonne sont comparés au bootstrap. Un
+test du compilateur natif vérifie en plus la génération des quatre appels et
+l’identité du code produit par les syntaxes française et anglaise.
+
+La matrice de développement passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux 11.4. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE
+1.0 de 275 345 octets avec 73 exports, acceptée par `gseverifier` et identique
+bit à bit. Son SHA-256 est
+`f3762720abf876c24d0a4e2da0a81f75026425b6f2048c84bfe1449a0b7b1963`.
+Les tailles ABI restent respectivement de 64, 48, 32, 56 et 120 octets pour
+`NoeudDeclaration`, `SymboleSemantique`, `ResolutionSemantique`,
+`ResultatAnalyseSemantique` et `RequeteAnalyseSemantique`.
+
+Cette preuve valide la représentation, la sélection et l’arité des opérateurs
+libres décrits ci-dessus. Elle ne valide pas encore toutes les combinaisons
+d’opérateurs intrinsèques, toutes les conversions implicites ou l’auto-
+reconstruction fonctionnelle du compilateur.
+
 ## Travaux restant dans Gs++ 0.27
 
-- migrer les opérateurs libres et valider exhaustivement les opérateurs
-  intrinsèques ;
+- valider exhaustivement les opérateurs intrinsèques ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;
 - compléter la résolution des déclarations globales et les autres familles

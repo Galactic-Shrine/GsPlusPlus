@@ -253,8 +253,9 @@ Les prochains jalons sont donc réservés à Gs++ :
    retour des appels et opérateurs déjà sélectionnables, des indexations,
    adresses, déréférencements et appels indirects, puis plans ordonnés de
    construction, destruction et tables virtuelles avec disposition mémoire
-   privée ; validation exhaustive des opérandes et opérateurs libres encore à
-   migrer ;
+   privée, puis opérateurs libres binaires et unaires avec classement des
+   surcharges, qualifications de valeur et validation d’arité ; validation
+   exhaustive des opérateurs intrinsèques encore à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.

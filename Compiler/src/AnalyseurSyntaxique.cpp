@@ -537,13 +537,19 @@ namespace GsPP
                     "une fonction ne peut pas retourner un tableau",
                     "a function cannot return an array",
                     position.Ligne, position.Colonne, position.Fichier);
-            programme.Fonctions.push_back(TerminerFonction(
+            auto fonction = TerminerFonction(
                 std::move(nom),
                 std::move(type),
                 estPublique,
                 estExterne,
                 position,
-                espaceCourant));
+                espaceCourant);
+            if (fonction.Nom.starts_with("operator"))
+            {
+                fonction.EstOperateur = true;
+                fonction.Operateur = fonction.Nom.substr(8);
+            }
+            programme.Fonctions.push_back(std::move(fonction));
             return;
         }
 

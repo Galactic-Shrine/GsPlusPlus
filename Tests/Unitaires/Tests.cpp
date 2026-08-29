@@ -1584,6 +1584,125 @@ namespace
         Exiger(chaineRefusee, "une référence de chaîne GsO falsifiée a été acceptée");
     }
 
+    void TesterOperateursLibres027()
+    {
+        const std::string francais = R"(
+            espace Calcul
+            {
+                classe Valeur
+                {
+                    publique: constructeur() {}
+                };
+
+                publique entier32 opérateur +(
+                    constante Valeur& gauche, entier32 droite)
+                {
+                    retourner droite;
+                }
+
+                publique entier64 opérateur +(
+                    constante Valeur& gauche, entier64 droite)
+                {
+                    retourner droite;
+                }
+
+                publique entier32 opérateur +(
+                    entier32 gauche, constante Valeur& droite)
+                {
+                    retourner gauche;
+                }
+
+                publique booléen opérateur !(constante Valeur& valeur)
+                {
+                    retourner faux;
+                }
+
+                publique entier32 Principal(entier32 valeur)
+                {
+                    Valeur objet;
+                    entier32 somme = objet + valeur;
+                    entier64 longue = objet + convertir<entier64>(valeur);
+                    entier32 inverse = valeur + objet;
+                    booléen negation = !objet;
+                    retourner somme + inverse + convertir<entier32>(longue)
+                        + convertir<entier32>(negation);
+                }
+            }
+        )";
+        const std::string anglais = R"(
+            namespace Calcul
+            {
+                class Valeur
+                {
+                    public: constructor() {}
+                };
+
+                public int32 operator +(
+                    const Valeur& gauche, int32 droite)
+                {
+                    return droite;
+                }
+
+                public int64 operator +(
+                    const Valeur& gauche, int64 droite)
+                {
+                    return droite;
+                }
+
+                public int32 operator +(
+                    int32 gauche, const Valeur& droite)
+                {
+                    return gauche;
+                }
+
+                public bool operator !(const Valeur& valeur)
+                {
+                    return false;
+                }
+
+                public int32 Principal(int32 valeur)
+                {
+                    Valeur objet;
+                    int32 somme = objet + valeur;
+                    int64 longue = objet + cast<int64>(valeur);
+                    int32 inverse = valeur + objet;
+                    bool negation = !objet;
+                    return somme + inverse + cast<int32>(longue)
+                        + cast<int32>(negation);
+                }
+            }
+        )";
+
+        const auto programme = Analyser(francais);
+        const auto nombreOperateursLibres = std::count_if(
+            programme.Fonctions.begin(),
+            programme.Fonctions.end(),
+            [](const GsPP::Fonction& fonction)
+            {
+                return fonction.EstOperateur && !fonction.EstMethode;
+            });
+        Exiger(nombreOperateursLibres == 4,
+               "les opérateurs libres ne sont pas représentés dans l’AST");
+
+        const auto machineFrancaise = GsPP::GenerateurX64().Generer(programme);
+        const auto machineAnglaise = Compiler(anglais);
+        Exiger(machineFrancaise.Texte == machineAnglaise.Texte,
+               "la génération bilingue des opérateurs libres diverge");
+        Exiger(machineFrancaise.Symboles.size()
+                   == machineAnglaise.Symboles.size(),
+               "les symboles bilingues des opérateurs libres divergent");
+        const auto appelsOperateursLibres = std::count_if(
+            machineFrancaise.Relocalisations.begin(),
+            machineFrancaise.Relocalisations.end(),
+            [](const GsPP::CodeMachine::Relocalisation& relocalisation)
+            {
+                return relocalisation.Symbole.find("operator")
+                    != std::string::npos;
+            });
+        Exiger(appelsOperateursLibres == 4,
+               "les appels des opérateurs libres ne sont pas tous générés");
+    }
+
     void TesterModeleObjet018()
     {
         auto programme = Analyser(R"(
@@ -3132,6 +3251,7 @@ int main()
         TesterNomsSymbolesGsELongs();
         TesterChargeurGsE();
         TesterObjetNatifGsO();
+        TesterOperateursLibres027();
         TesterBibliothequeEtEditionLiens();
         std::cout << "Tous les tests Gs++ 0.27.0-alpha.8 ont réussi.\n";
         return 0;

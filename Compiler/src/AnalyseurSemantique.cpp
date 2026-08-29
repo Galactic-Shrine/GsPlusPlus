@@ -1489,8 +1489,14 @@ namespace GsPP
                     && unaire.Operateur != "&"
                     && unaire.Operateur != "*")
                 {
-                    const auto nom = TrouverNomMethode(
+                    auto nom = TrouverNomMethode(
                         type.Nom, "operator" + unaire.Operateur);
+                    if (nom.empty())
+                    {
+                        const auto libre = QualifierNomFonction(
+                            "operator" + unaire.Operateur, fonction);
+                        if (_Surcharges.contains(libre)) nom = libre;
+                    }
                     if (nom.empty())
                         Erreur(
                             expression.Position,
@@ -1499,7 +1505,8 @@ namespace GsPP
                     std::vector<Expression*> arguments{unaire.Operande.get()};
                     auto* surcharge = ResoudreSurcharge(
                         nom, arguments, fonction, expression.Position);
-                    if (!AccesMembreAutorise(
+                    if (surcharge->EstMethode
+                        && !AccesMembreAutorise(
                             surcharge->Visibilite,
                             surcharge->ClasseProprietaire,
                             fonction))

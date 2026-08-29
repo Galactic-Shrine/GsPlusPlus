@@ -1368,11 +1368,25 @@ espace GalacticShrine::GsPP::Autohebergement {
         TypeDeclarationInterne typeRetour;
         si (!AnalyserTypeDeclaration(etat, &typeRetour)) retourner faux;
         JetonLexe* nom = JetonCourantDeclaration(etat);
-        si (!ExigerJetonDeclaration(
-                etat,
-                1,
-                ErreurAnalyseDeclarations::IdentifiantAttendu))
-            retourner faux;
+        booléen estOperateur = faux;
+        si (AccepterJetonDeclaration(etat, 71)) {
+            nom = JetonCourantDeclaration(etat);
+            si (!EstOperateurSurchargeableDeclaration(nom->Genre)) {
+                SignalerErreurDeclaration(
+                    etat,
+                    ErreurAnalyseDeclarations::OperateurSurchargeableAttendu,
+                    nom->Ligne,
+                    nom->Colonne);
+                retourner faux;
+            }
+            estOperateur = vrai;
+            etat->Position = etat->Position + 1;
+        }
+        sinon si (!ExigerJetonDeclaration(
+                    etat,
+                    1,
+                    ErreurAnalyseDeclarations::IdentifiantAttendu))
+                retourner faux;
         si (!AnalyserDimensionsDeclaration(etat, &typeRetour)) retourner faux;
         si (!EstJetonDeclaration(etat, 34)) {
             naturel32 drapeauxGlobale = 0;
@@ -1425,8 +1439,10 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (estPublique) drapeaux = drapeaux | 1;
         si (estExterne) drapeaux = drapeaux | 2;
         si (!estExterne) drapeaux = drapeaux | 4;
+        naturel32 genreFonction = 1;
+        si (estOperateur) genreFonction = 15;
         NoeudDeclaration noeudFonction = {
-            1,
+            genreFonction,
             position.Ligne,
             position.Colonne,
             drapeaux,

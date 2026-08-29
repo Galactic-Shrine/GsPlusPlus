@@ -125,6 +125,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         ByValueTypeCycle = 57,
         TailleObjetInvalide = 58,
         InvalidObjectSize = 58,
+        AriteOperateurInvalide = 59,
+        InvalidOperatorArity = 59,
     };
 
     énumération GenreSymboleSemantique {

@@ -12,10 +12,8 @@ espace GalacticShrine::GsPP::Intrinseques {
     naturel64 EchangerAtomique64(volatile naturel64* cible, naturel64 valeur);
     naturel32 AjouterAtomique32(volatile naturel32* cible, naturel32 valeur);
     naturel64 AjouterAtomique64(volatile naturel64* cible, naturel64 valeur);
-    naturel32 ComparerEchanger32(
-        volatile naturel32* cible, naturel32 attendu, naturel32 desire);
-    naturel64 ComparerEchanger64(
-        volatile naturel64* cible, naturel64 attendu, naturel64 desire);
+    naturel32 ComparerEchanger32(volatile naturel32* cible, naturel32 attendu, naturel32 desire);
+    naturel64 ComparerEchanger64(volatile naturel64* cible, naturel64 attendu, naturel64 desire);
     vide BarriereMemoire();
     vide PauseProcesseur();
 }
@@ -40,18 +38,13 @@ espace GalacticShrine::GsPP::Systeme {
         alias State = Etat;
     };
 
-    publique vide RemplirMemoire(
-        octet* destination, octet valeur, naturel64 taille);
-    publique vide CopierMemoire(
-        octet* destination, octet* source, naturel64 taille);
-    publique entier32 ComparerMemoire(
-        octet* gauche, octet* droite, naturel64 taille);
-    publique booléen MemoiresEgales(
-        octet* gauche, octet* droite, naturel64 taille);
+    publique vide RemplirMemoire(octet* destination, octet valeur, naturel64 taille);
+    publique vide CopierMemoire(octet* destination, octet* source, naturel64 taille);
+    publique entier32 ComparerMemoire(octet* gauche, octet* droite, naturel64 taille);
+    publique booléen MemoiresEgales(octet* gauche, octet* droite, naturel64 taille);
 
     publique VueOctets CreerVueOctets(octet* donnees, naturel64 taille);
-    publique VueOctets SousVueOctets(
-        VueOctets vue, naturel64 debut, naturel64 taille);
+    publique VueOctets SousVueOctets(VueOctets vue, naturel64 debut, naturel64 taille);
     publique booléen VuesOctetsEgales(VueOctets gauche, VueOctets droite);
     publique naturel64 ChercherOctet(VueOctets vue, octet valeur);
 
@@ -76,18 +69,12 @@ espace GalacticShrine::GsPP::Systeme {
     publique naturel64 ChargerAtomique64(volatile naturel64* cible);
     publique vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur);
     publique vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur);
-    publique naturel32 EchangerAtomique32(
-        volatile naturel32* cible, naturel32 valeur);
-    publique naturel64 EchangerAtomique64(
-        volatile naturel64* cible, naturel64 valeur);
-    publique naturel32 AjouterAtomique32(
-        volatile naturel32* cible, naturel32 valeur);
-    publique naturel64 AjouterAtomique64(
-        volatile naturel64* cible, naturel64 valeur);
-    publique naturel32 ComparerEchanger32(
-        volatile naturel32* cible, naturel32 attendu, naturel32 desire);
-    publique naturel64 ComparerEchanger64(
-        volatile naturel64* cible, naturel64 attendu, naturel64 desire);
+    publique naturel32 EchangerAtomique32(volatile naturel32* cible, naturel32 valeur);
+    publique naturel64 EchangerAtomique64(volatile naturel64* cible, naturel64 valeur);
+    publique naturel32 AjouterAtomique32(volatile naturel32* cible, naturel32 valeur);
+    publique naturel64 AjouterAtomique64(volatile naturel64* cible, naturel64 valeur);
+    publique naturel32 ComparerEchanger32(volatile naturel32* cible, naturel32 attendu, naturel32 desire);
+    publique naturel64 ComparerEchanger64(volatile naturel64* cible, naturel64 attendu, naturel64 desire);
     publique vide BarriereMemoire();
     publique vide PauseProcesseur();
     publique vide InitialiserVerrou(VerrouAtomique* verrou);

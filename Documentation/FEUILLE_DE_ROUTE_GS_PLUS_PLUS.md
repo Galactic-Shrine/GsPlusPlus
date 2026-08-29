@@ -251,8 +251,9 @@ Les prochains jalons sont donc réservés à Gs++ :
    implicites, tableaux d’objets, valeurs de champs par défaut et agrégats
    imbriqués avec contrôle de capacité, puis propagation récursive des types de
    retour des appels et opérateurs déjà sélectionnables, des indexations,
-   adresses, déréférencements et appels indirects ; validation exhaustive des
-   opérandes, opérateurs libres et plans complets de durée de vie encore à
+   adresses, déréférencements et appels indirects, puis plans ordonnés de
+   construction, destruction et tables virtuelles avec disposition mémoire
+   privée ; validation exhaustive des opérandes et opérateurs libres encore à
    migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;

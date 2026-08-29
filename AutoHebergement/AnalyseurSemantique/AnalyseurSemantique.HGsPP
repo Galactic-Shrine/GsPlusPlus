@@ -119,6 +119,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         InvalidIndirectCallArity = 54,
         TypeArgumentAppelIndirectIncompatible = 55,
         IncompatibleIndirectCallArgumentType = 55,
+        DestructeurInaccessible = 56,
+        InaccessibleDestructor = 56,
+        CycleTypeParValeur = 57,
+        ByValueTypeCycle = 57,
+        TailleObjetInvalide = 58,
+        InvalidObjectSize = 58,
     };
 
     énumération GenreSymboleSemantique {
@@ -175,6 +181,20 @@ espace GalacticShrine::GsPP::Autohebergement {
         ArrayInitialization = 8192,
         ValeurChampParDefaut = 16384,
         DefaultFieldValue = 16384,
+        EtapeDureeVie = 32768,
+        LifetimeStep = 32768,
+        ConstructionPlanifiee = 65536,
+        PlannedConstruction = 65536,
+        DestructionPlanifiee = 131072,
+        PlannedDestruction = 131072,
+        InitialisationTableVirtuelle = 262144,
+        VirtualTableInitialization = 262144,
+        SousObjetBase = 524288,
+        BaseSubobject = 524288,
+        SousObjetChamp = 1048576,
+        FieldSubobject = 1048576,
+        ElementTableau = 2097152,
+        ArrayElement = 2097152,
     };
 
     structure SymboleSemantique {
@@ -187,6 +207,11 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel32 Drapeaux;
     };
 
+    /**
+     * <résumé>Décrit une cible résolue ou une étape ordonnée de durée de vie.</résumé>
+     * @etc. Lorsque EtapeDureeVie est présent, HachageType contient le
+     * décalage relatif en octets et non un hachage de type.
+     **/
     structure ResolutionSemantique {
         naturel64 IndexNoeud;
         naturel64 IndexSymbole;

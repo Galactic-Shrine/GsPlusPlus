@@ -3574,6 +3574,219 @@ namespace
                 && nombreTableauxLocauxImplicites == 2,
             "les résolutions des champs implicites sont incomplètes");
 
+        const std::string dureeVieFrancais =
+            "classe RacineDureeVie {\n"
+            "  protégée: entier8 Marque;\n"
+            "  publique: constructeur() {} destructeur() {}\n"
+            "  virtuel entier32 Lire() { retourner 1; }\n"
+            "};\n"
+            "classe ElementDureeVie {\n"
+            "  privée: entier32 Valeur;\n"
+            "  publique: constructeur() {} destructeur() {}\n"
+            "};\n"
+            "classe IntermediaireDureeVie : publique RacineDureeVie {\n"
+            "  privée: ElementDureeVie Premier; ElementDureeVie Elements[2]; "
+            "entier8 Fin; pointeur_fonction<entier32(entier32)> Rappel;\n"
+            "};\n"
+            "classe HoteDureeVie : publique IntermediaireDureeVie {\n"
+            "  privée: ElementDureeVie Champ;\n"
+            "  publique: constructeur() {} destructeur() {}\n"
+            "};\n"
+            "publique vide TesterDureeVie() {\n"
+            "  HoteDureeVie objet; ElementDureeVie tableau[3]; "
+            "IntermediaireDureeVie implicite;\n"
+            "}\n";
+        const std::string dureeVieAnglais =
+            "class RacineDureeVie {\n"
+            "  protected: int8 Marque;\n"
+            "  public: constructor() {} destructor() {}\n"
+            "  virtual int32 Lire() { return 1; }\n"
+            "};\n"
+            "class ElementDureeVie {\n"
+            "  private: int32 Valeur;\n"
+            "  public: constructor() {} destructor() {}\n"
+            "};\n"
+            "class IntermediaireDureeVie : public RacineDureeVie {\n"
+            "  private: ElementDureeVie Premier; ElementDureeVie Elements[2]; "
+            "int8 Fin; function_pointer<int32(int32)> Rappel;\n"
+            "};\n"
+            "class HoteDureeVie : public IntermediaireDureeVie {\n"
+            "  private: ElementDureeVie Champ;\n"
+            "  public: constructor() {} destructor() {}\n"
+            "};\n"
+            "public void TesterDureeVie() {\n"
+            "  HoteDureeVie objet; ElementDureeVie tableau[3]; "
+            "IntermediaireDureeVie implicite;\n"
+            "}\n";
+        const auto resultatDureeVieFrancais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            dureeVieFrancais,
+            "duree-vie-francais");
+        const auto resultatDureeVieAnglais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            dureeVieAnglais,
+            "duree-vie-anglais");
+        Exiger(
+            resultatDureeVieFrancais.Symboles.size()
+                    == resultatDureeVieAnglais.Symboles.size()
+                && resultatDureeVieFrancais.Resolutions.size()
+                    == resultatDureeVieAnglais.Resolutions.size(),
+            "les plans de durée de vie bilingues divergent");
+        for (std::size_t index = 0;
+             index < resultatDureeVieFrancais.Resolutions.size();
+             ++index)
+        {
+            const auto& resolutionDureeVieFrancais =
+                resultatDureeVieFrancais.Resolutions[index];
+            const auto& resolutionDureeVieAnglais =
+                resultatDureeVieAnglais.Resolutions[index];
+            Exiger(
+                resolutionDureeVieFrancais.IndexNoeud
+                        == resolutionDureeVieAnglais.IndexNoeud
+                    && resolutionDureeVieFrancais.IndexSymbole
+                        == resolutionDureeVieAnglais.IndexSymbole
+                    && resolutionDureeVieFrancais.HachageType
+                        == resolutionDureeVieAnglais.HachageType
+                    && resolutionDureeVieFrancais.GenreCible
+                        == resolutionDureeVieAnglais.GenreCible
+                    && resolutionDureeVieFrancais.Drapeaux
+                        == resolutionDureeVieAnglais.Drapeaux,
+                "une étape de durée de vie diffère entre français et anglais");
+        }
+
+        const auto plansPourNom =
+            [&](std::string_view nom)
+        {
+            const auto hachage = HacherTexte(nom);
+            const auto noeud = std::find_if(
+                resultatDureeVieFrancais.Noeuds.begin(),
+                resultatDureeVieFrancais.Noeuds.end(),
+                [&](const NoeudDeclarationHote& valeur)
+                {
+                    return valeur.Genre == 19
+                        && valeur.HachageNom == hachage;
+                });
+            Exiger(
+                noeud != resultatDureeVieFrancais.Noeuds.end(),
+                "variable locale de durée de vie introuvable");
+            const auto indexNoeud = static_cast<std::uint64_t>(
+                std::distance(
+                    resultatDureeVieFrancais.Noeuds.begin(), noeud));
+            std::vector<const ResolutionSemantiqueHote*> plans;
+            for (const auto& resolution : resultatDureeVieFrancais.Resolutions)
+                if (resolution.IndexNoeud == indexNoeud
+                    && (resolution.Drapeaux & 32768U) != 0)
+                    plans.push_back(&resolution);
+            return plans;
+        };
+        const auto exigerPlan =
+            [&](const std::vector<const ResolutionSemantiqueHote*>& plans,
+                const std::vector<std::uint64_t>& decalages,
+                const std::vector<std::uint32_t>& genres,
+                std::string_view nom)
+        {
+            Exiger(
+                plans.size() == decalages.size()
+                    && plans.size() == genres.size(),
+                "nombre d’étapes incorrect pour " + std::string(nom));
+            for (std::size_t index = 0; index < plans.size(); ++index)
+            {
+                const auto& cible = resultatDureeVieFrancais.Symboles[
+                    plans[index]->IndexSymbole];
+                const auto& declaration = resultatDureeVieFrancais.Noeuds[
+                    cible.IndexNoeud];
+                Exiger(
+                    plans[index]->HachageType == decalages[index]
+                        && declaration.Genre == genres[index],
+                    "ordre, cible ou décalage incorrect pour "
+                        + std::string(nom));
+            }
+        };
+
+        const auto plansObjet = plansPourNom("objet");
+        exigerPlan(
+            plansObjet,
+            {0, 0, 40, 24, 20, 16, 0},
+            {13, 14, 14, 14, 14, 14, 14},
+            "l’objet dérivé");
+        Exiger(
+            (plansObjet[0]->Drapeaux & 65536U) != 0
+                && (plansObjet[1]->Drapeaux & 131072U) != 0
+                && (plansObjet[2]->Drapeaux & 1048576U) != 0
+                && (plansObjet[3]->Drapeaux & 2097152U) != 0
+                && (plansObjet[6]->Drapeaux & 524288U) != 0,
+            "les catégories du plan de l’objet dérivé sont incomplètes");
+
+        const auto plansTableau = plansPourNom("tableau");
+        exigerPlan(
+            plansTableau,
+            {0, 4, 8, 8, 4, 0},
+            {13, 13, 13, 14, 14, 14},
+            "le tableau local");
+        Exiger(
+            std::all_of(
+                plansTableau.begin(),
+                plansTableau.end(),
+                [](const ResolutionSemantiqueHote* resolution)
+                { return (resolution->Drapeaux & 2097152U) != 0; }),
+            "une étape du tableau n’est pas identifiée comme élément");
+
+        const auto plansImplicites = plansPourNom("implicite");
+        exigerPlan(
+            plansImplicites,
+            {0, 0, 16, 20, 24, 24, 20, 16, 0},
+            {13, 6, 13, 13, 13, 14, 14, 14, 14},
+            "l’objet sans constructeur propre");
+        Exiger(
+            (plansImplicites[1]->Drapeaux & (65536U | 262144U))
+                    == (65536U | 262144U)
+                && (plansImplicites[1]->Drapeaux & 524288U) == 0,
+            "le remplacement de table virtuelle intermédiaire est incorrect");
+
+        const auto typeHote = std::find_if(
+            resultatDureeVieFrancais.Noeuds.begin(),
+            resultatDureeVieFrancais.Noeuds.end(),
+            [&](const NoeudDeclarationHote& noeud)
+            {
+                return noeud.Genre == 6
+                    && noeud.HachageNom == HacherTexte("HoteDureeVie");
+            });
+        Exiger(
+            typeHote != resultatDureeVieFrancais.Noeuds.end(),
+            "type hôte du plan de constructeur introuvable");
+        const auto indexTypeHote = static_cast<std::uint64_t>(
+            std::distance(
+                resultatDureeVieFrancais.Noeuds.begin(), typeHote));
+        const auto constructeurHote = std::find_if(
+            resultatDureeVieFrancais.Noeuds.begin(),
+            resultatDureeVieFrancais.Noeuds.end(),
+            [&](const NoeudDeclarationHote& noeud)
+            { return noeud.Genre == 13 && noeud.Parent == indexTypeHote; });
+        Exiger(
+            constructeurHote != resultatDureeVieFrancais.Noeuds.end(),
+            "constructeur hôte du plan introuvable");
+        const auto indexConstructeurHote = static_cast<std::uint64_t>(
+            std::distance(
+                resultatDureeVieFrancais.Noeuds.begin(), constructeurHote));
+        std::vector<const ResolutionSemantiqueHote*> plansConstructeurHote;
+        for (const auto& resolution : resultatDureeVieFrancais.Resolutions)
+            if (resolution.IndexNoeud == indexConstructeurHote
+                && (resolution.Drapeaux & 32768U) != 0)
+                plansConstructeurHote.push_back(&resolution);
+        exigerPlan(
+            plansConstructeurHote,
+            {0, 0, 16, 20, 24, 0, 40},
+            {13, 6, 13, 13, 13, 6, 13},
+            "le constructeur de l’objet dérivé");
+        Exiger(
+            (plansConstructeurHote[1]->Drapeaux & (262144U | 524288U))
+                    == (262144U | 524288U)
+                && (plansConstructeurHote[5]->Drapeaux & 262144U) != 0
+                && (plansConstructeurHote[5]->Drapeaux & 524288U) == 0,
+            "l’ordre des tables virtuelles de base et dérivée est incorrect");
+
         const std::string agregatsRecursifsFrancais =
             "structure CoordonneesAgregat { entier32 X; "
             "entier32 Valeurs[2]; };\n"
@@ -4434,6 +4647,27 @@ namespace
             "publique: constructeur() {} }; "
             "publique vide F() { A objet; objet + 1; }",
             25, "operateur-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe ObjetDestructeurPrive { privée: destructeur() {} }; "
+            "publique vide F() { ObjetDestructeurPrive objet; }",
+            56,
+            "destructeur-prive-inaccessible");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "structure CycleA { CycleB ValeurB; }; "
+            "structure CycleB { CycleA ValeurA; }; publique vide F() {}",
+            57,
+            "cycle-structure-par-valeur");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "structure ObjetTailleInvalide { vide Valeur; }; "
+            "publique vide F() {}",
+            58,
+            "champ-vide-taille-invalide");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "structure SansFonction {};",

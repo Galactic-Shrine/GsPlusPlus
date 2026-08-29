@@ -682,18 +682,67 @@ sous GNU/Linux. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE
 `c4d3e331f5d86e7266151a8755084741bcfb79bc1f6a711ec46a0220d4f0a567`.
 
 Cette tranche reste volontairement bornée aux formes décrites. Les autres
-combinaisons d’opérateurs intrinsèques, les opérateurs libres et les plans
-exécutables complets de construction, destruction et durée de vie restent à
+combinaisons d’opérateurs intrinsèques et les opérateurs libres restent à
 migrer.
+
+## Plans de construction, destruction et durée de vie — développement après alpha.8
+
+La passe auto-hébergée reconstruit maintenant, dans son arène privée, la
+disposition des structures, unions et classes nécessaire aux plans de durée de
+vie. Le calcul conserve les règles du bootstrap : base à l’adresse zéro,
+alignement naturel des champs, superposition des champs d’union, pointeur de
+table virtuelle de huit octets et réutilisation de son emplacement dans une
+hiérarchie déjà polymorphe. Les cycles de types par valeur sont détectés pendant
+ce calcul.
+
+Les structures ABI publiques restent inchangées. Une
+`ResolutionSemantique` marquée `EtapeDureeVie` réutilise son champ
+`HachageType` pour transporter le décalage relatif en octets. Sa cible désigne
+un constructeur, un destructeur ou le type de la table virtuelle. L’ordre des
+résolutions est l’ordre exécutable du plan. Les nouveaux drapeaux sont additifs :
+
+| Valeur | Drapeau français | Rôle |
+| ---: | --- | --- |
+| 32768 | `EtapeDureeVie` | distingue un plan d’une résolution de type ordinaire |
+| 65536 | `ConstructionPlanifiee` | étape de construction |
+| 131072 | `DestructionPlanifiee` | étape de destruction |
+| 262144 | `InitialisationTableVirtuelle` | installation ou remplacement de table virtuelle |
+| 524288 | `SousObjetBase` | étape appartenant à une base |
+| 1048576 | `SousObjetChamp` | étape appartenant à un champ |
+| 2097152 | `ElementTableau` | étape répétée pour un élément de tableau |
+
+La construction implicite traite la base avant la table virtuelle et les
+champs dans leur ordre de déclaration. Un tableau avance de l’indice zéro au
+dernier indice. La destruction appelle d’abord le destructeur propre, puis les
+champs dans l’ordre inverse et enfin la base ; un tableau parcourt ses éléments
+en sens inverse. Les constructeurs délégués, les bases explicites, les champs
+explicitement ou implicitement construits et les tableaux multidimensionnels
+produisent tous leurs étapes avec leur adresse relative exacte.
+
+Les diagnostics `56` (`DestructeurInaccessible`), `57`
+(`CycleTypeParValeur`) et `58` (`TailleObjetInvalide`) prolongent la table sans
+renuméroter les codes existants. Le corpus différentiel bilingue vérifie un
+objet polymorphe dérivé, un constructeur avec base sans constructeur propre,
+des champs objets, un tableau de champs, un tableau local et la destruction
+inverse. Les refus du destructeur privé, du cycle par valeur et du champ `vide`
+portent le total à cent onze corpus sémantiques négatifs comparés au bootstrap.
+
+La matrice de développement passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux 11.4. Les deux chaînes produisent une image `Frontend.GsE` GsE 1.0
+de 269 121 octets, acceptée par `gseverifier`, avec le même SHA-256 :
+`069f7de8430dbe075d2be1a9fcb5885775d692f7bd23b8b04636847f617b4e26`.
+Cette preuve valide la tranche de durée de vie annoncée ; elle ne constitue pas
+encore un frontend auto-hébergé complet ni un compilateur reconstruit par
+Gs++ lui-même.
 
 ## Travaux restant dans Gs++ 0.27
 
-- migrer les plans complets de construction, destruction et durée de vie ;
 - migrer les opérateurs libres et valider exhaustivement les opérateurs
   intrinsèques ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;
-- migrer les destructeurs et les plans de durée de vie ;
+- compléter la résolution des déclarations globales et les autres familles
+  sémantiques encore prises en charge par le bootstrap ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;

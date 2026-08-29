@@ -36,8 +36,10 @@ official aliases with the same semantics and generated code.
 > semantic stage now covers resolvable overloads, members, constructors,
 > initializers, nested aggregates, indexing, addresses, dereferences, and
 > indirect calls. Development after alpha.8 also validates the lvalues,
-> indices, targets, arities, types, and references of those forms; global
-> resolution and complete lifetime plans remain to be migrated.
+> indices, targets, arities, types, and references of those forms. It now emits
+> ordered construction, destruction, and virtual-table plans for local objects
+> and constructor subobjects; global resolution and other semantic families
+> remain to be migrated.
 
 ## Language principles
 

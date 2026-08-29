@@ -4,6 +4,8 @@ espace GalacticShrine::GsPP::Autohebergement {
     ResolutionSemantique* NulResolutionsSemantiques;
     naturel64* NulCiblesInitialiseursSemantiques;
     naturel64* NulCiblesExpressionsSemantiques;
+    naturel64* NulNaturelsDispositionSemantique;
+    octet* NulEtatsDispositionSemantique;
     JetonLexe* NulJetonsTypesSemantiques;
     RequeteAnalyseSemantique* NulRequetesAnalyseSemantique;
     constante caractère* NulCaracteresSemantiques;
@@ -17,6 +19,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64* CiblesExpressions;
         JetonLexe* JetonsTypes;
         naturel64 NombreJetonsTypes;
+        naturel64* TaillesTypes;
+        naturel64* AlignementsTypes;
+        naturel64* DecalagesChamps;
+        naturel64* DecalagesTablesVirtuelles;
+        octet* EtatsDisposition;
+        octet* EtatsPolymorphisme;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
@@ -32,6 +40,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 IndexNoeudDeclaration;
         naturel32 ProfondeurTableau;
         naturel32 NombreDimensions;
+    };
+
+    structure DescriptionEtapeDureeVieSemantique {
+        naturel64 Decalage;
+        naturel32 Drapeaux;
+        naturel32 Reserve;
     };
 
     structure CurseurTypeJetonsSemantique {
@@ -1023,6 +1037,25 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (etat->CiblesExpressions != NulCiblesExpressionsSemantiques
             && indexNoeud < etat->Requete->NombreNoeuds)
             etat->CiblesExpressions[indexNoeud] = indexSymbole;
+        etat->NombreResolutions = etat->NombreResolutions + 1;
+        retourner vrai;
+    }
+
+    booléen AjouterEtapeDureeVieSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeud,
+        naturel64 indexSymbole,
+        DescriptionEtapeDureeVieSemantique* description) {
+        SymboleSemantique* symbole = &etat->SymbolesTravail[indexSymbole];
+        ResolutionSemantique resolution = {
+            indexNoeud,
+            indexSymbole,
+            description->Decalage,
+            symbole->Genre,
+            description->Drapeaux | 32_768};
+        si (etat->NombreResolutions < etat->Requete->CapaciteResolutions
+            && etat->Requete->Resolutions != NulResolutionsSemantiques)
+            etat->Requete->Resolutions[etat->NombreResolutions] = resolution;
         etat->NombreResolutions = etat->NombreResolutions + 1;
         retourner vrai;
     }
@@ -3921,6 +3954,260 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
+    naturel64 AlignerDispositionSemantique(
+        naturel64 valeur, naturel64 alignement) {
+        si (alignement <= 1) retourner valeur;
+        retourner ((valeur + alignement - 1) / alignement) * alignement;
+    }
+
+    externe ErreurAnalyseSemantique CalculerDispositionTypeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexType);
+
+    ErreurAnalyseSemantique CalculerTailleValeurSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeud,
+        naturel64* taille,
+        naturel64* alignement) {
+        constante NoeudDeclaration* noeud = &etat->Requete->Noeuds[indexNoeud];
+        naturel64 hachageValeur = noeud->HachageType;
+        DescriptionHachageTypeSemantique dimensions;
+        booléen tableau = LireDimensionsNoeudSemantique(
+            etat, indexNoeud, &dimensions);
+        si (tableau)
+            hachageValeur = HachageElementFinalTableauSemantique(
+                etat, indexNoeud);
+
+        *taille = 0;
+        *alignement = 1;
+        DescriptionTypeJetonsSemantique typeFonctionDisposition;
+        booléen pointeurFonctionDisposition =
+            LireTypePointeurFonctionNoeudSemantique(
+                etat, indexNoeud, &typeFonctionDisposition)
+            && typeFonctionDisposition.Genre == 14;
+        si (pointeurFonctionDisposition
+            || EstTypeAdresseSemantique(etat, hachageValeur)
+            || EstTypeReferenceSemantique(etat, hachageValeur)) {
+            *taille = 8;
+            *alignement = 8;
+        }
+        sinon {
+            naturel32 genre = 1;
+            tantque (genre <= 12 && *taille == 0) {
+                naturel32 qualificatifs = 0;
+                tantque (qualificatifs < 8 && *taille == 0) {
+                    si (hachageValeur == HacherTypeSimpleSemantique(
+                            genre, qualificatifs, 0)) {
+                        si (genre == 1 || genre == 5 || genre == 9
+                            || genre == 10 || genre == 11) {
+                            *taille = 1;
+                            *alignement = 1;
+                        }
+                        sinon si (genre == 2 || genre == 6) {
+                            *taille = 2;
+                            *alignement = 2;
+                        }
+                        sinon si (genre == 3 || genre == 7) {
+                            *taille = 4;
+                            *alignement = 4;
+                        }
+                        sinon si (genre == 4 || genre == 8) {
+                            *taille = 8;
+                            *alignement = 8;
+                        }
+                    }
+                    qualificatifs = qualificatifs + 1;
+                }
+                genre = genre + 1;
+            }
+        }
+
+        si (*taille == 0) {
+            naturel64 indexType = TrouverTypeDepuisHachageSemantique(
+                etat, hachageValeur, 0);
+            si (indexType < etat->NombreSymboles) {
+                naturel32 genreType = etat->Requete->Noeuds[
+                    etat->SymbolesTravail[indexType].IndexNoeud].Genre;
+                si (genreType == 8) {
+                    *taille = 4;
+                    *alignement = 4;
+                }
+                sinon {
+                    ErreurAnalyseSemantique erreurDisposition =
+                        CalculerDispositionTypeSemantique(etat, indexType);
+                    si (erreurDisposition != ErreurAnalyseSemantique::Reussite)
+                        retourner erreurDisposition;
+                    *taille = etat->TaillesTypes[indexType];
+                    *alignement = etat->AlignementsTypes[indexType];
+                }
+            }
+        }
+
+        si (*taille == 0)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::TailleObjetInvalide,
+                indexNoeud,
+                0);
+
+        si (tableau) {
+            naturel32 indexDimension = 0;
+            tantque (indexDimension < dimensions.NombreDimensions) {
+                naturel64 valeurDimension = 0;
+                si (!LireDimensionNoeudSemantique(
+                        etat,
+                        indexNoeud,
+                        indexDimension,
+                        &valeurDimension)
+                    || valeurDimension == 0
+                    || *taille > 4_294_967_295 / valeurDimension)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::TailleObjetInvalide,
+                        indexNoeud,
+                        indexDimension);
+                *taille = *taille * valeurDimension;
+                indexDimension = indexDimension + 1;
+            }
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    booléen EstTypePolymorpheSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexType) {
+        si (indexType >= etat->NombreSymboles) retourner faux;
+        si (etat->EtatsPolymorphisme[indexType] == 2) retourner faux;
+        si (etat->EtatsPolymorphisme[indexType] == 3) retourner vrai;
+        si (etat->EtatsPolymorphisme[indexType] == 1) retourner faux;
+        etat->EtatsPolymorphisme[indexType] = 1;
+
+        booléen polymorphe = faux;
+        naturel64 typeBase = TrouverTypeBaseSymboleSemantique(etat, indexType);
+        si (typeBase < etat->NombreSymboles)
+            polymorphe = EstTypePolymorpheSemantique(etat, typeBase);
+        naturel64 indexNoeudType = etat->SymbolesTravail[indexType].IndexNoeud;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles && !polymorphe) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 2
+                && candidat->IndexPortee == indexNoeudType
+                && etat->Requete->Noeuds[candidat->IndexNoeud].Genre == 12
+                && (etat->Requete->Noeuds[
+                        candidat->IndexNoeud].Drapeaux & (64 | 128)) != 0)
+                polymorphe = vrai;
+            index = index + 1;
+        }
+        si (polymorphe) etat->EtatsPolymorphisme[indexType] = 3;
+        sinon etat->EtatsPolymorphisme[indexType] = 2;
+        retourner polymorphe;
+    }
+
+    ErreurAnalyseSemantique CalculerDispositionTypeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexType) {
+        si (indexType >= etat->NombreSymboles)
+            retourner ErreurAnalyseSemantique::TailleObjetInvalide;
+        si (etat->EtatsDisposition[indexType] == 2)
+            retourner ErreurAnalyseSemantique::Reussite;
+        si (etat->EtatsDisposition[indexType] == 1)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::CycleTypeParValeur,
+                etat->SymbolesTravail[indexType].IndexNoeud,
+                convertir<naturel32>(indexType));
+        etat->EtatsDisposition[indexType] = 1;
+
+        naturel64 indexNoeudType = etat->SymbolesTravail[indexType].IndexNoeud;
+        constante NoeudDeclaration* noeudType = &etat->Requete->Noeuds[
+            indexNoeudType];
+        naturel64 position = 0;
+        naturel64 alignement = 1;
+        naturel64 typeBase = TrouverTypeBaseSymboleSemantique(etat, indexType);
+        booléen basePolymorphe = faux;
+        si (typeBase < etat->NombreSymboles) {
+            ErreurAnalyseSemantique erreurBase =
+                CalculerDispositionTypeSemantique(etat, typeBase);
+            si (erreurBase != ErreurAnalyseSemantique::Reussite)
+                retourner erreurBase;
+            position = etat->TaillesTypes[typeBase];
+            alignement = etat->AlignementsTypes[typeBase];
+            basePolymorphe = EstTypePolymorpheSemantique(etat, typeBase);
+        }
+
+        si (noeudType->Genre == 6
+            && EstTypePolymorpheSemantique(etat, indexType)) {
+            si (basePolymorphe)
+                etat->DecalagesTablesVirtuelles[indexType] =
+                    etat->DecalagesTablesVirtuelles[typeBase];
+            sinon {
+                position = AlignerDispositionSemantique(position, 8);
+                etat->DecalagesTablesVirtuelles[indexType] = position;
+                position = position + 8;
+                si (alignement < 8) alignement = 8;
+            }
+        }
+
+        naturel64 indexChamp = 0;
+        tantque (indexChamp < etat->NombreSymboles) {
+            SymboleSemantique* champ = &etat->SymbolesTravail[indexChamp];
+            si (champ->Genre == 5 && champ->IndexPortee == indexNoeudType) {
+                naturel64 tailleChamp = 0;
+                naturel64 alignementChamp = 1;
+                ErreurAnalyseSemantique erreurChamp =
+                    CalculerTailleValeurSemantique(
+                        etat,
+                        champ->IndexNoeud,
+                        &tailleChamp,
+                        &alignementChamp);
+                si (erreurChamp != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurChamp;
+                si (noeudType->Genre == 5) {
+                    etat->DecalagesChamps[indexChamp] = 0;
+                    si (position < tailleChamp) position = tailleChamp;
+                }
+                sinon {
+                    position = AlignerDispositionSemantique(
+                        position, alignementChamp);
+                    etat->DecalagesChamps[indexChamp] = position;
+                    position = position + tailleChamp;
+                }
+                si (alignement < alignementChamp)
+                    alignement = alignementChamp;
+            }
+            indexChamp = indexChamp + 1;
+        }
+
+        si (position == 0) position = 1;
+        position = AlignerDispositionSemantique(position, alignement);
+        si (position > 4_294_967_295)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::TailleObjetInvalide,
+                indexNoeudType,
+                0);
+        etat->TaillesTypes[indexType] = position;
+        etat->AlignementsTypes[indexType] = alignement;
+        etat->EtatsDisposition[indexType] = 2;
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique CalculerDispositionsSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            si (etat->SymbolesTravail[index].Genre == 1) {
+                naturel32 genre = etat->Requete->Noeuds[
+                    etat->SymbolesTravail[index].IndexNoeud].Genre;
+                si (genre == 4 || genre == 5 || genre == 6) {
+                    ErreurAnalyseSemantique erreur =
+                        CalculerDispositionTypeSemantique(etat, index);
+                    si (erreur != ErreurAnalyseSemantique::Reussite)
+                        retourner erreur;
+                }
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
     ErreurAnalyseSemantique VerifierCyclesDelegationConstructeurSemantique(
         EtatAnalyseSemantique* etat) {
         naturel64 indexDepartDelegation = 0;
@@ -3956,6 +4243,515 @@ espace GalacticShrine::GsPP::Autohebergement {
                         convertir<naturel32>(profondeurDelegation));
             }
             indexDepartDelegation = indexDepartDelegation + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    structure ContextePlanDureeVieSemantique {
+        naturel64 IndexNoeudOrigine;
+        naturel64 IndexTypeContexte;
+        naturel64 Decalage;
+        naturel32 Drapeaux;
+        naturel32 Reserve;
+    };
+
+    booléen AccesMembreDepuisTypeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexMembre,
+        naturel64 indexTypeContexte) {
+        si (indexMembre >= etat->NombreSymboles) retourner faux;
+        constante NoeudDeclaration* declaration = &etat->Requete->Noeuds[
+            etat->SymbolesTravail[indexMembre].IndexNoeud];
+        si ((declaration->Drapeaux & 1) != 0) retourner vrai;
+        naturel64 indexTypeDeclarant = TrouverSymboleNoeudSemantique(
+            etat, etat->SymbolesTravail[indexMembre].IndexPortee);
+        si (indexTypeDeclarant >= etat->NombreSymboles
+            || indexTypeContexte >= etat->NombreSymboles)
+            retourner faux;
+        si (indexTypeDeclarant == indexTypeContexte) retourner vrai;
+        retourner (declaration->Drapeaux & 8) != 0
+            && EstTypeDeriveSemantique(
+                etat, indexTypeContexte, indexTypeDeclarant);
+    }
+
+    naturel64 TrouverDestructeurTypeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexType) {
+        si (indexType >= etat->NombreSymboles) retourner etat->NombreSymboles;
+        naturel64 indexNoeudType = etat->SymbolesTravail[indexType].IndexNoeud;
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            si (candidat->Genre == 2
+                && candidat->IndexPortee == indexNoeudType
+                && etat->Requete->Noeuds[candidat->IndexNoeud].Genre == 14)
+                retourner index;
+            index = index + 1;
+        }
+        retourner etat->NombreSymboles;
+    }
+
+    naturel64 TrouverInitialiseurGenreConstructeurSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexConstructeur,
+        naturel32 genre) {
+        naturel64 index = indexConstructeur + 1;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* candidat = &etat->Requete->Noeuds[index];
+            si (candidat->Parent == indexConstructeur
+                && candidat->Genre == genre)
+                retourner index;
+            index = index + 1;
+        }
+        retourner etat->Requete->NombreNoeuds;
+    }
+
+    naturel64 TrouverInitialiseurChampPlanSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexConstructeur,
+        naturel64 indexChamp) {
+        naturel64 index = indexConstructeur + 1;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* candidat = &etat->Requete->Noeuds[index];
+            si (candidat->Parent == indexConstructeur
+                && candidat->Genre == 35
+                && etat->CiblesInitialiseurs[index] == indexChamp)
+                retourner index;
+            index = index + 1;
+        }
+        retourner etat->Requete->NombreNoeuds;
+    }
+
+    naturel64 CompterElementsTableauPlanSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud) {
+        DescriptionHachageTypeSemantique dimensions;
+        si (!LireDimensionsNoeudSemantique(etat, indexNoeud, &dimensions))
+            retourner 1;
+        naturel64 nombre = 1;
+        naturel32 index = 0;
+        tantque (index < dimensions.NombreDimensions) {
+            naturel64 valeur = 0;
+            si (!LireDimensionNoeudSemantique(
+                    etat, indexNoeud, index, &valeur))
+                retourner 0;
+            nombre = nombre * valeur;
+            index = index + 1;
+        }
+        retourner nombre;
+    }
+
+    externe ErreurAnalyseSemantique PlanifierConstructionClasseSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexType,
+        ContextePlanDureeVieSemantique* contexte);
+
+    externe ErreurAnalyseSemantique PlanifierDestructionClasseSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexType,
+        ContextePlanDureeVieSemantique* contexte);
+
+    ErreurAnalyseSemantique PlanifierConstructeurUniformeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeudType,
+        naturel64 indexConstructeur,
+        ContextePlanDureeVieSemantique* contexte) {
+        naturel64 indexType = TrouverTypeElementFinalTableauSemantique(
+            etat, indexNoeudType);
+        si (indexType >= etat->NombreSymboles)
+            indexType = TrouverTypeDepuisHachageSemantique(
+                etat,
+                etat->Requete->Noeuds[indexNoeudType].HachageType,
+                0);
+        si (indexType >= etat->NombreSymboles)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 nombre = CompterElementsTableauPlanSemantique(
+            etat, indexNoeudType);
+        naturel64 tailleElement = etat->TaillesTypes[indexType];
+        naturel64 index = 0;
+        tantque (index < nombre) {
+            DescriptionEtapeDureeVieSemantique etape = {
+                contexte->Decalage + index * tailleElement,
+                contexte->Drapeaux | 65_536,
+                0};
+            si (nombre > 1) etape.Drapeaux = etape.Drapeaux | 2_097_152;
+            AjouterEtapeDureeVieSemantique(
+                etat,
+                contexte->IndexNoeudOrigine,
+                indexConstructeur,
+                &etape);
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique PlanifierConstructionObjetSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeudType,
+        naturel64 indexType,
+        ContextePlanDureeVieSemantique* contexte) {
+        si (indexType >= etat->NombreSymboles
+            || etat->Requete->Noeuds[
+                etat->SymbolesTravail[indexType].IndexNoeud].Genre != 6)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 nombre = CompterElementsTableauPlanSemantique(
+            etat, indexNoeudType);
+        naturel64 tailleElement = etat->TaillesTypes[indexType];
+        naturel64 index = 0;
+        tantque (index < nombre) {
+            ContextePlanDureeVieSemantique element = *contexte;
+            element.Decalage = contexte->Decalage + index * tailleElement;
+            si (nombre > 1)
+                element.Drapeaux = element.Drapeaux | 2_097_152;
+            ErreurAnalyseSemantique erreur = PlanifierConstructionClasseSemantique(
+                etat, indexType, &element);
+            si (erreur != ErreurAnalyseSemantique::Reussite)
+                retourner erreur;
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique PlanifierDestructionObjetSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeudType,
+        naturel64 indexType,
+        ContextePlanDureeVieSemantique* contexte) {
+        si (indexType >= etat->NombreSymboles
+            || etat->Requete->Noeuds[
+                etat->SymbolesTravail[indexType].IndexNoeud].Genre != 6)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 nombre = CompterElementsTableauPlanSemantique(
+            etat, indexNoeudType);
+        naturel64 tailleElement = etat->TaillesTypes[indexType];
+        tantque (nombre > 0) {
+            nombre = nombre - 1;
+            ContextePlanDureeVieSemantique element = *contexte;
+            element.Decalage = contexte->Decalage + nombre * tailleElement;
+            si (CompterElementsTableauPlanSemantique(etat, indexNoeudType) > 1)
+                element.Drapeaux = element.Drapeaux | 2_097_152;
+            ErreurAnalyseSemantique erreur = PlanifierDestructionClasseSemantique(
+                etat, indexType, &element);
+            si (erreur != ErreurAnalyseSemantique::Reussite)
+                retourner erreur;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique PlanifierConstructionClasseSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexType,
+        ContextePlanDureeVieSemantique* contexte) {
+        naturel64 nombreConstructeurs = CompterConstructeursTypeSemantique(
+            etat, indexType);
+        si (nombreConstructeurs != 0) {
+            naturel64 cibleConstructeurPlan = SelectionnerConstructeurSansArgumentSemantique(
+                etat, contexte->IndexNoeudOrigine, indexType);
+            si (cibleConstructeurPlan >= etat->NombreSymboles)
+                retourner etat->Requete->Resultat.Erreur;
+            si (!AccesMembreDepuisTypeSemantique(
+                    etat, cibleConstructeurPlan, contexte->IndexTypeContexte))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::ConstructeurInaccessible,
+                    contexte->IndexNoeudOrigine,
+                    convertir<naturel32>(cibleConstructeurPlan));
+            DescriptionEtapeDureeVieSemantique etape = {
+                contexte->Decalage,
+                contexte->Drapeaux | 65_536,
+                0};
+            AjouterEtapeDureeVieSemantique(
+                etat,
+                contexte->IndexNoeudOrigine,
+                cibleConstructeurPlan,
+                &etape);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        naturel64 typeBase = TrouverTypeBaseSymboleSemantique(etat, indexType);
+        si (typeBase < etat->NombreSymboles) {
+            ContextePlanDureeVieSemantique base = *contexte;
+            base.IndexTypeContexte = indexType;
+            base.Drapeaux = base.Drapeaux | 524_288;
+            ErreurAnalyseSemantique erreurBase =
+                PlanifierConstructionClasseSemantique(etat, typeBase, &base);
+            si (erreurBase != ErreurAnalyseSemantique::Reussite)
+                retourner erreurBase;
+        }
+
+        si (EstTypePolymorpheSemantique(etat, indexType)) {
+            DescriptionEtapeDureeVieSemantique table = {
+                contexte->Decalage
+                    + etat->DecalagesTablesVirtuelles[indexType],
+                contexte->Drapeaux | 65_536 | 262_144,
+                0};
+            AjouterEtapeDureeVieSemantique(
+                etat,
+                contexte->IndexNoeudOrigine,
+                indexType,
+                &table);
+        }
+
+        naturel64 indexNoeudType = etat->SymbolesTravail[indexType].IndexNoeud;
+        naturel64 indexChamp = 0;
+        tantque (indexChamp < etat->NombreSymboles) {
+            SymboleSemantique* champ = &etat->SymbolesTravail[indexChamp];
+            si (champ->Genre == 5 && champ->IndexPortee == indexNoeudType) {
+                naturel64 typeChamp = TrouverTypeElementFinalTableauSemantique(
+                    etat, champ->IndexNoeud);
+                si (typeChamp >= etat->NombreSymboles)
+                    typeChamp = TrouverTypeDepuisHachageSemantique(
+                        etat, champ->HachageType, 0);
+                ContextePlanDureeVieSemantique sousObjet = *contexte;
+                sousObjet.IndexTypeContexte = indexType;
+                sousObjet.Decalage = contexte->Decalage
+                    + etat->DecalagesChamps[indexChamp];
+                sousObjet.Drapeaux = sousObjet.Drapeaux | 1_048_576;
+                ErreurAnalyseSemantique erreurChamp =
+                    PlanifierConstructionObjetSemantique(
+                        etat, champ->IndexNoeud, typeChamp, &sousObjet);
+                si (erreurChamp != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurChamp;
+            }
+            indexChamp = indexChamp + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique PlanifierDestructionClasseSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexType,
+        ContextePlanDureeVieSemantique* contexte) {
+        naturel64 cibleDestructeurPlan = TrouverDestructeurTypeSemantique(
+            etat, indexType);
+        si (cibleDestructeurPlan < etat->NombreSymboles) {
+            si (!AccesMembreDepuisTypeSemantique(
+                    etat, cibleDestructeurPlan, contexte->IndexTypeContexte))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::DestructeurInaccessible,
+                    contexte->IndexNoeudOrigine,
+                    convertir<naturel32>(cibleDestructeurPlan));
+            DescriptionEtapeDureeVieSemantique etape = {
+                contexte->Decalage,
+                contexte->Drapeaux | 131_072,
+                0};
+            AjouterEtapeDureeVieSemantique(
+                etat,
+                contexte->IndexNoeudOrigine,
+                cibleDestructeurPlan,
+                &etape);
+        }
+
+        naturel64 indexNoeudType = etat->SymbolesTravail[indexType].IndexNoeud;
+        naturel64 indexChamp = etat->NombreSymboles;
+        tantque (indexChamp > 0) {
+            indexChamp = indexChamp - 1;
+            SymboleSemantique* champ = &etat->SymbolesTravail[indexChamp];
+            si (champ->Genre == 5 && champ->IndexPortee == indexNoeudType) {
+                naturel64 typeChamp = TrouverTypeElementFinalTableauSemantique(
+                    etat, champ->IndexNoeud);
+                si (typeChamp >= etat->NombreSymboles)
+                    typeChamp = TrouverTypeDepuisHachageSemantique(
+                        etat, champ->HachageType, 0);
+                ContextePlanDureeVieSemantique sousObjet = *contexte;
+                sousObjet.IndexTypeContexte = indexType;
+                sousObjet.Decalage = contexte->Decalage
+                    + etat->DecalagesChamps[indexChamp];
+                sousObjet.Drapeaux = sousObjet.Drapeaux | 1_048_576;
+                ErreurAnalyseSemantique erreurChamp =
+                    PlanifierDestructionObjetSemantique(
+                        etat, champ->IndexNoeud, typeChamp, &sousObjet);
+                si (erreurChamp != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurChamp;
+            }
+        }
+
+        naturel64 typeBase = TrouverTypeBaseSymboleSemantique(etat, indexType);
+        si (typeBase < etat->NombreSymboles) {
+            ContextePlanDureeVieSemantique base = *contexte;
+            base.IndexTypeContexte = indexType;
+            base.Drapeaux = base.Drapeaux | 524_288;
+            retourner PlanifierDestructionClasseSemantique(
+                etat, typeBase, &base);
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique PlanifierCorpsConstructeurSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexConstructeur) {
+        naturel64 indexType = TrouverSymboleNoeudSemantique(
+            etat, etat->Requete->Noeuds[indexConstructeur].Parent);
+        si (indexType >= etat->NombreSymboles)
+            retourner ErreurAnalyseSemantique::AstInvalide;
+        ContextePlanDureeVieSemantique contexte = {
+            indexConstructeur,
+            indexType,
+            0,
+            0,
+            0};
+
+        naturel64 delegation = TrouverInitialiseurGenreConstructeurSemantique(
+            etat, indexConstructeur, 33);
+        si (delegation < etat->Requete->NombreNoeuds) {
+            naturel64 cibleDelegationPlan =
+                etat->CiblesInitialiseurs[delegation];
+            DescriptionEtapeDureeVieSemantique etape = {
+                0, 65_536 | 512, 0};
+            AjouterEtapeDureeVieSemantique(
+                etat, indexConstructeur, cibleDelegationPlan, &etape);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        naturel64 typeBase = TrouverTypeBaseSymboleSemantique(etat, indexType);
+        si (typeBase < etat->NombreSymboles) {
+            naturel64 initialiseurBase =
+                TrouverInitialiseurGenreConstructeurSemantique(
+                    etat, indexConstructeur, 34);
+            si (initialiseurBase < etat->Requete->NombreNoeuds) {
+                DescriptionEtapeDureeVieSemantique etapeBase = {
+                    0, 65_536 | 1_024 | 524_288, 0};
+                AjouterEtapeDureeVieSemantique(
+                    etat,
+                    indexConstructeur,
+                    etat->CiblesInitialiseurs[initialiseurBase],
+                    &etapeBase);
+            }
+            sinon {
+                ContextePlanDureeVieSemantique base = contexte;
+                base.Drapeaux = 524_288;
+                ErreurAnalyseSemantique erreurBase =
+                    PlanifierConstructionClasseSemantique(
+                        etat, typeBase, &base);
+                si (erreurBase != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurBase;
+            }
+        }
+
+        si (EstTypePolymorpheSemantique(etat, indexType)) {
+            DescriptionEtapeDureeVieSemantique table = {
+                etat->DecalagesTablesVirtuelles[indexType],
+                65_536 | 262_144,
+                0};
+            AjouterEtapeDureeVieSemantique(
+                etat, indexConstructeur, indexType, &table);
+        }
+
+        naturel64 indexNoeudType = etat->SymbolesTravail[indexType].IndexNoeud;
+        naturel64 indexChamp = 0;
+        tantque (indexChamp < etat->NombreSymboles) {
+            SymboleSemantique* champ = &etat->SymbolesTravail[indexChamp];
+            si (champ->Genre == 5 && champ->IndexPortee == indexNoeudType) {
+                naturel64 typeChamp = TrouverTypeElementFinalTableauSemantique(
+                    etat, champ->IndexNoeud);
+                si (typeChamp >= etat->NombreSymboles)
+                    typeChamp = TrouverTypeDepuisHachageSemantique(
+                        etat, champ->HachageType, 0);
+                si (typeChamp < etat->NombreSymboles
+                    && etat->Requete->Noeuds[
+                        etat->SymbolesTravail[typeChamp].IndexNoeud].Genre == 6) {
+                    ContextePlanDureeVieSemantique sousObjet = contexte;
+                    sousObjet.Decalage = etat->DecalagesChamps[indexChamp];
+                    sousObjet.Drapeaux = 1_048_576;
+                    naturel64 initialiseur = TrouverInitialiseurChampPlanSemantique(
+                        etat, indexConstructeur, indexChamp);
+                    naturel64 nombreConstructeurs =
+                        CompterConstructeursTypeSemantique(etat, typeChamp);
+                    si (initialiseur < etat->Requete->NombreNoeuds
+                        && nombreConstructeurs != 0) {
+                        naturel64 cibleConstructeurChampPlan =
+                            SelectionnerConstructeurSemantique(
+                            etat, initialiseur, typeChamp);
+                        si (cibleConstructeurChampPlan >= etat->NombreSymboles)
+                            retourner etat->Requete->Resultat.Erreur;
+                        sousObjet.Drapeaux = sousObjet.Drapeaux | 128 | 2_048;
+                        ErreurAnalyseSemantique erreurChampExplicitePlan =
+                            PlanifierConstructeurUniformeSemantique(
+                                etat,
+                                champ->IndexNoeud,
+                                cibleConstructeurChampPlan,
+                                &sousObjet);
+                        si (erreurChampExplicitePlan
+                            != ErreurAnalyseSemantique::Reussite)
+                            retourner erreurChampExplicitePlan;
+                    }
+                    sinon {
+                        si (initialiseur < etat->Requete->NombreNoeuds)
+                            sousObjet.Drapeaux = sousObjet.Drapeaux | 2_048;
+                        sinon sousObjet.Drapeaux = sousObjet.Drapeaux | 4_096;
+                        ErreurAnalyseSemantique erreurChampImplicitePlan =
+                            PlanifierConstructionObjetSemantique(
+                                etat,
+                                champ->IndexNoeud,
+                                typeChamp,
+                                &sousObjet);
+                        si (erreurChampImplicitePlan
+                            != ErreurAnalyseSemantique::Reussite)
+                            retourner erreurChampImplicitePlan;
+                    }
+                }
+            }
+            indexChamp = indexChamp + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique PlanifierDureesVieSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* noeud = &etat->Requete->Noeuds[index];
+            si (noeud->Genre == 13) {
+                ErreurAnalyseSemantique erreurConstructeur =
+                    PlanifierCorpsConstructeurSemantique(etat, index);
+                si (erreurConstructeur != ErreurAnalyseSemantique::Reussite)
+                    retourner erreurConstructeur;
+            }
+            sinon si (noeud->Genre == 19
+                && !EstTypeAdresseSemantique(etat, noeud->HachageType)
+                && !EstTypeReferenceSemantique(etat, noeud->HachageType)) {
+                naturel64 indexType = TrouverTypeElementFinalTableauSemantique(
+                    etat, index);
+                si (indexType >= etat->NombreSymboles)
+                    indexType = TrouverTypeDepuisHachageSemantique(
+                        etat, noeud->HachageType, 0);
+                si (indexType < etat->NombreSymboles
+                    && etat->Requete->Noeuds[
+                        etat->SymbolesTravail[indexType].IndexNoeud].Genre == 6) {
+                    ContextePlanDureeVieSemantique contexte = {
+                        index,
+                        TrouverRecepteurSemantique(etat, index),
+                        0,
+                        0,
+                        0};
+                    naturel64 nombreConstructeurs =
+                        CompterConstructeursTypeSemantique(etat, indexType);
+                    ErreurAnalyseSemantique erreurConstruction =
+                        ErreurAnalyseSemantique::Reussite;
+                    si (nombreConstructeurs != 0) {
+                        naturel64 cible = SelectionnerConstructeurSemantique(
+                            etat, index, indexType);
+                        si (cible >= etat->NombreSymboles)
+                            retourner etat->Requete->Resultat.Erreur;
+                        si ((noeud->Drapeaux & 8_192) != 0)
+                            contexte.Drapeaux = contexte.Drapeaux | 128;
+                        sinon contexte.Drapeaux = contexte.Drapeaux | 4_096;
+                        erreurConstruction =
+                            PlanifierConstructeurUniformeSemantique(
+                                etat, index, cible, &contexte);
+                    }
+                    sinon erreurConstruction =
+                        PlanifierConstructionObjetSemantique(
+                            etat, index, indexType, &contexte);
+                    si (erreurConstruction != ErreurAnalyseSemantique::Reussite)
+                        retourner erreurConstruction;
+
+                    ErreurAnalyseSemantique erreurDestruction =
+                        PlanifierDestructionObjetSemantique(
+                            etat, index, indexType, &contexte);
+                    si (erreurDestruction != ErreurAnalyseSemantique::Reussite)
+                        retourner erreurDestruction;
+                }
+            }
+            index = index + 1;
         }
         retourner ErreurAnalyseSemantique::Reussite;
     }
@@ -4074,7 +4870,11 @@ espace GalacticShrine::GsPP::Autohebergement {
             }
             indexVariable = indexVariable + 1;
         }
-        retourner VerifierCyclesDelegationConstructeurSemantique(etat);
+        ErreurAnalyseSemantique erreurCycles =
+            VerifierCyclesDelegationConstructeurSemantique(etat);
+        si (erreurCycles != ErreurAnalyseSemantique::Reussite)
+            retourner erreurCycles;
+        retourner PlanifierDureesVieSemantiques(etat);
     }
 
     naturel64 CompterOperateursTypeSemantique(
@@ -4703,6 +5503,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.CiblesExpressions = NulCiblesExpressionsSemantiques;
         etat.JetonsTypes = NulJetonsTypesSemantiques;
         etat.NombreJetonsTypes = 0;
+        etat.TaillesTypes = NulNaturelsDispositionSemantique;
+        etat.AlignementsTypes = NulNaturelsDispositionSemantique;
+        etat.DecalagesChamps = NulNaturelsDispositionSemantique;
+        etat.DecalagesTablesVirtuelles = NulNaturelsDispositionSemantique;
+        etat.EtatsDisposition = NulEtatsDispositionSemantique;
+        etat.EtatsPolymorphisme = NulEtatsDispositionSemantique;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
         naturel64 index = 0;
 
@@ -4782,7 +5588,50 @@ espace GalacticShrine::GsPP::Autohebergement {
         requete->Resultat.NombreSymboles = etat.NombreSymboles;
         requete->Resultat.CapaciteSymbolesRequise = etat.NombreSymboles;
 
+        etat.TaillesTypes = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreSymboles * 8, 8));
+        etat.AlignementsTypes = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreSymboles * 8, 8));
+        etat.DecalagesChamps = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreSymboles * 8, 8));
+        etat.DecalagesTablesVirtuelles = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreSymboles * 8, 8));
+        etat.EtatsDisposition = convertir<octet*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreSymboles, 1));
+        etat.EtatsPolymorphisme = convertir<octet*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, etat.NombreSymboles, 1));
+        si (etat.TaillesTypes == NulNaturelsDispositionSemantique
+            || etat.AlignementsTypes == NulNaturelsDispositionSemantique
+            || etat.DecalagesChamps == NulNaturelsDispositionSemantique
+            || etat.DecalagesTablesVirtuelles
+                == NulNaturelsDispositionSemantique
+            || etat.EtatsDisposition == NulEtatsDispositionSemantique
+            || etat.EtatsPolymorphisme == NulEtatsDispositionSemantique) {
+            SignalerErreurSemantique(
+                &etat, ErreurAnalyseSemantique::AllocationImpossible, 0, 0);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+            retourner requete->Resultat.Erreur;
+        }
+        index = 0;
+        tantque (index < etat.NombreSymboles) {
+            etat.TaillesTypes[index] = 0;
+            etat.AlignementsTypes[index] = 0;
+            etat.DecalagesChamps[index] = 0;
+            etat.DecalagesTablesVirtuelles[index] = 0;
+            etat.EtatsDisposition[index] = 0;
+            etat.EtatsPolymorphisme[index] = 0;
+            index = index + 1;
+        }
+
         ErreurAnalyseSemantique erreur = VerifierConflitsSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = CalculerDispositionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreExpressionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)

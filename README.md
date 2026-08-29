@@ -39,7 +39,9 @@ génération de code.
 > agrégats imbriqués, indexations, adresses, déréférencements et appels
 > indirects déjà typables. Le développement suivant l’alpha.8 valide aussi les
 > valeurs gauches, indices, cibles, arités, types et références de ces formes ;
-> la résolution globale et les plans complets de durée de vie restent à migrer.
+> il produit désormais les plans ordonnés de construction, de destruction et
+> de tables virtuelles des objets locaux et sous-objets de constructeurs. La
+> résolution globale et les autres familles sémantiques restent à migrer.
 
 ## Principes du langage
 

@@ -37,8 +37,9 @@ génération de code.
 > le classificateur, le lexeur, l’AST compact et la passe sémantique. Celle-ci
 > couvre maintenant les surcharges, membres, constructeurs, initialiseurs,
 > agrégats imbriqués, indexations, adresses, déréférencements et appels
-> indirects déjà typables ; la résolution exhaustive et les plans complets de
-> durée de vie restent à migrer.
+> indirects déjà typables. Le développement suivant l’alpha.8 valide aussi les
+> valeurs gauches, indices, cibles, arités, types et références de ces formes ;
+> la résolution globale et les plans complets de durée de vie restent à migrer.
 
 ## Principes du langage
 

@@ -47,6 +47,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 HachageNom;
         naturel64 HachageType;
         naturel64 HachageRetourFonction;
+        naturel64 DebutType;
     };
 
     naturel64 HachageVideSemantique() {
@@ -233,6 +234,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         type->HachageNom = HachageVideSemantique();
         type->HachageType = 0;
         type->HachageRetourFonction = 0;
+        type->DebutType = 0;
 
         booléen continuerQualificatifsType = vrai;
         tantque (continuerQualificatifsType) {
@@ -306,6 +308,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             type->HachageNom = AjouterNaturel32Semantique(
                 signatureFonctionType,
                 nombreParametresFonctionType);
+            type->Reserve = nombreParametresFonctionType;
         }
         sinon retourner faux;
 
@@ -1870,49 +1873,78 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner vrai;
     }
 
+    booléen LireDescriptionPointeurFonctionNoeudSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeud,
+        naturel64 hachagePointeurFonction,
+        DescriptionTypeJetonsSemantique* description) {
+        si (indexNoeud >= etat->Requete->NombreNoeuds
+            || etat->JetonsTypes == NulJetonsTypesSemantiques)
+            retourner faux;
+        constante NoeudDeclaration* noeudPointeurFonction =
+            &etat->Requete->Noeuds[indexNoeud];
+        naturel64 indexNomPointeurFonction = 0;
+        tantque (indexNomPointeurFonction < etat->NombreJetonsTypes
+            && etat->JetonsTypes[indexNomPointeurFonction].Debut
+                != noeudPointeurFonction->DebutNom)
+            indexNomPointeurFonction = indexNomPointeurFonction + 1;
+        si (indexNomPointeurFonction >= etat->NombreJetonsTypes)
+            retourner faux;
+
+        naturel64 debutPointeurFonction = 0;
+        tantque (debutPointeurFonction < indexNomPointeurFonction) {
+            naturel32 genreDebutPointeur =
+                etat->JetonsTypes[debutPointeurFonction].Genre;
+            si (genreDebutPointeur == 26
+                || genreDebutPointeur == 12
+                || genreDebutPointeur == 13) {
+                CurseurTypeJetonsSemantique curseurPointeurFonction = {
+                    debutPointeurFonction, faux};
+                DescriptionTypeJetonsSemantique typePointeurFonctionLu;
+                si (AnalyserTypeJetonsSemantique(
+                        etat,
+                        &curseurPointeurFonction,
+                        &typePointeurFonctionLu)
+                    && typePointeurFonctionLu.Genre == 14) {
+                    naturel32 niveauPointeurCourant = 0;
+                    tantque (niveauPointeurCourant <= 4) {
+                        DescriptionTypeJetonsSemantique typeCourant =
+                            typePointeurFonctionLu;
+                        typeCourant.NiveauPointeur = niveauPointeurCourant;
+                        typeCourant.Qualificatifs =
+                            typeCourant.Qualificatifs & 3;
+                        typeCourant.HachageType =
+                            HacherDescriptionTypeJetonsSemantique(&typeCourant);
+                        si (typeCourant.HachageType
+                            == hachagePointeurFonction) {
+                            typeCourant.DebutType =
+                                debutPointeurFonction;
+                            *description = typeCourant;
+                            retourner vrai;
+                        }
+                        niveauPointeurCourant = niveauPointeurCourant + 1;
+                    }
+                }
+            }
+            debutPointeurFonction = debutPointeurFonction + 1;
+        }
+        retourner faux;
+    }
+
     booléen LireRetourPointeurFonctionNoeudSemantique(
         EtatAnalyseSemantique* etat,
         naturel64 indexNoeud,
         naturel64 hachagePointeurFonction,
         naturel64* hachageRetour) {
-        si (indexNoeud >= etat->Requete->NombreNoeuds
-            || etat->JetonsTypes == NulJetonsTypesSemantiques)
+        DescriptionTypeJetonsSemantique descriptionPointeurFonction;
+        si (!LireDescriptionPointeurFonctionNoeudSemantique(
+                etat,
+                indexNoeud,
+                hachagePointeurFonction,
+                &descriptionPointeurFonction))
             retourner faux;
-        constante NoeudDeclaration* noeudRetourFonction =
-            &etat->Requete->Noeuds[indexNoeud];
-        naturel64 indexNomRetourFonction = 0;
-        tantque (indexNomRetourFonction < etat->NombreJetonsTypes
-            && etat->JetonsTypes[indexNomRetourFonction].Debut
-                != noeudRetourFonction->DebutNom)
-            indexNomRetourFonction = indexNomRetourFonction + 1;
-        si (indexNomRetourFonction >= etat->NombreJetonsTypes)
-            retourner faux;
-
-        naturel64 debutRetourFonction = 0;
-        tantque (debutRetourFonction < indexNomRetourFonction) {
-            naturel32 genreDebutRetour =
-                etat->JetonsTypes[debutRetourFonction].Genre;
-            si (genreDebutRetour == 26
-                || genreDebutRetour == 12
-                || genreDebutRetour == 13) {
-                CurseurTypeJetonsSemantique curseurRetourFonction = {
-                    debutRetourFonction, faux};
-                DescriptionTypeJetonsSemantique typeRetourFonctionLu;
-                si (AnalyserTypeJetonsSemantique(
-                        etat,
-                        &curseurRetourFonction,
-                        &typeRetourFonctionLu)
-                    && typeRetourFonctionLu.Genre == 14
-                    && typeRetourFonctionLu.HachageType
-                        == hachagePointeurFonction) {
-                    *hachageRetour =
-                        typeRetourFonctionLu.HachageRetourFonction;
-                    retourner vrai;
-                }
-            }
-            debutRetourFonction = debutRetourFonction + 1;
-        }
-        retourner faux;
+        *hachageRetour = descriptionPointeurFonction.HachageRetourFonction;
+        retourner vrai;
     }
 
     externe naturel64 HachageTypeExpressionSemantique(
@@ -2149,6 +2181,17 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 origineCibleAppel =
             TrouverOrigineTypeExpressionSemantique(
                 etat, cibleAppelType);
+        naturel64 symboleOrigineCibleAppel =
+            TrouverSymboleNoeudSemantique(
+                etat, origineCibleAppel, 2);
+        si (symboleOrigineCibleAppel < etat->NombreSymboles
+            && typeCibleAppel
+                == HacherPointeurFonctionDeclarationSemantique(
+                    etat, origineCibleAppel))
+            retourner SansReferenceTypeSemantique(
+                etat,
+                etat->SymbolesTravail[
+                    symboleOrigineCibleAppel].HachageType);
         naturel64 retourCibleAppel = 0;
         si (LireRetourPointeurFonctionNoeudSemantique(
                 etat,
@@ -2770,9 +2813,53 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner faux;
         constante NoeudDeclaration* expression =
             &etat->Requete->Noeuds[indexExpression];
-        retourner expression->Genre == 24
-            || expression->Genre == 29
-            || expression->Genre == 30;
+        si (expression->Genre == 24) {
+            si (expression->HachageNom == HacherSoiSemantique())
+                retourner vrai;
+            naturel64 cibleValeurGauche =
+                TrouverCibleSymboleExpressionSemantique(
+                    etat, indexExpression);
+            si (cibleValeurGauche >= etat->NombreSymboles)
+                retourner faux;
+            naturel32 genreValeurGauche = etat->SymbolesTravail[
+                cibleValeurGauche].Genre;
+            retourner genreValeurGauche != 2 && genreValeurGauche != 7;
+        }
+        si (expression->Genre == 29 || expression->Genre == 30)
+            retourner vrai;
+        si (expression->Genre == 25)
+            retourner expression->HachageNom
+                == HacherOperateurExpressionSemantique(42, 0);
+        si (expression->Genre == 28) {
+            naturel64 cibleAppelValeurGauche =
+                TrouverEnfantDirectSemantique(etat, indexExpression, 0);
+            naturel64 symboleAppelValeurGauche =
+                TrouverCibleSymboleExpressionSemantique(
+                    etat, cibleAppelValeurGauche);
+            si (symboleAppelValeurGauche < etat->NombreSymboles
+                && etat->SymbolesTravail[
+                    symboleAppelValeurGauche].Genre == 2)
+                retourner EstTypeReferenceSemantique(
+                    etat,
+                    etat->SymbolesTravail[
+                        symboleAppelValeurGauche].HachageType);
+            naturel64 typeCibleValeurGauche =
+                HachageTypeExpressionSemantique(
+                    etat, cibleAppelValeurGauche);
+            naturel64 origineCibleValeurGauche =
+                TrouverOrigineTypeExpressionSemantique(
+                    etat, cibleAppelValeurGauche);
+            DescriptionTypeJetonsSemantique descriptionAppelValeurGauche;
+            si (LireDescriptionPointeurFonctionNoeudSemantique(
+                    etat,
+                    origineCibleValeurGauche,
+                    typeCibleValeurGauche,
+                    &descriptionAppelValeurGauche))
+                retourner EstTypeReferenceSemantique(
+                    etat,
+                    descriptionAppelValeurGauche.HachageRetourFonction);
+        }
+        retourner faux;
     }
 
     booléen EstMembreDuGenreSemantique(
@@ -4095,6 +4182,345 @@ espace GalacticShrine::GsPP::Autohebergement {
                 || expression->HachageNom == dereferencement);
     }
 
+    booléen EstTypeEntierExpressionSemantique(naturel64 hachageType) {
+        naturel32 genreEntierExpression = 1;
+        tantque (genreEntierExpression <= 11) {
+            si (genreEntierExpression != 9) {
+                naturel32 qualificatifsEntierExpression = 0;
+                tantque (qualificatifsEntierExpression < 4) {
+                    si (hachageType == HacherTypeSimpleSemantique(
+                            genreEntierExpression,
+                            qualificatifsEntierExpression,
+                            0))
+                        retourner vrai;
+                    qualificatifsEntierExpression =
+                        qualificatifsEntierExpression + 1;
+                }
+            }
+            genreEntierExpression = genreEntierExpression + 1;
+        }
+        retourner faux;
+    }
+
+    booléen EstTypeVideExpressionSemantique(naturel64 hachageType) {
+        naturel32 qualificatifsVideExpression = 0;
+        tantque (qualificatifsVideExpression < 4) {
+            si (hachageType == HacherTypeSimpleSemantique(
+                    12, qualificatifsVideExpression, 0))
+                retourner vrai;
+            qualificatifsVideExpression = qualificatifsVideExpression + 1;
+        }
+        retourner faux;
+    }
+
+    ErreurAnalyseSemantique ValiderUnaireIntrinsequeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        constante NoeudDeclaration* expressionUnaire =
+            &etat->Requete->Noeuds[indexExpression];
+        si (expressionUnaire->Genre != 25)
+            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 operateurAdresseUnaire =
+            HacherOperateurExpressionSemantique(38, 0);
+        naturel64 operateurDereferencementUnaire =
+            HacherOperateurExpressionSemantique(42, 0);
+        si (expressionUnaire->HachageNom != operateurAdresseUnaire
+            && expressionUnaire->HachageNom
+                != operateurDereferencementUnaire)
+            retourner ErreurAnalyseSemantique::Reussite;
+
+        naturel64 operandeUnaire = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 0);
+        naturel64 typeOperandeUnaire = HachageTypeExpressionSemantique(
+            etat, operandeUnaire);
+        naturel64 origineOperandeUnaire =
+            TrouverOrigineTypeExpressionSemantique(
+                etat, operandeUnaire);
+        si (expressionUnaire->HachageNom == operateurAdresseUnaire) {
+            naturel64 symboleOperandeAdresse =
+                TrouverCibleSymboleExpressionSemantique(
+                    etat, operandeUnaire);
+            si (symboleOperandeAdresse < etat->NombreSymboles
+                && etat->SymbolesTravail[
+                    symboleOperandeAdresse].Genre == 2)
+                retourner ErreurAnalyseSemantique::Reussite;
+            si (!EstValeurGaucheSemantique(etat, operandeUnaire))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AdresseValeurNonAdressable,
+                    indexExpression,
+                    0);
+            naturel64 typeAdresseResultat =
+                TransformerPointeurTypeSemantique(
+                    etat,
+                    typeOperandeUnaire,
+                    origineOperandeUnaire,
+                    vrai);
+            si (typeAdresseResultat == 0) {
+                DescriptionHachageTypeSemantique dimensionsAdresse;
+                si (LireDimensionsNoeudSemantique(
+                        etat,
+                        origineOperandeUnaire,
+                        &dimensionsAdresse))
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::AdresseTableauCompletInterdite,
+                        indexExpression,
+                        dimensionsAdresse.NombreDimensions);
+            }
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        naturel64 typeDereferenceResultat =
+            TransformerPointeurTypeSemantique(
+                etat,
+                typeOperandeUnaire,
+                origineOperandeUnaire,
+                faux);
+        si (typeDereferenceResultat == 0)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::DereferencementSansPointeur,
+                indexExpression,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderIndexationSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        naturel64 objetIndexationValidee = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 0);
+        naturel64 indiceIndexationValidee = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 1);
+        naturel64 typeObjetIndexationValidee =
+            HachageTypeExpressionSemantique(
+                etat, objetIndexationValidee);
+        naturel64 typeResultatIndexationValidee =
+            HachageTypeIndexationSemantique(
+                etat, indexExpression);
+        naturel64 symboleObjetIndexationValidee =
+            TrouverCibleSymboleExpressionSemantique(
+                etat, objetIndexationValidee);
+        booléen fonctionDirecteIndexee =
+            symboleObjetIndexationValidee < etat->NombreSymboles
+            && etat->SymbolesTravail[
+                symboleObjetIndexationValidee].Genre == 2;
+        naturel64 origineObjetIndexationValidee =
+            TrouverOrigineTypeExpressionSemantique(
+                etat, objetIndexationValidee);
+        DescriptionTypeJetonsSemantique descriptionFonctionIndexee;
+        booléen fonctionPureIndexee =
+            LireDescriptionPointeurFonctionNoeudSemantique(
+                etat,
+                origineObjetIndexationValidee,
+                typeObjetIndexationValidee,
+                &descriptionFonctionIndexee)
+            && descriptionFonctionIndexee.NiveauPointeur == 0;
+        si (typeResultatIndexationValidee == 0
+            || fonctionDirecteIndexee
+            || fonctionPureIndexee)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::CibleIndexationInvalide,
+                indexExpression,
+                0);
+        naturel64 typeIndiceIndexationValidee =
+            HachageTypeExpressionSemantique(
+                etat, indiceIndexationValidee);
+        si (!EstTypeEntierExpressionSemantique(
+                typeIndiceIndexationValidee))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::IndiceNonEntier,
+                indiceIndexationValidee,
+                0);
+        si (EstTypeVideExpressionSemantique(
+                typeResultatIndexationValidee))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::IndexationPointeurVide,
+                indexExpression,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderArgumentsAppelIndirectSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexAppel,
+        naturel64 debutTypePointeurFonction,
+        naturel32 nombreParametresPointeurFonction) {
+        CurseurTypeJetonsSemantique curseurArgumentsIndirects = {
+            debutTypePointeurFonction, faux};
+        booléen continuerQualificatifsAppel = vrai;
+        tantque (continuerQualificatifsAppel) {
+            si (AccepterTypeJetonsSemantique(
+                    etat, &curseurArgumentsIndirects, 12)) {}
+            sinon si (AccepterTypeJetonsSemantique(
+                    etat, &curseurArgumentsIndirects, 13)) {}
+            sinon continuerQualificatifsAppel = faux;
+        }
+        si (!AccepterTypeJetonsSemantique(
+                etat, &curseurArgumentsIndirects, 26)
+            || !AccepterTypeJetonsSemantique(
+                etat, &curseurArgumentsIndirects, 48))
+            retourner ErreurAnalyseSemantique::AstInvalide;
+        DescriptionTypeJetonsSemantique retourArgumentsIndirects;
+        si (!AnalyserTypeJetonsSemantique(
+                etat,
+                &curseurArgumentsIndirects,
+                &retourArgumentsIndirects)
+            || !AccepterTypeJetonsSemantique(
+                etat, &curseurArgumentsIndirects, 34))
+            retourner ErreurAnalyseSemantique::AstInvalide;
+
+        naturel32 indexArgumentIndirect = 0;
+        tantque (indexArgumentIndirect
+            < nombreParametresPointeurFonction) {
+            DescriptionTypeJetonsSemantique parametreAppelIndirect;
+            si (!AnalyserTypeJetonsSemantique(
+                    etat,
+                    &curseurArgumentsIndirects,
+                    &parametreAppelIndirect))
+                retourner ErreurAnalyseSemantique::AstInvalide;
+            naturel64 argumentAppelIndirect =
+                TrouverEnfantDirectSemantique(
+                    etat,
+                    indexAppel,
+                    convertir<naturel64>(indexArgumentIndirect) + 1);
+            booléen parametreIndirectReference =
+                (parametreAppelIndirect.Qualificatifs & 4) != 0;
+            booléen argumentIndirectCompatible = vrai;
+            si (parametreIndirectReference) {
+                argumentIndirectCompatible =
+                    EstValeurGaucheSemantique(
+                        etat, argumentAppelIndirect);
+                si (argumentIndirectCompatible) {
+                    naturel64 typeArgumentIndirect =
+                        HachageTypeExpressionSemantique(
+                            etat, argumentAppelIndirect);
+                    naturel64 typeParametreIndirect =
+                        SansReferenceTypeSemantique(
+                            etat,
+                            parametreAppelIndirect.HachageType);
+                    argumentIndirectCompatible =
+                        typeArgumentIndirect == typeParametreIndirect
+                        || ConversionHeritageSemantique(
+                            etat,
+                            typeArgumentIndirect,
+                            typeParametreIndirect,
+                            vrai);
+                }
+            }
+            sinon argumentIndirectCompatible =
+                InitialiseurCompatibleTypeSemantique(
+                    etat,
+                    argumentAppelIndirect,
+                    parametreAppelIndirect.HachageType);
+            si (!argumentIndirectCompatible)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::
+                        TypeArgumentAppelIndirectIncompatible,
+                    argumentAppelIndirect,
+                    indexArgumentIndirect);
+            indexArgumentIndirect = indexArgumentIndirect + 1;
+            si (indexArgumentIndirect
+                < nombreParametresPointeurFonction
+                && !AccepterTypeJetonsSemantique(
+                    etat, &curseurArgumentsIndirects, 41))
+                retourner ErreurAnalyseSemantique::AstInvalide;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderAppelIndirectSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexAppel) {
+        naturel64 cibleAppelIndirect = TrouverEnfantDirectSemantique(
+            etat, indexAppel, 0);
+        naturel64 symboleCibleAppelIndirect =
+            TrouverCibleSymboleExpressionSemantique(
+                etat, cibleAppelIndirect);
+        si (symboleCibleAppelIndirect < etat->NombreSymboles
+            && etat->SymbolesTravail[
+                symboleCibleAppelIndirect].Genre == 2)
+            retourner ErreurAnalyseSemantique::Reussite;
+
+        naturel64 typeCibleAppelIndirect =
+            HachageTypeExpressionSemantique(
+                etat, cibleAppelIndirect);
+        naturel64 origineCibleAppelIndirect =
+            TrouverOrigineTypeExpressionSemantique(
+                etat, cibleAppelIndirect);
+        naturel64 symboleOrigineAppelIndirect =
+            TrouverSymboleNoeudSemantique(
+                etat, origineCibleAppelIndirect, 2);
+        si (symboleOrigineAppelIndirect < etat->NombreSymboles
+            && typeCibleAppelIndirect
+                == HacherPointeurFonctionDeclarationSemantique(
+                    etat, origineCibleAppelIndirect)) {
+            naturel64 nombreEnfantsAdresseFonction =
+                CompterEnfantsDirectsSemantique(etat, indexAppel);
+            naturel64 nombreArgumentsAdresseFonction = 0;
+            si (nombreEnfantsAdresseFonction != 0)
+                nombreArgumentsAdresseFonction =
+                    nombreEnfantsAdresseFonction - 1;
+            si (nombreArgumentsAdresseFonction
+                != CompterParametresFonctionSemantique(
+                    etat, origineCibleAppelIndirect))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AriteAppelIndirectInvalide,
+                    indexAppel,
+                    convertir<naturel32>(nombreArgumentsAdresseFonction));
+            si (EvaluerArgumentsFonctionSemantique(
+                    etat,
+                    indexAppel,
+                    origineCibleAppelIndirect,
+                    1) == 4_294_967_295) {
+                naturel64 premierArgumentAdresseFonction =
+                    TrouverEnfantDirectSemantique(
+                        etat, indexAppel, 1);
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::
+                        TypeArgumentAppelIndirectIncompatible,
+                    premierArgumentAdresseFonction,
+                    0);
+            }
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        DescriptionTypeJetonsSemantique descriptionAppelIndirect;
+        si (!LireDescriptionPointeurFonctionNoeudSemantique(
+                etat,
+                origineCibleAppelIndirect,
+                typeCibleAppelIndirect,
+                &descriptionAppelIndirect)
+            || descriptionAppelIndirect.NiveauPointeur != 0)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::CibleAppelIndirectInvalide,
+                cibleAppelIndirect,
+                0);
+
+        naturel64 nombreEnfantsAppelIndirect =
+            CompterEnfantsDirectsSemantique(etat, indexAppel);
+        naturel64 nombreArgumentsAppelIndirect = 0;
+        si (nombreEnfantsAppelIndirect != 0)
+            nombreArgumentsAppelIndirect =
+                nombreEnfantsAppelIndirect - 1;
+        si (nombreArgumentsAppelIndirect
+            != convertir<naturel64>(descriptionAppelIndirect.Reserve))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AriteAppelIndirectInvalide,
+                indexAppel,
+                convertir<naturel32>(nombreArgumentsAppelIndirect));
+        retourner ValiderArgumentsAppelIndirectSemantique(
+            etat,
+            indexAppel,
+            descriptionAppelIndirect.DebutType,
+            descriptionAppelIndirect.Reserve);
+    }
+
     ErreurAnalyseSemantique ResoudreOperateurSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexExpression) {
         constante NoeudDeclaration* expression =
@@ -4234,6 +4660,18 @@ espace GalacticShrine::GsPP::Autohebergement {
             sinon si (expressionCourante->Genre == 25
                 || expressionCourante->Genre == 26)
                 erreurExpression = ResoudreOperateurSemantique(
+                    etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 25)
+                erreurExpression = ValiderUnaireIntrinsequeSemantique(
+                    etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 30)
+                erreurExpression = ValiderIndexationSemantique(
+                    etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 28)
+                erreurExpression = ValiderAppelIndirectSemantique(
                     etat, indexExpression);
             si (erreurExpression != ErreurAnalyseSemantique::Reussite)
                 retourner erreurExpression;

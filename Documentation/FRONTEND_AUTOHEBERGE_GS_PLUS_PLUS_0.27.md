@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur, AST syntaxique, indexation et première sélection typée
-VALIDÉS — 29 août 2026.**
+**EN COURS — lexeur, AST syntaxique, indexation, sélection typée et contraintes
+des expressions couvertes VALIDÉS — 29 août 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -16,6 +16,8 @@ déjà déterminables dans l’AST compact, contrôle la visibilité, résout le
 constructeurs et leurs initialiseurs, puis propage les types à travers les
 agrégats et expressions imbriqués, y compris les indexations, adresses,
 déréférencements et appels indirects.
+Le développement suivant l’alpha.8 rend leurs contraintes explicites et
+différentielles sans changer l’ABI publique.
 Le frontend 0.27 complet n’est pas encore validé : la résolution exhaustive
 des types et les vérifications sémantiques suivantes restent à migrer.
 
@@ -634,17 +636,58 @@ comme des applications distinctes. `Frontend.GsE` expose leurs quatre points
 d’entrée publics afin que les tests différentiels puissent encore valider
 chaque étape séparément.
 
-Cette tranche reste volontairement bornée au typage récursif des formes
-couvertes. Elle ne valide pas encore exhaustivement la valeur gauche exigée par
-`&`, la nature entière de chaque indice, l’arité et les paramètres de tous les
-appels indirects ni toutes les combinaisons d’opérandes intrinsèques. Les
-opérateurs libres et les plans exécutables complets de construction et de
-destruction restent aussi à migrer.
+## Contraintes des expressions typées — développement après alpha.8
+
+La passe contrôle maintenant les préconditions complètes des quatre familles
+d’expressions déjà typées. `&` exige une valeur gauche, sauf pour l’adresse
+directe d’une fonction, et refuse encore les pointeurs vers tableaux complets
+que le bootstrap ne prend pas en charge. `*` exige un pointeur mais conserve la
+sémantique particulière du pointeur de fonction direct.
+
+Une indexation exige un tableau ou un pointeur véritable, puis un indice entier.
+Elle refuse donc aussi bien un scalaire ou un pointeur de fonction pur que
+`vide*`. L’appel indirect exige une signature de callback appelable au niveau de
+pointeur courant, le nombre exact d’arguments et un initialiseur compatible pour
+chaque paramètre. Les liaisons par référence exigent une valeur gauche et
+réutilisent les conversions d’héritage déjà validées.
+
+La reconstruction reste privée : la position lexicale, le retour, l’arité et
+les paramètres sont relus depuis les jetons du type. Aucune taille de
+`NoeudDeclaration`, `SymboleSemantique`, `ResolutionSemantique`,
+`ResultatAnalyseSemantique` ou `RequeteAnalyseSemantique` ne change. Les neuf
+nouveaux codes sont ajoutés après les codes existants :
+
+| Code | Diagnostic | Condition refusée |
+| ---: | --- | --- |
+| 47 | `AdresseValeurNonAdressable` | l’opérande de `&` n’est pas une valeur gauche |
+| 48 | `AdresseTableauCompletInterdite` | l’opérande de `&` est encore un tableau complet |
+| 49 | `DereferencementSansPointeur` | l’opérande de `*` n’est pas un pointeur |
+| 50 | `CibleIndexationInvalide` | la cible n’est ni un tableau ni un pointeur indexable |
+| 51 | `IndiceNonEntier` | l’indice n’est pas un entier |
+| 52 | `IndexationPointeurVide` | l’élément calculé serait de type `vide` |
+| 53 | `CibleAppelIndirectInvalide` | la cible n’est pas un callback directement appelable |
+| 54 | `AriteAppelIndirectInvalide` | le nombre d’arguments diffère de la signature |
+| 55 | `TypeArgumentAppelIndirectIncompatible` | un argument ne peut pas initialiser son paramètre |
+
+Le corpus positif bilingue inclut désormais un paramètre de callback par
+référence, `(&Fonction)(...)` et l’appel d’un callback obtenu par
+déréférencement. Vingt-quatre refus français et anglais couvrent les neuf codes,
+les références temporaires, les pointeurs vers callbacks non déréférencés et
+les callbacks purs indexés. Le total atteint cent huit corpus sémantiques
+négatifs dont le code, la ligne et la colonne sont comparés au bootstrap.
+
+La matrice locale de développement passe 4/4 sous Visual Studio 2026 et 5/5
+sous GNU/Linux. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE
+1.0 de 241 921 octets, identique bit à bit, dont le SHA-256 est
+`c4d3e331f5d86e7266151a8755084741bcfb79bc1f6a711ec46a0220d4f0a567`.
+
+Cette tranche reste volontairement bornée aux formes décrites. Les autres
+combinaisons d’opérateurs intrinsèques, les opérateurs libres et les plans
+exécutables complets de construction, destruction et durée de vie restent à
+migrer.
 
 ## Travaux restant dans Gs++ 0.27
 
-- valider exhaustivement les contraintes des indexations, adresses,
-  déréférencements et appels indirects désormais typés ;
 - migrer les plans complets de construction, destruction et durée de vie ;
 - migrer les opérateurs libres et valider exhaustivement les opérateurs
   intrinsèques ;

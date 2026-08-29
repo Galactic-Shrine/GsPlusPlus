@@ -10,6 +10,27 @@
 
 # Journal des modifications
 
+## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-29
+
+- validation auto-hébergée des contraintes de valeur gauche de `&`, avec
+  conservation du cas particulier de l’adresse d’une fonction et refus des
+  tableaux complets comme dans le bootstrap ;
+- refus positionné du déréférencement d’une valeur non pointeur, des cibles non
+  indexables, des indices non entiers, de l’indexation de `vide*` et de
+  l’indexation d’un pointeur de fonction pur ;
+- reconstruction privée de l’arité et des paramètres d’un pointeur de fonction
+  afin de contrôler les appels indirects, y compris les paramètres par
+  référence et les callbacks imbriqués ou obtenus par déréférencement ;
+- prise en charge de l’appel explicite `(&Fonction)(...)` sans ajouter de champ
+  aux nœuds, symboles, résolutions, résultats ou requêtes de l’ABI publique ;
+- ajout des diagnostics sémantiques 47 à 55, sans renuméroter les diagnostics
+  existants ni modifier les tailles ABI ;
+- extension du corpus positif bilingue aux références, adresses explicites de
+  fonctions et pointeurs vers callbacks, puis ajout de vingt-quatre corpus
+  négatifs différentiels portant le total à cent huit ;
+- validation locale 4/4 sous Visual Studio 2026 et 5/5 sous GNU/Linux, avec une
+  image `Frontend.GsE` GsE 1.0 identique bit à bit entre les deux chaînes.
+
 ## Compilateur Gs++ 0.27.0-alpha.8 — 2026-08-29
 
 - adoption de `GalacticShrine::GsPP::` comme préfixe public et ABI canonique,

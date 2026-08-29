@@ -35,8 +35,9 @@ official aliases with the same semantics and generated code.
 > keyword classification, lexing, the compact AST, and semantic analysis. The
 > semantic stage now covers resolvable overloads, members, constructors,
 > initializers, nested aggregates, indexing, addresses, dereferences, and
-> indirect calls; exhaustive resolution and complete lifetime plans remain to
-> be migrated.
+> indirect calls. Development after alpha.8 also validates the lvalues,
+> indices, targets, arities, types, and references of those forms; global
+> resolution and complete lifetime plans remain to be migrated.
 
 ## Language principles
 

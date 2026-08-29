@@ -3723,6 +3723,8 @@ namespace
         const std::string adressesIndexationsFrancais =
             "publique entier32 DoublerType(entier32 valeur) { "
             "retourner valeur * 2; }\n"
+            "publique vide IncrementerType(entier32& valeur) { "
+            "valeur = valeur + 1; }\n"
             "publique entier32 ChoisirType(entier32 valeur) { "
             "retourner valeur; }\n"
             "publique entier64 ChoisirType(entier64 valeur) { "
@@ -3730,10 +3732,16 @@ namespace
             "publique vide TesterAdressesIndexations() {\n"
             "  entier32 valeur = 7; entier32 matrice[2][2] = {{1, 2}, {3, 4}};\n"
             "  pointeur_fonction<entier32(entier32)> operation = &DoublerType;\n"
+            "  pointeur_fonction<vide(entier32&)> mutation = &IncrementerType;\n"
+            "  pointeur_fonction<entier32(entier32)>* adresseOperation = "
+            "&operation;\n"
             "  pointeur_fonction<entier32(entier32)> operations[1] = "
             "{&DoublerType};\n"
             "  pointeur_fonction<pointeur_fonction<entier32(entier32)>()> "
             "fournisseur;\n"
+            "  mutation(valeur);\n"
+            "  entier32 appelsExplicites[2] = {"
+            "(&DoublerType)(6), (*adresseOperation)(7)};\n"
             "  entier32 resultats[5] = {ChoisirType(matrice[0][1]), "
             "ChoisirType(*(&valeur)), ChoisirType(operation(3)), "
             "ChoisirType(operations[0](4)), "
@@ -3741,15 +3749,23 @@ namespace
             "}\n";
         const std::string adressesIndexationsAnglais =
             "public int32 DoublerType(int32 valeur) { return valeur * 2; }\n"
+            "public void IncrementerType(int32& valeur) { "
+            "valeur = valeur + 1; }\n"
             "public int32 ChoisirType(int32 valeur) { return valeur; }\n"
             "public int64 ChoisirType(int64 valeur) { return valeur; }\n"
             "public void TesterAdressesIndexations() {\n"
             "  int32 valeur = 7; int32 matrice[2][2] = {{1, 2}, {3, 4}};\n"
             "  function_pointer<int32(int32)> operation = &DoublerType;\n"
+            "  function_pointer<void(int32&)> mutation = &IncrementerType;\n"
+            "  function_pointer<int32(int32)>* adresseOperation = "
+            "&operation;\n"
             "  function_pointer<int32(int32)> operations[1] = "
             "{&DoublerType};\n"
             "  function_pointer<function_pointer<int32(int32)>()> "
             "fournisseur;\n"
+            "  mutation(valeur);\n"
+            "  int32 appelsExplicites[2] = {"
+            "(&DoublerType)(6), (*adresseOperation)(7)};\n"
             "  int32 resultats[5] = {ChoisirType(matrice[0][1]), "
             "ChoisirType(*(&valeur)), ChoisirType(operation(3)), "
             "ChoisirType(operations[0](4)), "
@@ -3810,6 +3826,183 @@ namespace
                 && appelsChoisirTypeEntier64 == 0,
             "la propagation des indexations, adresses, déréférencements "
             "ou appels indirects est incomplète");
+
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32* valeur = &(1 + 2); }",
+            47,
+            "adresse-valeur-non-adressable-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32* valeur = &(1 + 2); }",
+            47,
+            "adresse-valeur-non-adressable-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeurs[2] = {1, 2}; "
+            "entier32* adresse = &valeurs; }",
+            48,
+            "adresse-tableau-complet-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeurs[2] = {1, 2}; "
+            "int32* adresse = &valeurs; }",
+            48,
+            "adresse-tableau-complet-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeur = *1; }",
+            49,
+            "dereferencement-sans-pointeur-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeur = *1; }",
+            49,
+            "dereferencement-sans-pointeur-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeur = 1[0]; }",
+            50,
+            "cible-indexation-invalide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeur = 1[0]; }",
+            50,
+            "cible-indexation-invalide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier32* valeurs) { "
+            "entier32 valeur = valeurs[vrai]; }",
+            51,
+            "indice-non-entier-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(int32* valeurs) { "
+            "int32 valeur = valeurs[true]; }",
+            51,
+            "indice-non-entier-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(vide* valeurs) { octet valeur = valeurs[0]; }",
+            52,
+            "indexation-pointeur-vide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(void* valeurs) { byte valeur = valeurs[0]; }",
+            52,
+            "indexation-pointeur-vide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeur = 1; valeur(); }",
+            53,
+            "cible-appel-indirect-invalide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeur = 1; valeur(); }",
+            53,
+            "cible-appel-indirect-invalide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier32 Identite(entier32 valeur) { retourner valeur; } "
+            "publique vide F() { "
+            "pointeur_fonction<entier32(entier32)> operation = &Identite; "
+            "operation(); }",
+            54,
+            "arite-appel-indirect-invalide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public int32 Identite(int32 valeur) { return valeur; } "
+            "public void F() { "
+            "function_pointer<int32(int32)> operation = &Identite; "
+            "operation(); }",
+            54,
+            "arite-appel-indirect-invalide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier32 Identite(entier32 valeur) { retourner valeur; } "
+            "publique vide F() { "
+            "pointeur_fonction<entier32(entier32)> operation = &Identite; "
+            "operation(vrai); }",
+            55,
+            "argument-appel-indirect-incompatible-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public int32 Identite(int32 valeur) { return valeur; } "
+            "public void F() { "
+            "function_pointer<int32(int32)> operation = &Identite; "
+            "operation(true); }",
+            55,
+            "argument-appel-indirect-incompatible-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide Modifier(entier32& valeur) { valeur = 1; } "
+            "publique vide F() { "
+            "pointeur_fonction<vide(entier32&)> operation = &Modifier; "
+            "operation(1); }",
+            55,
+            "reference-appel-indirect-temporaire-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void Modifier(int32& valeur) { valeur = 1; } "
+            "public void F() { "
+            "function_pointer<void(int32&)> operation = &Modifier; "
+            "operation(1); }",
+            55,
+            "reference-appel-indirect-temporaire-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { "
+            "pointeur_fonction<entier32(entier32)>* operations; "
+            "operations(1); }",
+            53,
+            "pointeur-vers-pointeur-fonction-non-appelable-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { "
+            "function_pointer<int32(int32)>* operations; "
+            "operations(1); }",
+            53,
+            "pointeur-vers-pointeur-fonction-non-appelable-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier32 Identite(entier32 valeur) { retourner valeur; } "
+            "publique vide F() { "
+            "pointeur_fonction<entier32(entier32)> operation = &Identite; "
+            "operation[0]; }",
+            50,
+            "pointeur-fonction-pur-non-indexable-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public int32 Identite(int32 valeur) { return valeur; } "
+            "public void F() { "
+            "function_pointer<int32(int32)> operation = &Identite; "
+            "operation[0]; }",
+            50,
+            "pointeur-fonction-pur-non-indexable-anglais");
 
         ComparerErreurSemantique(
             syntaxe,

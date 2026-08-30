@@ -2208,6 +2208,98 @@ espace GalacticShrine::GsPP::Autohebergement {
             || nom == HacherOperateurExpressionSemantique(124, 124);
     }
 
+    booléen EstOperateurDecalageExpressionSemantique(
+        constante NoeudDeclaration* expression) {
+        naturel64 nom = expression->HachageNom;
+        retourner nom == HacherOperateurExpressionSemantique(60, 60)
+            || nom == HacherOperateurExpressionSemantique(62, 62);
+    }
+
+    externe booléen LitteralExpressionCompatibleTypeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 hachageType);
+
+    naturel64 HachageTypeOperateurIntrinsequeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        constante NoeudDeclaration* expressionOperateurType =
+            &etat->Requete->Noeuds[indexExpression];
+        si (EstOperateurComparaisonExpressionSemantique(
+                expressionOperateurType)
+            || EstOperateurLogiqueExpressionSemantique(
+                expressionOperateurType))
+            retourner HacherTypeSimpleSemantique(9, 0, 0);
+
+        naturel64 operandeGaucheType = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 0);
+        naturel64 hachageGaucheType = HachageTypeExpressionSemantique(
+            etat, operandeGaucheType);
+        si (expressionOperateurType->Genre == 25) {
+            naturel64 operateurAdresseType =
+                HacherOperateurExpressionSemantique(38, 0);
+            naturel64 operateurDereferencementType =
+                HacherOperateurExpressionSemantique(42, 0);
+            si (expressionOperateurType->HachageNom
+                == operateurAdresseType) {
+                naturel64 symboleOperandeAdresseType =
+                    TrouverCibleSymboleExpressionSemantique(
+                        etat, operandeGaucheType);
+                si (symboleOperandeAdresseType < etat->NombreSymboles
+                    && etat->SymbolesTravail[
+                        symboleOperandeAdresseType].Genre == 2)
+                    retourner hachageGaucheType;
+                retourner TransformerPointeurTypeSemantique(
+                    etat,
+                    hachageGaucheType,
+                    TrouverOrigineTypeExpressionSemantique(
+                        etat, operandeGaucheType),
+                    vrai);
+            }
+            si (expressionOperateurType->HachageNom
+                == operateurDereferencementType)
+                retourner TransformerPointeurTypeSemantique(
+                    etat,
+                    hachageGaucheType,
+                    TrouverOrigineTypeExpressionSemantique(
+                        etat, operandeGaucheType),
+                    faux);
+            naturel64 operateurMoinsType =
+                HacherOperateurExpressionSemantique(45, 0);
+            si (expressionOperateurType->HachageNom == operateurMoinsType
+                && operandeGaucheType < etat->Requete->NombreNoeuds
+                && etat->Requete->Noeuds[operandeGaucheType].Genre == 22
+                && etat->Requete->Noeuds[operandeGaucheType].HachageType
+                    == 9_223_372_036_854_775_808)
+                retourner HacherTypeSimpleSemantique(4, 0, 0);
+            retourner SansQualificatifsValeurSemantique(
+                etat, hachageGaucheType);
+        }
+
+        naturel64 operandeDroiteType = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 1);
+        naturel64 hachageDroiteType = HachageTypeExpressionSemantique(
+            etat, operandeDroiteType);
+        si (!EstOperateurDecalageExpressionSemantique(
+                expressionOperateurType)
+            && !TypesValeurEgauxSemantique(
+                etat, hachageGaucheType, hachageDroiteType)) {
+            naturel64 cibleGaucheType =
+                SansQualificatifsValeurSemantique(
+                    etat, hachageDroiteType);
+            naturel64 cibleDroiteType =
+                SansQualificatifsValeurSemantique(
+                    etat, hachageGaucheType);
+            si (LitteralExpressionCompatibleTypeSemantique(
+                    etat, operandeGaucheType, cibleGaucheType))
+                hachageGaucheType = cibleGaucheType;
+            sinon si (LitteralExpressionCompatibleTypeSemantique(
+                    etat, operandeDroiteType, cibleDroiteType))
+                hachageDroiteType = cibleDroiteType;
+        }
+        retourner SansQualificatifsValeurSemantique(
+            etat, hachageGaucheType);
+    }
+
     naturel64 HachageTypeAppelSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexAppel) {
         naturel64 cibleAppelType = TrouverEnfantDirectSemantique(
@@ -2298,42 +2390,8 @@ espace GalacticShrine::GsPP::Autohebergement {
                     etat, indexExpression);
             si (typeResolutionOperateur != 0)
                 retourner typeResolutionOperateur;
-            si (EstOperateurComparaisonExpressionSemantique(expression)
-                || EstOperateurLogiqueExpressionSemantique(expression))
-                retourner HacherTypeSimpleSemantique(9, 0, 0);
-            naturel64 operande = TrouverEnfantDirectSemantique(
-                etat, indexExpression, 0);
-            naturel64 typeOperande = HachageTypeExpressionSemantique(
-                etat, operande);
-            naturel64 operateurAdresse =
-                HacherOperateurExpressionSemantique(38, 0);
-            naturel64 operateurDereferencement =
-                HacherOperateurExpressionSemantique(42, 0);
-            si (expression->Genre == 25
-                && expression->HachageNom == operateurAdresse) {
-                naturel64 symboleOperandeAdresse =
-                    TrouverCibleSymboleExpressionSemantique(
-                        etat, operande);
-                si (symboleOperandeAdresse < etat->NombreSymboles
-                    && etat->SymbolesTravail[
-                        symboleOperandeAdresse].Genre == 2)
-                    retourner typeOperande;
-                retourner TransformerPointeurTypeSemantique(
-                    etat,
-                    typeOperande,
-                    TrouverOrigineTypeExpressionSemantique(
-                        etat, operande),
-                    vrai);
-            }
-            si (expression->Genre == 25
-                && expression->HachageNom == operateurDereferencement)
-                retourner TransformerPointeurTypeSemantique(
-                    etat,
-                    typeOperande,
-                    TrouverOrigineTypeExpressionSemantique(
-                        etat, operande),
-                    faux);
-            retourner typeOperande;
+            retourner HachageTypeOperateurIntrinsequeSemantique(
+                etat, indexExpression);
         }
         si (expression->Genre == 27) {
             naturel64 enfant = TrouverEnfantDirectSemantique(
@@ -5171,29 +5229,75 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner faux;
     }
 
+    booléen EstTypeBooleenExpressionSemantique(naturel64 hachageType) {
+        naturel32 qualificatifsBooleensExpression = 0;
+        tantque (qualificatifsBooleensExpression < 4) {
+            si (hachageType == HacherTypeSimpleSemantique(
+                    9, qualificatifsBooleensExpression, 0))
+                retourner vrai;
+            qualificatifsBooleensExpression =
+                qualificatifsBooleensExpression + 1;
+        }
+        retourner faux;
+    }
+
+    booléen EstPointeurFonctionExpressionSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 hachageType) {
+        naturel64 originePointeurFonctionExpression =
+            TrouverOrigineTypeExpressionSemantique(
+                etat, indexExpression);
+        DescriptionTypeJetonsSemantique descriptionPointeurFonctionExpression;
+        retourner LireDescriptionPointeurFonctionNoeudSemantique(
+            etat,
+            originePointeurFonctionExpression,
+            hachageType,
+            &descriptionPointeurFonctionExpression);
+    }
+
+    booléen EstExpressionScalaireIntrinsequeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 hachageType) {
+        retourner EstTypeScalaireSemantique(etat, hachageType)
+            || EstPointeurFonctionExpressionSemantique(
+                etat, indexExpression, hachageType);
+    }
+
+    booléen EstExpressionAdresseIntrinsequeSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 hachageType) {
+        retourner EstTypeAdresseSemantique(etat, hachageType)
+            || EstPointeurFonctionExpressionSemantique(
+                etat, indexExpression, hachageType);
+    }
+
     ErreurAnalyseSemantique ValiderUnaireIntrinsequeSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexExpression) {
         constante NoeudDeclaration* expressionUnaire =
             &etat->Requete->Noeuds[indexExpression];
         si (expressionUnaire->Genre != 25)
             retourner ErreurAnalyseSemantique::Reussite;
+        si (HachageTypeResolutionExpressionSemantique(
+                etat, indexExpression) != 0)
+            retourner ErreurAnalyseSemantique::Reussite;
         naturel64 operateurAdresseUnaire =
             HacherOperateurExpressionSemantique(38, 0);
         naturel64 operateurDereferencementUnaire =
             HacherOperateurExpressionSemantique(42, 0);
-        si (expressionUnaire->HachageNom != operateurAdresseUnaire
-            && expressionUnaire->HachageNom
-                != operateurDereferencementUnaire)
-            retourner ErreurAnalyseSemantique::Reussite;
+        naturel64 operateurNegationUnaire =
+            HacherOperateurExpressionSemantique(33, 0);
 
         naturel64 operandeUnaire = TrouverEnfantDirectSemantique(
             etat, indexExpression, 0);
         naturel64 typeOperandeUnaire = HachageTypeExpressionSemantique(
             etat, operandeUnaire);
-        naturel64 origineOperandeUnaire =
-            TrouverOrigineTypeExpressionSemantique(
-                etat, operandeUnaire);
         si (expressionUnaire->HachageNom == operateurAdresseUnaire) {
+            naturel64 origineOperandeAdresseUnaire =
+                TrouverOrigineTypeExpressionSemantique(
+                    etat, operandeUnaire);
             naturel64 symboleOperandeAdresse =
                 TrouverCibleSymboleExpressionSemantique(
                     etat, operandeUnaire);
@@ -5211,13 +5315,13 @@ espace GalacticShrine::GsPP::Autohebergement {
                 TransformerPointeurTypeSemantique(
                     etat,
                     typeOperandeUnaire,
-                    origineOperandeUnaire,
+                    origineOperandeAdresseUnaire,
                     vrai);
             si (typeAdresseResultat == 0) {
                 DescriptionHachageTypeSemantique dimensionsAdresse;
                 si (LireDimensionsNoeudSemantique(
                         etat,
-                        origineOperandeUnaire,
+                        origineOperandeAdresseUnaire,
                         &dimensionsAdresse))
                     retourner SignalerErreurSemantique(
                         etat,
@@ -5228,16 +5332,169 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner ErreurAnalyseSemantique::Reussite;
         }
 
-        naturel64 typeDereferenceResultat =
-            TransformerPointeurTypeSemantique(
-                etat,
-                typeOperandeUnaire,
-                origineOperandeUnaire,
-                faux);
-        si (typeDereferenceResultat == 0)
+        si (expressionUnaire->HachageNom
+            == operateurDereferencementUnaire) {
+            naturel64 origineOperandeDereferenceUnaire =
+                TrouverOrigineTypeExpressionSemantique(
+                    etat, operandeUnaire);
+            naturel64 typeDereferenceResultat =
+                TransformerPointeurTypeSemantique(
+                    etat,
+                    typeOperandeUnaire,
+                    origineOperandeDereferenceUnaire,
+                    faux);
+            si (typeDereferenceResultat == 0)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::DereferencementSansPointeur,
+                    indexExpression,
+                    0);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        si (expressionUnaire->HachageNom == operateurNegationUnaire) {
+            si (!EstExpressionScalaireIntrinsequeSemantique(
+                    etat, operandeUnaire, typeOperandeUnaire))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::NegationNonScalaire,
+                    indexExpression,
+                    0);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        si (!EstTypeEntierExpressionSemantique(typeOperandeUnaire))
             retourner SignalerErreurSemantique(
                 etat,
-                ErreurAnalyseSemantique::DereferencementSansPointeur,
+                ErreurAnalyseSemantique::OperateurUnaireNonEntier,
+                indexExpression,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderBinaireIntrinsequeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        constante NoeudDeclaration* expressionBinaire =
+            &etat->Requete->Noeuds[indexExpression];
+        si (expressionBinaire->Genre != 26)
+            retourner ErreurAnalyseSemantique::Reussite;
+        si (HachageTypeResolutionExpressionSemantique(
+                etat, indexExpression) != 0)
+            retourner ErreurAnalyseSemantique::Reussite;
+
+        naturel64 operandeGaucheBinaire = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 0);
+        naturel64 operandeDroiteBinaire = TrouverEnfantDirectSemantique(
+            etat, indexExpression, 1);
+        naturel64 typeGaucheBinaire = HachageTypeExpressionSemantique(
+            etat, operandeGaucheBinaire);
+        naturel64 typeDroiteBinaire = HachageTypeExpressionSemantique(
+            etat, operandeDroiteBinaire);
+        naturel64 nomOperateurBinaire = expressionBinaire->HachageNom;
+        booléen comparaisonBinaire =
+            EstOperateurComparaisonExpressionSemantique(
+                expressionBinaire);
+        booléen decalageBinaire =
+            EstOperateurDecalageExpressionSemantique(
+                expressionBinaire);
+        booléen logiqueBinaire =
+            nomOperateurBinaire
+                    == HacherOperateurExpressionSemantique(38, 38)
+                || nomOperateurBinaire
+                    == HacherOperateurExpressionSemantique(124, 124);
+
+        si (logiqueBinaire) {
+            si (!EstExpressionScalaireIntrinsequeSemantique(
+                    etat,
+                    operandeGaucheBinaire,
+                    typeGaucheBinaire)
+                || !EstExpressionScalaireIntrinsequeSemantique(
+                    etat,
+                    operandeDroiteBinaire,
+                    typeDroiteBinaire))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::OperateurLogiqueNonScalaire,
+                    indexExpression,
+                    0);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+
+        si (!decalageBinaire
+            && !TypesValeurEgauxSemantique(
+                etat, typeGaucheBinaire, typeDroiteBinaire)) {
+            naturel64 cibleGaucheBinaire =
+                SansQualificatifsValeurSemantique(
+                    etat, typeDroiteBinaire);
+            naturel64 cibleDroiteBinaire =
+                SansQualificatifsValeurSemantique(
+                    etat, typeGaucheBinaire);
+            si (LitteralExpressionCompatibleTypeSemantique(
+                    etat,
+                    operandeGaucheBinaire,
+                    cibleGaucheBinaire))
+                typeGaucheBinaire = cibleGaucheBinaire;
+            sinon si (LitteralExpressionCompatibleTypeSemantique(
+                    etat,
+                    operandeDroiteBinaire,
+                    cibleDroiteBinaire))
+                typeDroiteBinaire = cibleDroiteBinaire;
+        }
+        si (!decalageBinaire
+            && !TypesValeurEgauxSemantique(
+                etat, typeGaucheBinaire, typeDroiteBinaire))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::TypesOperandesDifferents,
+                indexExpression,
+                0);
+        si (decalageBinaire
+            && (!EstTypeEntierExpressionSemantique(typeGaucheBinaire)
+                || !EstTypeEntierExpressionSemantique(
+                    typeDroiteBinaire)))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::DecalageNonEntier,
+                indexExpression,
+                0);
+        si (!comparaisonBinaire
+            && !EstTypeEntierExpressionSemantique(typeGaucheBinaire))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::CalculNonEntier,
+                indexExpression,
+                0);
+        si (comparaisonBinaire
+            && !EstExpressionScalaireIntrinsequeSemantique(
+                etat,
+                operandeGaucheBinaire,
+                typeGaucheBinaire))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ComparaisonTypeInvalide,
+                indexExpression,
+                0);
+
+        booléen egaliteBinaire =
+            nomOperateurBinaire
+                    == HacherOperateurExpressionSemantique(61, 61)
+                || nomOperateurBinaire
+                    == HacherOperateurExpressionSemantique(33, 61);
+        si (!egaliteBinaire
+            && EstExpressionAdresseIntrinsequeSemantique(
+                etat,
+                operandeGaucheBinaire,
+                typeGaucheBinaire))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ComparaisonPointeurInvalide,
+                indexExpression,
+                0);
+        si (!egaliteBinaire
+            && EstTypeBooleenExpressionSemantique(typeGaucheBinaire))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ComparaisonBooleenneInvalide,
                 indexExpression,
                 0);
         retourner ErreurAnalyseSemantique::Reussite;
@@ -5664,6 +5921,10 @@ espace GalacticShrine::GsPP::Autohebergement {
             si (erreurExpression == ErreurAnalyseSemantique::Reussite
                 && expressionCourante->Genre == 25)
                 erreurExpression = ValiderUnaireIntrinsequeSemantique(
+                    etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 26)
+                erreurExpression = ValiderBinaireIntrinsequeSemantique(
                     etat, indexExpression);
             si (erreurExpression == ErreurAnalyseSemantique::Reussite
                 && expressionCourante->Genre == 30)

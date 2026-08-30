@@ -784,9 +784,55 @@ libres décrits ci-dessus. Elle ne valide pas encore toutes les combinaisons
 d’opérateurs intrinsèques, toutes les conversions implicites ou l’auto-
 reconstruction fonctionnelle du compilateur.
 
+## Opérateurs intrinsèques — développement après alpha.8
+
+Après la sélection prioritaire d’une surcharge membre ou libre, la passe
+auto-hébergée valide maintenant les six formes unaires `+`, `-`, `!`, `~`, `&`
+et `*`, puis les dix-huit formes binaires arithmétiques, de décalage, binaires,
+logiques et de comparaison. Les opérateurs surchargés déjà résolus conservent
+leur type de retour et ne sont jamais reclassés comme intrinsèques.
+
+La matrice applique les mêmes règles que le bootstrap : `!`, `&&` et `||`
+exigent des scalaires ; les calculs, décalages et opérations bit à bit exigent
+des entiers ; les types de valeur doivent coïncider après suppression des
+qualificatifs ; seuls `==` et `!=` sont autorisés sur les pointeurs et les
+booléens. Les pointeurs de fonction sont reconnus explicitement comme des
+adresses scalaires malgré leur hachage compact distinct. Les littéraux entiers
+représentables sont adaptés à l’autre opérande à gauche comme à droite, et le
+type de résultat non qualifié reflète cette adaptation. La valeur unaire
+`-9_223_372_036_854_775_808` conserve le cas limite `entier64` du bootstrap.
+
+Les diagnostics 60 à 68 identifient respectivement la négation non scalaire,
+l’opérateur unaire non entier, l’opérateur logique non scalaire, les types
+d’opérandes différents, le décalage non entier, le calcul non entier, la
+comparaison d’un type non scalaire, la comparaison ordonnée de pointeurs et la
+comparaison ordonnée de booléens. Ils prolongent la table existante sans
+renuméroter ses entrées ni modifier l’ABI publique.
+
+Deux corpus positifs français et anglais parcourent les vingt-quatre formes
+intrinsèques au total, en réunissant cette matrice et les cas `&` / `*` déjà
+validés. Ils couvrent aussi les entiers signés et non signés, l’adaptation d’un
+littéral vers `entier64`, les pointeurs ordinaires et les pointeurs de fonction.
+Dix-huit nouveaux refus bilingues couvrent les neuf diagnostics, ce qui porte
+le total à cent trente-sept corpus négatifs dont le code, la ligne et la colonne
+sont comparés au bootstrap.
+
+La matrice de développement passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux 11.4. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE
+1.0 de 281 169 octets avec 73 exports, acceptée par `gseverifier` et identique
+bit à bit. Son SHA-256 est
+`fcc65ad812685ba84c468faf47515427efb2a49b13580a7388d8ee2218027dcf`.
+Les tailles ABI restent respectivement de 64, 48, 32, 56 et 120 octets pour
+`NoeudDeclaration`, `SymboleSemantique`, `ResolutionSemantique`,
+`ResultatAnalyseSemantique` et `RequeteAnalyseSemantique`.
+
+Cette preuve clôt la matrice de typage des opérateurs intrinsèques. Elle ne
+revendique pas encore toutes les conversions implicites, la résolution globale,
+un frontend auto-hébergé complet ni un compilateur reconstruit fonctionnellement
+par Gs++ lui-même.
+
 ## Travaux restant dans Gs++ 0.27
 
-- valider exhaustivement les opérateurs intrinsèques ;
 - compléter les conversions implicites, qualifications et liaisons de
   références ;
 - compléter la résolution des déclarations globales et les autres familles

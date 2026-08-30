@@ -221,9 +221,11 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF. Le rapport est
   sélection typée des fonctions et méthodes, accès aux membres, visibilité,
   constructeurs locaux, opérateurs membres et libres, contraintes des
   expressions indirectes et plans ordonnés de construction, destruction et
-  tables virtuelles des objets locaux et sous-objets de constructeurs ;
+  tables virtuelles des objets locaux et sous-objets de constructeurs, ainsi
+  que les vingt-quatre formes d’opérateurs intrinsèques avec adaptation des
+  littéraux et diagnostics de types ;
 - **EN COURS** : compléter le typage récursif, les qualifications, les
-  conversions, les opérateurs intrinsèques et la résolution globale ;
+  conversions implicites et la résolution globale ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

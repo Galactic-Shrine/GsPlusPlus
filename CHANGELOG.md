@@ -10,6 +10,25 @@
 
 # Journal des modifications
 
+## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-30
+
+- validation auto-hébergée des six opérateurs unaires et des dix-huit
+  opérateurs binaires intrinsèques, après résolution prioritaire des surcharges
+  membres ou libres ;
+- alignement du type de résultat non qualifié et de l’adaptation des littéraux
+  entiers placés à gauche ou à droite, y compris la borne signée minimale de
+  `entier64` ;
+- prise en compte des entiers, booléens, pointeurs ordinaires, pointeurs de
+  fonction et tableaux dans la matrice scalaire, arithmétique et de
+  comparaison ;
+- ajout des diagnostics sémantiques 60 à 68 sans modifier les codes précédents
+  ni l’ABI, puis de dix-huit corpus négatifs bilingues portant le total à cent
+  trente-sept ;
+- validation locale 4/4 sous Visual Studio 2026 et 5/5 sous GNU/Linux 11.4,
+  avec une image `Frontend.GsE` GsE 1.0 de 281 169 octets et 73 exports,
+  identique bit à bit entre les deux chaînes, dont le SHA-256 est
+  `fcc65ad812685ba84c468faf47515427efb2a49b13580a7388d8ee2218027dcf` ;
+
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-29
 
 - validation auto-hébergée des contraintes de valeur gauche de `&`, avec

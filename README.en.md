@@ -37,10 +37,13 @@ official aliases with the same semantics and generated code.
 > initializers, nested aggregates, indexing, addresses, dereferences, and
 > indirect calls. Development after alpha.8 also validates the lvalues,
 > indices, targets, arities, types, and references of those forms, together
-> with typed resolution for binary and unary free operators. It now emits
-> ordered construction, destruction, and virtual-table plans for local objects
-> and constructor subobjects. Exhaustive intrinsic combinations, global
-> resolution, and other semantic families remain to be migrated.
+> with typed resolution for binary and unary free operators. All twenty-four
+> unary and binary intrinsic forms are now validated as well, including literal
+> adaptation, ordinary and function pointers, and nine diagnostic families.
+> The stage also emits ordered construction, destruction, and virtual-table
+> plans for local objects and constructor subobjects. Global resolution, the
+> remaining implicit conversions, and other semantic families still need to be
+> migrated.
 
 ## Language principles
 
@@ -234,7 +237,9 @@ All normative documentation is maintained in Markdown as its primary source.
 - differential recursive typing for indexing, `&`, `*`, and indirect calls,
   including nested callbacks;
 - differential selection of free operators, including overloads, qualified
-  references, ambiguities, arities, and unary operators.
+  references, ambiguities, arities, and unary operators;
+- differential validation of all twenty-four intrinsic operators, with literal
+  adaptation and **137** position-checked negative corpora.
 
 ## License
 

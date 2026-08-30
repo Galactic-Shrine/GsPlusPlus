@@ -3358,6 +3358,77 @@ namespace
                 && retourLibreEntier64,
             "la sélection typée des opérateurs libres est incomplète");
 
+        const std::string intrinsequesFrancais =
+            "publique entier32 IdentiteIntrinseque(entier32 valeur) { "
+            "retourner valeur; }\n"
+            "publique vide TesterIntrinseques(entier32 signe, naturel32 bits, "
+            "entier64 large, entier32* pointeur) {\n"
+            "  booléen etat = vrai;\n"
+            "  pointeur_fonction<entier32(entier32)> rappel = "
+            "&IdentiteIntrinseque;\n"
+            "  entier32 plusUnaire = +signe; entier32 moinsUnaire = -signe;\n"
+            "  naturel32 inverse = ~bits; booléen negation = !pointeur;\n"
+            "  entier64 adapteGauche = 1 + large;\n"
+            "  entier64 adapteDroite = large + 1;\n"
+            "  entier32 somme = signe + 1; entier32 difference = signe - 1;\n"
+            "  entier32 produit = signe * 2; entier32 quotient = signe / 2;\n"
+            "  entier32 reste = signe % 2; naturel32 gauche = bits << 2;\n"
+            "  naturel32 droite = bits >> 1; naturel32 etBits = bits & 3;\n"
+            "  naturel32 ouBits = bits | 4; naturel32 xorBits = bits ^ 5;\n"
+            "  booléen etLogique = signe && pointeur;\n"
+            "  booléen ouLogique = etat || signe;\n"
+            "  booléen egal = signe == 0; booléen different = signe != 0;\n"
+            "  booléen inferieur = signe < 1; booléen inferieurEgal = signe <= 1;\n"
+            "  booléen superieur = signe > -1; booléen superieurEgal = signe >= -1;\n"
+            "  booléen pointeursEgaux = pointeur == pointeur;\n"
+            "  booléen rappelNul = !rappel;\n"
+            "  booléen rappelsEgaux = rappel == rappel;\n"
+            "  booléen booleensDifferents = etat != faux;\n"
+            "}\n";
+        const std::string intrinsequesAnglais =
+            "public int32 IdentiteIntrinseque(int32 valeur) { "
+            "return valeur; }\n"
+            "public void TesterIntrinseques(int32 signe, uint32 bits, "
+            "int64 large, int32* pointeur) {\n"
+            "  bool etat = true;\n"
+            "  function_pointer<int32(int32)> rappel = "
+            "&IdentiteIntrinseque;\n"
+            "  int32 plusUnaire = +signe; int32 moinsUnaire = -signe;\n"
+            "  uint32 inverse = ~bits; bool negation = !pointeur;\n"
+            "  int64 adapteGauche = 1 + large;\n"
+            "  int64 adapteDroite = large + 1;\n"
+            "  int32 somme = signe + 1; int32 difference = signe - 1;\n"
+            "  int32 produit = signe * 2; int32 quotient = signe / 2;\n"
+            "  int32 reste = signe % 2; uint32 gauche = bits << 2;\n"
+            "  uint32 droite = bits >> 1; uint32 etBits = bits & 3;\n"
+            "  uint32 ouBits = bits | 4; uint32 xorBits = bits ^ 5;\n"
+            "  bool etLogique = signe && pointeur;\n"
+            "  bool ouLogique = etat || signe;\n"
+            "  bool egal = signe == 0; bool different = signe != 0;\n"
+            "  bool inferieur = signe < 1; bool inferieurEgal = signe <= 1;\n"
+            "  bool superieur = signe > -1; bool superieurEgal = signe >= -1;\n"
+            "  bool pointeursEgaux = pointeur == pointeur;\n"
+            "  bool rappelNul = !rappel;\n"
+            "  bool rappelsEgaux = rappel == rappel;\n"
+            "  bool booleensDifferents = etat != false;\n"
+            "}\n";
+        const auto resultatIntrinsequesFrancais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            intrinsequesFrancais,
+            "intrinseques-francais");
+        const auto resultatIntrinsequesAnglais = AnalyserSemantiqueValide(
+            syntaxe,
+            semantique,
+            intrinsequesAnglais,
+            "intrinseques-anglais");
+        Exiger(
+            resultatIntrinsequesFrancais.Symboles.size()
+                    == resultatIntrinsequesAnglais.Symboles.size()
+                && resultatIntrinsequesFrancais.Resolutions.size()
+                    == resultatIntrinsequesAnglais.Resolutions.size(),
+            "les opérateurs intrinsèques bilingues divergent");
+
         const std::string initialisationConstructeursFrancais =
             "classe BaseInitialisee {\n"
             "  protégée: constructeur(entier32 valeur) {}\n"
@@ -4825,6 +4896,115 @@ namespace
             "return 0; } public void F() {}",
             59,
             "arite-operateur-libre-invalide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeurs[2]; !valeurs; }",
+            60,
+            "negation-tableau-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeurs[2]; !valeurs; }",
+            60,
+            "negation-tableau-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier32* pointeur) { ~pointeur; }",
+            61,
+            "unaire-pointeur-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(int32* pointeur) { ~pointeur; }",
+            61,
+            "unaire-pointeur-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeurs[2]; valeurs && vrai; }",
+            62,
+            "logique-tableau-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeurs[2]; valeurs && true; }",
+            62,
+            "logique-tableau-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier32 gauche, entier64 droite) { "
+            "gauche + droite; }",
+            63,
+            "types-operandes-differents-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(int32 gauche, int64 droite) { gauche + droite; }",
+            63,
+            "types-operandes-differents-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier32* pointeur) { pointeur << 1; }",
+            64,
+            "decalage-pointeur-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(int32* pointeur) { pointeur << 1; }",
+            64,
+            "decalage-pointeur-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier32* pointeur) { pointeur + pointeur; }",
+            65,
+            "calcul-pointeur-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(int32* pointeur) { pointeur + pointeur; }",
+            65,
+            "calcul-pointeur-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeurs[2]; valeurs == valeurs; }",
+            66,
+            "comparaison-tableau-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeurs[2]; valeurs == valeurs; }",
+            66,
+            "comparaison-tableau-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F(entier32* pointeur) { pointeur < pointeur; }",
+            67,
+            "comparaison-pointeur-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F(int32* pointeur) { pointeur < pointeur; }",
+            67,
+            "comparaison-pointeur-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { vrai < faux; }",
+            68,
+            "comparaison-booleenne-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { true < false; }",
+            68,
+            "comparaison-booleenne-anglais");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A { privée: "

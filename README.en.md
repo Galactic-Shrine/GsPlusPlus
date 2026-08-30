@@ -173,6 +173,10 @@ Build output stays outside the repository under
 `../Construction/GsPlusPlus-Development/...`. Tools are written to its `Bin`
 subdirectory, while Gs++ libraries are written to `Artefacts/GsPlusPlus`.
 
+The root [`VERSION`](VERSION) file is the single technical source of truth for
+the product version. CMake propagates it to the tools, default GsE metadata,
+tests, benchmarks, and package names.
+
 After a Windows build:
 
 ```powershell

@@ -10,6 +10,12 @@ bibliotheque_systeme="${6:?bibliothèque système manquante}"
 bibliotheque_hebergee="${7:?bibliothèque hébergée manquante}"
 frontend="${8:?frontend auto-hébergé manquant}"
 test_hebergee="${9:?test hébergé manquant}"
+version_gspp="$(tr -d '\r\n' < "$racine_source/VERSION")"
+if [[ ! "$version_gspp" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]
+then
+    echo "Version Gs++ invalide dans $racine_source/VERSION : $version_gspp" >&2
+    exit 1
+fi
 
 repertoire_test="$racine_construction/Tests/Integration"
 repertoire_systeme="$racine_construction/Tests/Systeme"
@@ -82,7 +88,7 @@ grep -aq "Shrine::Exemples::Journaliser" "$sortie_gse"
 
 "$compilateur" Tests/Integration/TypesSysteme.GsPP --format gse \
     --point-entree Principal --nom "Types système Gs++ 0.17" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_types"
+    --version-application "$version_gspp" -o "$sortie_types"
 "$verificateur" "$sortie_types" | grep -q "GsE valide"
 grep -aq "AjouterNaturel64" "$sortie_types"
 "$chargeur" "$sortie_types" --executer | grep -q "Code de retour : 120"
@@ -90,7 +96,7 @@ grep -aq "AjouterNaturel64" "$sortie_types"
 "$compilateur" Tests/Integration/PointeursFonction.GsPP --format gse \
     --point-entree Essai::Fonctions::Principal \
     --nom "Pointeurs de fonction Gs++ 0.17" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_pointeurs_fonction"
+    --version-application "$version_gspp" -o "$sortie_pointeurs_fonction"
 "$verificateur" "$sortie_pointeurs_fonction" | grep -q "GsE valide"
 grep -aq "Essai::Fonctions::OperationGlobale" "$sortie_pointeurs_fonction"
 "$chargeur" "$sortie_pointeurs_fonction" --executer \
@@ -99,7 +105,7 @@ grep -aq "Essai::Fonctions::OperationGlobale" "$sortie_pointeurs_fonction"
 "$compilateur" Tests/Integration/ValeursStructures.GsPP --format gse \
     --point-entree Essai::Valeurs::Principal \
     --nom "Valeurs structurées Gs++ 0.17" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_valeurs_structures"
+    --version-application "$version_gspp" -o "$sortie_valeurs_structures"
 "$verificateur" "$sortie_valeurs_structures" | grep -q "GsE valide"
 grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 "$chargeur" "$sortie_valeurs_structures" --executer \
@@ -107,14 +113,14 @@ grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 
 "$compilateur" Tests/Integration/ModeleObjet.GsPP --format gse \
     --point-entree Principal --nom "Modèle objet Gs++ 0.18" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_modele_objet"
+    --version-application "$version_gspp" -o "$sortie_modele_objet"
 "$verificateur" "$sortie_modele_objet" | grep -q "GsE valide"
 "$chargeur" "$sortie_modele_objet" --executer \
     | grep -q "Code de retour : 25"
 
 "$compilateur" Tests/Integration/Heritage.GsPP --format gse \
     --point-entree Principal --nom "Héritage Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_heritage"
+    --version-application "$version_gspp" -o "$sortie_heritage"
 "$verificateur" "$sortie_heritage" | grep -q "GsE valide"
 "$chargeur" "$sortie_heritage" --executer \
     | grep -q "Code de retour : 88"
@@ -122,7 +128,7 @@ grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 "$compilateur" \
     Tests/Integration/InitialisationParent.GsPP --format gse \
     --point-entree Principal --nom "Initialisation parent Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_initialisation_parent"
+    --version-application "$version_gspp" -o "$sortie_initialisation_parent"
 "$verificateur" "$sortie_initialisation_parent" | grep -q "GsE valide"
 "$chargeur" "$sortie_initialisation_parent" --executer \
     | grep -q "Code de retour : 82"
@@ -130,7 +136,7 @@ grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 "$compilateur" \
     Tests/Integration/InitialiseursChamps.GsPP --format gse \
     --point-entree Principal --nom "Initialiseurs de champs Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_initialiseurs_champs"
+    --version-application "$version_gspp" -o "$sortie_initialiseurs_champs"
 "$verificateur" "$sortie_initialiseurs_champs" | grep -q "GsE valide"
 "$chargeur" "$sortie_initialiseurs_champs" --executer \
     | grep -q "Code de retour : 75"
@@ -138,7 +144,7 @@ grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 "$compilateur" \
     Tests/Integration/ChampsObjetsClasses.GsPP --format gse \
     --point-entree Principal --nom "Champs objets classes Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_champs_objets_classes"
+    --version-application "$version_gspp" -o "$sortie_champs_objets_classes"
 "$verificateur" "$sortie_champs_objets_classes" | grep -q "GsE valide"
 "$chargeur" "$sortie_champs_objets_classes" --executer \
     | grep -q "Code de retour : 91"
@@ -146,7 +152,7 @@ grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 "$compilateur" \
     Tests/Integration/TableauxObjetsClasses.GsPP --format gse \
     --point-entree Principal --nom "Tableaux objets classes Gs++ 0.23" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_tableaux_objets_classes"
+    --version-application "$version_gspp" -o "$sortie_tableaux_objets_classes"
 "$verificateur" "$sortie_tableaux_objets_classes" | grep -q "GsE valide"
 "$chargeur" "$sortie_tableaux_objets_classes" --executer \
     | grep -q "Code de retour : 10"
@@ -154,7 +160,7 @@ grep -aq "Essai::Valeurs::ModifierGrand" "$sortie_valeurs_structures"
 "$compilateur" \
     Tests/Integration/InitialisationDureeVie.GsPP --format gse \
     --point-entree Principal --nom "Initialisation et durée de vie Gs++ 0.25" \
-    --version-application 0.27.0-alpha.1 -o "$sortie_initialisation_duree_vie"
+    --version-application "$version_gspp" -o "$sortie_initialisation_duree_vie"
 "$verificateur" "$sortie_initialisation_duree_vie" | grep -q "GsE valide"
 "$chargeur" "$sortie_initialisation_duree_vie" --executer \
     | grep -q "Code de retour : 25"
@@ -167,7 +173,7 @@ test "$(od -An -tu2 -j20 -N2 "$bibliotheque_systeme" | tr -d ' \n')" = "1"
     -o "$repertoire_systeme/TestSysteme.GsObj"
 "$compilateur" "$repertoire_systeme/TestSysteme.GsObj" \
     "$bibliotheque_systeme" --format gse --point-entree Principal \
-    --nom "Bibliothèque système Gs++ 0.23" --version-application 0.27.0-alpha.1 \
+    --nom "Bibliothèque système Gs++ 0.23" --version-application "$version_gspp" \
     -o "$sortie_bibliotheque_systeme"
 "$verificateur" "$sortie_bibliotheque_systeme" | grep -q "GsE valide"
 "$chargeur" "$sortie_bibliotheque_systeme" --executer \
@@ -267,7 +273,7 @@ test "$(od -An -tu2 -j20 -N2 "$repertoire_separation/Calculs.GsA" | tr -d ' \n')
     "$repertoire_separation/Calculs.GsA" --format gse \
     --point-entree Essai::Separation::Principal \
     --carte "$repertoire_separation/Application.map" \
-    --nom "Compilation séparée Gs++" --version-application 0.27.0-alpha.1 \
+    --nom "Compilation séparée Gs++" --version-application "$version_gspp" \
     -o "$repertoire_separation/Application.GsE"
 "$verificateur" "$repertoire_separation/Application.GsE" | grep -q "GsE valide"
 "$chargeur" "$repertoire_separation/Application.GsE" --executer \
@@ -292,7 +298,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/ValeursPrincipal.GsObj" --format gse \
     --point-entree Essai::ValeursSeparation::PrincipalValeurs \
     --nom "Valeurs structurées séparées Gs++" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/ValeursApplication.GsE"
 "$verificateur" "$repertoire_separation/ValeursApplication.GsE" \
     | grep -q "GsE valide"
@@ -311,7 +317,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/ModeleObjetPrincipal.GsObj" \
     --format gse --point-entree PrincipalObjetSepare \
     --nom "Modèle objet séparé Gs++ 0.18" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/ModeleObjetSepare.GsE"
 "$verificateur" "$repertoire_separation/ModeleObjetSepare.GsE" \
     | grep -q "GsE valide"
@@ -330,7 +336,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/HeritagePrincipal.GsObj" \
     --format gse --point-entree PrincipalHeritageSepare \
     --nom "Héritage séparé Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/HeritageSepare.GsE"
 "$verificateur" "$repertoire_separation/HeritageSepare.GsE" \
     | grep -q "GsE valide"
@@ -351,7 +357,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/InitialisationParentPrincipal.GsObj" \
     --format gse --point-entree PrincipalParentSepare \
     --nom "Initialisation parent séparée Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/InitialisationParentSepare.GsE"
 "$verificateur" "$repertoire_separation/InitialisationParentSepare.GsE" \
     | grep -q "GsE valide"
@@ -372,7 +378,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/InitialiseursChampsPrincipal.GsObj" \
     --format gse --point-entree PrincipalChampsSepares \
     --nom "Initialiseurs de champs séparés Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/InitialiseursChampsSepares.GsE"
 "$verificateur" "$repertoire_separation/InitialiseursChampsSepares.GsE" \
     | grep -q "GsE valide"
@@ -393,7 +399,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/ChampsObjetsClassesPrincipal.GsObj" \
     --format gse --point-entree PrincipalObjetsSepares \
     --nom "Champs objets classes séparés Gs++ 0.22" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/ChampsObjetsClassesSepares.GsE"
 "$verificateur" "$repertoire_separation/ChampsObjetsClassesSepares.GsE" \
     | grep -q "GsE valide"
@@ -414,7 +420,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/TableauxObjetsClassesPrincipal.GsObj" \
     --format gse --point-entree PrincipalTableauSepare \
     --nom "Tableaux objets classes séparés Gs++ 0.23" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/TableauxObjetsClassesSepares.GsE"
 "$verificateur" "$repertoire_separation/TableauxObjetsClassesSepares.GsE" \
     | grep -q "GsE valide"
@@ -435,7 +441,7 @@ grep -q "GsAbi:x64-ms-v1:F" "$repertoire_separation/Application.map"
     "$repertoire_separation/InitialisationDureeViePrincipal.GsObj" \
     --format gse --point-entree PrincipalDureeSeparee \
     --nom "Initialisation et durée de vie séparées Gs++ 0.25" \
-    --version-application 0.27.0-alpha.1 \
+    --version-application "$version_gspp" \
     -o "$repertoire_separation/InitialisationDureeVieSeparee.GsE"
 "$verificateur" "$repertoire_separation/InitialisationDureeVieSeparee.GsE" \
     | grep -q "GsE valide"
@@ -488,7 +494,7 @@ cat >"$projet_application" <<EOF
     Name="ApplicationSeparation"
     Type="executable"
     EntryPoint="Essai::Separation::Principal"
-    ApplicationVersion="0.27.0-alpha.1">
+    ApplicationVersion="$version_gspp">
     <Interface Path="$racine_source/Tests/Integration/Separation/Calculs.HeaderGsPlusPlus" />
     <Source Path="$racine_source/Tests/Integration/Separation/Principal.GsPP" />
     <Library Path="$repertoire_separation/CalculsSeparation.GsA" />

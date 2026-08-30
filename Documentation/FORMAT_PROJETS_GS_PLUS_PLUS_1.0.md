@@ -37,7 +37,7 @@ rapport au fichier `.GsPj`, `.GsProject` ou `.GsPs` qui les contient.
     Type="executable"
     ModeCompilation="separee"
     PointEntree="Exemple::Principal"
-    VersionApplication="0.27.0-alpha.1"
+    VersionApplication="1.0.0"
     Editeur="Galactic Shrine">
     <Interface Chemin="Calculs.HGsPP" />
     <Source Chemin="Principal.GsPP" />
@@ -59,7 +59,7 @@ rapport au fichier `.GsPj`, `.GsProject` ou `.GsPs` qui les contient.
     Type="executable"
     CompilationMode="separate"
     EntryPoint="Example::Main"
-    ApplicationVersion="0.27.0-alpha.1"
+    ApplicationVersion="1.0.0"
     Publisher="Galactic Shrine">
     <Interface Path="Calculations.HeaderGsPlusPlus" />
     <Source Path="Main.GsPlusPlus" />
@@ -86,6 +86,10 @@ de conserver un vocabulaire homogène dans un même fichier.
 | `PointEntree` | `EntryPoint` | non | symbole public à utiliser comme point d’entrée du GsE |
 | `VersionApplication` | `ApplicationVersion` | non | version inscrite dans les métadonnées GsE |
 | `Editeur` | `Publisher` | non | éditeur inscrit dans les métadonnées GsE |
+
+`VersionApplication` décrit l’application compilée, pas la version du format
+XML ni celle de l’ABI. Lorsqu’il est omis, le compilateur utilise la version du
+produit Gs++ lue depuis le fichier racine `VERSION`.
 
 Les variantes accentuées `séparée` et `agrégée` sont également acceptées.
 

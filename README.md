@@ -177,6 +177,10 @@ Les sorties restent séparées du dépôt dans
 sous-dossier `Bin` et les bibliothèques Gs++ dans
 `Artefacts/GsPlusPlus`.
 
+Le fichier racine [`VERSION`](VERSION) est l’unique source de vérité technique
+pour la version du produit. CMake la propage aux outils, aux métadonnées GsE par
+défaut, aux tests, au benchmark et aux noms de paquets.
+
 Après une construction Windows :
 
 ```powershell

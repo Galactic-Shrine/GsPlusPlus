@@ -2,6 +2,7 @@
 
 #include "GsPP/ContexteDemarrage.hpp"
 #include "GsPP/VerificateurGsE.hpp"
+#include "GsPP/VersionProduit.hpp"
 
 #include <array>
 #include <cstdint>
@@ -166,7 +167,7 @@ namespace
     void AfficherAide()
     {
         std::cout
-            << "Chargeur GsE 0.27.0-alpha.8\n\n"
+            << "Chargeur GsE " << GsPP::VersionProduit << "\n\n"
             << "Utilisation : gsechargeur <image.GsE> [options]\n"
             << "Alias anglais : gseload\n\n"
             << "Options :\n"
@@ -196,7 +197,7 @@ int main(int argc, char** argv)
         {
             const std::string argument = argv[index];
             if (argument == "--version")
-            { std::cout << "Chargeur GsE 0.27.0-alpha.8\n"; return 0; }
+            { std::cout << "Chargeur GsE " << GsPP::VersionProduit << '\n'; return 0; }
             if (argument == "--aide" || argument == "--help" || argument == "-h")
             { AfficherAide(); return 0; }
             if (argument == "--executer" || argument == "--execute")

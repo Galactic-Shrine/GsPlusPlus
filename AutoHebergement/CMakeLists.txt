@@ -113,7 +113,7 @@ add_custom_command(
         --point-entree
             GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsSource
         --nom "Frontend auto-hébergé Gs++"
-        --version-application 0.27.0-alpha.8
+        --version-application "${GS_VERSION_PRODUIT}"
         -o "${GS_FRONTEND_GSE}"
     DEPENDS
         gsppc

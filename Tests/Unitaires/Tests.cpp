@@ -1,5 +1,6 @@
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/AnalyseurSemantique.hpp"
+#include "GsPP/Abi.hpp"
 #include "GsPP/BibliothequeGsA.hpp"
 #include "GsPP/ChargeurGsE.hpp"
 #include "GsPP/Compilation.hpp"
@@ -14,6 +15,7 @@
 #include "GsPP/Lexeur.hpp"
 #include "GsPP/ObjetGsO.hpp"
 #include "GsPP/VerificateurGsE.hpp"
+#include "GsPP/VersionProduit.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1264,6 +1266,17 @@ namespace
 
     void TesterGlobalesImportsEtExports()
     {
+        const GsPP::MetadonneesGsE metadonneesParDefaut;
+        Exiger(
+            metadonneesParDefaut.Version == GsPP::VersionProduit,
+            "la version GsE par défaut ne suit pas VERSION");
+        Exiger(
+            metadonneesParDefaut.Cible == GsPP::IdentifiantCibleX64,
+            "la cible GsE par défaut est obsolète");
+        Exiger(
+            metadonneesParDefaut.Abi == GsPP::IdentifiantAbiX64Ms,
+            "l’identifiant ABI GsE par défaut n’est pas canonique");
+
         auto programme = Analyser(R"(
             espace Shrine::Test
             {
@@ -3253,7 +3266,8 @@ int main()
         TesterObjetNatifGsO();
         TesterOperateursLibres027();
         TesterBibliothequeEtEditionLiens();
-        std::cout << "Tous les tests Gs++ 0.27.0-alpha.8 ont réussi.\n";
+        std::cout << "Tous les tests Gs++ " << GsPP::VersionProduit
+                  << " ont réussi.\n";
         return 0;
     }
     catch (const GsPP::ErreurCompilation& erreur)

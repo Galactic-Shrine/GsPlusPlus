@@ -1,9 +1,32 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(GS_FICHIER_VERSION_PRODUIT "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+if(NOT EXISTS "${GS_FICHIER_VERSION_PRODUIT}")
+    message(FATAL_ERROR "Le fichier de version Gs++ est absent : ${GS_FICHIER_VERSION_PRODUIT}")
+endif()
+file(STRINGS "${GS_FICHIER_VERSION_PRODUIT}" GS_VERSION_PRODUIT LIMIT_COUNT 1)
+string(STRIP "${GS_VERSION_PRODUIT}" GS_VERSION_PRODUIT)
+string(
+    REGEX MATCH
+    "^([0-9]+)\\.([0-9]+)\\.([0-9]+)([-+][0-9A-Za-z.-]+)?$"
+    GS_VERSION_PRODUIT_VALIDE
+    "${GS_VERSION_PRODUIT}"
+)
+if(NOT GS_VERSION_PRODUIT_VALIDE)
+    message(FATAL_ERROR
+        "VERSION doit contenir une version sémantique Gs++ valide, obtenue : '${GS_VERSION_PRODUIT}'")
+endif()
+set(GS_VERSION_PRODUIT_CMAKE
+    "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
+set_property(
+    DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${GS_FICHIER_VERSION_PRODUIT}"
+)
+
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(
         GsPlusPlus
-        VERSION 0.27.0
+        VERSION "${GS_VERSION_PRODUIT_CMAKE}"
         LANGUAGES CXX
     )
 
@@ -33,6 +56,13 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 set(GS_RACINE_GSPP "${CMAKE_CURRENT_SOURCE_DIR}")
+set(GS_REPERTOIRE_ENTETES_GENERES
+    "${CMAKE_CURRENT_BINARY_DIR}/Generated")
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/CMake/VersionProduit.hpp.in"
+    "${GS_REPERTOIRE_ENTETES_GENERES}/GsPP/VersionProduit.hpp"
+    @ONLY
+)
 include(GNUInstallDirs)
 
 # Ces valeurs de repli permettent aussi l'intégration comme sous-projet d'un
@@ -92,6 +122,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     )
     install(
+        FILES
+            "${GS_REPERTOIRE_ENTETES_GENERES}/GsPP/VersionProduit.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/GsPP"
+    )
+    install(
         FILES "${GS_SYSTEME_GSA}" "${GS_HEBERGEE_GSA}"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/GsPlusPlus"
     )
@@ -148,12 +183,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
     set(CPACK_PACKAGE_NAME "GsPlusPlus")
     set(CPACK_PACKAGE_VENDOR "Galactic-Shrine")
-    set(CPACK_PACKAGE_VERSION "0.27.0-alpha.8")
+    set(CPACK_PACKAGE_VERSION "${GS_VERSION_PRODUIT}")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
         "Compilateur, SDK et bibliothèques autonomes Gs++")
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
     set(CPACK_PACKAGE_FILE_NAME
-        "GsPlusPlus-0.27.0-alpha.8-${CMAKE_SYSTEM_NAME}-x86_64")
+        "GsPlusPlus-${GS_VERSION_PRODUIT}-${CMAKE_SYSTEM_NAME}-x86_64")
     set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY ON)
     if(WIN32)
         set(CPACK_GENERATOR "ZIP")

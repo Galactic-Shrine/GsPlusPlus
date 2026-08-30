@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Banc de mesure reproductible pour Gs++ 0.27.0-alpha.8.
+"""Banc de mesure reproductible pour la version Gs++ déclarée dans VERSION.
 
 Le pilote n'invente ni syntaxe ni option du compilateur : tous les corpus et
 les lignes de commande proviennent des tests d'intégration du dépôt.
@@ -16,6 +16,7 @@ import math
 import os
 import platform
 import random
+import re
 import shutil
 import statistics
 import subprocess
@@ -31,9 +32,6 @@ from xml.sax.saxutils import quoteattr
 
 
 SCHEMA_VERSION = 1
-EXPECTED_COMPILER_VERSION = "0.27.0-alpha.8"
-EXPECTED_COMPILER_BANNER = "Gs++ Compiler 0.27.0-alpha.8"
-EXPECTED_LOADER_BANNER = "Chargeur GsE 0.27.0-alpha.8"
 BENCHMARK_VERSION = "1.0.0"
 DEFAULT_BOOTSTRAP_SAMPLES = 2_000
 
@@ -44,6 +42,20 @@ MAGIC_GSE = b"GSE:0\x00\x00\x00"
 
 class BenchmarkError(RuntimeError):
     """Erreur explicite du banc de mesure."""
+
+
+def read_product_version(source_root: Path) -> str:
+    version_file = source_root / "VERSION"
+    if not version_file.is_file():
+        raise BenchmarkError(f"Fichier de version Gs++ absent : {version_file}")
+    version = version_file.read_text(encoding="utf-8").strip()
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", version) is None:
+        raise BenchmarkError(f"Version Gs++ invalide : {version!r}")
+    return version
+
+
+DEFAULT_SOURCE_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_PRODUCT_VERSION = read_product_version(DEFAULT_SOURCE_ROOT)
 
 
 @dataclass(frozen=True)
@@ -79,6 +91,7 @@ class ProcessMeasurement:
 @dataclass
 class RunContext:
     source_root: Path
+    product_version: str
     compiler: Path
     loader: Path
     session_dir: Path
@@ -125,15 +138,26 @@ SCENARIO_CATALOG = {
 
 def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Banc de mesure Gs++ 0.27.0-alpha.8 fondé sur les corpus validés.",
+        description=(
+            f"Banc de mesure Gs++ {DEFAULT_PRODUCT_VERSION} "
+            "fondé sur les corpus validés."
+        ),
     )
     parser.add_argument(
         "--source-root",
         type=Path,
         help="Racine du dépôt Gs++. Par défaut, elle est déduite de ce script.",
     )
-    parser.add_argument("--compiler", type=Path, help="Chemin de gsppc 0.27.0-alpha.8.")
-    parser.add_argument("--loader", type=Path, help="Chemin de gsechargeur 0.27.0-alpha.8.")
+    parser.add_argument(
+        "--compiler",
+        type=Path,
+        help=f"Chemin de gsppc {DEFAULT_PRODUCT_VERSION}.",
+    )
+    parser.add_argument(
+        "--loader",
+        type=Path,
+        help=f"Chemin de gsechargeur {DEFAULT_PRODUCT_VERSION}.",
+    )
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -177,7 +201,10 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--allow-version-mismatch",
         action="store_true",
-        help="Autoriser un compilateur ne déclarant pas 0.27.0-alpha.8 (signalé dans les métadonnées).",
+        help=(
+            "Autoriser un compilateur ne déclarant pas "
+            f"{DEFAULT_PRODUCT_VERSION} (signalé dans les métadonnées)."
+        ),
     )
     parser.add_argument(
         "--list-scenarios",
@@ -278,6 +305,7 @@ def prepare_scenario(
     scenario_id: str,
     work_dir: Path,
     source_root: Path,
+    product_version: str,
     compiler: Path,
     loader: Path,
 ) -> PreparedScenario:
@@ -320,7 +348,7 @@ def prepare_scenario(
             "--nom",
             "Benchmark monolithique Gs++",
             "--version-application",
-            EXPECTED_COMPILER_VERSION,
+            product_version,
             "-o",
             output,
         )
@@ -390,7 +418,7 @@ def prepare_scenario(
             "--nom",
             "Benchmark séparation Gs++",
             "--version-application",
-            EXPECTED_COMPILER_VERSION,
+            product_version,
             "-o",
             output,
         )
@@ -718,7 +746,12 @@ def run_sample(
         / f"{run_kind}-{iteration:03d}"
     )
     prepared = prepare_scenario(
-        scenario_id, work_dir, context.source_root, context.compiler, context.loader
+        scenario_id,
+        work_dir,
+        context.source_root,
+        context.product_version,
+        context.compiler,
+        context.loader,
     )
     metrics = input_metrics(prepared.inputs)
 
@@ -974,19 +1007,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     source_root = resolve_source_root(arguments.source_root)
+    product_version = read_product_version(source_root)
+    expected_compiler_banner = f"Gs++ Compiler {product_version}"
+    expected_loader_banner = f"Chargeur GsE {product_version}"
     compiler = resolve_tool(arguments.compiler, source_root, "gsppc")
     loader = resolve_tool(arguments.loader, source_root, "gsechargeur")
     affinity = parse_affinity(arguments.cpu)
     compiler_version = tool_version(compiler)
     loader_version = tool_version(loader)
-    compiler_version_matches = compiler_version == EXPECTED_COMPILER_BANNER
-    loader_version_matches = loader_version == EXPECTED_LOADER_BANNER
+    compiler_version_matches = compiler_version == expected_compiler_banner
+    loader_version_matches = loader_version == expected_loader_banner
     version_matches = compiler_version_matches and loader_version_matches
     if not version_matches and not arguments.allow_version_mismatch:
         raise BenchmarkError(
             "Versions d'outils refusées : "
             f"compilateur={compiler_version!r}, chargeur={loader_version!r}; "
-            f"attendu {EXPECTED_COMPILER_BANNER!r} et {EXPECTED_LOADER_BANNER!r}."
+            f"attendu {expected_compiler_banner!r} et {expected_loader_banner!r}."
         )
 
     mode_defaults = {
@@ -1045,15 +1081,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "path": str(compiler),
             "version": compiler_version,
             "sha256": sha256_file(compiler),
-            "expected_version": EXPECTED_COMPILER_VERSION,
-            "expected_banner": EXPECTED_COMPILER_BANNER,
+            "expected_version": product_version,
+            "expected_banner": expected_compiler_banner,
             "version_matches": compiler_version_matches,
         },
         "loader": {
             "path": str(loader),
             "version": loader_version,
             "sha256": sha256_file(loader),
-            "expected_banner": EXPECTED_LOADER_BANNER,
+            "expected_banner": expected_loader_banner,
             "version_matches": loader_version_matches,
         },
         "host": {
@@ -1078,6 +1114,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     context = RunContext(
         source_root=source_root,
+        product_version=product_version,
         compiler=compiler,
         loader=loader,
         session_dir=session_dir,

@@ -46,7 +46,7 @@ add_custom_command(
         --format gse
         --point-entree TesterBibliothequeHebergee
         --nom "Test bibliothèque hébergée"
-        --version-application 0.27.0-alpha.8
+        --version-application "${GS_VERSION_PRODUIT}"
         -o "${GS_TEST_HEBERGE_GSE}"
     DEPENDS
         gsppc

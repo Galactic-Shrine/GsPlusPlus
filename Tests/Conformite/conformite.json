@@ -1,7 +1,6 @@
 {
   "schema": "GsPlusPlus.Conformite:1",
   "cible": "Gs++ 1.0",
-  "producteur": "Gs++ 0.27.0-alpha.8",
   "format": {
     "GsObj": "1.0",
     "GsA": "1.0",
@@ -12,7 +11,7 @@
     {
       "id": "CONF-CLI-001",
       "domaine": "interface",
-      "titre": "Les outils publient la version Gs++ 0.27.0-alpha.8"
+      "titre": "Les outils publient la version déclarée dans VERSION"
     },
     {
       "id": "CONF-EXT-001",

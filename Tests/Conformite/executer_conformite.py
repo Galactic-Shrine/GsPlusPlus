@@ -18,7 +18,6 @@ from typing import Any, Callable
 from xml.sax.saxutils import quoteattr
 
 
-VERSION_GSPP = "0.27.0-alpha.8"
 SIGNATURE_ABI = b"GsAbi:x64-ms-v1"
 
 
@@ -77,6 +76,18 @@ def lire_fichier(chemin: Path) -> bytes:
     return chemin.read_bytes()
 
 
+def lire_version_produit(racine: Path) -> str:
+    chemin = racine / "VERSION"
+    exiger(chemin.is_file(), f"fichier de version absent: {chemin}")
+    version = chemin.read_text(encoding="utf-8").strip()
+    exiger(
+        re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", version)
+        is not None,
+        f"version Gs++ invalide: {version!r}",
+    )
+    return version
+
+
 def lire_u16(contenu: bytes, position: int) -> int:
     return struct.unpack_from("<H", contenu, position)[0]
 
@@ -122,6 +133,7 @@ def arguments_communs() -> argparse.Namespace:
 def main() -> int:
     options = arguments_communs()
     racine = options.source_root.resolve()
+    version_gspp = lire_version_produit(racine)
     racine_conformite = racine / "Tests" / "Conformite"
     corpus = racine_conformite / "Corpus"
     manifeste = json.loads(
@@ -213,7 +225,7 @@ def main() -> int:
                     "--nom",
                     "Conformité Gs++",
                     "--version-application",
-                    VERSION_GSPP,
+                    version_gspp,
                     "-o",
                     image,
                 ]
@@ -230,11 +242,11 @@ def main() -> int:
             executer([options.loader, "--version"]), "version du chargeur"
         )
         exiger(
-            compilateur.stdout.strip() == f"Gs++ Compiler {VERSION_GSPP}",
+            compilateur.stdout.strip() == f"Gs++ Compiler {version_gspp}",
             f"bannière compilateur inattendue: {compilateur.stdout.strip()}",
         )
         exiger(
-            chargeur.stdout.strip() == f"Chargeur GsE {VERSION_GSPP}",
+            chargeur.stdout.strip() == f"Chargeur GsE {version_gspp}",
             f"bannière chargeur inattendue: {chargeur.stdout.strip()}",
         )
         return {
@@ -394,7 +406,7 @@ def main() -> int:
                         "--nom",
                         nom,
                         "--version-application",
-                        VERSION_GSPP,
+                        version_gspp,
                         "-o",
                         image,
                     ]
@@ -430,7 +442,7 @@ def main() -> int:
                     "--nom",
                     "Conformité durée de vie Gs++",
                     "--version-application",
-                    VERSION_GSPP,
+                    version_gspp,
                     "-o",
                     image,
                 ]
@@ -556,7 +568,7 @@ def main() -> int:
                         "--nom",
                         "Déterminisme",
                         "--version-application",
-                        VERSION_GSPP,
+                        version_gspp,
                         "-o",
                         image,
                     ]
@@ -690,7 +702,7 @@ publique entier32 Principal() { retourner 0; }
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             '<GsProject Version="1.0" Name="Application" Type="executable"\n'
             '    EntryPoint="Essai::Separation::Principal"\n'
-            f"    ApplicationVersion={quoteattr(VERSION_GSPP)}>\n"
+            f"    ApplicationVersion={quoteattr(version_gspp)}>\n"
             f"    <Interface Path={quoteattr(str(sources / 'Calculs.HeaderGsPlusPlus'))} />\n"
             f"    <Source Path={quoteattr(str(sources / 'Principal.GsPP'))} />\n"
             f"    <Library Path={quoteattr(str(archive))} />\n"
@@ -776,7 +788,7 @@ publique entier32 Principal() { retourner 0; }
     rapport = {
         "schema": "GsPlusPlus.RapportConformite:1",
         "cible": manifeste["cible"],
-        "producteur": manifeste["producteur"],
+        "producteur": f"Gs++ {version_gspp}",
         "debut_utc": debut_suite,
         "fin_utc": instant_utc(),
         "etat": "réussi" if nombre_echecs == 0 else "échoué",

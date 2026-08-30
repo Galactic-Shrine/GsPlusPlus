@@ -1,4 +1,5 @@
 #include "GsPP/GenerateurX64.hpp"
+#include "GsPP/Abi.hpp"
 #include "GsPP/Intrinseques.hpp"
 
 #include <algorithm>
@@ -230,7 +231,7 @@ namespace GsPP
             const std::unordered_map<std::string, const Structure*>& structures)
         {
             std::ostringstream sortie;
-            sortie << "GsAbi:x64-ms-v1:F(";
+            sortie << IdentifiantAbiX64Ms << ":F(";
             for (std::size_t index = 0; index < fonction.Parametres.size(); ++index)
             {
                 if (index != 0) sortie << ',';
@@ -244,7 +245,8 @@ namespace GsPP
             const VariableGlobale& variable,
             const std::unordered_map<std::string, const Structure*>& structures)
         {
-            return "GsAbi:x64-ms-v1:O(" + SignatureType(variable.Type, structures) + ')';
+            return std::string(IdentifiantAbiX64Ms) + ":O("
+                + SignatureType(variable.Type, structures) + ')';
         }
     }
 
@@ -1616,7 +1618,8 @@ namespace GsPP
                 SectionMachine::Donnees,
                 true,
                 GenreSymboleMachine::Objet,
-                "GsAbi:x64-ms-v1:O(vtable<" + structure.NomComplet() + ">)",
+                std::string(IdentifiantAbiX64Ms) + ":O(vtable<"
+                    + structure.NomComplet() + ">)",
                 structure.Position
             });
         }
@@ -1747,7 +1750,7 @@ namespace GsPP
                 SectionMachine::Donnees,
                 true,
                 GenreSymboleMachine::Objet,
-                "GsAbi:x64-ms-v1:O(litteral-utf8)",
+                std::string(IdentifiantAbiX64Ms) + ":O(litteral-utf8)",
                 chaine->Position
             });
             valeursChaines.emplace(chaine->Valeur, nom);

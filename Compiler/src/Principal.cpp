@@ -7,6 +7,7 @@
 #include "GsPP/ErreurCompilation.hpp"
 #include "GsPP/GenerateurX64.hpp"
 #include "GsPP/ObjetGsO.hpp"
+#include "GsPP/VersionProduit.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -80,7 +81,8 @@ namespace
     void AfficherAide()
     {
         std::cout
-            << "Compilateur Gs++ 0.27.0-alpha.8 — frontend auto-hébergé partiel, formats natifs 1.0 ABI 1\n\n"
+            << "Compilateur Gs++ " << GsPP::VersionProduit
+            << " — frontend auto-hébergé partiel, formats natifs 1.0 ABI 1\n\n"
             << "Utilisation :\n"
             << "  gsppc <sources/interfaces...> --format gsobj -o module.GsObj\n"
             << "  gsppc <objets.GsObj...> [bibliotheques.GsA...] --format gse -o application.GsE\n"
@@ -216,7 +218,7 @@ int main(int argc, char** argv)
         {
             const std::string argument = argv[index];
             if (argument == "--version")
-            { std::cout << "Gs++ Compiler 0.27.0-alpha.8\n"; return 0; }
+            { std::cout << "Gs++ Compiler " << VersionProduit << '\n'; return 0; }
             if (argument == "--aide" || argument == "--help" || argument == "-h")
             { AfficherAide(); return 0; }
             if (argument == "--jetons") { afficherJetons = true; continue; }

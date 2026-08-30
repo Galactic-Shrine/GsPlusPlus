@@ -1,6 +1,8 @@
 #pragma once
 
+#include "GsPP/Abi.hpp"
 #include "GsPP/GenerateurX64.hpp"
+#include "GsPP/VersionProduit.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -12,10 +14,10 @@ namespace GsPP
     struct MetadonneesGsE
     {
         std::string Nom = "Application";
-        std::string Version = "0.1.0";
+        std::string Version{VersionProduit};
         std::string Editeur = "Galactic-Shrine";
-        std::string Cible = "shrine-x86_64";
-        std::string Abi = "shrine-x86_64-v2";
+        std::string Cible{IdentifiantCibleX64};
+        std::string Abi{IdentifiantAbiX64Ms};
         std::string Langage = "Gs++";
     };
 

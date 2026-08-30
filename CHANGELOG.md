@@ -12,6 +12,12 @@
 
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-30
 
+- centralisation de la version technique du produit dans le fichier racine
+  `VERSION`, désormais lu par CMake et propagé aux bannières, métadonnées GsE,
+  tests, benchmarks et paquets sans duplication dans le code ;
+- remplacement des anciennes métadonnées `shrine-x86_64-v2` par la cible
+  autonome `gspp-x86_64` et l’identifiant ABI canonique
+  `GsAbi:x64-ms-v1`, sans modifier les formats 1.0 ni l’ABI binaire 1 ;
 - alignement des liaisons de références locales, directes et indirectes sur le
   bootstrap : valeur gauche obligatoire, compatibilité exacte ou par héritage
   et interdiction de retirer `constante` / `const` ;

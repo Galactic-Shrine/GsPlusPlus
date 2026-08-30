@@ -4,7 +4,7 @@
     Name="ApplicationSeparation"
     Type="executable"
     EntryPoint="Essai::Separation::Principal"
-    ApplicationVersion="0.27.0-alpha.1">
+    ApplicationVersion="1.0.0-test">
     <Interface Path="Calculs.HeaderGsPlusPlus" />
     <Source Path="Principal.GsPP" />
     <Library Path="../../../Construction/Tests/GsPlusPlus/Separation/CalculsSeparation.GsA" />

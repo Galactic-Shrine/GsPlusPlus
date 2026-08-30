@@ -49,9 +49,6 @@ officiels et doivent conduire à la même sémantique et à la même génératio
 - les cycles, conflits et cibles absentes sont des erreurs ;
 - les symboles publics sont contrôlés entre unités par leur signature ABI.
 
-Le contrat détaillé des alias se trouve dans
-[`ALIAS_GS_PLUS_PLUS_0.11.md`](ALIAS_GS_PLUS_PLUS_0.11.md).
-
 La présentation des sources maintenues par le projet est définie dans les
 [`CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md`](CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md).
 
@@ -75,9 +72,6 @@ Les conversions implicites ne peuvent pas supprimer un qualificateur. Les
 conversions explicites utilisent `convertir<T>`/`cast<T>` et restent limitées
 aux catégories prises en charge.
 
-La référence normative détaillée est
-[`TYPES_SYSTEME_GS_PLUS_PLUS_0.12.md`](TYPES_SYSTEME_GS_PLUS_PLUS_0.12.md).
-
 ## Expressions et contrôle
 
 Sont inclus dans le périmètre candidat :
@@ -91,9 +85,6 @@ Sont inclus dans le périmètre candidat :
 - initialisations agrégées de structures et unions ;
 - copie et affectation structurées.
 
-Les valeurs structurées et leurs règles de passage sont décrites dans
-[`VALEURS_STRUCTUREES_GS_PLUS_PLUS_0.15.md`](VALEURS_STRUCTUREES_GS_PLUS_PLUS_0.15.md).
-
 ## Fonctions et callbacks
 
 - fonctions globales, méthodes et surcharges ;
@@ -104,9 +95,6 @@ Les valeurs structurées et leurs règles de passage sont décrites dans
 - imports et exports explicites ;
 - symboles publics compatibles entre unités uniquement si leur signature ABI
   est identique.
-
-Les callbacks sont définis dans
-[`POINTEURS_FONCTION_GS_PLUS_PLUS_0.14.md`](POINTEURS_FONCTION_GS_PLUS_PLUS_0.14.md).
 
 ## Modèle objet
 
@@ -130,16 +118,9 @@ Le périmètre candidat 1.0 actuellement validé comprend :
 - tableaux fixes de champs et variables locales objets classes ;
 - arguments de construction uniformes, réévalués pour chaque élément.
 
-Les contrats détaillés sont :
-
-- [`MODELE_OBJET_GS_PLUS_PLUS_0.18.md`](MODELE_OBJET_GS_PLUS_PLUS_0.18.md) ;
-- [`HERITAGE_GS_PLUS_PLUS_0.19.md`](HERITAGE_GS_PLUS_PLUS_0.19.md) ;
-- [`INITIALISATION_PARENT_GS_PLUS_PLUS_0.20.md`](INITIALISATION_PARENT_GS_PLUS_PLUS_0.20.md) ;
-- [`INITIALISEURS_CHAMPS_GS_PLUS_PLUS_0.21.md`](INITIALISEURS_CHAMPS_GS_PLUS_PLUS_0.21.md) ;
-- [`CHAMPS_OBJETS_CLASSES_GS_PLUS_PLUS_0.22.md`](CHAMPS_OBJETS_CLASSES_GS_PLUS_PLUS_0.22.md) ;
-- [`TABLEAUX_OBJETS_CLASSES_GS_PLUS_PLUS_0.23.md`](TABLEAUX_OBJETS_CLASSES_GS_PLUS_PLUS_0.23.md) ;
-- [`INITIALISATION_DUREE_VIE_GS_PLUS_PLUS_0.25.md`](INITIALISATION_DUREE_VIE_GS_PLUS_PLUS_0.25.md) ;
-- [`BIBLIOTHEQUE_HEBERGEE_GS_PLUS_PLUS_0.26.md`](BIBLIOTHEQUE_HEBERGEE_GS_PLUS_PLUS_0.26.md).
+La convergence exécutable de ce modèle objet et de sa durée de vie est suivie
+dans le document du
+[`frontend auto-hébergé 0.27`](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md).
 
 ## Durée de vie
 
@@ -167,8 +148,9 @@ compatibles. GsObj contient les signatures nécessaires au contrôle de type et
 de disposition. GsA regroupe des GsObj valides. L’éditeur de liens refuse les
 symboles dupliqués, les cibles absentes et les signatures incompatibles.
 
-Le contrat est détaillé dans
-[`COMPILATION_SEPAREE_GS_PLUS_PLUS_0.13.md`](COMPILATION_SEPAREE_GS_PLUS_PLUS_0.13.md).
+Les conteneurs et métadonnées de cette compilation sont définis par les
+formats [GsObj 1.0](FORMAT_GSOBJ_1.0.md) et
+[XML de projet 1.0](FORMAT_PROJETS_GS_PLUS_PLUS_1.0.md).
 
 ## Profils d’exécution
 

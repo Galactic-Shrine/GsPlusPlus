@@ -2768,6 +2768,11 @@ namespace
             "retourner valeur; }\n"
             "  publique entier64 LireReference(entier64& valeur) { "
             "retourner valeur; }\n"
+            "  publique entier32 LireConstante(constante entier32& valeur) { "
+            "retourner valeur; }\n"
+            "  publique entier8 ConserverEtroit(entier8 valeur) { "
+            "retourner valeur; }\n"
+            "  publique vide ConsommerConstante(constante entier32& valeur) {}\n"
             "  publique entier32 Mesurer(Point valeur) { "
             "retourner valeur.X; }\n"
             "  publique entier32 Mesurer(Point& valeur) { "
@@ -2792,6 +2797,15 @@ namespace
             "    entier64 etendue = Choisir(convertir<entier64>(somme));\n"
             "    retourner Choisir(somme);\n"
             "  }\n"
+            "  publique vide TesterConversions() {\n"
+            "    constante entier32 fixe = 4;\n"
+            "    constante entier32& referenceFixe = fixe;\n"
+            "    entier8 etroite = ConserverEtroit(-1);\n"
+            "    LireConstante(referenceFixe);\n"
+            "    pointeur_fonction<vide(constante entier32&)> rappel = "
+            "&ConsommerConstante;\n"
+            "    rappel(fixe);\n"
+            "  }\n"
             "}\n"
             "publique entier32 LireGlobale() { "
             "retourner Semantique::Globale; }\n";
@@ -2813,6 +2827,10 @@ namespace
             "  public int64 Choisir(int64 valeur) { return valeur; }\n"
             "  public int32 LireReference(int32& valeur) { return valeur; }\n"
             "  public int64 LireReference(int64& valeur) { return valeur; }\n"
+            "  public int32 LireConstante(const int32& valeur) { "
+            "return valeur; }\n"
+            "  public int8 ConserverEtroit(int8 valeur) { return valeur; }\n"
+            "  public void ConsommerConstante(const int32& valeur) {}\n"
             "  public int32 Mesurer(Point valeur) { return valeur.X; }\n"
             "  public int32 Mesurer(Point& valeur) { return valeur.X; }\n"
             "  public int32 LireBaseReference(Base& valeur) { "
@@ -2833,6 +2851,15 @@ namespace
             "    { int32 copie = somme; somme = copie; }\n"
             "    int64 etendue = Choisir(cast<int64>(somme));\n"
             "    return Choisir(somme);\n"
+            "  }\n"
+            "  public void TesterConversions() {\n"
+            "    const int32 fixe = 4;\n"
+            "    const int32& referenceFixe = fixe;\n"
+            "    int8 etroite = ConserverEtroit(-1);\n"
+            "    LireConstante(referenceFixe);\n"
+            "    function_pointer<void(const int32&)> rappel = "
+            "&ConsommerConstante;\n"
+            "    rappel(fixe);\n"
             "  }\n"
             "}\n"
             "public int32 LireGlobale() { return Semantique::Globale; }\n";
@@ -5005,6 +5032,124 @@ namespace
             "public void F() { true < false; }",
             68,
             "comparaison-booleenne-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32& reference = 1; }",
+            69,
+            "liaison-reference-temporaire-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32& reference = 1; }",
+            69,
+            "liaison-reference-temporaire-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { constante entier32 valeur = 1; "
+            "entier32& reference = valeur; }",
+            69,
+            "liaison-reference-constante-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { const int32 valeur = 1; "
+            "int32& reference = valeur; }",
+            69,
+            "liaison-reference-constante-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { 1 = 2; }",
+            70,
+            "cible-affectation-non-modifiable-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { 1 = 2; }",
+            70,
+            "cible-affectation-non-modifiable-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { constante entier32 valeur = 1; valeur = 2; }",
+            71,
+            "affectation-valeur-constante-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { const int32 valeur = 1; valeur = 2; }",
+            71,
+            "affectation-valeur-constante-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 valeurs[2]; valeurs = valeurs; }",
+            72,
+            "affectation-tableau-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 valeurs[2]; valeurs = valeurs; }",
+            72,
+            "affectation-tableau-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { entier32 cible = 0; entier64 source = 1; "
+            "cible = source; }",
+            73,
+            "type-affectation-incompatible-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { int32 cible = 0; int64 source = 1; "
+            "cible = source; }",
+            73,
+            "type-affectation-incompatible-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier32 F() { retourner; }",
+            74,
+            "valeur-retour-attendue-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public int32 F() { return; }",
+            74,
+            "valeur-retour-attendue-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide F() { retourner 1; }",
+            75,
+            "type-retour-incompatible-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void F() { return 1; }",
+            75,
+            "type-retour-incompatible-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide Recevoir(entier32& valeur) {} "
+            "publique vide F() { constante entier32 valeur = 1; "
+            "pointeur_fonction<vide(entier32&)> rappel = &Recevoir; "
+            "rappel(valeur); }",
+            55,
+            "appel-indirect-reference-constante-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void Recevoir(int32& valeur) {} "
+            "public void F() { const int32 valeur = 1; "
+            "function_pointer<void(int32&)> rappel = &Recevoir; "
+            "rappel(valeur); }",
+            55,
+            "appel-indirect-reference-constante-anglais");
         ComparerErreurSemantique(
             syntaxe, semantique,
             "classe A { privée: "

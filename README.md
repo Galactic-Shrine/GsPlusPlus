@@ -219,6 +219,8 @@ GsPlusPlus/
 
 ## Documentation
 
+- [Index de la documentation courante](Documentation/README.md)
+- [Notes de la dernière publication](RELEASE_NOTES.md)
 - [Spécification candidate du langage 1.0](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md)
 - [Conventions de code Gs++ 1.0](Documentation/CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md)
 - [Format XML des projets et solutions 1.0](Documentation/FORMAT_PROJETS_GS_PLUS_PLUS_1.0.md)
@@ -245,7 +247,9 @@ principale.
 - sélection différentielle des opérateurs libres, y compris les surcharges,
   références qualifiées, ambiguïtés, arités et opérateurs unaires ;
 - validation différentielle des vingt-quatre opérateurs intrinsèques, avec
-  adaptation des littéraux et **137** corpus négatifs positionnés.
+  adaptation des littéraux ;
+- liaisons de références qualifiées, conversions d’héritage, affectations et
+  retours alignés sur le bootstrap, avec **155** corpus négatifs positionnés.
 
 ## Licence
 

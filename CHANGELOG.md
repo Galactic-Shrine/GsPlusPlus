@@ -12,6 +12,23 @@
 
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-30
 
+- alignement des liaisons de références locales, directes et indirectes sur le
+  bootstrap : valeur gauche obligatoire, compatibilité exacte ou par héritage
+  et interdiction de retirer `constante` / `const` ;
+- validation auto-hébergée des initialiseurs scalaires, des cibles
+  d’affectation, des valeurs constantes, des copies de tableaux, des types
+  affectés et des valeurs de retour ;
+- extension de l’adaptation des arguments littéraux aux formes unaires signées
+  et ajout des diagnostics sémantiques 69 à 75 sans modifier l’ABI ni les codes
+  antérieurs ;
+- ajout de dix-huit refus différentiels bilingues portant le total à cent
+  cinquante-cinq, avec validation locale 4/4 sous Visual Studio 2026 et 5/5
+  sous GNU/Linux de l’image `Frontend.GsE` identique de 285 537 octets et 73
+  exports ; son SHA-256 est
+  `675c0579adc26431fc25ce846a390c2d68351fadc4c218d0148906333a8a5d59` ;
+- nettoyage de la documentation publiée : conservation des contrats Markdown
+  courants, de la dernière matrice de publication et d’une note de publication
+  canonique, les anciens rapports restant disponibles dans l’historique Git ;
 - validation auto-hébergée des six opérateurs unaires et des dix-huit
   opérateurs binaires intrinsèques, après résolution prioritaire des surcharges
   membres ou libres ;

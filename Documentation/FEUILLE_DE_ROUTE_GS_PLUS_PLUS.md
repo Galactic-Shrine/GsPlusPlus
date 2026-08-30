@@ -87,8 +87,7 @@ composants n’est pas stabilisé.
 
 La 0.18.0 livre ce périmètre freestanding avec les limites volontaires
 documentées : pas encore d’héritage, de retours/champs références, de
-constructeurs globaux ni de déroulement d’exceptions. Le contrat détaillé est
-dans [`MODELE_OBJET_GS_PLUS_PLUS_0.18.md`](MODELE_OBJET_GS_PLUS_PLUS_0.18.md).
+constructeurs globaux ni de déroulement d’exceptions.
 
 ### Gs++ 0.19 — héritage simple et remplacement — terminé
 
@@ -106,8 +105,7 @@ dans [`MODELE_OBJET_GS_PLUS_PLUS_0.18.md`](MODELE_OBJET_GS_PLUS_PLUS_0.18.md).
 La 0.19.0 limite volontairement ce jalon à une seule base publique et à son
 constructeur accessible sans argument explicite. L’héritage multiple, virtuel,
 protégé/privé, les listes d’initialisation de bases et les conversions vers une
-classe dérivée restent prévus. Le contrat détaillé se trouve dans
-[`HERITAGE_GS_PLUS_PLUS_0.19.md`](HERITAGE_GS_PLUS_PLUS_0.19.md).
+classe dérivée restent prévus.
 
 ### Gs++ 0.20 — initialisation et appels parent — terminé
 
@@ -127,8 +125,7 @@ classe dérivée restent prévus. Le contrat détaillé se trouve dans
 La 0.20.0 reste limitée à une seule base publique et à une seule entrée
 d’initialisation de base. Les initialisateurs de champs, l’héritage
 multiple/virtuel, les conversions descendantes, la RTTI et les virtuels purs
-restent prévus. Le contrat détaillé se trouve dans
-[`INITIALISATION_PARENT_GS_PLUS_PLUS_0.20.md`](INITIALISATION_PARENT_GS_PLUS_PLUS_0.20.md).
+restent prévus.
 
 ### Gs++ 0.21 — initialisateurs de champs — terminé
 
@@ -147,8 +144,7 @@ La 0.21.0 ne construit pas encore les champs objets de type classe, car leur
 destruction récursive sur toutes les sorties doit être définie conjointement.
 Les valeurs par défaut au point de déclaration, la délégation entre
 constructeurs et l’héritage multiple/virtuel restent prévus. Le contrat
-détaillé se trouve dans
-[`INITIALISEURS_CHAMPS_GS_PLUS_PLUS_0.21.md`](INITIALISEURS_CHAMPS_GS_PLUS_PLUS_0.21.md).
+détaillé de ces fonctions est désormais consolidé dans la spécification 1.0.
 
 ### Gs++ 0.22 — champs objets classes — terminé
 
@@ -163,8 +159,7 @@ détaillé se trouve dans
 
 La 0.22.0 laisse volontairement hors périmètre les tableaux de classes, les
 constructeurs délégués, les valeurs par défaut au point de déclaration et les
-exceptions. Le contrat détaillé se trouve dans
-[`CHAMPS_OBJETS_CLASSES_GS_PLUS_PLUS_0.22.md`](CHAMPS_OBJETS_CLASSES_GS_PLUS_PLUS_0.22.md).
+exceptions.
 
 ### Gs++ 0.23 — tableaux d’objets classes — terminé
 
@@ -181,8 +176,7 @@ exceptions. Le contrat détaillé se trouve dans
 La 0.23.0 n’accepte pas encore des arguments ou agrégats distincts par
 élément. Les constructeurs délégués, valeurs par défaut au point de
 déclaration, constructeurs globaux, exceptions et formes d’héritage avancées
-restent prévus. Le contrat détaillé se trouve dans
-[`TABLEAUX_OBJETS_CLASSES_GS_PLUS_PLUS_0.23.md`](TABLEAUX_OBJETS_CLASSES_GS_PLUS_PLUS_0.23.md).
+restent prévus.
 
 ### Gs++ 0.24 — contrat et conformité — terminé
 
@@ -194,9 +188,6 @@ restent prévus. Le contrat détaillé se trouve dans
   vérifiés sous MSVC et GNU ;
 - résultats 5/5 sous MSVC, 6/6 sous GNU/WSL, benchmarks smoke et démarrage
   QEMU/OVMF réussis.
-
-La preuve se trouve dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.24.0.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.24.0.md).
 
 ### Gs++ 0.25 — initialisation et durée de vie — terminé
 
@@ -211,11 +202,6 @@ La preuve se trouve dans
 - résultats 5/5 sous MSVC, 6/6 sous GNU/WSL, benchmarks smoke et démarrage
   QEMU/OVMF réussis.
 
-Le contrat et la preuve se trouvent dans
-[`INITIALISATION_DUREE_VIE_GS_PLUS_PLUS_0.25.md`](INITIALISATION_DUREE_VIE_GS_PLUS_PLUS_0.25.md)
-et
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.25.0.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.25.0.md).
-
 ### Gs++ 0.26 — bibliothèque hébergée — terminé
 
 - chaînes UTF-8 propriétaires avec validation stricte ;
@@ -226,11 +212,6 @@ et
 - conformité portée à dix-huit exigences ;
 - résultats 5/5 sous MSVC, 6/6 sous GNU/WSL, benchmarks smoke et démarrage
   QEMU/OVMF réussis.
-
-Le contrat et la preuve se trouvent dans
-[`BIBLIOTHEQUE_HEBERGEE_GS_PLUS_PLUS_0.26.md`](BIBLIOTHEQUE_HEBERGEE_GS_PLUS_PLUS_0.26.md)
-et
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.26.0.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.26.0.md).
 
 ## Convergence vers le produit Gs++ 1.0
 
@@ -256,7 +237,8 @@ Les prochains jalons sont donc réservés à Gs++ :
    privée, puis opérateurs libres binaires et unaires avec classement des
    surcharges, qualifications de valeur et validation d’arité, puis validation
    différentielle des vingt-quatre formes intrinsèques, adaptations de
-   littéraux et diagnostics de types ; conversions implicites restantes et
+   littéraux et diagnostics de types, puis liaisons de références qualifiées,
+   affectations et valeurs de retour ; conversions implicites composées et
    résolution globale encore à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;

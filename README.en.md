@@ -214,6 +214,8 @@ GsPlusPlus/
 
 ## Documentation
 
+- [Current documentation index](Documentation/README.md)
+- [Latest release notes](RELEASE_NOTES.md)
 - [Candidate language specification 1.0](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md)
 - [Gs++ 1.0 source-code conventions](Documentation/CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md)
 - [Project and solution XML format 1.0](Documentation/FORMAT_PROJETS_GS_PLUS_PLUS_1.0.md)
@@ -239,7 +241,10 @@ All normative documentation is maintained in Markdown as its primary source.
 - differential selection of free operators, including overloads, qualified
   references, ambiguities, arities, and unary operators;
 - differential validation of all twenty-four intrinsic operators, with literal
-  adaptation and **137** position-checked negative corpora.
+  adaptation;
+- qualified reference bindings, inheritance conversions, assignments, and
+  returns aligned with the bootstrap compiler, with **155** position-checked
+  negative corpora.
 
 ## License
 

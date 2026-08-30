@@ -181,9 +181,7 @@ descendantes doivent recevoir la même décision explicite.
 - transformer chaque limite actuelle en décision suivie.
 
 La 0.24.0 livre ces éléments, réussit 5/5 tests sous MSVC, 6/6 sous GNU/WSL,
-13/13 cas de conformité sur chaque chaîne et la preuve QEMU/OVMF. Le rapport
-est consigné dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.24.0.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.24.0.md).
+13/13 cas de conformité sur chaque chaîne et la preuve QEMU/OVMF.
 
 ### Gs++ 0.25 — initialisation et durée de vie — terminé
 
@@ -194,9 +192,7 @@ est consigné dans
 - tests RAII, diagnostics et conformité étendue à 16 exigences.
 
 La 0.25.0 réussit 5/5 tests sous MSVC, 6/6 sous GNU/WSL, 16/16 cas de
-conformité sur chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF. Le
-rapport est consigné dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.25.0.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.25.0.md).
+conformité sur chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
 
 ### Gs++ 0.26 — bibliothèque hébergée — terminé
 
@@ -207,8 +203,7 @@ rapport est consigné dans
 La 0.26.0 ajoute cinq imports d’hôte explicites, les chaînes UTF-8,
 vecteurs dynamiques, table de symboles, arène stable, chemins et fichiers
 alloués. Elle réussit 5/5 tests MSVC, 6/6 tests GNU/WSL, 18/18 exigences sur
-chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF. Le rapport est
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.26.0.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.26.0.md).
+chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
 
 ### Gs++ 0.27 — frontend auto-hébergé
 
@@ -223,9 +218,10 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF. Le rapport est
   expressions indirectes et plans ordonnés de construction, destruction et
   tables virtuelles des objets locaux et sous-objets de constructeurs, ainsi
   que les vingt-quatre formes d’opérateurs intrinsèques avec adaptation des
-  littéraux et diagnostics de types ;
-- **EN COURS** : compléter le typage récursif, les qualifications, les
-  conversions implicites et la résolution globale ;
+  littéraux et diagnostics de types, les liaisons de références qualifiées,
+  les affectations et les valeurs de retour ;
+- **EN COURS** : compléter les conversions implicites composées et la
+  résolution globale ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

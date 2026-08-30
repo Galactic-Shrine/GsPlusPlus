@@ -211,9 +211,8 @@ compare chaque nœud au programme produit par `GsPP::AnalyseurSyntaxique` :
   paramètres explicites.
 
 Les constructions MSVC et GNU produisent un `Frontend.GsE` identique bit à
-bit. La validation détaillée de la préversion et ses empreintes historiques
-sont consignées dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
+bit. La dernière matrice publique conservée est celle de
+[`0.27.0-alpha.8`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md).
 
 Cette tranche construit l’AST des corps, de leurs instructions et de leurs
 expressions. Les classes sont couvertes pour leurs données, leur héritage, leurs
@@ -284,9 +283,9 @@ symbole inconnu ; adresse ambiguë d’une fonction surchargée ; programme sans
 fonction. Ces tests valident la tranche annoncée, pas l’analyse sémantique
 complète du langage.
 
-La matrice complète, les empreintes reproductibles et les contrôles des
-paquets extraits sont consignés dans
-[`Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.7.md).
+La matrice publique conservée, ses empreintes reproductibles et les contrôles
+des paquets extraits sont consignés dans la validation de
+[`0.27.0-alpha.8`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md).
 
 ## Première sélection typée des surcharges — alpha.8
 
@@ -831,10 +830,51 @@ revendique pas encore toutes les conversions implicites, la résolution globale,
 un frontend auto-hébergé complet ni un compilateur reconstruit fonctionnellement
 par Gs++ lui-même.
 
+## Conversions, références et mutations — développement après alpha.8
+
+La passe auto-hébergée applique maintenant le même contrat que le bootstrap aux
+initialiseurs scalaires et aux trois chemins de passage par référence :
+déclaration locale, appel direct surchargé et appel indirect par pointeur de
+fonction. Une référence exige une valeur gauche de type identique ou compatible
+par héritage. Une destination non constante ne peut pas recevoir une expression
+constante, y compris un champ ou un élément observé au travers d’un objet
+constant. La conversion `Dérivée*` vers `Base*` refuse également la perte de
+qualification constante.
+
+Les affectations sont désormais contrôlées après résolution récursive de leurs
+deux opérandes. La cible doit être une valeur gauche modifiable ; les valeurs
+constantes et les tableaux complets ne sont pas assignables ; la valeur source
+doit pouvoir initialiser le type cible. Les instructions `retourner` / `return`
+exigent une valeur pour une fonction non `vide` et appliquent la même
+compatibilité d’initialisation au résultat fourni. L’adaptation des arguments
+littéraux couvre aussi les formes unaires `+N` et `-N` représentables.
+
+Les diagnostics 69 à 75 couvrent la liaison de référence incompatible, la cible
+d’affectation non modifiable, l’affectation constante ou de tableau, le type
+d’affectation incompatible, la valeur de retour absente et le type de retour
+incompatible. Les codes 0 à 68 et les tailles ABI restent inchangés. Dix-huit
+refus différentiels bilingues portent le total à cent cinquante-cinq corpus dont
+le code, la ligne et la colonne correspondent au bootstrap.
+
+| Code | Diagnostic | Condition refusée |
+| ---: | --- | --- |
+| 69 | `LiaisonReferenceIncompatible` | la source n’est pas une valeur gauche compatible ou retire `constante` |
+| 70 | `CibleAffectationNonModifiable` | la cible n’est pas une valeur gauche |
+| 71 | `AffectationValeurConstanteInterdite` | la cible ou son objet propriétaire est constant |
+| 72 | `AffectationTableauInterdite` | la cible est encore un tableau complet |
+| 73 | `TypeAffectationIncompatible` | la source ne peut pas initialiser le type cible |
+| 74 | `ValeurRetourAttendue` | une fonction non `vide` retourne sans valeur |
+| 75 | `TypeRetourIncompatible` | la valeur ne peut pas initialiser le type de retour |
+
+La matrice locale complète passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux. Les deux chaînes produisent la même image `Frontend.GsE` GsE 1.0 de
+285 537 octets, avec 73 exports, acceptée par `gseverifier`. Son SHA-256 est
+`675c0579adc26431fc25ce846a390c2d68351fadc4c218d0148906333a8a5d59`.
+
 ## Travaux restant dans Gs++ 0.27
 
-- compléter les conversions implicites, qualifications et liaisons de
-  références ;
+- compléter les conversions implicites composées et les qualifications encore
+  absentes de la matrice différentielle ;
 - compléter la résolution des déclarations globales et les autres familles
   sémantiques encore prises en charge par le bootstrap ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend

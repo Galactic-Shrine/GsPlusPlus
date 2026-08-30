@@ -145,6 +145,20 @@ espace GalacticShrine::GsPP::Autohebergement {
         InvalidPointerComparison = 67,
         ComparaisonBooleenneInvalide = 68,
         InvalidBooleanComparison = 68,
+        LiaisonReferenceIncompatible = 69,
+        IncompatibleReferenceBinding = 69,
+        CibleAffectationNonModifiable = 70,
+        NonModifiableAssignmentTarget = 70,
+        AffectationValeurConstanteInterdite = 71,
+        ConstValueAssignmentForbidden = 71,
+        AffectationTableauInterdite = 72,
+        ArrayAssignmentForbidden = 72,
+        TypeAffectationIncompatible = 73,
+        IncompatibleAssignmentType = 73,
+        ValeurRetourAttendue = 74,
+        ReturnValueExpected = 74,
+        TypeRetourIncompatible = 75,
+        IncompatibleReturnType = 75,
     };
 
     énumération GenreSymboleSemantique {

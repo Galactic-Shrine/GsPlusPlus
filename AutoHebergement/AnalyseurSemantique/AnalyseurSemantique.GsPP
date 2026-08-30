@@ -2534,6 +2534,9 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 source,
         naturel64 destination,
         booléen liaisonReference) {
+        si (EstTypeConstantSemantique(etat, source)
+            && !EstTypeConstantSemantique(etat, destination))
+            retourner faux;
         naturel32 niveauPointeur = 0;
         tantque (niveauPointeur <= 1) {
             si (niveauPointeur != 0 || liaisonReference) {
@@ -2552,6 +2555,17 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
         retourner faux;
     }
+
+    externe booléen EstValeurGaucheSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression);
+
+    externe booléen EstExpressionValeurConstanteSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression);
+
+    externe booléen LiaisonReferenceCompatibleSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 typeReference);
 
     booléen InitialiseurCompatibleTypeSemantique(
         EtatAnalyseSemantique* etat,
@@ -2674,6 +2688,21 @@ espace GalacticShrine::GsPP::Autohebergement {
                 42);
         constante NoeudDeclaration* expression =
             &etat->Requete->Noeuds[indexExpression];
+
+        si (EstTypeReferenceSemantique(
+                etat, destination->HachageElement)) {
+            si (expression->Genre == 32
+                || !LiaisonReferenceCompatibleSemantique(
+                    etat,
+                    indexExpression,
+                    destination->HachageElement))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::LiaisonReferenceIncompatible,
+                    indexExpression,
+                    0);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
 
         si (destination->ProfondeurTableau
             < destination->NombreDimensions) {
@@ -2859,10 +2888,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                         45);
                 DestinationInitialiseurSemantique destinationDeclaration;
                 si (InitialiserDestinationInitialiseurSemantique(
-                        etat, index, &destinationDeclaration)
-                    && (destinationDeclaration.NombreDimensions != 0
-                        || etat->Requete->Noeuds[
-                            expressionDeclaration].Genre == 32)) {
+                        etat, index, &destinationDeclaration)) {
                     si (!(noeud->Genre == 3
                             && EstDestinationClasseSemantique(
                                 etat, &destinationDeclaration))) {
@@ -2962,6 +2988,63 @@ espace GalacticShrine::GsPP::Autohebergement {
                     descriptionAppelValeurGauche.HachageRetourFonction);
         }
         retourner faux;
+    }
+
+    booléen EstExpressionValeurConstanteSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        si (!EstValeurGaucheSemantique(etat, indexExpression))
+            retourner faux;
+        naturel64 typeExpressionConstante =
+            HachageTypeExpressionSemantique(etat, indexExpression);
+        si (EstTypeConstantSemantique(etat, typeExpressionConstante)
+            && !EstTypeAdresseSemantique(etat, typeExpressionConstante))
+            retourner vrai;
+
+        constante NoeudDeclaration* expressionConstante =
+            &etat->Requete->Noeuds[indexExpression];
+        si (expressionConstante->Genre == 29
+            || expressionConstante->Genre == 30) {
+            naturel64 objetExpressionConstante =
+                TrouverEnfantDirectSemantique(
+                    etat, indexExpression, 0);
+            naturel64 typeObjetExpressionConstante =
+                HachageTypeExpressionSemantique(
+                    etat, objetExpressionConstante);
+            si (EstTypeConstantSemantique(
+                    etat, typeObjetExpressionConstante))
+                retourner vrai;
+            retourner EstExpressionValeurConstanteSemantique(
+                etat, objetExpressionConstante);
+        }
+        retourner faux;
+    }
+
+    booléen LiaisonReferenceCompatibleSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64 typeReference) {
+        si (!EstValeurGaucheSemantique(etat, indexExpression))
+            retourner faux;
+        naturel64 typeSourceReference =
+            HachageTypeExpressionSemantique(etat, indexExpression);
+        naturel64 typeDestinationReference =
+            SansReferenceTypeSemantique(etat, typeReference);
+        si (!TypesValeurEgauxSemantique(
+                etat,
+                typeSourceReference,
+                typeDestinationReference)
+            && !ConversionHeritageSemantique(
+                etat,
+                typeSourceReference,
+                typeDestinationReference,
+                vrai))
+            retourner faux;
+        si (!EstTypeConstantSemantique(
+                etat, typeDestinationReference)
+            && EstExpressionValeurConstanteSemantique(
+                etat, indexExpression))
+            retourner faux;
+        retourner vrai;
     }
 
     booléen EstMembreDuGenreSemantique(
@@ -3121,18 +3204,12 @@ espace GalacticShrine::GsPP::Autohebergement {
                 score = score + 2;
             }
             sinon si (parametreReference) {
-                si (!EstValeurGaucheSemantique(etat, argument))
+                si (!LiaisonReferenceCompatibleSemantique(
+                        etat, argument, typeParametre))
                     retourner 4_294_967_295;
                 si (!TypesValeurEgauxSemantique(
-                        etat, typeArgument, typeParametre)) {
-                    si (!ConversionHeritageSemantique(
-                            etat,
-                            typeArgument,
-                            typeParametre,
-                            vrai))
-                        retourner 4_294_967_295;
+                        etat, typeArgument, typeParametre))
                     score = score + 1;
-                }
             }
             sinon si (!TypesValeurEgauxSemantique(
                     etat, typeArgument, typeParametre)) {
@@ -3143,8 +3220,8 @@ espace GalacticShrine::GsPP::Autohebergement {
                         faux))
                     score = score + 1;
                 sinon {
-                    si (!LitteralCompatibleTypeSemantique(
-                            &etat->Requete->Noeuds[argument], typeParametre))
+                    si (!LitteralExpressionCompatibleTypeSemantique(
+                            etat, argument, typeParametre))
                         retourner 4_294_967_295;
                     score = score + 1;
                 }
@@ -5606,24 +5683,10 @@ espace GalacticShrine::GsPP::Autohebergement {
             booléen argumentIndirectCompatible = vrai;
             si (parametreIndirectReference) {
                 argumentIndirectCompatible =
-                    EstValeurGaucheSemantique(
-                        etat, argumentAppelIndirect);
-                si (argumentIndirectCompatible) {
-                    naturel64 typeArgumentIndirect =
-                        HachageTypeExpressionSemantique(
-                            etat, argumentAppelIndirect);
-                    naturel64 typeParametreIndirect =
-                        SansReferenceTypeSemantique(
-                            etat,
-                            parametreAppelIndirect.HachageType);
-                    argumentIndirectCompatible =
-                        typeArgumentIndirect == typeParametreIndirect
-                        || ConversionHeritageSemantique(
-                            etat,
-                            typeArgumentIndirect,
-                            typeParametreIndirect,
-                            vrai);
-                }
+                    LiaisonReferenceCompatibleSemantique(
+                        etat,
+                        argumentAppelIndirect,
+                        parametreAppelIndirect.HachageType);
             }
             sinon argumentIndirectCompatible =
                 InitialiseurCompatibleTypeSemantique(
@@ -5899,6 +5962,113 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
+    booléen EstExpressionTableauSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        naturel64 origineTableau = TrouverOrigineTypeExpressionSemantique(
+            etat, indexExpression);
+        DescriptionHachageTypeSemantique dimensionsTableau;
+        si (origineTableau >= etat->Requete->NombreNoeuds
+            || !LireDimensionsNoeudSemantique(
+                etat, origineTableau, &dimensionsTableau))
+            retourner faux;
+        naturel64 typeElementFinal = HachageElementFinalTableauSemantique(
+            etat, origineTableau);
+        naturel64 typeExpression = HachageTypeExpressionSemantique(
+            etat, indexExpression);
+        retourner typeElementFinal != 0
+            && typeExpression != typeElementFinal;
+    }
+
+    ErreurAnalyseSemantique ValiderAffectationSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexAffectation) {
+        naturel64 cibleAffectation = TrouverEnfantDirectSemantique(
+            etat, indexAffectation, 0);
+        naturel64 valeurAffectation = TrouverEnfantDirectSemantique(
+            etat, indexAffectation, 1);
+        si (!EstValeurGaucheSemantique(etat, cibleAffectation))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::CibleAffectationNonModifiable,
+                indexAffectation,
+                0);
+        si (EstExpressionValeurConstanteSemantique(
+                etat, cibleAffectation))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::
+                    AffectationValeurConstanteInterdite,
+                indexAffectation,
+                0);
+        si (EstExpressionTableauSemantique(etat, cibleAffectation))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AffectationTableauInterdite,
+                indexAffectation,
+                0);
+        naturel64 typeCibleAffectation = HachageTypeExpressionSemantique(
+            etat, cibleAffectation);
+        si (!InitialiseurCompatibleTypeSemantique(
+                etat, valeurAffectation, typeCibleAffectation))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::TypeAffectationIncompatible,
+                valeurAffectation,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    naturel64 TrouverFonctionContenantSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud) {
+        si (indexNoeud >= etat->Requete->NombreNoeuds)
+            retourner etat->Requete->NombreNoeuds;
+        naturel64 courantFonction = etat->Requete->Noeuds[
+            indexNoeud].Parent;
+        tantque (courantFonction != 0
+            && courantFonction < etat->Requete->NombreNoeuds) {
+            si (EstGenreFonctionSemantique(
+                    etat->Requete->Noeuds[courantFonction].Genre))
+                retourner courantFonction;
+            courantFonction = etat->Requete->Noeuds[
+                courantFonction].Parent;
+        }
+        retourner etat->Requete->NombreNoeuds;
+    }
+
+    ErreurAnalyseSemantique ValiderRetourSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexRetour) {
+        naturel64 indexFonction = TrouverFonctionContenantSemantique(
+            etat, indexRetour);
+        si (indexFonction >= etat->Requete->NombreNoeuds)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexRetour,
+                46);
+        naturel64 typeRetour = etat->Requete->Noeuds[
+            indexFonction].HachageType;
+        booléen valeurPresente =
+            (etat->Requete->Noeuds[indexRetour].Drapeaux & 2048) != 0;
+        si (!valeurPresente) {
+            si (!EstTypeVideExpressionSemantique(typeRetour))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::ValeurRetourAttendue,
+                    indexRetour,
+                    0);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        naturel64 valeurRetour = TrouverEnfantDirectSemantique(
+            etat, indexRetour, 0);
+        si (!InitialiseurCompatibleTypeSemantique(
+                etat, valeurRetour, typeRetour))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::TypeRetourIncompatible,
+                valeurRetour,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
     ErreurAnalyseSemantique ResoudreExpressionsSemantiques(
         EtatAnalyseSemantique* etat) {
         naturel64 indexExpression = etat->Requete->NombreNoeuds;
@@ -5933,6 +6103,14 @@ espace GalacticShrine::GsPP::Autohebergement {
             si (erreurExpression == ErreurAnalyseSemantique::Reussite
                 && expressionCourante->Genre == 28)
                 erreurExpression = ValiderAppelIndirectSemantique(
+                    etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 27)
+                erreurExpression = ValiderAffectationSemantique(
+                    etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 17)
+                erreurExpression = ValiderRetourSemantique(
                     etat, indexExpression);
             si (erreurExpression != ErreurAnalyseSemantique::Reussite)
                 retourner erreurExpression;

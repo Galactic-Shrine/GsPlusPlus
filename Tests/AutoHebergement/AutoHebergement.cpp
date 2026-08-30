@@ -4255,6 +4255,41 @@ namespace
             "la propagation des indexations, adresses, déréférencements "
             "ou appels indirects est incomplète");
 
+        const std::string globalesAutoriseesFrancais =
+            "classe ObjetGlobal { publique: constructeur() {} };\n"
+            "externe constante entier32 Importee;\n"
+            "constante entier32 Initialisee = 1;\n"
+            "ObjetGlobal* PointeurObjet;\n"
+            "constante entier32* PointeurConstant;\n"
+            "pointeur_fonction<vide()> Rappel;\n"
+            "publique vide TesterGlobalesAutorisees() {}\n";
+        const std::string globalesAutoriseesAnglais =
+            "class ObjetGlobal { public: constructor() {} };\n"
+            "extern const int32 Importee;\n"
+            "const int32 Initialisee = 1;\n"
+            "ObjetGlobal* PointeurObjet;\n"
+            "const int32* PointeurConstant;\n"
+            "function_pointer<void()> Rappel;\n"
+            "public void TesterGlobalesAutorisees() {}\n";
+        const auto resultatGlobalesAutoriseesFrancais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                globalesAutoriseesFrancais,
+                "globales-autorisees-francais");
+        const auto resultatGlobalesAutoriseesAnglais =
+            AnalyserSemantiqueValide(
+                syntaxe,
+                semantique,
+                globalesAutoriseesAnglais,
+                "globales-autorisees-anglais");
+        Exiger(
+            resultatGlobalesAutoriseesFrancais.Symboles.size()
+                    == resultatGlobalesAutoriseesAnglais.Symboles.size()
+                && resultatGlobalesAutoriseesFrancais.Resolutions.size()
+                    == resultatGlobalesAutoriseesAnglais.Resolutions.size(),
+            "les globales autorisées bilingues divergent");
+
         ComparerErreurSemantique(
             syntaxe,
             semantique,
@@ -5132,6 +5167,68 @@ namespace
             "public void F() { return 1; }",
             75,
             "type-retour-incompatible-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "classe Objet { publique: constructeur() {} }; "
+            "Objet Globale; publique vide F() {}",
+            76,
+            "objet-classe-global-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "class Objet { public: constructor() {} }; "
+            "Objet Globale; public void F() {}",
+            76,
+            "objet-classe-global-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "entier32& Globale; publique vide F() {}",
+            77,
+            "reference-globale-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "int32& Globale; public void F() {}",
+            77,
+            "reference-globale-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "vide Globale; publique vide F() {}",
+            78,
+            "globale-vide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "void Globale; public void F() {}",
+            78,
+            "globale-vide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique externe entier32 Globale; publique vide F() {}",
+            79,
+            "globale-externe-publique-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public extern int32 Globale; public void F() {}",
+            79,
+            "globale-externe-publique-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "constante entier32 Globale; publique vide F() {}",
+            80,
+            "globale-constante-non-initialisee-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "const int32 Globale; public void F() {}",
+            80,
+            "globale-constante-non-initialisee-anglais");
         ComparerErreurSemantique(
             syntaxe,
             semantique,

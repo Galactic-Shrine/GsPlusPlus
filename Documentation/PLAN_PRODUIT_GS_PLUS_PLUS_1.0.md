@@ -219,9 +219,10 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
   tables virtuelles des objets locaux et sous-objets de constructeurs, ainsi
   que les vingt-quatre formes d’opérateurs intrinsèques avec adaptation des
   littéraux et diagnostics de types, les liaisons de références qualifiées,
-  les affectations et les valeurs de retour ;
-- **EN COURS** : compléter les conversions implicites composées et la
-  résolution globale ;
+  les affectations, les valeurs de retour et les contraintes structurelles des
+  déclarations globales ;
+- **EN COURS** : compléter les conversions implicites composées, l’évaluation
+  constante, les relocalisations et l’émission des initialiseurs globaux ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

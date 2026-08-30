@@ -44,8 +44,11 @@ génération de code.
 > leurs adaptations de littéraux, pointeurs ordinaires ou de fonction et neuf
 > familles de diagnostics. La passe produit en outre les plans ordonnés de
 > construction, de destruction et de tables virtuelles des objets locaux et
-> sous-objets de constructeurs. La résolution globale, les conversions
-> implicites restantes et les autres familles sémantiques restent à migrer.
+> sous-objets de constructeurs. Elle applique aussi les contraintes
+> structurelles des déclarations globales aux objets de classe, références,
+> types `vide`, imports publics et constantes non initialisées. La résolution
+> globale exhaustive, les conversions implicites restantes et les autres
+> familles sémantiques restent à migrer.
 
 ## Principes du langage
 
@@ -253,7 +256,9 @@ principale.
 - validation différentielle des vingt-quatre opérateurs intrinsèques, avec
   adaptation des littéraux ;
 - liaisons de références qualifiées, conversions d’héritage, affectations et
-  retours alignés sur le bootstrap, avec **155** corpus négatifs positionnés.
+  retours alignés sur le bootstrap ;
+- contraintes structurelles des déclarations globales alignées sur le
+  bootstrap, pour un total de **165** corpus négatifs positionnés.
 
 ## Licence
 

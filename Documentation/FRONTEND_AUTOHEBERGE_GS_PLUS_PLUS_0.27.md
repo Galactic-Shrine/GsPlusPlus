@@ -871,12 +871,54 @@ GNU/Linux. Les deux chaînes produisent la même image `Frontend.GsE` GsE 1.0 de
 285 537 octets, avec 73 exports, acceptée par `gseverifier`. Son SHA-256 est
 `675c0579adc26431fc25ce846a390c2d68351fadc4c218d0148906333a8a5d59`.
 
+## Contraintes des déclarations globales — développement après alpha.8
+
+La passe auto-hébergée applique maintenant les cinq contraintes structurelles
+que le bootstrap vérifie avant l’analyse d’un initialiseur global. Un objet de
+classe par valeur est refusé, y compris dans un tableau, tandis qu’un pointeur
+vers cette classe reste autorisé. Une globale ne peut être ni une référence ni
+une valeur de type `vide`. Une déclaration importée avec `externe` / `extern`
+ne peut pas être simultanément exportée avec `publique` / `public`. Enfin, une
+globale `constante` / `const` qui n’est pas une adresse doit posséder un
+initialiseur.
+
+La reconstruction privée du type relit désormais la forme complète la plus à
+gauche avant le nom de la déclaration. Elle conserve ainsi les qualificatifs
+et les noms qualifiés complets au lieu de retenir seulement leur suffixe. Les
+tableaux, pointeurs ordinaires, références et pointeurs de fonction sont
+distingués sans changer `NoeudDeclaration` ni aucune autre structure de l’ABI
+publique.
+
+| Code | Diagnostic | Condition refusée |
+| ---: | --- | --- |
+| 76 | `ObjetClasseGlobalInterdit` | la globale contient un objet de classe par valeur |
+| 77 | `ReferenceGlobaleInterdite` | le type global est une référence |
+| 78 | `GlobaleVideInterdite` | le type global est `vide` sans indirection |
+| 79 | `GlobaleExternePubliqueInterdite` | la même globale est importée et exportée |
+| 80 | `GlobaleConstanteNonInitialisee` | une globale constante non-adresse n’a pas d’initialiseur |
+
+Dix refus différentiels français et anglais portent le total à cent
+soixante-cinq corpus dont le code, la ligne et la colonne correspondent au
+bootstrap. Un corpus positif bilingue protège les cas autorisés : import
+constant, constante initialisée, pointeur vers classe, pointeur constant et
+pointeur de fonction global.
+
+La matrice locale complète passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE 1.0 de
+287 902 octets avec 73 exports, acceptée par `gseverifier` et identique bit à
+bit. Son SHA-256 est
+`90ac74b079d7b7070d02e9f4b561727a34bb709f0bda5bcca355e7f5f9939106`.
+
+Cette tranche ne valide pas encore l’évaluation constante exhaustive, les
+relocalisations ni l’émission de tous les initialiseurs globaux.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les conversions implicites composées et les qualifications encore
   absentes de la matrice différentielle ;
-- compléter la résolution des déclarations globales et les autres familles
-  sémantiques encore prises en charge par le bootstrap ;
+- compléter l’évaluation constante, les relocalisations et l’émission des
+  initialiseurs globaux, ainsi que les autres familles sémantiques encore
+  prises en charge par le bootstrap ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;

@@ -159,6 +159,16 @@ espace GalacticShrine::GsPP::Autohebergement {
         ReturnValueExpected = 74,
         TypeRetourIncompatible = 75,
         IncompatibleReturnType = 75,
+        ObjetClasseGlobalInterdit = 76,
+        GlobalClassObjectForbidden = 76,
+        ReferenceGlobaleInterdite = 77,
+        GlobalReferenceForbidden = 77,
+        GlobaleVideInterdite = 78,
+        VoidGlobalForbidden = 78,
+        GlobaleExternePubliqueInterdite = 79,
+        PublicExternalGlobalForbidden = 79,
+        GlobaleConstanteNonInitialisee = 80,
+        UninitializedConstGlobal = 80,
     };
 
     énumération GenreSymboleSemantique {

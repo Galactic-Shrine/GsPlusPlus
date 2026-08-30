@@ -41,7 +41,9 @@ official aliases with the same semantics and generated code.
 > unary and binary intrinsic forms are now validated as well, including literal
 > adaptation, ordinary and function pointers, and nine diagnostic families.
 > The stage also emits ordered construction, destruction, and virtual-table
-> plans for local objects and constructor subobjects. Global resolution, the
+> plans for local objects and constructor subobjects. It also enforces global
+> declaration constraints for class objects, references, `void` types, public
+> imports, and uninitialized constants. Exhaustive global resolution, the
 > remaining implicit conversions, and other semantic families still need to be
 > migrated.
 
@@ -247,8 +249,9 @@ All normative documentation is maintained in Markdown as its primary source.
 - differential validation of all twenty-four intrinsic operators, with literal
   adaptation;
 - qualified reference bindings, inheritance conversions, assignments, and
-  returns aligned with the bootstrap compiler, with **155** position-checked
-  negative corpora.
+  returns aligned with the bootstrap compiler;
+- global declaration constraints aligned with the bootstrap compiler, for a
+  total of **165** position-checked negative corpora.
 
 ## License
 

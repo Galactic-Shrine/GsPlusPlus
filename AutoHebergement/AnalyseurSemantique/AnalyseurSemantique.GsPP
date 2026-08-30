@@ -334,7 +334,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner vrai;
     }
 
-    booléen LireTypePointeurFonctionNoeudSemantique(
+    booléen LireTypeNoeudSemantique(
         EtatAnalyseSemantique* etat,
         naturel64 indexNoeud,
         DescriptionTypeJetonsSemantique* type) {
@@ -350,6 +350,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (indexNomType >= etat->NombreJetonsTypes) retourner faux;
 
         naturel64 debutCandidatType = indexNomType;
+        booléen typeTrouve = faux;
         tantque (debutCandidatType != 0) {
             debutCandidatType = debutCandidatType - 1;
             CurseurTypeJetonsSemantique curseurCandidatType = {
@@ -358,13 +359,23 @@ espace GalacticShrine::GsPP::Autohebergement {
             si (AnalyserTypeJetonsSemantique(
                     etat, &curseurCandidatType, &typeCandidatNoeud)
                 && !curseurCandidatType.DemiFermeture
-                && curseurCandidatType.Index == indexNomType
-                && typeCandidatNoeud.Genre == 14) {
+                && curseurCandidatType.Index == indexNomType) {
                 *type = typeCandidatNoeud;
-                retourner vrai;
+                typeTrouve = vrai;
             }
+            sinon si (typeTrouve
+                && etat->JetonsTypes[debutCandidatType].Genre != 44)
+                retourner vrai;
         }
-        retourner faux;
+        retourner typeTrouve;
+    }
+
+    booléen LireTypePointeurFonctionNoeudSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexNoeud,
+        DescriptionTypeJetonsSemantique* type) {
+        retourner LireTypeNoeudSemantique(etat, indexNoeud, type)
+            && type->Genre == 14;
     }
 
     booléen InitialiserJetonsTypesSemantiques(
@@ -2628,6 +2639,77 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner type < etat->NombreSymboles
             && etat->Requete->Noeuds[
                 etat->SymbolesTravail[type].IndexNoeud].Genre == 6;
+    }
+
+    ErreurAnalyseSemantique ValiderGlobalesSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* globale =
+                &etat->Requete->Noeuds[index];
+            si (globale->Genre == 3) {
+                DescriptionTypeJetonsSemantique typeGlobale;
+                si (!LireTypeNoeudSemantique(
+                        etat, index, &typeGlobale))
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::AstInvalide,
+                        index,
+                        46);
+
+                booléen estReference =
+                    (typeGlobale.Qualificatifs & 4) != 0;
+                si (typeGlobale.Genre == 13
+                    && typeGlobale.NiveauPointeur == 0
+                    && !estReference) {
+                    naturel64 type = TrouverTypeDepuisHachageSemantique(
+                        etat, typeGlobale.HachageType, 0);
+                    si (type < etat->NombreSymboles
+                        && etat->Requete->Noeuds[
+                            etat->SymbolesTravail[type].IndexNoeud].Genre == 6)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::
+                                ObjetClasseGlobalInterdit,
+                            index,
+                            convertir<naturel32>(type));
+                }
+                si (estReference)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::ReferenceGlobaleInterdite,
+                        index,
+                        0);
+                si (typeGlobale.Genre == 12
+                    && typeGlobale.NiveauPointeur == 0)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::GlobaleVideInterdite,
+                        index,
+                        0);
+                si ((globale->Drapeaux & 2) != 0) {
+                    si ((globale->Drapeaux & 1) != 0)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::
+                                GlobaleExternePubliqueInterdite,
+                            index,
+                            0);
+                }
+                sinon si ((typeGlobale.Qualificatifs & 1) != 0
+                    && typeGlobale.NiveauPointeur == 0
+                    && typeGlobale.Genre != 14
+                    && (globale->Drapeaux & 4) == 0)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::
+                            GlobaleConstanteNonInitialisee,
+                        index,
+                        0);
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
     }
 
     naturel64 CompterChampsTypeAgregeSemantique(
@@ -6273,6 +6355,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             erreur = ValiderAritesOperateursSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = CalculerDispositionsSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = ValiderGlobalesSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreExpressionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)

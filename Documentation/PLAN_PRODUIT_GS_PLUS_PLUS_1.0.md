@@ -220,9 +220,11 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
   que les vingt-quatre formes d’opérateurs intrinsèques avec adaptation des
   littéraux et diagnostics de types, les liaisons de références qualifiées,
   les affectations, les valeurs de retour et les contraintes structurelles des
-  déclarations globales ;
+  déclarations globales, ainsi que la validation récursive des formes
+  constantes, agrégats et pointeurs de leurs initialiseurs ;
 - **EN COURS** : compléter les conversions implicites composées, l’évaluation
-  constante, les relocalisations et l’émission des initialiseurs globaux ;
+  numérique des constantes, leurs contrôles de plage, les relocalisations et
+  l’émission des initialiseurs globaux ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

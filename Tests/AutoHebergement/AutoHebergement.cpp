@@ -4257,19 +4257,33 @@ namespace
 
         const std::string globalesAutoriseesFrancais =
             "classe ObjetGlobal { publique: constructeur() {} };\n"
+            "structure PaquetGlobal { entier32 Valeur; };\n"
+            "énumération EtatGlobal { Actif = 3, Inactif, };\n"
             "externe constante entier32 Importee;\n"
             "constante entier32 Initialisee = 1;\n"
+            "constante entier32 Calculee = convertir<entier32>(1 + 2 * 3);\n"
+            "PaquetGlobal PaquetInitial = {1 + 2};\n"
+            "EtatGlobal EtatInitial = EtatGlobal::Actif;\n"
             "ObjetGlobal* PointeurObjet;\n"
             "constante entier32* PointeurConstant;\n"
             "pointeur_fonction<vide()> Rappel;\n"
+            "pointeur_fonction<vide()> RappelInitial = &CibleGlobale;\n"
+            "publique vide CibleGlobale() {}\n"
             "publique vide TesterGlobalesAutorisees() {}\n";
         const std::string globalesAutoriseesAnglais =
             "class ObjetGlobal { public: constructor() {} };\n"
+            "struct PaquetGlobal { int32 Valeur; };\n"
+            "enumeration EtatGlobal { Actif = 3, Inactif, };\n"
             "extern const int32 Importee;\n"
             "const int32 Initialisee = 1;\n"
+            "const int32 Calculee = cast<int32>(1 + 2 * 3);\n"
+            "PaquetGlobal PaquetInitial = {1 + 2};\n"
+            "EtatGlobal EtatInitial = EtatGlobal::Actif;\n"
             "ObjetGlobal* PointeurObjet;\n"
             "const int32* PointeurConstant;\n"
             "function_pointer<void()> Rappel;\n"
+            "function_pointer<void()> RappelInitial = &CibleGlobale;\n"
+            "public void CibleGlobale() {}\n"
             "public void TesterGlobalesAutorisees() {}\n";
         const auto resultatGlobalesAutoriseesFrancais =
             AnalyserSemantiqueValide(
@@ -4289,6 +4303,83 @@ namespace
                 && resultatGlobalesAutoriseesFrancais.Resolutions.size()
                     == resultatGlobalesAutoriseesAnglais.Resolutions.size(),
             "les globales autorisées bilingues divergent");
+
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "structure Paquet { entier32 Valeur; }; "
+            "publique Paquet Produire() { retourner {1}; } "
+            "Paquet Globale = Produire(); publique vide F() {}",
+            81,
+            "initialiseur-global-agrege-requis-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "struct Paquet { int32 Valeur; }; "
+            "public Paquet Produire() { return {1}; } "
+            "Paquet Globale = Produire(); public void F() {}",
+            81,
+            "initialiseur-global-agrege-requis-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique vide Cible() {} "
+            "pointeur_fonction<vide()> Source = &Cible; "
+            "pointeur_fonction<vide()> Globale = Source;",
+            82,
+            "cible-pointeur-fonction-global-invalide-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public void Cible() {} "
+            "function_pointer<void()> Source = &Cible; "
+            "function_pointer<void()> Globale = Source;",
+            82,
+            "cible-pointeur-fonction-global-invalide-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "entier32 Valeur = 1; entier32* Globale = &Valeur; "
+            "publique vide F() {}",
+            83,
+            "initialiseur-pointeur-donnees-global-interdit-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "int32 Valeur = 1; int32* Globale = &Valeur; "
+            "public void F() {}",
+            83,
+            "initialiseur-pointeur-donnees-global-interdit-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "publique entier32 Produire() { retourner 1; } "
+            "entier32 Globale = Produire(); publique vide F() {}",
+            84,
+            "initialiseur-global-non-constant-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "public int32 Produire() { return 1; } "
+            "int32 Globale = Produire(); public void F() {}",
+            84,
+            "initialiseur-global-non-constant-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "structure Paquet { entier32 Valeur; }; "
+            "publique entier32 Produire() { retourner 1; } "
+            "Paquet Globale = {Produire()}; publique vide F() {}",
+            84,
+            "element-global-agrege-non-constant-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "struct Paquet { int32 Valeur; }; "
+            "public int32 Produire() { return 1; } "
+            "Paquet Globale = {Produire()}; public void F() {}",
+            84,
+            "element-global-agrege-non-constant-anglais");
 
         ComparerErreurSemantique(
             syntaxe,

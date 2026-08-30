@@ -1154,12 +1154,33 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 index = 0;
         tantque (index < etat->NombreSymboles) {
             SymboleSemantique* candidat = &etat->SymbolesTravail[index];
-            si (candidat->IndexPortee == 0
+            booléen correspondance = candidat->Genre != 7
+                && ReferenceCorrespondSymboleSemantique(
+                    etat, reference, candidat);
+            si (candidat->Genre == 7) {
+                naturel64 indexEnumeration = etat->Requete->Noeuds[
+                    candidat->IndexNoeud].Parent;
+                si (indexEnumeration < etat->Requete->NombreNoeuds
+                    && etat->Requete->Noeuds[indexEnumeration].Genre == 8) {
+                    naturel64 nomEnumerateur = HacherNomCompletSemantique(
+                        etat, indexEnumeration);
+                    nomEnumerateur = AjouterOctetSemantique(
+                        nomEnumerateur, 58);
+                    nomEnumerateur = AjouterOctetSemantique(
+                        nomEnumerateur, 58);
+                    nomEnumerateur = AjouterNomNoeudSemantique(
+                        etat, nomEnumerateur, candidat->IndexNoeud);
+                    si (reference->HachageNom == nomEnumerateur)
+                        correspondance = vrai;
+                }
+            }
+            si ((candidat->IndexPortee == 0
+                    || candidat->Genre == 7)
                 && (candidat->Genre == 2
                     || candidat->Genre == 3
-                    || candidat->Genre == 4)
-                && ReferenceCorrespondSymboleSemantique(
-                    etat, reference, candidat))
+                    || candidat->Genre == 4
+                    || candidat->Genre == 7)
+                && correspondance)
                 retourner index;
             index = index + 1;
         }
@@ -2167,6 +2188,17 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (etat->SymbolesTravail[cible].Genre == 2)
             retourner HacherPointeurFonctionDeclarationSemantique(
                 etat, etat->SymbolesTravail[cible].IndexNoeud);
+        si (etat->SymbolesTravail[cible].Genre == 7) {
+            naturel64 indexEnumeration = etat->Requete->Noeuds[
+                etat->SymbolesTravail[cible].IndexNoeud].Parent;
+            si (indexEnumeration < etat->Requete->NombreNoeuds
+                && etat->Requete->Noeuds[indexEnumeration].Genre == 8)
+                retourner HacherTypeNommeSemantique(
+                    HacherNomCompletSemantique(etat, indexEnumeration),
+                    0,
+                    0);
+            retourner 0;
+        }
         DescriptionTypeJetonsSemantique typeReferenceFonction;
         si (LireTypePointeurFonctionNoeudSemantique(
                 etat,
@@ -3010,6 +3042,265 @@ espace GalacticShrine::GsPP::Autohebergement {
                             != ErreurAnalyseSemantique::Reussite)
                             retourner erreurInitialiseurChamp;
                     }
+                }
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    externe booléen EstExpressionConstanteGlobaleSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression);
+
+    /**
+     * Vérifie la forme constante d'une expression globale sans encore
+     * calculer sa valeur numérique.
+     * @Paramètre(EtatAnalyseSemantique*: etat) État sémantique courant.
+     * @Paramètre(naturel64: indexExpression) Expression à examiner.
+     * @Retourner(booléen) Vrai pour une forme constante structurelle.
+     **/
+    booléen EstExpressionConstanteGlobaleSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+        si (indexExpression >= etat->Requete->NombreNoeuds)
+            retourner faux;
+        constante NoeudDeclaration* expression =
+            &etat->Requete->Noeuds[indexExpression];
+        si (expression->Genre == 22) retourner vrai;
+        si (expression->Genre == 24) {
+            naturel64 cible = TrouverCibleSymboleExpressionSemantique(
+                etat, indexExpression);
+            retourner cible < etat->NombreSymboles
+                && etat->SymbolesTravail[cible].Genre == 7;
+        }
+        si (expression->Genre == 25) {
+            si (expression->HachageNom
+                    != HacherOperateurExpressionSemantique(43, 0)
+                && expression->HachageNom
+                    != HacherOperateurExpressionSemantique(45, 0)
+                && expression->HachageNom
+                    != HacherOperateurExpressionSemantique(33, 0)
+                && expression->HachageNom
+                    != HacherOperateurExpressionSemantique(126, 0))
+                retourner faux;
+            naturel64 operande = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            retourner EstExpressionConstanteGlobaleSemantique(
+                etat, operande);
+        }
+        si (expression->Genre == 26) {
+            naturel64 gauche = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            naturel64 droite = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 1);
+            retourner EstExpressionConstanteGlobaleSemantique(etat, gauche)
+                && EstExpressionConstanteGlobaleSemantique(etat, droite);
+        }
+        si (expression->Genre == 31) {
+            naturel64 valeur = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            retourner EstExpressionConstanteGlobaleSemantique(
+                etat, valeur);
+        }
+        retourner faux;
+    }
+
+    naturel32 GenrePointeurFonctionDestinationGlobaleSemantique(
+        EtatAnalyseSemantique* etat,
+        DestinationInitialiseurSemantique* destination) {
+        DescriptionTypeJetonsSemantique typeDestination;
+        si (!LireTypePointeurFonctionNoeudSemantique(
+                etat,
+                destination->IndexNoeudDeclaration,
+                &typeDestination))
+            retourner 0;
+        si (typeDestination.NiveauPointeur == 0) retourner 1;
+        retourner 2;
+    }
+
+    externe ErreurAnalyseSemantique
+        ValiderInitialiseurGlobalDestinationSemantique(
+            EtatAnalyseSemantique* etat,
+            naturel64 indexExpression,
+            DestinationInitialiseurSemantique* destination);
+
+    /**
+     * Applique récursivement les contraintes des initialiseurs émis dans la
+     * zone de données globale du bootstrap.
+     * @Paramètre(EtatAnalyseSemantique*: etat) État sémantique courant.
+     * @Paramètre(naturel64: indexExpression) Expression à valider.
+     * @Paramètre(DestinationInitialiseurSemantique*: destination) Type visé.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic rencontré.
+     **/
+    ErreurAnalyseSemantique ValiderInitialiseurGlobalDestinationSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        DestinationInitialiseurSemantique* destination) {
+        si (indexExpression >= etat->Requete->NombreNoeuds)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                destination->IndexNoeudDeclaration,
+                47);
+        constante NoeudDeclaration* expression =
+            &etat->Requete->Noeuds[indexExpression];
+
+        si (expression->Genre == 32) {
+            naturel64 nombreElements = CompterEnfantsDirectsSemantique(
+                etat, indexExpression);
+            si (destination->ProfondeurTableau
+                < destination->NombreDimensions) {
+                DestinationInitialiseurSemantique destinationElement =
+                    *destination;
+                destinationElement.ProfondeurTableau =
+                    destinationElement.ProfondeurTableau + 1;
+                naturel64 positionElement = 0;
+                tantque (positionElement < nombreElements) {
+                    naturel64 element = TrouverEnfantDirectSemantique(
+                        etat, indexExpression, positionElement);
+                    ErreurAnalyseSemantique erreurElement =
+                        ValiderInitialiseurGlobalDestinationSemantique(
+                            etat, element, &destinationElement);
+                    si (erreurElement
+                        != ErreurAnalyseSemantique::Reussite)
+                        retourner erreurElement;
+                    positionElement = positionElement + 1;
+                }
+                retourner ErreurAnalyseSemantique::Reussite;
+            }
+
+            naturel64 type = TrouverTypeDepuisHachageSemantique(
+                etat, destination->HachageElement, 0);
+            si (type < etat->NombreSymboles) {
+                naturel32 genreType = etat->Requete->Noeuds[
+                    etat->SymbolesTravail[type].IndexNoeud].Genre;
+                si (genreType == 4 || genreType == 5) {
+                    naturel64 positionChamp = 0;
+                    tantque (positionChamp < nombreElements) {
+                        naturel64 champ = TrouverChampTypeAgregeSemantique(
+                            etat, type, positionChamp);
+                        si (champ >= etat->NombreSymboles)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::AstInvalide,
+                                indexExpression,
+                                48);
+                        DestinationInitialiseurSemantique destinationChamp;
+                        si (InitialiserDestinationInitialiseurSemantique(
+                                etat,
+                                etat->SymbolesTravail[champ].IndexNoeud,
+                                &destinationChamp)) {
+                            naturel64 elementChamp =
+                                TrouverEnfantDirectSemantique(
+                                    etat,
+                                    indexExpression,
+                                    positionChamp);
+                            ErreurAnalyseSemantique erreurChamp =
+                                ValiderInitialiseurGlobalDestinationSemantique(
+                                    etat,
+                                    elementChamp,
+                                    &destinationChamp);
+                            si (erreurChamp
+                                != ErreurAnalyseSemantique::Reussite)
+                                retourner erreurChamp;
+                        }
+                        positionChamp = positionChamp + 1;
+                    }
+                    retourner ErreurAnalyseSemantique::Reussite;
+                }
+            }
+
+            si (nombreElements == 0)
+                retourner ErreurAnalyseSemantique::Reussite;
+            naturel64 valeurScalaire = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            retourner ValiderInitialiseurGlobalDestinationSemantique(
+                etat, valeurScalaire, destination);
+        }
+
+        naturel64 typeAgrege = TrouverTypeDepuisHachageSemantique(
+            etat, destination->HachageElement, 0);
+        si (typeAgrege < etat->NombreSymboles) {
+            naturel32 genreAgrege = etat->Requete->Noeuds[
+                etat->SymbolesTravail[typeAgrege].IndexNoeud].Genre;
+            si (genreAgrege == 4 || genreAgrege == 5)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::
+                        InitialiseurGlobalAgregeRequis,
+                    indexExpression,
+                    convertir<naturel32>(typeAgrege));
+        }
+
+        naturel32 genrePointeurFonction =
+            GenrePointeurFonctionDestinationGlobaleSemantique(
+                etat, destination);
+        si (genrePointeurFonction == 1) {
+            naturel64 cibleExpression = indexExpression;
+            si (expression->Genre == 25
+                && expression->HachageNom
+                    == HacherOperateurExpressionSemantique(38, 0))
+                cibleExpression = TrouverEnfantDirectSemantique(
+                    etat, indexExpression, 0);
+            si (cibleExpression < etat->Requete->NombreNoeuds
+                && etat->Requete->Noeuds[cibleExpression].Genre == 24) {
+                naturel64 cibleFonction =
+                    TrouverCibleSymboleExpressionSemantique(
+                        etat, cibleExpression);
+                si (cibleFonction < etat->NombreSymboles
+                    && etat->SymbolesTravail[
+                        cibleFonction].Genre == 2)
+                    retourner ErreurAnalyseSemantique::Reussite;
+            }
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::
+                    CiblePointeurFonctionGlobalInvalide,
+                indexExpression,
+                0);
+        }
+        si (genrePointeurFonction == 2
+            || EstTypeAdresseSemantique(
+                etat, destination->HachageElement))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::
+                    InitialiseurPointeurDonneesGlobalInterdit,
+                indexExpression,
+                0);
+        si (!EstExpressionConstanteGlobaleSemantique(
+                etat, indexExpression))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::InitialiseurGlobalNonConstant,
+                indexExpression,
+                0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderInitialiseursGlobauxSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* globale =
+                &etat->Requete->Noeuds[index];
+            si (globale->Genre == 3
+                && (globale->Drapeaux & 4) != 0) {
+                naturel64 expression = TrouverEnfantDirectSemantique(
+                    etat, index, 0);
+                si (expression >= etat->Requete->NombreNoeuds)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::AstInvalide,
+                        index,
+                        49);
+                DestinationInitialiseurSemantique destination;
+                si (InitialiserDestinationInitialiseurSemantique(
+                        etat, index, &destination)) {
+                    ErreurAnalyseSemantique erreur =
+                        ValiderInitialiseurGlobalDestinationSemantique(
+                            etat, expression, &destination);
+                    si (erreur != ErreurAnalyseSemantique::Reussite)
+                        retourner erreur;
                 }
             }
             index = index + 1;
@@ -6363,6 +6654,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             erreur = ResoudreConstructionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ValiderInitialiseursAgregesSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = ValiderInitialiseursGlobauxSemantiques(&etat);
 
         requete->Resultat.NombreResolutions = etat.NombreResolutions;
         requete->Resultat.CapaciteResolutionsRequise = etat.NombreResolutions;

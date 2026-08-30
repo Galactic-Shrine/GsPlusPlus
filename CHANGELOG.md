@@ -12,6 +12,16 @@
 
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-30
 
+- validation récursive de la forme des initialiseurs globaux : liste exigée
+  pour les structures et unions, cible de fonction directe pour les pointeurs
+  de fonction, refus des pointeurs de données initialisés et constance
+  structurelle des feuilles scalaires, conversions et agrégats imbriqués ;
+- résolution des constantes d’énumération qualifiées dans le frontend
+  auto-hébergé et conservation de leur type d’énumération ;
+- ajout des diagnostics sémantiques 81 à 84 et de dix refus différentiels
+  bilingues, portant le total à cent soixante-quinze, avec un corpus positif
+  pour l’arithmétique constante, les conversions, agrégats, énumérateurs et
+  pointeurs de fonction globaux autorisés ;
 - alignement des contraintes structurelles des variables globales sur le
   bootstrap : refus des objets de classe, références, types `vide`, imports à
   la fois publics et externes et constantes non initialisées ;
@@ -20,9 +30,9 @@
   les pointeurs vers classes, constantes initialisées, imports constants et
   pointeurs de fonction autorisés ;
 - validation locale 4/4 sous Visual Studio 2026 et 5/5 sous GNU/Linux ; les
-  deux chaînes reconstruisent le même `Frontend.GsE` GsE 1.0 de 287 902 octets
+  deux chaînes reconstruisent le même `Frontend.GsE` GsE 1.0 de 295 646 octets
   et 73 exports, dont le SHA-256 est
-  `90ac74b079d7b7070d02e9f4b561727a34bb709f0bda5bcca355e7f5f9939106` ;
+  `03422775cda6395fa57d00eeaf0b75ed96394b0ceb971731cf51d936bd2b3a9c` ;
 - centralisation de la version technique du produit dans le fichier racine
   `VERSION`, désormais lu par CMake et propagé aux bannières, métadonnées GsE,
   tests, benchmarks et paquets sans duplication dans le code ;

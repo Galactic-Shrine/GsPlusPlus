@@ -871,7 +871,7 @@ GNU/Linux. Les deux chaînes produisent la même image `Frontend.GsE` GsE 1.0 de
 285 537 octets, avec 73 exports, acceptée par `gseverifier`. Son SHA-256 est
 `675c0579adc26431fc25ce846a390c2d68351fadc4c218d0148906333a8a5d59`.
 
-## Contraintes des déclarations globales — développement après alpha.8
+## Contraintes des déclarations et initialiseurs globaux — développement après alpha.8
 
 La passe auto-hébergée applique maintenant les cinq contraintes structurelles
 que le bootstrap vérifie avant l’analyse d’un initialiseur global. Un objet de
@@ -897,28 +897,47 @@ publique.
 | 79 | `GlobaleExternePubliqueInterdite` | la même globale est importée et exportée |
 | 80 | `GlobaleConstanteNonInitialisee` | une globale constante non-adresse n’a pas d’initialiseur |
 
-Dix refus différentiels français et anglais portent le total à cent
-soixante-cinq corpus dont le code, la ligne et la colonne correspondent au
-bootstrap. Un corpus positif bilingue protège les cas autorisés : import
-constant, constante initialisée, pointeur vers classe, pointeur constant et
-pointeur de fonction global.
+Une seconde passe parcourt maintenant chaque initialiseur global avec la même
+destination récursive que le validateur des agrégats. Elle impose une liste
+pour une structure ou une union, descend dans les tableaux et les champs,
+accepte un pointeur de fonction seulement lorsqu’il vise directement une
+fonction, et refuse toute initialisation d’un pointeur de données. Les feuilles
+scalaires doivent être des littéraux entiers, des constantes d’énumération
+qualifiées, des opérateurs constants ou une conversion constante. Cette
+validation porte sur la forme ; elle ne calcule pas encore la valeur finale.
+
+| Code | Diagnostic | Condition refusée |
+| ---: | --- | --- |
+| 81 | `InitialiseurGlobalAgregeRequis` | une structure ou union globale reçoit autre chose qu’une liste |
+| 82 | `CiblePointeurFonctionGlobalInvalide` | un pointeur de fonction global ne vise pas directement une fonction |
+| 83 | `InitialiseurPointeurDonneesGlobalInterdit` | un pointeur de données global possède un initialiseur |
+| 84 | `InitialiseurGlobalNonConstant` | une feuille scalaire globale n’est pas structurellement constante |
+
+Vingt refus différentiels français et anglais couvrent ensemble les deux
+sous-tranches et portent le total à cent soixante-quinze corpus dont le code,
+la ligne et la colonne correspondent au bootstrap. Le corpus positif bilingue
+protège les cas autorisés : import constant, constantes littérales ou
+calculées, conversion constante, agrégat imbriqué, constante d’énumération
+qualifiée, pointeurs non initialisés et cible directe de fonction.
 
 La matrice locale complète passe 4/4 sous Visual Studio 2026 et 5/5 sous
 GNU/Linux. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE 1.0 de
-287 902 octets avec 73 exports, acceptée par `gseverifier` et identique bit à
+295 646 octets avec 73 exports, acceptée par `gseverifier` et identique bit à
 bit. Son SHA-256 est
-`90ac74b079d7b7070d02e9f4b561727a34bb709f0bda5bcca355e7f5f9939106`.
+`03422775cda6395fa57d00eeaf0b75ed96394b0ceb971731cf51d936bd2b3a9c`.
 
-Cette tranche ne valide pas encore l’évaluation constante exhaustive, les
-relocalisations ni l’émission de tous les initialiseurs globaux.
+Cette tranche ne valide pas encore le calcul numérique des constantes, leurs
+plages et divisions par zéro, les relocalisations ni l’émission des octets de
+tous les initialiseurs globaux.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les conversions implicites composées et les qualifications encore
   absentes de la matrice différentielle ;
-- compléter l’évaluation constante, les relocalisations et l’émission des
-  initialiseurs globaux, ainsi que les autres familles sémantiques encore
-  prises en charge par le bootstrap ;
+- compléter le calcul numérique des constantes, les contrôles de plage et de
+  division par zéro, les relocalisations et l’émission des initialiseurs
+  globaux, ainsi que les autres familles sémantiques encore prises en charge
+  par le bootstrap ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;

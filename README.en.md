@@ -43,9 +43,12 @@ official aliases with the same semantics and generated code.
 > The stage also emits ordered construction, destruction, and virtual-table
 > plans for local objects and constructor subobjects. It also enforces global
 > declaration constraints for class objects, references, `void` types, public
-> imports, and uninitialized constants. Exhaustive global resolution, the
-> remaining implicit conversions, and other semantic families still need to be
-> migrated.
+> imports, and uninitialized constants. Global initializers are now checked
+> recursively as well: aggregates require lists, function pointers require a
+> direct function target, initialized data pointers are rejected, and scalar
+> leaves must have a structurally constant form. Exhaustive numeric constant
+> evaluation, relocations, global emission, the remaining implicit
+> conversions, and other semantic families still need to be migrated.
 
 ## Language principles
 
@@ -250,8 +253,8 @@ All normative documentation is maintained in Markdown as its primary source.
   adaptation;
 - qualified reference bindings, inheritance conversions, assignments, and
   returns aligned with the bootstrap compiler;
-- global declaration constraints aligned with the bootstrap compiler, for a
-  total of **165** position-checked negative corpora.
+- global declaration and initializer constraints aligned with the bootstrap
+  compiler, for a total of **175** position-checked negative corpora.
 
 ## License
 

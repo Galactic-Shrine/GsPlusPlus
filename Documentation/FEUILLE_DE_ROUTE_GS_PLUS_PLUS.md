@@ -239,8 +239,10 @@ Les prochains jalons sont donc réservés à Gs++ :
    différentielle des vingt-quatre formes intrinsèques, adaptations de
    littéraux et diagnostics de types, puis liaisons de références qualifiées,
    affectations et valeurs de retour, puis contraintes structurelles des
-   déclarations globales ; conversions implicites composées, évaluation
-   constante et émission exhaustive des initialiseurs globaux encore à migrer ;
+   déclarations globales, puis validation récursive de la forme constante de
+   leurs initialiseurs, agrégats et pointeurs ; conversions implicites
+   composées, calcul numérique des constantes, relocalisations et émission
+   exhaustive des initialiseurs globaux encore à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.

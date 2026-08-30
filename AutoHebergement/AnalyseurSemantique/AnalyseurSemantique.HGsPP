@@ -169,6 +169,14 @@ espace GalacticShrine::GsPP::Autohebergement {
         PublicExternalGlobalForbidden = 79,
         GlobaleConstanteNonInitialisee = 80,
         UninitializedConstGlobal = 80,
+        InitialiseurGlobalAgregeRequis = 81,
+        AggregateGlobalInitializerRequired = 81,
+        CiblePointeurFonctionGlobalInvalide = 82,
+        InvalidGlobalFunctionPointerTarget = 82,
+        InitialiseurPointeurDonneesGlobalInterdit = 83,
+        GlobalDataPointerInitializerForbidden = 83,
+        InitialiseurGlobalNonConstant = 84,
+        NonConstantGlobalInitializer = 84,
     };
 
     énumération GenreSymboleSemantique {

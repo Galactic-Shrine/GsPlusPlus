@@ -2651,6 +2651,12 @@ namespace
             ligne = static_cast<std::uint32_t>(erreur.Ligne());
             colonne = static_cast<std::uint32_t>(erreur.Colonne());
         }
+        catch (const std::exception& erreur)
+        {
+            throw std::runtime_error(
+                "échec inattendu du bootstrap pour "
+                + std::string(nomCorpus) + " : " + erreur.what());
+        }
         Exiger(
             ligne != 0 && colonne != 0,
             "le bootstrap aurait dû refuser le corpus sémantique "
@@ -4262,8 +4268,15 @@ namespace
             "externe constante entier32 Importee;\n"
             "constante entier32 Initialisee = 1;\n"
             "constante entier32 Calculee = convertir<entier32>(1 + 2 * 3);\n"
+            "constante entier8 SommeEtroite = 60 + 67;\n"
+            "constante entier32 Arithmetique = (20 * 3) / 4 % 7;\n"
+            "constante entier32 Bits = ((1 << 4) | 3) ^ 1;\n"
+            "constante entier32 Unaires = ~(-1);\n"
+            "constante booléen Comparaison = (-8 >> 2) < 0;\n"
+            "constante booléen CourtCircuitEt = faux && ((1 / 0) == 0);\n"
+            "constante booléen CourtCircuitOu = vrai || ((1 / 0) == 0);\n"
             "PaquetGlobal PaquetInitial = {1 + 2};\n"
-            "EtatGlobal EtatInitial = EtatGlobal::Actif;\n"
+            "EtatGlobal EtatInitial = EtatGlobal::Inactif;\n"
             "ObjetGlobal* PointeurObjet;\n"
             "constante entier32* PointeurConstant;\n"
             "pointeur_fonction<vide()> Rappel;\n"
@@ -4277,8 +4290,15 @@ namespace
             "extern const int32 Importee;\n"
             "const int32 Initialisee = 1;\n"
             "const int32 Calculee = cast<int32>(1 + 2 * 3);\n"
+            "const int8 SommeEtroite = 60 + 67;\n"
+            "const int32 Arithmetique = (20 * 3) / 4 % 7;\n"
+            "const int32 Bits = ((1 << 4) | 3) ^ 1;\n"
+            "const int32 Unaires = ~(-1);\n"
+            "const bool Comparaison = (-8 >> 2) < 0;\n"
+            "const bool CourtCircuitEt = false && ((1 / 0) == 0);\n"
+            "const bool CourtCircuitOu = true || ((1 / 0) == 0);\n"
             "PaquetGlobal PaquetInitial = {1 + 2};\n"
-            "EtatGlobal EtatInitial = EtatGlobal::Actif;\n"
+            "EtatGlobal EtatInitial = EtatGlobal::Inactif;\n"
             "ObjetGlobal* PointeurObjet;\n"
             "const int32* PointeurConstant;\n"
             "function_pointer<void()> Rappel;\n"
@@ -4380,6 +4400,130 @@ namespace
             "Paquet Globale = {Produire()}; public void F() {}",
             84,
             "element-global-agrege-non-constant-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "énumération E { V = vrai, }; publique vide F() {}",
+            85,
+            "valeur-enumeration-non-entiere-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "enumeration E { V = true, }; public void F() {}",
+            85,
+            "valeur-enumeration-non-entiere-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "énumération E { V = \"a\"[0], }; publique vide F() {}",
+            86,
+            "valeur-enumeration-non-constante-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "enumeration E { V = \"a\"[0], }; public void F() {}",
+            86,
+            "valeur-enumeration-non-constante-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "énumération E { V = 2_147_483_648, }; publique vide F() {}",
+            87,
+            "valeur-enumeration-hors-plage-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "enumeration E { V = 2_147_483_648, }; public void F() {}",
+            87,
+            "valeur-enumeration-hors-plage-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "énumération E { V = 2_147_483_647, Suivante, }; "
+            "publique vide F() {}",
+            88,
+            "debordement-enumeration-suivante-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "enumeration E { V = 2_147_483_647, Next, }; "
+            "public void F() {}",
+            88,
+            "debordement-enumeration-suivante-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "entier32 Globale = 4 / 0; publique vide F() {}",
+            89,
+            "division-constante-par-zero-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "int32 Globale = 4 / 0; public void F() {}",
+            89,
+            "division-constante-par-zero-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "entier32 Globale = 4 % 0; publique vide F() {}",
+            89,
+            "modulo-constant-par-zero-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "int32 Globale = 4 % 0; public void F() {}",
+            89,
+            "modulo-constant-par-zero-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "structure Paquet { entier32 Valeur; }; "
+            "Paquet Globale = {4 / 0}; publique vide F() {}",
+            89,
+            "division-constante-agregat-par-zero-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "struct Paquet { int32 Valeur; }; "
+            "Paquet Globale = {4 / 0}; public void F() {}",
+            89,
+            "division-constante-agregat-par-zero-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "entier8 Globale = 64 + 64; publique vide F() {}",
+            90,
+            "constante-signee-hors-plage-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "int8 Globale = 64 + 64; public void F() {}",
+            90,
+            "constante-signee-hors-plage-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "naturel8 Globale = 1 - 2; publique vide F() {}",
+            90,
+            "constante-non-signee-negative-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "uint8 Globale = 1 - 2; public void F() {}",
+            90,
+            "constante-non-signee-negative-anglais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "énumération E { A = E::B, B = 1, }; publique vide F() {}",
+            18,
+            "enumerateur-futur-introuvable-francais");
+        ComparerErreurSemantique(
+            syntaxe,
+            semantique,
+            "enumeration E { A = E::B, B = 1, }; public void F() {}",
+            18,
+            "enumerateur-futur-introuvable-anglais");
 
         ComparerErreurSemantique(
             syntaxe,

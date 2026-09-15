@@ -221,10 +221,11 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
   littéraux et diagnostics de types, les liaisons de références qualifiées,
   les affectations, les valeurs de retour et les contraintes structurelles des
   déclarations globales, ainsi que la validation récursive des formes
-  constantes, agrégats et pointeurs de leurs initialiseurs ;
-- **EN COURS** : compléter les conversions implicites composées, l’évaluation
-  numérique des constantes, leurs contrôles de plage, les relocalisations et
-  l’émission des initialiseurs globaux ;
+  constantes, agrégats et pointeurs de leurs initialiseurs, l’évaluation
+  numérique des constantes et valeurs d’énumération, les contrôles de plage et
+  les divisions par zéro ;
+- **EN COURS** : compléter les conversions implicites composées, les
+  relocalisations et l’émission des octets des initialiseurs globaux ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans

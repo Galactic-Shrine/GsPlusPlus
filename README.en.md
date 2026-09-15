@@ -46,9 +46,12 @@ official aliases with the same semantics and generated code.
 > imports, and uninitialized constants. Global initializers are now checked
 > recursively as well: aggregates require lists, function pointers require a
 > direct function target, initialized data pointers are rejected, and scalar
-> leaves must have a structurally constant form. Exhaustive numeric constant
-> evaluation, relocations, global emission, the remaining implicit
-> conversions, and other semantic families still need to be migrated.
+> leaves must have a structurally constant form. It now evaluates numeric
+> constants, including implicit and explicit enumerator values, signed and
+> unsigned operations, conversions, and logical short-circuiting; division by
+> zero and out-of-range values are rejected. Relocations, global byte emission,
+> the remaining implicit conversions, and other semantic families still need
+> to be migrated.
 
 ## Language principles
 
@@ -253,8 +256,9 @@ All normative documentation is maintained in Markdown as its primary source.
   adaptation;
 - qualified reference bindings, inheritance conversions, assignments, and
   returns aligned with the bootstrap compiler;
-- global declaration and initializer constraints aligned with the bootstrap
-  compiler, for a total of **175** position-checked negative corpora.
+- structural and numeric constraints for declarations, enumerations, and global
+  initializers aligned with the bootstrap compiler, for a total of **195**
+  negative corpora whose code, line, and column are checked.
 
 ## License
 

@@ -49,9 +49,12 @@ génération de code.
 > types `vide`, imports publics et constantes non initialisées. Les
 > initialiseurs globaux sont maintenant contrôlés récursivement : listes
 > requises pour les agrégats, cibles directes des pointeurs de fonction, refus
-> des pointeurs de données initialisés et formes constantes structurelles. Le
-> calcul numérique exhaustif de ces constantes, les relocalisations,
-> l’émission globale, les conversions implicites restantes et les autres
+> des pointeurs de données initialisés et formes constantes structurelles. Elle
+> calcule désormais les constantes numériques, y compris les valeurs
+> d’énumération implicites ou explicites, les opérations signées et non
+> signées, les conversions et les courts-circuits logiques ; elle refuse les
+> divisions par zéro et les valeurs hors plage. Les relocalisations, l’émission
+> des octets globaux, les conversions implicites restantes et les autres
 > familles sémantiques restent à migrer.
 
 ## Principes du langage
@@ -261,8 +264,9 @@ principale.
   adaptation des littéraux ;
 - liaisons de références qualifiées, conversions d’héritage, affectations et
   retours alignés sur le bootstrap ;
-- contraintes structurelles des déclarations et initialiseurs globaux alignées
-  sur le bootstrap, pour un total de **175** corpus négatifs positionnés.
+- contraintes structurelles et numériques des déclarations, énumérations et
+  initialiseurs globaux alignées sur le bootstrap, pour un total de **195**
+  corpus négatifs dont le code, la ligne et la colonne sont contrôlés.
 
 ## Licence
 

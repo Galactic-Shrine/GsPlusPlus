@@ -240,8 +240,9 @@ Les prochains jalons sont donc réservés à Gs++ :
    littéraux et diagnostics de types, puis liaisons de références qualifiées,
    affectations et valeurs de retour, puis contraintes structurelles des
    déclarations globales, puis validation récursive de la forme constante de
-   leurs initialiseurs, agrégats et pointeurs ; conversions implicites
-   composées, calcul numérique des constantes, relocalisations et émission
+   leurs initialiseurs, agrégats et pointeurs, puis calcul numérique des
+   constantes et valeurs d’énumération avec contrôles de plage et de division
+   par zéro ; conversions implicites composées, relocalisations et émission
    exhaustive des initialiseurs globaux encore à migrer ;
 5. 0.28 — backend, formats et linker auto-hébergés ;
 6. 0.29 — durcissement, reproductibilité et distribution ;

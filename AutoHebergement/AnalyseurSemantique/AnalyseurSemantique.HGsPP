@@ -177,6 +177,18 @@ espace GalacticShrine::GsPP::Autohebergement {
         GlobalDataPointerInitializerForbidden = 83,
         InitialiseurGlobalNonConstant = 84,
         NonConstantGlobalInitializer = 84,
+        ValeurEnumerationNonEntiere = 85,
+        NonIntegerEnumeratorValue = 85,
+        ValeurEnumerationNonConstante = 86,
+        NonConstantEnumeratorValue = 86,
+        ValeurEnumerationHorsPlage = 87,
+        EnumeratorValueOutOfRange = 87,
+        DebordementEnumerationSuivante = 88,
+        NextEnumeratorValueOverflow = 88,
+        DivisionConstanteParZero = 89,
+        ConstantDivisionByZero = 89,
+        ConstanteHorsPlageType = 90,
+        ConstantOutsideTypeRange = 90,
     };
 
     énumération GenreSymboleSemantique {

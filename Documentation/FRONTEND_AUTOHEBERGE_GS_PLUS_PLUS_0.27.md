@@ -926,16 +926,62 @@ GNU/Linux. Les deux chaînes reconstruisent une image `Frontend.GsE` GsE 1.0 de
 bit. Son SHA-256 est
 `03422775cda6395fa57d00eeaf0b75ed96394b0ceb971731cf51d936bd2b3a9c`.
 
-Cette tranche ne valide pas encore le calcul numérique des constantes, leurs
-plages et divisions par zéro, les relocalisations ni l’émission des octets de
-tous les initialiseurs globaux.
+## Constantes numériques et valeurs d’énumération — développement après alpha.8
+
+La passe sémantique auto-hébergée calcule maintenant les valeurs des formes
+constantes déjà reconnues : littéraux entiers et booléens, constantes
+d’énumération résolues, opérateurs unaires `+`, `-`, `!` et `~`, opérations
+arithmétiques et binaires, décalages, comparaisons, égalités, courts-circuits
+`&&` / `||` et conversions scalaires explicites. Les calculs suivent la largeur
+et le caractère signé ou non signé du type résolu, y compris le cas limite de
+la division de la valeur minimale `entier64` par `-1`.
+
+Les énumérateurs sont évalués dans l’ordre source. La valeur implicite commence
+à zéro et progresse à partir de la valeur précédente ; une valeur explicite
+doit être une constante entière autre qu’un booléen ou une énumération et rester
+dans la plage `entier32`. Une référence qualifiée ne voit que les énumérateurs
+antérieurs, comme dans le bootstrap. Les valeurs et leurs états sont stockés
+dans l’arène privée de l’analyse, sans modifier les structures de l’ABI publique.
+
+Le validateur des initialiseurs globaux réutilise cette évaluation pour refuser
+une division ou un modulo par zéro et une valeur qui ne tient pas dans sa
+destination signée ou non signée. Le contrôle descend également dans les
+tableaux, structures et unions. Les diagnostics historiques des initialiseurs
+locaux et de champs restent inchangés ; les nouveaux diagnostics de plage sont
+réservés au chemin global ajouté dans cette tranche.
+
+| Code | Diagnostic | Condition refusée |
+| ---: | --- | --- |
+| 85 | `ValeurEnumerationNonEntiere` | l’initialiseur d’un énumérateur n’est pas un entier admissible |
+| 86 | `ValeurEnumerationNonConstante` | l’initialiseur entier n’est pas une expression constante |
+| 87 | `ValeurEnumerationHorsPlage` | la valeur explicite sort de la plage `entier32` |
+| 88 | `DebordementEnumerationSuivante` | une valeur implicite devrait suivre `2_147_483_647` |
+| 89 | `DivisionConstanteParZero` | une division ou un modulo constant utilise zéro comme diviseur |
+| 90 | `ConstanteHorsPlageType` | la valeur globale ne tient pas dans son type de destination |
+
+Vingt nouveaux refus différentiels français et anglais portent la matrice à
+cent quatre-vingt-quinze corpus. Chaque corpus compare le code auto-hébergé, la
+ligne et la colonne au diagnostic du bootstrap. Le corpus positif couvre aussi
+les opérations arithmétiques, bit à bit, décalages signés, comparaisons,
+conversions étroites valides, courts-circuits et valeurs implicites
+d’énumération.
+
+La matrice locale complète passe 4/4 sous Visual Studio 2026 et 5/5 sous
+GNU/Linux. Les deux chaînes reconstruisent la même image `Frontend.GsE` GsE 1.0
+de 317 022 octets avec 73 exports. Les deux copies sont acceptées par
+`gseverifier` et possèdent le SHA-256
+`9446947bb60908d8a7df57b53e8397de3b387f15b1cff7c881bd7a7d0f22b281`.
+
+Cette tranche ne sérialise pas encore les valeurs calculées dans les octets des
+globales et ne produit pas leurs relocalisations. Elle ne constitue donc ni un
+frontend auto-hébergé complet ni un compilateur reconstruit fonctionnellement
+par Gs++.
 
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les conversions implicites composées et les qualifications encore
   absentes de la matrice différentielle ;
-- compléter le calcul numérique des constantes, les contrôles de plage et de
-  division par zéro, les relocalisations et l’émission des initialiseurs
+- compléter les relocalisations et l’émission des octets des initialiseurs
   globaux, ainsi que les autres familles sémantiques encore prises en charge
   par le bootstrap ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend

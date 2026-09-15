@@ -23,8 +23,11 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64* AlignementsTypes;
         naturel64* DecalagesChamps;
         naturel64* DecalagesTablesVirtuelles;
+        naturel64* ValeursEnumerateurs;
+        naturel32 ConstanteHorsPlage;
         octet* EtatsDisposition;
         octet* EtatsPolymorphisme;
+        octet* EtatsEnumerateurs;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
@@ -40,6 +43,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 IndexNoeudDeclaration;
         naturel32 ProfondeurTableau;
         naturel32 NombreDimensions;
+        naturel32 Globale;
+        naturel32 Reserve;
     };
 
     structure DescriptionEtapeDureeVieSemantique {
@@ -62,6 +67,13 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 HachageType;
         naturel64 HachageRetourFonction;
         naturel64 DebutType;
+    };
+
+    structure DescriptionTypeNumeriqueSemantique {
+        naturel32 Largeur;
+        naturel32 Signe;
+        naturel32 Booleen;
+        naturel32 Enumeration;
     };
 
     naturel64 HachageVideSemantique() {
@@ -1180,7 +1192,9 @@ espace GalacticShrine::GsPP::Autohebergement {
                     || candidat->Genre == 3
                     || candidat->Genre == 4
                     || candidat->Genre == 7)
-                && correspondance)
+                && correspondance
+                && (candidat->Genre != 7
+                    || candidat->IndexNoeud < indexReference))
                 retourner index;
             index = index + 1;
         }
@@ -2610,10 +2624,30 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 indexExpression,
         naturel64 typeReference);
 
+    externe booléen EstExpressionConstanteGlobaleSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression);
+
+    externe booléen DecrireTypeNumeriqueSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 hachageType,
+        DescriptionTypeNumeriqueSemantique* description);
+
+    externe ErreurAnalyseSemantique EvaluerConstanteNumeriqueSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64* valeur);
+
+    externe booléen ValeurDansTypeNumeriqueSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 valeur,
+        naturel64 typeSource,
+        naturel64 typeDestination);
+
     booléen InitialiseurCompatibleTypeSemantique(
         EtatAnalyseSemantique* etat,
         naturel64 indexExpression,
         naturel64 typeDestination) {
+        etat->ConstanteHorsPlage = 0;
         naturel64 typeSource = HachageTypeExpressionSemantique(
             etat, indexExpression);
         si (typeSource == 0) retourner vrai;
@@ -2636,8 +2670,39 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (ConversionHeritageSemantique(
                 etat, typeSource, typeDestination, faux))
             retourner vrai;
-        retourner LitteralExpressionCompatibleTypeSemantique(
-            etat, indexExpression, destinationValeur);
+        si (LitteralExpressionCompatibleTypeSemantique(
+                etat, indexExpression, destinationValeur))
+            retourner vrai;
+
+        DescriptionTypeNumeriqueSemantique descriptionSource;
+        DescriptionTypeNumeriqueSemantique descriptionDestination;
+        si (!EstExpressionConstanteGlobaleSemantique(
+                etat, indexExpression)
+            || !DecrireTypeNumeriqueSemantique(
+                etat, sourceValeur, &descriptionSource)
+            || !DecrireTypeNumeriqueSemantique(
+                etat, destinationValeur, &descriptionDestination)
+            || descriptionSource.Booleen != 0
+            || descriptionSource.Enumeration != 0
+            || descriptionDestination.Booleen != 0
+            || descriptionDestination.Enumeration != 0)
+            retourner faux;
+
+        naturel64 valeurConstante = 0;
+        ErreurAnalyseSemantique erreurConstante =
+            EvaluerConstanteNumeriqueSemantique(
+                etat, indexExpression, &valeurConstante);
+        si (erreurConstante != ErreurAnalyseSemantique::Reussite)
+            retourner faux;
+        si (!ValeurDansTypeNumeriqueSemantique(
+                etat,
+                valeurConstante,
+                sourceValeur,
+                destinationValeur)) {
+            etat->ConstanteHorsPlage = 1;
+            retourner faux;
+        }
+        retourner vrai;
     }
 
     booléen InitialiserDestinationInitialiseurSemantique(
@@ -2648,6 +2713,10 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner faux;
         destination->IndexNoeudDeclaration = indexNoeudDeclaration;
         destination->ProfondeurTableau = 0;
+        destination->Globale = 0;
+        si (etat->Requete->Noeuds[indexNoeudDeclaration].Genre == 3)
+            destination->Globale = 1;
+        destination->Reserve = 0;
         DescriptionHachageTypeSemantique dimensions;
         si (LireDimensionsNoeudSemantique(
                 etat, indexNoeudDeclaration, &dimensions)) {
@@ -2912,6 +2981,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                                 etat,
                                 etat->SymbolesTravail[champ].IndexNoeud,
                                 &destinationChamp)) {
+                            destinationChamp.Globale = destination->Globale;
                             naturel64 elementStructure =
                                 TrouverEnfantDirectSemantique(
                                     etat,
@@ -2952,13 +3022,24 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
 
         si (!InitialiseurCompatibleTypeSemantique(
-                etat, indexExpression, destination->HachageElement))
+                etat, indexExpression, destination->HachageElement)) {
+            si (etat->Requete->Resultat.Erreur
+                != ErreurAnalyseSemantique::Reussite)
+                retourner etat->Requete->Resultat.Erreur;
+            si (destination->Globale != 0
+                && etat->ConstanteHorsPlage != 0)
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::ConstanteHorsPlageType,
+                    indexExpression,
+                    0);
             retourner SignalerErreurSemantique(
                 etat,
                 ErreurAnalyseSemantique::
                     TypeElementInitialiseurAgregeIncompatible,
                 indexExpression,
                 0);
+        }
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
@@ -3049,9 +3130,6 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
-    externe booléen EstExpressionConstanteGlobaleSemantique(
-        EtatAnalyseSemantique* etat, naturel64 indexExpression);
-
     /**
      * Vérifie la forme constante d'une expression globale sans encore
      * calculer sa valeur numérique.
@@ -3102,6 +3180,666 @@ espace GalacticShrine::GsPP::Autohebergement {
                 etat, valeur);
         }
         retourner faux;
+    }
+
+    booléen DecrireTypeNumeriqueSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 hachageType,
+        DescriptionTypeNumeriqueSemantique* description) {
+        description->Largeur = 0;
+        description->Signe = 0;
+        description->Booleen = 0;
+        description->Enumeration = 0;
+
+        naturel32 genre = 1;
+        tantque (genre <= 11) {
+            naturel32 qualificatifs = 0;
+            tantque (qualificatifs < 4) {
+                si (hachageType == HacherTypeSimpleSemantique(
+                        genre, qualificatifs, 0)) {
+                    si (genre == 1 || genre == 5 || genre == 9
+                        || genre == 10 || genre == 11)
+                        description->Largeur = 8;
+                    sinon si (genre == 2 || genre == 6)
+                        description->Largeur = 16;
+                    sinon si (genre == 3 || genre == 7)
+                        description->Largeur = 32;
+                    sinon description->Largeur = 64;
+                    si (genre <= 4 || genre == 11)
+                        description->Signe = 1;
+                    si (genre == 9) description->Booleen = 1;
+                    retourner vrai;
+                }
+                qualificatifs = qualificatifs + 1;
+            }
+            genre = genre + 1;
+        }
+
+        naturel64 type = TrouverTypeDepuisHachageSemantique(
+            etat, hachageType, 0);
+        si (type < etat->NombreSymboles
+            && etat->Requete->Noeuds[
+                etat->SymbolesTravail[type].IndexNoeud].Genre == 8) {
+            description->Largeur = 32;
+            description->Signe = 1;
+            description->Enumeration = 1;
+            retourner vrai;
+        }
+        retourner faux;
+    }
+
+    naturel64 NormaliserValeurNumeriqueSemantique(
+        naturel64 valeur,
+        DescriptionTypeNumeriqueSemantique* description) {
+        si (description->Largeur == 0 || description->Largeur == 64)
+            retourner valeur;
+        retourner valeur
+            & ((convertir<naturel64>(1) << description->Largeur) - 1);
+    }
+
+    entier64 InterpreterSigneNumeriqueSemantique(
+        naturel64 valeur,
+        DescriptionTypeNumeriqueSemantique* description) {
+        valeur = NormaliserValeurNumeriqueSemantique(
+            valeur, description);
+        si (description->Largeur == 64) {
+            si (valeur <= 9_223_372_036_854_775_807)
+                retourner convertir<entier64>(valeur);
+            retourner -1 - convertir<entier64>(
+                18_446_744_073_709_551_615 - valeur);
+        }
+        naturel64 signe = convertir<naturel64>(1)
+            << (description->Largeur - 1);
+        si ((valeur & signe) == 0)
+            retourner convertir<entier64>(valeur);
+        naturel64 masque = (convertir<naturel64>(1)
+            << description->Largeur) - 1;
+        naturel64 magnitude = ((~valeur) & masque) + 1;
+        retourner -convertir<entier64>(magnitude);
+    }
+
+    naturel64 ConvertirSigneEnNaturelSemantique(entier64 valeur) {
+        si (valeur >= 0) retourner convertir<naturel64>(valeur);
+        retourner 0 - convertir<naturel64>(-(valeur + 1)) - 1;
+    }
+
+    naturel64 ConvertirBooleenEnNaturelSemantique(booléen valeur) {
+        si (valeur) retourner 1;
+        retourner 0;
+    }
+
+    booléen ValeurDansTypeNumeriqueSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 valeur,
+        naturel64 typeSource,
+        naturel64 typeDestination) {
+        DescriptionTypeNumeriqueSemantique source;
+        DescriptionTypeNumeriqueSemantique destination;
+        si (!DecrireTypeNumeriqueSemantique(
+                etat, typeSource, &source)
+            || !DecrireTypeNumeriqueSemantique(
+                etat, typeDestination, &destination))
+            retourner faux;
+
+        si (destination.Booleen != 0) {
+            si (source.Signe != 0) {
+                entier64 signeeBooleenne =
+                    InterpreterSigneNumeriqueSemantique(
+                    valeur, &source);
+                retourner signeeBooleenne == 0
+                    || signeeBooleenne == 1;
+            }
+            naturel64 nonSigneeBooleenne =
+                NormaliserValeurNumeriqueSemantique(
+                valeur, &source);
+            retourner nonSigneeBooleenne == 0
+                || nonSigneeBooleenne == 1;
+        }
+
+        si (source.Signe != 0) {
+            entier64 signeeSource = InterpreterSigneNumeriqueSemantique(
+                valeur, &source);
+            si (destination.Signe == 0) {
+                si (signeeSource < 0) retourner faux;
+                naturel64 maximumNonSigne =
+                    18_446_744_073_709_551_615;
+                si (destination.Largeur != 64)
+                    maximumNonSigne = (convertir<naturel64>(1)
+                        << destination.Largeur) - 1;
+                retourner convertir<naturel64>(signeeSource)
+                    <= maximumNonSigne;
+            }
+            si (destination.Largeur == 64) retourner vrai;
+            entier64 maximumSigne = convertir<entier64>(
+                (convertir<naturel64>(1)
+                    << (destination.Largeur - 1)) - 1);
+            entier64 minimumSigne = -maximumSigne - 1;
+            retourner signeeSource >= minimumSigne
+                && signeeSource <= maximumSigne;
+        }
+
+        naturel64 nonSigneeSource = NormaliserValeurNumeriqueSemantique(
+            valeur, &source);
+        si (destination.Signe != 0) {
+            naturel64 maximumSigneDestination =
+                9_223_372_036_854_775_807;
+            si (destination.Largeur != 64)
+                maximumSigneDestination = (convertir<naturel64>(1)
+                    << (destination.Largeur - 1)) - 1;
+            retourner nonSigneeSource <= maximumSigneDestination;
+        }
+        naturel64 maximumDestination =
+            18_446_744_073_709_551_615;
+        si (destination.Largeur != 64)
+            maximumDestination = (convertir<naturel64>(1)
+                << destination.Largeur) - 1;
+        retourner nonSigneeSource <= maximumDestination;
+    }
+
+    ErreurAnalyseSemantique EvaluerConstanteNumeriqueSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexExpression,
+        naturel64* valeur) {
+        si (indexExpression >= etat->Requete->NombreNoeuds)
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexExpression,
+                50);
+        constante NoeudDeclaration* expression =
+            &etat->Requete->Noeuds[indexExpression];
+        si (expression->Genre == 22) {
+            *valeur = expression->HachageType;
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        si (expression->Genre == 24) {
+            naturel64 cible = TrouverCibleSymboleExpressionSemantique(
+                etat, indexExpression);
+            si (cible < etat->NombreSymboles
+                && etat->SymbolesTravail[cible].Genre == 7) {
+                naturel64 indexEnumerateur = etat->SymbolesTravail[
+                    cible].IndexNoeud;
+                si (indexEnumerateur < etat->Requete->NombreNoeuds
+                    && etat->EtatsEnumerateurs[indexEnumerateur] == 2) {
+                    *valeur = etat->ValeursEnumerateurs[indexEnumerateur];
+                    retourner ErreurAnalyseSemantique::Reussite;
+                }
+            }
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexExpression,
+                51);
+        }
+        si (expression->Genre == 25) {
+            naturel64 operande = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            naturel64 valeurOperande = 0;
+            ErreurAnalyseSemantique erreurOperande =
+                EvaluerConstanteNumeriqueSemantique(
+                    etat, operande, &valeurOperande);
+            si (erreurOperande != ErreurAnalyseSemantique::Reussite)
+                retourner erreurOperande;
+            DescriptionTypeNumeriqueSemantique typeExpression;
+            si (!DecrireTypeNumeriqueSemantique(
+                    etat,
+                    HachageTypeExpressionSemantique(
+                        etat, indexExpression),
+                    &typeExpression))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    indexExpression,
+                    52);
+            si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(43, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurOperande, &typeExpression);
+            sinon si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(45, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    0 - valeurOperande, &typeExpression);
+            sinon si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(33, 0)) {
+                si (valeurOperande == 0) *valeur = 1;
+                sinon *valeur = 0;
+            }
+            sinon si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(126, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    ~valeurOperande, &typeExpression);
+            sinon retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::AstInvalide,
+                indexExpression,
+                53);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        si (expression->Genre == 26) {
+            naturel64 gauche = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            naturel64 droite = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 1);
+            naturel64 valeurGauche = 0;
+            ErreurAnalyseSemantique erreurGauche =
+                EvaluerConstanteNumeriqueSemantique(
+                    etat, gauche, &valeurGauche);
+            si (erreurGauche != ErreurAnalyseSemantique::Reussite)
+                retourner erreurGauche;
+
+            si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(38, 38)) {
+                si (valeurGauche == 0) {
+                    *valeur = 0;
+                    retourner ErreurAnalyseSemantique::Reussite;
+                }
+            }
+            sinon si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(124, 124)) {
+                si (valeurGauche != 0) {
+                    *valeur = 1;
+                    retourner ErreurAnalyseSemantique::Reussite;
+                }
+            }
+
+            naturel64 valeurDroite = 0;
+            ErreurAnalyseSemantique erreurDroite =
+                EvaluerConstanteNumeriqueSemantique(
+                    etat, droite, &valeurDroite);
+            si (erreurDroite != ErreurAnalyseSemantique::Reussite)
+                retourner erreurDroite;
+            si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(38, 38)) {
+                si (valeurDroite != 0) *valeur = 1;
+                sinon *valeur = 0;
+                retourner ErreurAnalyseSemantique::Reussite;
+            }
+            si (expression->HachageNom
+                == HacherOperateurExpressionSemantique(124, 124)) {
+                si (valeurDroite != 0) *valeur = 1;
+                sinon *valeur = 0;
+                retourner ErreurAnalyseSemantique::Reussite;
+            }
+
+            DescriptionTypeNumeriqueSemantique typeGauche;
+            DescriptionTypeNumeriqueSemantique typeDroite;
+            DescriptionTypeNumeriqueSemantique typeExpressionBinaire;
+            si (!DecrireTypeNumeriqueSemantique(
+                    etat,
+                    HachageTypeExpressionSemantique(etat, gauche),
+                    &typeGauche)
+                || !DecrireTypeNumeriqueSemantique(
+                    etat,
+                    HachageTypeExpressionSemantique(etat, droite),
+                    &typeDroite)
+                || !DecrireTypeNumeriqueSemantique(
+                    etat,
+                    HachageTypeExpressionSemantique(
+                        etat, indexExpression),
+                    &typeExpressionBinaire))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    indexExpression,
+                    54);
+
+            naturel64 hachageOperateur = expression->HachageNom;
+            si (hachageOperateur
+                == HacherOperateurExpressionSemantique(43, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurGauche + valeurDroite,
+                    &typeExpressionBinaire);
+            sinon si (hachageOperateur
+                == HacherOperateurExpressionSemantique(45, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurGauche - valeurDroite,
+                    &typeExpressionBinaire);
+            sinon si (hachageOperateur
+                == HacherOperateurExpressionSemantique(42, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurGauche * valeurDroite,
+                    &typeExpressionBinaire);
+            sinon si (hachageOperateur
+                == HacherOperateurExpressionSemantique(38, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurGauche & valeurDroite,
+                    &typeExpressionBinaire);
+            sinon si (hachageOperateur
+                == HacherOperateurExpressionSemantique(124, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurGauche | valeurDroite,
+                    &typeExpressionBinaire);
+            sinon si (hachageOperateur
+                == HacherOperateurExpressionSemantique(94, 0))
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    valeurGauche ^ valeurDroite,
+                    &typeExpressionBinaire);
+            sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(60, 60)
+                || hachageOperateur
+                    == HacherOperateurExpressionSemantique(62, 62)) {
+                naturel64 distance = valeurDroite
+                    & convertir<naturel64>(typeGauche.Largeur - 1);
+                si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(60, 60))
+                    *valeur = NormaliserValeurNumeriqueSemantique(
+                        NormaliserValeurNumeriqueSemantique(
+                            valeurGauche, &typeGauche) << distance,
+                        &typeExpressionBinaire);
+                sinon si (typeGauche.Signe != 0) {
+                    entier64 gaucheSigneeDecalage =
+                        InterpreterSigneNumeriqueSemantique(
+                            valeurGauche, &typeGauche);
+                    *valeur = NormaliserValeurNumeriqueSemantique(
+                        ConvertirSigneEnNaturelSemantique(
+                            gaucheSigneeDecalage >> distance),
+                        &typeExpressionBinaire);
+                }
+                sinon *valeur = NormaliserValeurNumeriqueSemantique(
+                    NormaliserValeurNumeriqueSemantique(
+                        valeurGauche, &typeGauche) >> distance,
+                    &typeExpressionBinaire);
+            }
+            sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(47, 0)
+                || hachageOperateur
+                    == HacherOperateurExpressionSemantique(37, 0)) {
+                naturel64 droiteNormaliseeDivision =
+                    NormaliserValeurNumeriqueSemantique(
+                        valeurDroite, &typeGauche);
+                si (droiteNormaliseeDivision == 0)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::DivisionConstanteParZero,
+                        indexExpression,
+                        0);
+                naturel64 resultatDivision = 0;
+                si (typeGauche.Signe != 0) {
+                    naturel64 gaucheNormaliseeDivision =
+                        NormaliserValeurNumeriqueSemantique(
+                            valeurGauche, &typeGauche);
+                    si (typeGauche.Largeur == 64
+                        && gaucheNormaliseeDivision
+                            == 9_223_372_036_854_775_808
+                        && droiteNormaliseeDivision
+                            == 18_446_744_073_709_551_615) {
+                        si (hachageOperateur
+                            == HacherOperateurExpressionSemantique(47, 0))
+                            resultatDivision = gaucheNormaliseeDivision;
+                        sinon resultatDivision = 0;
+                    }
+                    sinon {
+                        entier64 gaucheSigneeDivision =
+                            InterpreterSigneNumeriqueSemantique(
+                                valeurGauche, &typeGauche);
+                        entier64 droiteSigneeDivision =
+                            InterpreterSigneNumeriqueSemantique(
+                                valeurDroite, &typeGauche);
+                        entier64 resultatSigne = 0;
+                        si (hachageOperateur
+                            == HacherOperateurExpressionSemantique(47, 0))
+                            resultatSigne = gaucheSigneeDivision
+                                / droiteSigneeDivision;
+                        sinon resultatSigne = gaucheSigneeDivision
+                            % droiteSigneeDivision;
+                        resultatDivision =
+                            ConvertirSigneEnNaturelSemantique(
+                                resultatSigne);
+                    }
+                }
+                sinon {
+                    naturel64 gaucheNonSigneeDivision =
+                        NormaliserValeurNumeriqueSemantique(
+                            valeurGauche, &typeGauche);
+                    si (hachageOperateur
+                        == HacherOperateurExpressionSemantique(47, 0))
+                        resultatDivision =
+                            gaucheNonSigneeDivision
+                                / droiteNormaliseeDivision;
+                    sinon resultatDivision =
+                        gaucheNonSigneeDivision
+                            % droiteNormaliseeDivision;
+                }
+                *valeur = NormaliserValeurNumeriqueSemantique(
+                    resultatDivision, &typeExpressionBinaire);
+            }
+            sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(61, 61)
+                || hachageOperateur
+                    == HacherOperateurExpressionSemantique(33, 61)) {
+                naturel64 gaucheNormaliseeEgalite =
+                    NormaliserValeurNumeriqueSemantique(
+                        valeurGauche, &typeGauche);
+                naturel64 droiteNormaliseeEgalite =
+                    NormaliserValeurNumeriqueSemantique(
+                        valeurDroite, &typeDroite);
+                si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(61, 61))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheNormaliseeEgalite
+                            == droiteNormaliseeEgalite);
+                sinon *valeur = ConvertirBooleenEnNaturelSemantique(
+                    gaucheNormaliseeEgalite
+                        != droiteNormaliseeEgalite);
+            }
+            sinon si (typeGauche.Signe != 0) {
+                entier64 gaucheSigneeComparaison =
+                    InterpreterSigneNumeriqueSemantique(
+                        valeurGauche, &typeGauche);
+                entier64 droiteSigneeComparaison =
+                    InterpreterSigneNumeriqueSemantique(
+                        valeurDroite, &typeDroite);
+                si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(60, 0))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheSigneeComparaison
+                            < droiteSigneeComparaison);
+                sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(60, 61))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheSigneeComparaison
+                            <= droiteSigneeComparaison);
+                sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(62, 0))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheSigneeComparaison
+                            > droiteSigneeComparaison);
+                sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(62, 61))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheSigneeComparaison
+                            >= droiteSigneeComparaison);
+                sinon retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    indexExpression,
+                    55);
+            }
+            sinon {
+                naturel64 gaucheNonSigneeComparaison =
+                    NormaliserValeurNumeriqueSemantique(
+                        valeurGauche, &typeGauche);
+                naturel64 droiteNonSigneeComparaison =
+                    NormaliserValeurNumeriqueSemantique(
+                        valeurDroite, &typeDroite);
+                si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(60, 0))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheNonSigneeComparaison
+                            < droiteNonSigneeComparaison);
+                sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(60, 61))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheNonSigneeComparaison
+                            <= droiteNonSigneeComparaison);
+                sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(62, 0))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheNonSigneeComparaison
+                            > droiteNonSigneeComparaison);
+                sinon si (hachageOperateur
+                    == HacherOperateurExpressionSemantique(62, 61))
+                    *valeur = ConvertirBooleenEnNaturelSemantique(
+                        gaucheNonSigneeComparaison
+                            >= droiteNonSigneeComparaison);
+                sinon retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    indexExpression,
+                    56);
+            }
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        si (expression->Genre == 31) {
+            naturel64 indexValeur = TrouverEnfantDirectSemantique(
+                etat, indexExpression, 0);
+            naturel64 valeurSource = 0;
+            ErreurAnalyseSemantique erreurValeur =
+                EvaluerConstanteNumeriqueSemantique(
+                    etat, indexValeur, &valeurSource);
+            si (erreurValeur != ErreurAnalyseSemantique::Reussite)
+                retourner erreurValeur;
+            DescriptionTypeNumeriqueSemantique sourceConversion;
+            DescriptionTypeNumeriqueSemantique cibleConversion;
+            si (!DecrireTypeNumeriqueSemantique(
+                    etat,
+                    HachageTypeExpressionSemantique(etat, indexValeur),
+                    &sourceConversion)
+                || !DecrireTypeNumeriqueSemantique(
+                    etat, expression->HachageType, &cibleConversion))
+                retourner SignalerErreurSemantique(
+                    etat,
+                    ErreurAnalyseSemantique::AstInvalide,
+                    indexExpression,
+                    57);
+            naturel64 valeurEtendue =
+                NormaliserValeurNumeriqueSemantique(
+                    valeurSource, &sourceConversion);
+            si (sourceConversion.Signe != 0)
+                valeurEtendue = ConvertirSigneEnNaturelSemantique(
+                    InterpreterSigneNumeriqueSemantique(
+                        valeurSource, &sourceConversion));
+            si (cibleConversion.Booleen != 0) {
+                si (valeurEtendue != 0) *valeur = 1;
+                sinon *valeur = 0;
+            }
+            sinon *valeur = NormaliserValeurNumeriqueSemantique(
+                valeurEtendue, &cibleConversion);
+            retourner ErreurAnalyseSemantique::Reussite;
+        }
+        retourner SignalerErreurSemantique(
+            etat,
+            ErreurAnalyseSemantique::InitialiseurGlobalNonConstant,
+            indexExpression,
+            0);
+    }
+
+    booléen ExisteEnumerateurSuivantSemantique(
+        EtatAnalyseSemantique* etat,
+        naturel64 indexEnumerateur,
+        naturel64 indexEnumeration) {
+        naturel64 index = indexEnumerateur + 1;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* candidat =
+                &etat->Requete->Noeuds[index];
+            si (candidat->Genre == 9
+                && candidat->Parent == indexEnumeration)
+                retourner vrai;
+            index = index + 1;
+        }
+        retourner faux;
+    }
+
+    ErreurAnalyseSemantique CalculerEnumerationsSemantiques(
+        EtatAnalyseSemantique* etat) {
+        naturel64 enumerationCourante = etat->Requete->NombreNoeuds;
+        entier64 prochaineValeur = 0;
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds) {
+            constante NoeudDeclaration* enumerateur =
+                &etat->Requete->Noeuds[index];
+            si (enumerateur->Genre == 9) {
+                si (enumerateur->Parent != enumerationCourante) {
+                    enumerationCourante = enumerateur->Parent;
+                    prochaineValeur = 0;
+                }
+                entier64 valeurSignee = prochaineValeur;
+                si ((enumerateur->Drapeaux & 4) != 0) {
+                    naturel64 expression = TrouverEnfantDirectSemantique(
+                        etat, index, 0);
+                    DescriptionTypeNumeriqueSemantique typeExpression;
+                    si (expression >= etat->Requete->NombreNoeuds
+                        || !DecrireTypeNumeriqueSemantique(
+                            etat,
+                            HachageTypeExpressionSemantique(
+                                etat, expression),
+                            &typeExpression)
+                        || typeExpression.Booleen != 0
+                        || typeExpression.Enumeration != 0)
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::
+                                ValeurEnumerationNonEntiere,
+                            index,
+                            0);
+                    si (!EstExpressionConstanteGlobaleSemantique(
+                            etat, expression))
+                        retourner SignalerErreurSemantique(
+                            etat,
+                            ErreurAnalyseSemantique::
+                                ValeurEnumerationNonConstante,
+                            index,
+                            0);
+                    naturel64 valeurExpression = 0;
+                    ErreurAnalyseSemantique erreurExpression =
+                        EvaluerConstanteNumeriqueSemantique(
+                            etat, expression, &valeurExpression);
+                    si (erreurExpression
+                        != ErreurAnalyseSemantique::Reussite)
+                        retourner erreurExpression;
+                    si (typeExpression.Signe != 0)
+                        valeurSignee = InterpreterSigneNumeriqueSemantique(
+                            valeurExpression, &typeExpression);
+                    sinon {
+                        naturel64 valeurNonSignee =
+                            NormaliserValeurNumeriqueSemantique(
+                                valeurExpression, &typeExpression);
+                        si (valeurNonSignee > 2_147_483_647)
+                            retourner SignalerErreurSemantique(
+                                etat,
+                                ErreurAnalyseSemantique::
+                                    ValeurEnumerationHorsPlage,
+                                index,
+                                0);
+                        valeurSignee = convertir<entier64>(
+                            valeurNonSignee);
+                    }
+                }
+                si (valeurSignee < -2_147_483_648
+                    || valeurSignee > 2_147_483_647)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::
+                            ValeurEnumerationHorsPlage,
+                        index,
+                        0);
+                etat->ValeursEnumerateurs[index] =
+                    ConvertirSigneEnNaturelSemantique(valeurSignee);
+                etat->EtatsEnumerateurs[index] = 2;
+                si (ExisteEnumerateurSuivantSemantique(
+                        etat, index, enumerationCourante)
+                    && valeurSignee == 2_147_483_647)
+                    retourner SignalerErreurSemantique(
+                        etat,
+                        ErreurAnalyseSemantique::
+                            DebordementEnumerationSuivante,
+                        index,
+                        0);
+                prochaineValeur = valeurSignee + 1;
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
     }
 
     naturel32 GenrePointeurFonctionDestinationGlobaleSemantique(
@@ -3189,6 +3927,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                                 etat,
                                 etat->SymbolesTravail[champ].IndexNoeud,
                                 &destinationChamp)) {
+                            destinationChamp.Globale = 1;
                             naturel64 elementChamp =
                                 TrouverEnfantDirectSemantique(
                                     etat,
@@ -3272,6 +4011,24 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner SignalerErreurSemantique(
                 etat,
                 ErreurAnalyseSemantique::InitialiseurGlobalNonConstant,
+                indexExpression,
+                0);
+        naturel64 valeurConstante = 0;
+        ErreurAnalyseSemantique erreurConstante =
+            EvaluerConstanteNumeriqueSemantique(
+                etat, indexExpression, &valeurConstante);
+        si (erreurConstante != ErreurAnalyseSemantique::Reussite)
+            retourner erreurConstante;
+        naturel64 typeSource = HachageTypeExpressionSemantique(
+            etat, indexExpression);
+        si (!ValeurDansTypeNumeriqueSemantique(
+                etat,
+                valeurConstante,
+                typeSource,
+                destination->HachageElement))
+            retourner SignalerErreurSemantique(
+                etat,
+                ErreurAnalyseSemantique::ConstanteHorsPlageType,
                 indexExpression,
                 0);
         retourner ErreurAnalyseSemantique::Reussite;
@@ -4237,12 +4994,16 @@ espace GalacticShrine::GsPP::Autohebergement {
                     indexInitialiseurChamp,
                     36);
             si (!InitialiseurCompatibleTypeSemantique(
-                    etat, argumentChamp, symboleChamp->HachageType))
+                    etat, argumentChamp, symboleChamp->HachageType)) {
+                si (etat->Requete->Resultat.Erreur
+                    != ErreurAnalyseSemantique::Reussite)
+                    retourner etat->Requete->Resultat.Erreur;
                 retourner SignalerErreurSemantique(
                     etat,
                     ErreurAnalyseSemantique::TypeInitialiseurChampIncompatible,
                     argumentChamp,
                     convertir<naturel32>(cibleChampInitialise));
+            }
         }
 
         etat->CiblesInitialiseurs[indexInitialiseurChamp] =
@@ -4401,13 +5162,17 @@ espace GalacticShrine::GsPP::Autohebergement {
                         && EstTypeScalaireSemantique(
                             etat, champ->HachageType)
                         && !InitialiseurCompatibleTypeSemantique(
-                            etat, expression, champ->HachageType))
+                            etat, expression, champ->HachageType)) {
+                        si (etat->Requete->Resultat.Erreur
+                            != ErreurAnalyseSemantique::Reussite)
+                            retourner etat->Requete->Resultat.Erreur;
                         retourner SignalerErreurSemantique(
                             etat,
                             ErreurAnalyseSemantique::
                                 TypeInitialiseurChampIncompatible,
                             expression,
                             convertir<naturel32>(indexChamp));
+                    }
                     AjouterResolutionSemantique(
                         etat,
                         indexConstructeur,
@@ -6067,6 +6832,10 @@ espace GalacticShrine::GsPP::Autohebergement {
                     argumentAppelIndirect,
                     parametreAppelIndirect.HachageType);
             si (!argumentIndirectCompatible)
+                si (etat->Requete->Resultat.Erreur
+                    != ErreurAnalyseSemantique::Reussite)
+                    retourner etat->Requete->Resultat.Erreur;
+            si (!argumentIndirectCompatible)
                 retourner SignalerErreurSemantique(
                     etat,
                     ErreurAnalyseSemantique::
@@ -6381,12 +7150,16 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 typeCibleAffectation = HachageTypeExpressionSemantique(
             etat, cibleAffectation);
         si (!InitialiseurCompatibleTypeSemantique(
-                etat, valeurAffectation, typeCibleAffectation))
+                etat, valeurAffectation, typeCibleAffectation)) {
+            si (etat->Requete->Resultat.Erreur
+                != ErreurAnalyseSemantique::Reussite)
+                retourner etat->Requete->Resultat.Erreur;
             retourner SignalerErreurSemantique(
                 etat,
                 ErreurAnalyseSemantique::TypeAffectationIncompatible,
                 valeurAffectation,
                 0);
+        }
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
@@ -6433,12 +7206,16 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 valeurRetour = TrouverEnfantDirectSemantique(
             etat, indexRetour, 0);
         si (!InitialiseurCompatibleTypeSemantique(
-                etat, valeurRetour, typeRetour))
+                etat, valeurRetour, typeRetour)) {
+            si (etat->Requete->Resultat.Erreur
+                != ErreurAnalyseSemantique::Reussite)
+                retourner etat->Requete->Resultat.Erreur;
             retourner SignalerErreurSemantique(
                 etat,
                 ErreurAnalyseSemantique::TypeRetourIncompatible,
                 valeurRetour,
                 0);
+        }
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
@@ -6519,8 +7296,11 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.AlignementsTypes = NulNaturelsDispositionSemantique;
         etat.DecalagesChamps = NulNaturelsDispositionSemantique;
         etat.DecalagesTablesVirtuelles = NulNaturelsDispositionSemantique;
+        etat.ValeursEnumerateurs = NulNaturelsDispositionSemantique;
+        etat.ConstanteHorsPlage = 0;
         etat.EtatsDisposition = NulEtatsDispositionSemantique;
         etat.EtatsPolymorphisme = NulEtatsDispositionSemantique;
+        etat.EtatsEnumerateurs = NulEtatsDispositionSemantique;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
         naturel64 index = 0;
 
@@ -6612,19 +7392,28 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.DecalagesTablesVirtuelles = convertir<naturel64*>(
             GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreSymboles * 8, 8));
+        etat.ValeursEnumerateurs = convertir<naturel64*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, requete->NombreNoeuds * 8, 8));
         etat.EtatsDisposition = convertir<octet*>(
             GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreSymboles, 1));
         etat.EtatsPolymorphisme = convertir<octet*>(
             GalacticShrine::GsPP::Hebergee::AllouerArene(
                 &etat.Arene, etat.NombreSymboles, 1));
+        etat.EtatsEnumerateurs = convertir<octet*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &etat.Arene, requete->NombreNoeuds, 1));
         si (etat.TaillesTypes == NulNaturelsDispositionSemantique
             || etat.AlignementsTypes == NulNaturelsDispositionSemantique
             || etat.DecalagesChamps == NulNaturelsDispositionSemantique
             || etat.DecalagesTablesVirtuelles
                 == NulNaturelsDispositionSemantique
+            || etat.ValeursEnumerateurs
+                == NulNaturelsDispositionSemantique
             || etat.EtatsDisposition == NulEtatsDispositionSemantique
-            || etat.EtatsPolymorphisme == NulEtatsDispositionSemantique) {
+            || etat.EtatsPolymorphisme == NulEtatsDispositionSemantique
+            || etat.EtatsEnumerateurs == NulEtatsDispositionSemantique) {
             SignalerErreurSemantique(
                 &etat, ErreurAnalyseSemantique::AllocationImpossible, 0, 0);
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
@@ -6640,6 +7429,12 @@ espace GalacticShrine::GsPP::Autohebergement {
             etat.EtatsPolymorphisme[index] = 0;
             index = index + 1;
         }
+        index = 0;
+        tantque (index < requete->NombreNoeuds) {
+            etat.ValeursEnumerateurs[index] = 0;
+            etat.EtatsEnumerateurs[index] = 0;
+            index = index + 1;
+        }
 
         ErreurAnalyseSemantique erreur = VerifierConflitsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
@@ -6650,6 +7445,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             erreur = ValiderGlobalesSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreExpressionsSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = CalculerEnumerationsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreConstructionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)

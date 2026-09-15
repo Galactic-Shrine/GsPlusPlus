@@ -10,6 +10,27 @@
 
 # Journal des modifications
 
+## Développement après Gs++ 0.27.0-alpha.8 — 2026-09-15
+
+- ajout, dans la passe sémantique auto-hébergée, de l’évaluation numérique des
+  littéraux entiers et booléens, constantes d’énumération, opérateurs unaires
+  et binaires, décalages, comparaisons, courts-circuits et conversions ;
+- calcul privé des valeurs d’énumération explicites et implicites dans l’ordre
+  source, avec contrôle de la plage `entier32`, du débordement de la valeur
+  suivante et refus des initialiseurs non entiers ou non constants ;
+- contrôle de la plage signée ou non signée des constantes affectées aux
+  initialiseurs globaux scalaires ou imbriqués dans un agrégat, et diagnostic
+  dédié de la division ou du modulo constant par zéro ;
+- ajout des diagnostics sémantiques 85 à 90 et de vingt refus différentiels
+  bilingues, portant le total à cent quatre-vingt-quinze corpus dont le code,
+  la ligne et la colonne correspondent au bootstrap ;
+- maintien sans modification de l’ABI publique de l’AST et de la passe
+  sémantique : les valeurs calculées restent conservées dans l’arène privée ;
+- validation locale 4/4 sous Visual Studio 2026 et 5/5 sous GNU/Linux ; les
+  deux chaînes reconstruisent le même `Frontend.GsE` GsE 1.0 de 317 022 octets
+  et 73 exports, accepté par `gseverifier`, dont le SHA-256 est
+  `9446947bb60908d8a7df57b53e8397de3b387f15b1cff7c881bd7a7d0f22b281`.
+
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-08-30
 
 - validation récursive de la forme des initialiseurs globaux : liste exigée

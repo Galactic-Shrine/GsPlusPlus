@@ -242,11 +242,25 @@ Les prochains jalons sont donc réservés à Gs++ :
    déclarations globales, puis validation récursive de la forme constante de
    leurs initialiseurs, agrégats et pointeurs, puis calcul numérique des
    constantes et valeurs d’énumération avec contrôles de plage et de division
-   par zéro ; conversions implicites composées, relocalisations et émission
-   exhaustive des initialiseurs globaux encore à migrer ;
-5. 0.28 — backend, formats et linker auto-hébergés ;
-6. 0.29 — durcissement, reproductibilité et distribution ;
+   par zéro, puis émission des octets globaux, disposition des zones
+   données/zéro et relocalisations de fonctions ; conversions implicites
+   composées et autres familles sémantiques encore à migrer, raccordement aux
+   écrivains d’objets auto-hébergés dans le jalon backend ;
+5. 0.28 — backend, formats et linker auto-hébergés, sélection de cible native
+   ou explicite, sorties Windows PE et Linux ELF et conservation de GsE pour
+   la cible Galactic-Shrine ;
+6. 0.29 — durcissement, reproductibilité, SDK et distribution, exécution sur
+   les systèmes cibles et validation des combinaisons de compilation croisée ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.
+
+**Décision du 19 septembre 2026 — prévue, non encore implémentée :** compiler
+pour l'environnement utilisé par défaut, avec choix explicite d'une autre
+plateforme. La ligne de commande prime sur le projet XML, qui prime sur la
+détection de l'hôte. Le premier périmètre est x86-64 sous Windows, GNU/Linux
+et Sanctuaire SE / ShrineOS. Chaque cible nécessite un backend, un format de
+sortie, des conventions de liaison et un SDK adaptés ; une cible indisponible
+doit produire un diagnostic. Les tests actuels sur deux hôtes ne constituent
+pas encore une preuve de production d'exécutables natifs PE et ELF.
 
 Le périmètre détaillé, les invariants gelés et les critères de sortie se
 trouvent dans

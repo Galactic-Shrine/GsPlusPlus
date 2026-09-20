@@ -137,6 +137,24 @@ Construction/Bin/gsppc Tests/Integration/Separation/Compilation.GsPs
 
 ## Compatibilité
 
+### Sélection de cible prévue
+
+La décision produit du 19 septembre 2026 prévoit de déclarer la plateforme
+cible dans les projets XML. Une sélection en ligne de commande primera sur
+celle du projet ; en l'absence des deux, la chaîne choisira sa cible native
+prise en charge. La cible devra être cohérente avec les bibliothèques liées et
+le format de sortie, et les sorties de plusieurs cibles seront isolées.
+
+**Cette évolution n'est pas encore implémentée.** La liste d'attributs ci-dessus
+reste celle acceptée par le parseur actuel ; aucun attribut de cible ne doit
+être ajouté aux projets exécutables avant son implémentation et ses tests.
+Les projets GsE existants devront alors déclarer explicitement leur cible afin
+de conserver leur destination indépendamment du système qui les construit.
+Le contrat prévu est détaillé dans le
+[plan produit](PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md).
+
+### Migration historique vers XML
+
 Le passage à XML est volontairement incompatible avec le prototype texte. Les
 projets étant encore locaux au moment de cette décision, aucune migration à
 l’exécution n’est fournie : les anciens fichiers doivent être réécrits en XML.

@@ -49,9 +49,11 @@ official aliases with the same semantics and generated code.
 > leaves must have a structurally constant form. It now evaluates numeric
 > constants, including implicit and explicit enumerator values, signed and
 > unsigned operations, conversions, and logical short-circuiting; division by
-> zero and out-of-range values are rejected. Relocations, global byte emission,
-> the remaining implicit conversions, and other semantic families still need
-> to be migrated.
+> zero and out-of-range values are rejected. The `EmitGlobals` API now produces
+> initial bytes, data/zero layouts, and function relocations, compared with the
+> bootstrap. The remaining implicit conversions and other semantic families
+> still need to be migrated; this API does not yet replace the backend or
+> object-file writers.
 
 ## Language principles
 
@@ -125,6 +127,20 @@ Sources and interfaces
 Canonical signatures are `GSOBJ:0`, `GSA:0`, and `GSE:0`. All three binary
 formats are version 1.0 and their ABI fields are set to 1. The current target
 uses the `GsAbi:x64-ms-v1` link signature.
+
+### Planned multi-target compilation
+
+The product plan calls for a native target by default, with an explicit choice
+of another system. The first targets are Windows, GNU/Linux, and the native
+Galactic-Shrine platform on x86-64. The toolchain must produce the destination's
+executable format and use its linking conventions and SDK; cross-compilation
+depends on their availability.
+
+Target selection and native Windows PE (`.exe`) and Linux ELF output are
+**planned, not yet implemented**. Current Windows/Linux builds validate the
+compiler on those hosts and the existing Gs++ contract.
+The [product plan](Documentation/PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md) describes this
+work and its acceptance criteria.
 
 ## Extensions
 
@@ -257,8 +273,10 @@ All normative documentation is maintained in Markdown as its primary source.
 - qualified reference bindings, inheritance conversions, assignments, and
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
-  initializers aligned with the bootstrap compiler, for a total of **195**
-  negative corpora whose code, line, and column are checked.
+  initializers aligned with the bootstrap compiler, for a total of **203**
+  negative corpora whose code, line, and column are checked;
+- self-hosted global data and function relocation emission, comparing bytes,
+  alignments, targets, and caller-buffer bounds against the bootstrap.
 
 ## License
 

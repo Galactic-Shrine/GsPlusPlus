@@ -13,6 +13,58 @@ Cette décision ne signifie pas que Gs++ doit reproduire toutes les fonctions
 de C++. Le produit est considéré comme complet lorsque son périmètre publié
 est cohérent, autonome, documenté, testable et redistribuable.
 
+### Compilation adaptée à la plateforme — décision du 19 septembre 2026
+
+**DÉCIDÉ — IMPLÉMENTATION À RÉALISER.** Gs++ doit produire un programme pour
+la plateforme de l'utilisateur par défaut et permettre de sélectionner une
+autre plateforme explicitement. Une cible décrit le processeur, le système,
+le format binaire et les conventions d'appel et de liaison (ABI). La machine
+qui exécute le compilateur est l'hôte ; elle peut différer de la cible.
+
+Le premier périmètre couvre les cibles x86-64 suivantes :
+
+| Cible | Exécutable final prévu | Intégration système à fournir |
+| --- | --- | --- |
+| Windows | PE/COFF, `.exe` | démarrage, imports et SDK Windows ; interopérabilité Microsoft x64 |
+| GNU/Linux | ELF | démarrage, liaison et SDK GNU/Linux ; interopérabilité System V AMD64 |
+| Sanctuaire SE / ShrineOS | `.GsE` | contrat GsE et services du système cible ; ABI Gs++ documentée |
+
+Le langage et son analyse restent communs. Les bibliothèques du profil hébergé
+fournissent des services portables, implémentés pour chaque cible. Un programme
+qui utilise directement une API propre à un système doit adapter cette partie
+pour une autre cible. Le SDK décrit les interfaces et fournit les bibliothèques
+et composants de démarrage ; le backend et l'éditeur de liens produisent le
+code et le fichier binaire attendus par la cible.
+
+Le comportement à implémenter est le suivant :
+
+- choix de cible en ligne de commande prioritaire sur celui du projet XML ;
+- cible déclarée dans le projet prioritaire sur la détection de l'hôte ;
+- en l'absence de choix explicite, sélection de la cible native prise en
+  charge pour l'environnement du compilateur, y compris Linux sous WSL ;
+- affichage de la cible effective et séparation des sorties par cible et
+  configuration dans les répertoires de construction ;
+- diagnostic explicite pour une architecture, une cible ou un SDK absent,
+  ainsi que pour un format demandé incompatible avec la cible ;
+- compilation croisée lorsque le backend, l'éditeur de liens, le SDK et les
+  bibliothèques de la destination sont disponibles ; l'exécution des tests
+  exige aussi un environnement capable d'exécuter le programme cible ;
+- rejet des objets ou bibliothèques incompatibles à la liaison ; l'identité
+  de cible et d'ABI participe aux métadonnées et aux clés de reconstruction.
+
+Les projets actuels qui produisent volontairement du GsE doivent conserver
+une cible explicite lors de l'introduction du nouveau comportement par défaut.
+Les formats GsObj/GsA/GsE et leur contrat 1.0 restent documentés comme tels ;
+les sorties natives Windows et Linux ajoutent des contrats de cible distincts.
+Le support d'autres systèmes ou architectures demande un portage et sa propre
+validation ; il n'est pas acquis par la seule détection de la machine.
+
+Aujourd'hui, `gsppc` choisit entre COFF, GsObj, GsA et GsE et génère du code
+x86-64 selon le contrat Gs++ courant. Son fonctionnement sous Windows et Linux
+ne démontre pas encore la production automatique de PE/ELF pour ces systèmes.
+La sélection de cible, les sorties natives et les SDK associés font désormais
+partie des travaux de convergence ci-dessous.
+
 ## Point de départ vérifié
 
 Gs++ 0.26.0 constitue le jalon candidat actuel. Il conserve le contrat
@@ -70,7 +122,7 @@ normative explicite rendue nécessaire par une impossibilité démontrée.
 | Objet | `.GsObj`, `GSOBJ:0` + un zéro, format 1.0, ABI 1, en-tête 112 octets |
 | Bibliothèque | `.GsA`, `GSA:0` + trois zéros, format 1.0, ABI 1, en-tête 32 octets |
 | Exécutable | `.GsE`, `GSE:0` + trois zéros, format 1.0, ABI 1, en-tête 112 octets |
-| Signature de liaison | `GsAbi:x64-ms-v1` |
+| Signature de liaison du contrat Gs++ actuel | `GsAbi:x64-ms-v1` ; les nouvelles cibles natives doivent définir leurs contrats distincts |
 | Documentation canonique | Markdown `.md` |
 | Langue canonique | français, avec alias anglais officiels lorsqu’ils existent |
 
@@ -100,6 +152,10 @@ Gs++ 1.0 doit satisfaire simultanément les domaines suivants.
 - constructions déterministes lorsque les entrées sont identiques ;
 - erreurs sûres sur les entrées tronquées, incohérentes ou excessives ;
 - cartes de liens et sorties machine utilisables par l’automatisation.
+
+La décision multi-cible ajoute la sélection native ou explicite de plateforme,
+la production d'exécutables Windows PE et Linux ELF et la liaison compatible
+avec leurs SDK. Le format GsE conserve son usage pour la cible Galactic-Shrine.
 
 ### 3. Bibliothèques
 
@@ -223,9 +279,11 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
   déclarations globales, ainsi que la validation récursive des formes
   constantes, agrégats et pointeurs de leurs initialiseurs, l’évaluation
   numérique des constantes et valeurs d’énumération, les contrôles de plage et
-  les divisions par zéro ;
-- **EN COURS** : compléter les conversions implicites composées, les
-  relocalisations et l’émission des octets des initialiseurs globaux ;
+  les divisions par zéro, puis l’émission en mémoire des données globales,
+  de leur disposition et des relocalisations de fonctions ;
+- **EN COURS** : compléter les conversions implicites composées et les autres
+  familles sémantiques ; raccorder les données émises aux futurs écrivains
+  d’objets auto-hébergés dans le jalon backend ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans
@@ -237,6 +295,11 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 - migrer la génération x86-64 ;
 - migrer les écrivains GsObj/GsA/GsE et l’éditeur de liens ;
 - migrer l’orchestration de projets ;
+- introduire la description de cible et sa sélection commune en ligne de
+  commande et dans les projets XML, avec défaut natif et diagnostic des
+  configurations non prises en charge ;
+- ajouter la production native Windows PE et Linux ELF, les conventions
+  d'interopérabilité, le démarrage et les bibliothèques de chaque cible ;
 - obtenir les générations N+1 et N+2 fonctionnelles.
 
 ### Gs++ 0.29 — durcissement produit
@@ -245,6 +308,8 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 - corpus malformés et fuzzing ;
 - conformité complète Windows/GNU ;
 - installation, SDK et paquets locaux ;
+- exécution native des programmes sous Windows et Linux, validation de la
+  cible GsE et des combinaisons hôte/cible de compilation croisée annoncées ;
 - documentation finale ;
 - validation UEFI avec la toolchain produite.
 
@@ -265,6 +330,11 @@ ci-dessous sont satisfaits.
 - [ ] suite de conformité entièrement réussie sous MSVC et GNU ;
 - [ ] lecteurs binaires durcis contre les fichiers malformés ;
 - [ ] installation et paquets locaux vérifiés ;
+- [ ] sélection de cible native par défaut et surcharge explicite vérifiées ;
+- [ ] exécutables PE Windows et ELF Linux construits et exécutés sur leur cible ;
+- [ ] SDK des cibles annoncées distribués et exemples portables validés ;
+- [ ] incompatibilités de cible, de format et d'ABI diagnostiquées ;
+- [ ] combinaisons de compilation croisée annoncées construites et testées ;
 - [ ] documentation utilisateur et développeur complète en `.md` ;
 - [ ] `Noyau.GsE`, `BOOTX64.EFI` et l’ESP reconstruits par la chaîne candidate ;
 - [ ] démarrage QEMU/OVMF réussi avec rapport machine ;
@@ -291,9 +361,11 @@ et `.GsSharp`, aucun fichier d’en-tête, cible native sans dépendance obligat
 
 ### Autres couches
 
-Les sous-systèmes Linux/Windows, la plateforme Unreal Engine Sanctuaire SE, le
-SDK applicatif et les services avancés restent documentés mais non développés
-activement avant la sortie produit de Gs++.
+Les sous-systèmes Linux/Windows de Sanctuaire SE, la plateforme Unreal Engine
+Sanctuaire SE, son SDK applicatif et ses services avancés restent documentés
+mais non développés activement avant la sortie produit de Gs++. Les SDK de
+compilation Gs++ pour Windows et GNU/Linux relèvent du produit Gs++ et sont
+inclus dans la décision multi-cible ci-dessus.
 
 ## Règle de suivi
 

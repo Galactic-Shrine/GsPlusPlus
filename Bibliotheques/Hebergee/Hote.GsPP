@@ -1,26 +1,66 @@
+/**
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
+ **/
+
 espace GalacticShrine::GsPP::Hebergee {
-    publique booléen ChargerFichier(
-        constante caractère* chemin,
-        octet* destination,
-        naturel64 capacite,
-        naturel64* taille) {
+
+    /**
+     * <résumé>Demande à l'hôte de charger un fichier.</résumé>
+     * @Paramètre(constante caractère*: chemin) Chemin du fichier à charger.
+     * @Paramètre(octet*: destination) Adresse du premier octet où stocker le contenu.
+     * @Paramètre(naturel64: capacite) Nombre d'octets maximum à stocker.
+     * @Paramètre(naturel64*: taille) Adresse où stocker le nombre d'octets réellement lus.
+     * @Retourner(booléen) `vrai` si le chargement a réussi et que la capacité n'a pas été dépassée.
+     **/
+    publique booléen ChargerFichier(constante caractère* chemin, octet* destination, naturel64 capacite, naturel64* taille) {
+
         RequeteFichier requete = {chemin, destination, 0, capacite};
+
         naturel32 resultat = GalacticShrine::GsPP::Hote::LireFichier(&requete);
+
         si (resultat == 0 || requete.Taille > capacite) {
+
             *taille = 0;
             retourner faux;
         }
+
         *taille = requete.Taille;
         retourner vrai;
     }
 
-    publique booléen SauverFichier(
-        constante caractère* chemin, octet* source, naturel64 taille) {
+    /**
+     * <résumé>Demande à l'hôte de sauvegarder un fichier.</résumé>
+     * @Paramètre(constante caractère*: chemin) Chemin du fichier à sauvegarder.
+     * @Paramètre(octet*: source) Adresse du premier octet à sauvegarder.
+     * @Paramètre(naturel64: taille) Nombre d'octets à sauvegarder.
+     * @Retourner(booléen) `vrai` si la sauvegarde a réussi.
+     **/
+    publique booléen SauverFichier(constante caractère* chemin, octet* source, naturel64 taille) {
+
         RequeteFichier requete = {chemin, source, taille, taille};
+
         retourner GalacticShrine::GsPP::Hote::EcrireFichier(&requete) != 0;
     }
 
+    /**
+     * <résumé>Signale un diagnostic à l'hôte.</résumé>
+     * @Paramètre(Diagnostic: diagnostic) Diagnostic à signaler.
+     **/
     publique vide SignalerDiagnostic(Diagnostic diagnostic) {
+
         GalacticShrine::GsPP::Hote::EmettreDiagnostic(diagnostic);
     }
 }

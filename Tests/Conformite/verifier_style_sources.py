@@ -37,7 +37,7 @@ def analyser_fichier(chemin: Path, racine: Path) -> list[str]:
                 f"{relatif}:{numero}: commentaire multiligne sans **/"
             )
         if "@Paramètre(" in ligne and not re.search(
-            r"@Paramètre\([^:()]+: [^()]+\)", ligne
+            r"@Paramètre\((?:[^:()]|::)+: [^:()]+\)", ligne
         ):
             erreurs.append(
                 f"{relatif}:{numero}: paramètre attendu sous la forme "

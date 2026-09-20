@@ -1,67 +1,164 @@
+/**
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
+ **/
+
 espace GalacticShrine::GsPP::Systeme {
+
+    /**
+     * <résumé>Effectue une rotation à gauche sur un entier naturel 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel32) Valeur après rotation.
+     **/
     publique naturel32 RotationGauche32(naturel32 valeur, naturel32 distance) {
+
         distance = distance & 31;
+
         retourner (valeur << distance) | (valeur >> (32 - distance));
     }
 
+    /**
+     * <résumé>Effectue une rotation à gauche sur un entier naturel 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel64) Valeur après rotation.
+     **/
     publique naturel64 RotationGauche64(naturel64 valeur, naturel32 distance) {
+
         distance = distance & 63;
+
         retourner (valeur << distance) | (valeur >> (64 - distance));
     }
 
+    /**
+     * <résumé>Effectue une rotation à droite sur un entier naturel 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel32) Valeur après rotation.
+     **/
     publique naturel32 RotationDroite32(naturel32 valeur, naturel32 distance) {
+
         distance = distance & 31;
+
         retourner (valeur >> distance) | (valeur << (32 - distance));
     }
 
+    /**
+     * <résumé>Effectue une rotation à droite sur un entier naturel 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel64) Valeur après rotation.
+     **/
     publique naturel64 RotationDroite64(naturel64 valeur, naturel32 distance) {
+
         distance = distance & 63;
+
         retourner (valeur >> distance) | (valeur << (64 - distance));
     }
 
+    /**
+     * <résumé>Compte le nombre de bits à 1 dans un entier naturel 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à analyser.
+     * @Retourner(naturel32) Nombre de bits à 1.
+     **/
     publique naturel32 CompterBitsUn32(naturel32 valeur) {
+
         naturel32 compte = 0;
+
         tantque (valeur != 0) {
+
             compte = compte + (valeur & 1);
             valeur = valeur >> 1;
         }
+
         retourner compte;
     }
 
+    /**
+     * <résumé>Compte le nombre de bits à 1 dans un entier naturel 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à analyser.
+     * @Retourner(naturel32) Nombre de bits à 1.
+     **/
     publique naturel32 CompterBitsUn64(naturel64 valeur) {
+
         naturel32 compte = 0;
+
         tantque (valeur != 0) {
+
             compte = compte + convertir<naturel32>(valeur & 1);
             valeur = valeur >> 1;
         }
+
         retourner compte;
     }
 
+    /**
+     * <résumé>Inverse l'ordre des octets dans un entier naturel 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à inverser.
+     * @Retourner(naturel32) Valeur avec les octets inversés.
+     **/
     publique naturel32 InverserOctets32(naturel32 valeur) {
-        retourner ((valeur & 255) << 24)
-            | ((valeur & 65_280) << 8)
-            | ((valeur >> 8) & 65_280)
-            | ((valeur >> 24) & 255);
+
+        retourner ((valeur & 255) << 24) | ((valeur & 65_280) << 8) | ((valeur >> 8) & 65_280) | ((valeur >> 24) & 255);
     }
 
+    /**
+     * <résumé>Inverse l'ordre des octets dans un entier naturel 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à inverser.
+     * @Retourner(naturel64) Valeur avec les octets inversés.
+     **/
     publique naturel64 InverserOctets64(naturel64 valeur) {
+
         naturel64 resultat = 0;
         naturel32 index = 0;
+
         tantque (index < 8) {
+
             resultat = (resultat << 8) | (valeur & 255);
             valeur = valeur >> 8;
             index = index + 1;
         }
+
         retourner resultat;
     }
 
+    /**
+     * <résumé>Vérifie si un entier naturel 64 bits est une puissance de deux.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à vérifier.
+     * @Retourner(booléen) `vrai` si la valeur est une puissance de deux, sinon `faux`.
+     **/
     publique booléen EstPuissanceDeux(naturel64 valeur) {
-        si (valeur == 0) retourner faux;
+
+        si (valeur == 0)
+            retourner faux;
+
         retourner (valeur & (valeur - 1)) == 0;
     }
 
+    /**
+     * <résumé>Aligne une valeur entière naturelle 64 bits vers le haut selon un alignement spécifié.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à aligner.
+     * @Paramètre(naturel64: alignement) Alignement souhaité (doit être une puissance de deux).
+     * @Retourner(naturel64) Valeur alignée vers le haut.
+     **/
     publique naturel64 AlignerSuperieur(naturel64 valeur, naturel64 alignement) {
-        si (alignement == 0) retourner valeur;
+
+        si (alignement == 0)
+            retourner valeur;
+
         retourner (valeur + alignement - 1) & ~(alignement - 1);
     }
 }

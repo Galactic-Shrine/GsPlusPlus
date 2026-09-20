@@ -53,9 +53,11 @@ génération de code.
 > calcule désormais les constantes numériques, y compris les valeurs
 > d’énumération implicites ou explicites, les opérations signées et non
 > signées, les conversions et les courts-circuits logiques ; elle refuse les
-> divisions par zéro et les valeurs hors plage. Les relocalisations, l’émission
-> des octets globaux, les conversions implicites restantes et les autres
-> familles sémantiques restent à migrer.
+> divisions par zéro et les valeurs hors plage. L’API `EmettreGlobales` produit
+> maintenant les octets initiaux, la disposition des zones données/zéro et les
+> relocalisations de fonctions, comparés au bootstrap. Les conversions
+> implicites restantes et les autres familles sémantiques restent à migrer ;
+> cette API ne remplace pas encore le backend ni l’écriture des fichiers objets.
 
 ## Principes du langage
 
@@ -130,6 +132,20 @@ Sources et interfaces
 Les signatures canoniques sont `GSOBJ:0`, `GSA:0` et `GSE:0`. Les trois
 formats binaires sont en version 1.0 et leurs champs ABI valent 1. La cible
 actuelle utilise la signature de liaison `GsAbi:x64-ms-v1`.
+
+### Compilation multi-cible prévue
+
+Le plan produit prévoit une cible native par défaut et la possibilité de
+choisir explicitement un autre système. Les premières cibles sont Windows,
+GNU/Linux et la plateforme native Galactic-Shrine, sur x86-64. La chaîne doit
+produire le format exécutable et utiliser les conventions de liaison et le
+SDK de la destination ; la compilation croisée dépend de leur disponibilité.
+
+Cette sélection et les sorties natives Windows PE (`.exe`) et Linux ELF sont
+**prévues, non encore implémentées**. Les constructions Windows/Linux actuelles
+valident le compilateur sur ces hôtes et le contrat Gs++ existant.
+Le [plan produit](Documentation/PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md) décrit cette
+évolution et ses critères de validation.
 
 ## Extensions
 
@@ -265,8 +281,10 @@ principale.
 - liaisons de références qualifiées, conversions d’héritage, affectations et
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
-  initialiseurs globaux alignées sur le bootstrap, pour un total de **195**
-  corpus négatifs dont le code, la ligne et la colonne sont contrôlés.
+  initialiseurs globaux alignées sur le bootstrap, pour un total de **203**
+  corpus négatifs dont le code, la ligne et la colonne sont contrôlés ;
+- émission auto-hébergée des données globales et relocalisations de fonctions,
+  avec comparaison des octets, alignements, cibles et limites des tampons.
 
 ## Licence
 

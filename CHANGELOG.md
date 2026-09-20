@@ -10,6 +10,46 @@
 
 # Journal des modifications
 
+## Développement après Gs++ 0.27.0-alpha.8 — 2026-09-20
+
+- ajout de l’API `EmettreGlobales` / `EmitGlobals` dans `Frontend.GsE` :
+  disposition indépendante des zones données/zéro, octets little-endian des
+  constantes et agrégats, remplissage nul des éléments omis et des alignements,
+  relocalisations absolues 64 bits vers des fonctions définies ou importées ;
+- contrat public dédié avec tampons fournis par l’appelant, interrogation des
+  besoins et diagnostics 91 à 93, sans écriture partielle en cas de capacité
+  insuffisante ou d’erreur sémantique ; l’ABI des requêtes existantes reste
+  inchangée, ainsi que les formats 1.0 et l’ABI machine 1 ;
+- correction de la résolution des énumérateurs relatifs à l’espace courant,
+  de la comparaison des types nommés simples/qualifiés et de la validation des
+  initialiseurs de tableaux de pointeurs de fonction ;
+- comparaison différentielle des données, dispositions et relocalisations sur
+  cinq corpus, dont une paire complète français/anglais ; huit nouveaux refus positionnés
+  portent la matrice sémantique à 203 corpus, avec contrôles supplémentaires
+  des capacités, sentinelles, erreurs, déterminisme et débordements de section ;
+- conservation des ajouts locaux de documentation, de licence et de mise en
+  forme ; ajustement du contrôle `@Paramètre(type: nom)` pour accepter les
+  types qualifiés tels que `GalacticShrine::GsPP::Hebergee::VueTexte` ;
+- validation locale 4/4 sous Visual Studio 2026 et 5/5 sous GNU/Linux ; les
+  deux chaînes produisent le même `Frontend.GsE` de 328 270 octets, 75 exports,
+  accepté par `gseverifier`, SHA-256
+  `1bf0c652b7cd6d51c8434cbc7d8fc2a21da00385dbf26fd3965426a3a5a70d5d` ;
+- cette tranche n’écrit pas encore de fichier objet auto-hébergé et ne livre
+  pas les cibles natives ni SDK prévus par la décision multi-cible.
+
+## Décision produit — compilation multi-cible — 2026-09-19
+
+- ajout au plan produit d'une cible native par défaut, d'une sélection
+  explicite en ligne de commande ou dans le projet XML, et de la compilation
+  croisée lorsque les composants de la destination sont disponibles ;
+- premières cibles prévues : Windows PE, GNU/Linux ELF et Sanctuaire SE /
+  ShrineOS GsE sur x86-64, avec ABI, SDK et validation propres à chaque cible ;
+- intégration de ces exigences aux jalons 0.28 et 0.29 et aux critères de
+  sortie 1.0 ; alignement des README français/anglais et des contrats de
+  projets et d'ABI sur la distinction entre hôte et cible ;
+- décision documentaire uniquement : les nouvelles options, attributs XML,
+  sorties natives et SDK restent à implémenter.
+
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-09-15
 
 - ajout, dans la passe sémantique auto-hébergée, de l’évaluation numérique des

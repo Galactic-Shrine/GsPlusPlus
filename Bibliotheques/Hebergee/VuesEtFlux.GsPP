@@ -1,3 +1,20 @@
+/**
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
+ **/
+
 espace GalacticShrine::GsPP::Hebergee {
 
     /**
@@ -6,8 +23,7 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(naturel64: taille) Nombre de caractères accessibles.
      * @Retourner(VueTexte) Vue formée à partir de l'adresse et de la taille.
      **/
-    publique VueTexte CreerVueTexte(
-        constante caractère* donnees, naturel64 taille) {
+    publique VueTexte CreerVueTexte(constante caractère* donnees, naturel64 taille) {
 
         retourner {donnees, taille};
     }
@@ -17,10 +33,10 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(constante caractère*: texte) Adresse du premier caractère.
      * @Retourner(VueTexte) Vue qui exclut le caractère nul final.
      **/
-    publique VueTexte CreerVueTexteTerminee(
-        constante caractère* texte) {
+    publique VueTexte CreerVueTexteTerminee(constante caractère* texte) {
 
         naturel64 taille = 0;
+
         tantque (texte[taille] != 0) taille = taille + 1;
 
         retourner {texte, taille};
@@ -32,15 +48,17 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(VueTexte: droite) Deuxième vue à comparer.
      * @Retourner(booléen) `vrai` si les tailles et contenus sont identiques.
      **/
-    publique booléen VuesTexteEgales(
-        VueTexte gauche, VueTexte droite) {
+    publique booléen VuesTexteEgales(VueTexte gauche, VueTexte droite) {
 
         si (gauche.Taille != droite.Taille) retourner faux;
 
         naturel64 index = 0;
+
         tantque (index < gauche.Taille) {
+
             si (gauche.Donnees[index] != droite.Donnees[index])
                 retourner faux;
+
             index = index + 1;
         }
 
@@ -56,10 +74,10 @@ espace GalacticShrine::GsPP::Hebergee {
 
         naturel64 valeur = 14_695_981_039_346_656_037;
         naturel64 index = 0;
+
         tantque (index < texte.Taille) {
-            valeur = valeur
-                ^ convertir<naturel64>(
-                    convertir<naturel8>(texte.Donnees[index]));
+
+            valeur = valeur ^ convertir<naturel64>(convertir<naturel8>(texte.Donnees[index]));
             valeur = valeur * 1_099_511_628_211;
             index = index + 1;
         }
@@ -73,8 +91,7 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(naturel64: taille) Nombre total d'octets lisibles.
      * @Retourner(FluxLecture) Flux positionné au début de la zone.
      **/
-    publique FluxLecture CreerFluxLecture(
-        octet* donnees, naturel64 taille) {
+    publique FluxLecture CreerFluxLecture(octet* donnees, naturel64 taille) {
 
         retourner {donnees, taille, 0};
     }
@@ -85,8 +102,7 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(octet*: valeur) Destination qui reçoit l'octet lu.
      * @Retourner(booléen) `vrai` si un octet a été lu, sinon `faux`.
      **/
-    publique booléen LireOctetFlux(
-        FluxLecture* flux, octet* valeur) {
+    publique booléen LireOctetFlux(FluxLecture* flux, octet* valeur) {
 
         si (flux->Position >= flux->Taille) retourner faux;
 
@@ -103,8 +119,7 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(naturel64: taille) Nombre maximal d'octets à lire.
      * @Retourner(naturel64) Nombre d'octets effectivement copiés.
      **/
-    publique naturel64 LireBlocFlux(
-        FluxLecture* flux, octet* destination, naturel64 taille) {
+    publique naturel64 LireBlocFlux(FluxLecture* flux, octet* destination, naturel64 taille) {
 
         si (flux->Position >= flux->Taille) retourner 0;
 
@@ -112,7 +127,9 @@ espace GalacticShrine::GsPP::Hebergee {
         si (taille > disponible) taille = disponible;
 
         naturel64 index = 0;
+
         tantque (index < taille) {
+
             destination[index] = flux->Donnees[flux->Position + index];
             index = index + 1;
         }
@@ -128,8 +145,7 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(naturel64: capacite) Nombre total d'octets inscriptibles.
      * @Retourner(FluxEcriture) Flux positionné au début de la zone.
      **/
-    publique FluxEcriture CreerFluxEcriture(
-        octet* donnees, naturel64 capacite) {
+    publique FluxEcriture CreerFluxEcriture(octet* donnees, naturel64 capacite) {
 
         retourner {donnees, capacite, 0};
     }
@@ -140,8 +156,7 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(octet: valeur) Octet à écrire.
      * @Retourner(booléen) `vrai` si l'octet a été écrit, sinon `faux`.
      **/
-    publique booléen EcrireOctetFlux(
-        FluxEcriture* flux, octet valeur) {
+    publique booléen EcrireOctetFlux(FluxEcriture* flux, octet valeur) {
 
         si (flux->Position >= flux->Capacite) retourner faux;
 
@@ -158,16 +173,18 @@ espace GalacticShrine::GsPP::Hebergee {
      * @Paramètre(naturel64: taille) Nombre maximal d'octets à écrire.
      * @Retourner(naturel64) Nombre d'octets effectivement copiés.
      **/
-    publique naturel64 EcrireBlocFlux(
-        FluxEcriture* flux, octet* source, naturel64 taille) {
+    publique naturel64 EcrireBlocFlux(FluxEcriture* flux, octet* source, naturel64 taille) {
 
         si (flux->Position >= flux->Capacite) retourner 0;
 
         naturel64 disponible = flux->Capacite - flux->Position;
+
         si (taille > disponible) taille = disponible;
 
         naturel64 index = 0;
+
         tantque (index < taille) {
+
             flux->Donnees[flux->Position + index] = source[index];
             index = index + 1;
         }

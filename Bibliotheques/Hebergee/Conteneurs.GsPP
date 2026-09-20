@@ -1,79 +1,171 @@
+/**
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
+ **/
+
 espace GalacticShrine::GsPP::Hebergee {
-    publique vide InitialiserVecteurNaturels(
-        VecteurNaturels* vecteur, naturel64* stockage, naturel64 capacite) {
+
+    /**
+     * Initialise un vecteur de naturels avec un stockage préalloué.
+     * @param vecteur Le vecteur de naturels à initialiser.
+     * @param stockage Pointeur vers le stockage préalloué pour les éléments du vecteur.
+     * @param capacite La capacité maximale du vecteur.
+     **/
+    publique vide InitialiserVecteurNaturels(VecteurNaturels* vecteur, naturel64* stockage, naturel64 capacite) {
+
         vecteur->Donnees = stockage;
         vecteur->Taille = 0;
         vecteur->Capacite = capacite;
     }
 
-    publique booléen AjouterNaturel(
-        VecteurNaturels* vecteur, naturel64 valeur) {
-        si (vecteur->Taille >= vecteur->Capacite) retourner faux;
+    /**
+     * Ajoute un élément à la fin du vecteur de naturels.
+     * @param vecteur Le vecteur de naturels.
+     * @param valeur La valeur à ajouter.
+     * @return vrai si l'ajout a réussi, faux si le vecteur est plein.
+     **/
+    publique booléen AjouterNaturel(VecteurNaturels* vecteur, naturel64 valeur) {
+
+        // Vérifie si le vecteur a atteint sa capacité maximale
+        si (vecteur->Taille >= vecteur->Capacite)
+            retourner faux;
+
         vecteur->Donnees[vecteur->Taille] = valeur;
         vecteur->Taille = vecteur->Taille + 1;
+
         retourner vrai;
     }
 
-    publique booléen LireNaturel(
-        VecteurNaturels* vecteur, naturel64 index, naturel64* valeur) {
-        si (index >= vecteur->Taille) retourner faux;
+    /**
+     * Lit un élément du vecteur à l'index spécifié.
+     * @param vecteur Le vecteur de naturels.
+     * @param index L'index de l'élément à lire.
+     * @param valeur Pointeur vers la variable où la valeur lue sera stockée.
+     * @return vrai si la lecture a réussi, faux si l'index est invalide.
+     **/
+    publique booléen LireNaturel(VecteurNaturels* vecteur, naturel64 index, naturel64* valeur) {
+
+        // Vérifie si l'index est valide
+        si (index >= vecteur->Taille)
+            retourner faux;
+
         *valeur = vecteur->Donnees[index];
+
         retourner vrai;
     }
 
-    publique vide InitialiserTableSymboles(
-        TableSymboles* table,
-        EntreeTableSymboles* stockage,
-        naturel64 capacite) {
+    /**
+     * Initialise une table de symboles avec un stockage préalloué.
+     * @param table La table de symboles à initialiser.
+     * @param stockage Pointeur vers le stockage préalloué pour les entrées de la table.
+     * @param capacite La capacité maximale de la table.
+     **/
+    publique vide InitialiserTableSymboles(TableSymboles* table, EntreeTableSymboles* stockage, naturel64 capacite) {
+
         table->Entrees = stockage;
         table->Capacite = capacite;
         table->Nombre = 0;
         naturel64 index = 0;
+
         tantque (index < capacite) {
+
             table->Entrees[index].Occupee = faux;
             index = index + 1;
         }
     }
 
-    publique booléen InsererSymbole(
-        TableSymboles* table, VueTexte cle, naturel64 valeur) {
-        si (table->Capacite == 0 || cle.Taille == 0) retourner faux;
+    /**
+     * Insère un symbole dans la table de symboles.
+     * @param table La table de symboles.
+     * @param cle La clé du symbole à insérer.
+     * @param valeur La valeur associée au symbole.
+     * @return vrai si l'insertion a réussi, faux si la table est pleine ou si la clé est vide.
+     **/
+    publique booléen InsererSymbole(TableSymboles* table, VueTexte cle, naturel64 valeur) {
+
+        // Vérifie si la table est pleine ou si la clé est vide
+        si (table->Capacite == 0 || cle.Taille == 0)
+            retourner faux;
+
         naturel64 position = HacherVueTexte(cle) % table->Capacite;
         naturel64 examines = 0;
+
+        // Parcourt la table jusqu'à trouver une position libre ou la clé existante
         tantque (examines < table->Capacite) {
+
             EntreeTableSymboles* entree = &table->Entrees[position];
+            // Si l'entrée n'est pas occupée, insère le symbole
             si (!entree->Occupee) {
+
                 entree->Cle = cle;
                 entree->Valeur = valeur;
                 entree->Occupee = vrai;
                 table->Nombre = table->Nombre + 1;
+
                 retourner vrai;
             }
+            // Si la clé existe déjà, met à jour la valeur
             si (VuesTexteEgales(entree->Cle, cle)) {
+
                 entree->Valeur = valeur;
+
                 retourner vrai;
             }
+
             position = (position + 1) % table->Capacite;
             examines = examines + 1;
         }
+
         retourner faux;
     }
 
-    publique booléen ChercherSymbole(
-        TableSymboles* table, VueTexte cle, naturel64* valeur) {
-        si (table->Capacite == 0 || cle.Taille == 0) retourner faux;
+    /**
+     * Cherche un symbole dans la table de symboles.
+     * @param table La table de symboles.
+     * @param cle La clé du symbole à chercher.
+     * @param valeur Pointeur vers la variable où la valeur associée sera stockée si trouvée.
+     * @return vrai si le symbole est trouvé, faux sinon.
+     **/
+    publique booléen ChercherSymbole(TableSymboles* table, VueTexte cle, naturel64* valeur) {
+
+        // Vérifie si la table est vide ou si la clé est vide
+        si (table->Capacite == 0 || cle.Taille == 0)
+            retourner faux;
+
         naturel64 position = HacherVueTexte(cle) % table->Capacite;
         naturel64 examines = 0;
+
+        // Parcourt la table jusqu'à trouver la clé ou une position libre
         tantque (examines < table->Capacite) {
+
             EntreeTableSymboles* entree = &table->Entrees[position];
-            si (!entree->Occupee) retourner faux;
+            // Si l'entrée n'est pas occupée, la clé n'existe pas
+            si (!entree->Occupee)
+                retourner faux;
+            // Si la clé est trouvée, retourne la valeur associée
             si (VuesTexteEgales(entree->Cle, cle)) {
+
                 *valeur = entree->Valeur;
+
                 retourner vrai;
             }
+
             position = (position + 1) % table->Capacite;
             examines = examines + 1;
         }
+
         retourner faux;
     }
 }

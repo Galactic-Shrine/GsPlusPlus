@@ -1,74 +1,182 @@
+/**
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
+ **/
+
 espace GalacticShrine::GsPP::Systeme {
+
+    /**
+     * <résumé>Charge un entier naturel 32 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de l'entier à charger.
+     * @Retourner(naturel32) Valeur chargée.
+     **/
     publique naturel32 ChargerAtomique32(volatile naturel32* cible) {
+
         retourner GalacticShrine::GsPP::Intrinseques::ChargerAtomique32(cible);
     }
 
+    /**
+     * <résumé>Charge un entier naturel 64 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de l'entier à charger.
+     * @Retourner(naturel64) Valeur chargée.
+     **/
     publique naturel64 ChargerAtomique64(volatile naturel64* cible) {
+
         retourner GalacticShrine::GsPP::Intrinseques::ChargerAtomique64(cible);
     }
 
+    /**
+     * <résumé>Stocke un entier naturel 32 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de l'entier à stocker.
+     * @Paramètre(naturel32: valeur) Valeur à stocker.
+     **/
     publique vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur) {
+
         GalacticShrine::GsPP::Intrinseques::StockerAtomique32(cible, valeur);
     }
 
+    /**
+     * <résumé>Stocke un entier naturel 64 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de l'entier à stocker.
+     * @Paramètre(naturel64: valeur) Valeur à stocker.
+     **/
     publique vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur) {
+
         GalacticShrine::GsPP::Intrinseques::StockerAtomique64(cible, valeur);
     }
 
-    publique naturel32 EchangerAtomique32(
-        volatile naturel32* cible, naturel32 valeur) {
+    /**
+     * <résumé>Échange un entier naturel 32 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de l'entier à échanger.
+     * @Paramètre(naturel32: valeur) Valeur à échanger.
+     * @Retourner(naturel32) Valeur précédemment stockée à l'adresse cible.
+     **/
+    publique naturel32 EchangerAtomique32(volatile naturel32* cible, naturel32 valeur) {
+
         retourner GalacticShrine::GsPP::Intrinseques::EchangerAtomique32(cible, valeur);
     }
 
-    publique naturel64 EchangerAtomique64(
-        volatile naturel64* cible, naturel64 valeur) {
+    /**
+     * <résumé>Échange un entier naturel 64 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de l'entier à échanger.
+     * @Paramètre(naturel64: valeur) Valeur à échanger.
+     * @Retourner(naturel64) Valeur précédemment stockée à l'adresse cible.
+     **/
+    publique naturel64 EchangerAtomique64(volatile naturel64* cible, naturel64 valeur) {
+
         retourner GalacticShrine::GsPP::Intrinseques::EchangerAtomique64(cible, valeur);
     }
 
-    publique naturel32 AjouterAtomique32(
-        volatile naturel32* cible, naturel32 valeur) {
+    /**
+     * <résumé>Ajoute un entier naturel 32 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de l'entier à modifier.
+     * @Paramètre(naturel32: valeur) Valeur à ajouter.
+     * @Retourner(naturel32) Valeur précédemment stockée à l'adresse cible.
+     **/
+    publique naturel32 AjouterAtomique32(volatile naturel32* cible, naturel32 valeur) {
+
         retourner GalacticShrine::GsPP::Intrinseques::AjouterAtomique32(cible, valeur);
     }
 
-    publique naturel64 AjouterAtomique64(
-        volatile naturel64* cible, naturel64 valeur) {
+    /**
+     * <résumé>Ajoute un entier naturel 64 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de l'entier à modifier.
+     * @Paramètre(naturel64: valeur) Valeur à ajouter.
+     * @Retourner(naturel64) Valeur précédemment stockée à l'adresse cible.
+     **/
+    publique naturel64 AjouterAtomique64(volatile naturel64* cible, naturel64 valeur) {
+
         retourner GalacticShrine::GsPP::Intrinseques::AjouterAtomique64(cible, valeur);
     }
 
-    publique naturel32 ComparerEchanger32(
-        volatile naturel32* cible, naturel32 attendu, naturel32 desire) {
-        retourner GalacticShrine::GsPP::Intrinseques::ComparerEchanger32(
-            cible, attendu, desire);
+    /**
+     * <résumé>Compare et échange un entier naturel 32 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de l'entier à modifier.
+     * @Paramètre(naturel32: attendu) Valeur attendue à l'adresse cible.
+     * @Paramètre(naturel32: desire) Valeur à stocker si la valeur attendue correspond.
+     * @Retourner(naturel32) Valeur précédemment stockée à l'adresse cible.
+     **/
+    publique naturel32 ComparerEchanger32(volatile naturel32* cible, naturel32 attendu, naturel32 desire) {
+
+        retourner GalacticShrine::GsPP::Intrinseques::ComparerEchanger32(cible, attendu, desire);
     }
 
-    publique naturel64 ComparerEchanger64(
-        volatile naturel64* cible, naturel64 attendu, naturel64 desire) {
-        retourner GalacticShrine::GsPP::Intrinseques::ComparerEchanger64(
-            cible, attendu, desire);
+    /**
+     * <résumé>Compare et échange un entier naturel 64 bits de manière atomique.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de l'entier à modifier.
+     * @Paramètre(naturel64: attendu) Valeur attendue à l'adresse cible.
+     * @Paramètre(naturel64: desire) Valeur à stocker si la valeur attendue correspond.
+     * @Retourner(naturel64) Valeur précédemment stockée à l'adresse cible.
+     **/
+    publique naturel64 ComparerEchanger64(volatile naturel64* cible, naturel64 attendu, naturel64 desire) {
+
+        retourner GalacticShrine::GsPP::Intrinseques::ComparerEchanger64(cible, attendu, desire);
     }
 
+    /**
+     * <résumé>Insère une barrière mémoire pour empêcher la réorganisation des accès mémoire.</résumé>
+     **/
     publique vide BarriereMemoire() {
+
         GalacticShrine::GsPP::Intrinseques::BarriereMemoire();
     }
 
+    /**
+     * <résumé>Demande au processeur de faire une pause pour réduire la consommation d'énergie.</résumé>
+     **/
     publique vide PauseProcesseur() {
+
         GalacticShrine::GsPP::Intrinseques::PauseProcesseur();
     }
 
+    /**
+     * <résumé>Initialise un verrou atomique.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à initialiser.
+     **/
     publique vide InitialiserVerrou(VerrouAtomique* verrou) {
+
         StockerAtomique32(&verrou->Etat, 0);
     }
 
+    /**
+     * <résumé>Tente d'acquérir un verrou atomique sans bloquer.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à acquérir.
+     * @Retourner(booléen) `vrai` si le verrou a été acquis, `faux` sinon.
+     **/
     publique booléen EssayerAcquerirVerrou(VerrouAtomique* verrou) {
+
         retourner ComparerEchanger32(&verrou->Etat, 0, 1) == 0;
     }
 
+    /**
+     * <résumé>Acquiert un verrou atomique, bloquant jusqu'à ce qu'il soit disponible.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à acquérir.
+     **/
     publique vide AcquerirVerrou(VerrouAtomique* verrou) {
+
+        // Tente d'acquérir le verrou jusqu'à ce qu'il soit disponible
         tantque (ComparerEchanger32(&verrou->Etat, 0, 1) != 0)
             PauseProcesseur();
     }
 
+    /**
+     * <résumé>Libère un verrou atomique.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à libérer.
+     **/
     publique vide LibererVerrou(VerrouAtomique* verrou) {
+
         BarriereMemoire();
         StockerAtomique32(&verrou->Etat, 0);
     }

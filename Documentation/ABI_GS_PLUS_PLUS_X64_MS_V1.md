@@ -18,6 +18,14 @@ canonique est `GsAbi:x64-ms-v1` et les champs ABI binaires valent `1`.
 Cette ABI n’implique pas la compatibilité avec Win32, COM ou les bibliothèques
 système Windows. Elle décrit uniquement le contrat machine des appels générés.
 
+La décision multi-cible du 19 septembre 2026 prévoit des sorties natives
+Windows et GNU/Linux avec leurs conventions d'interopérabilité. Elle ne
+transforme pas ce contrat en ABI universelle : en particulier, System V AMD64
+pour Linux nécessite une implémentation et des tests spécifiques. Les nouvelles
+cibles devront identifier leurs contrats et refuser les unités incompatibles.
+Le présent document décrit toujours le contrat Gs++ actuellement implémenté ;
+le [plan produit](PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md) décrit les cibles prévues.
+
 ## Registres et pile
 
 - les quatre premiers paramètres scalaires utilisent `RCX`, `RDX`, `R8` et

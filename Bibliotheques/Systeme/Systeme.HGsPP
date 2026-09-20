@@ -1,85 +1,440 @@
 /**
- * Bibliothèque système freestanding de Gs++ 0.16.
- * Cette interface n’alloue aucune mémoire et ne dépend d’aucun runtime.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
  **/
 
 espace GalacticShrine::GsPP::Intrinseques {
+
+    /**
+     * <résumé>Charge une valeur atomique de 32 bits depuis la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à charger.
+     * @Retourner(naturel32) Valeur chargée de manière atomique.
+     **/
     naturel32 ChargerAtomique32(volatile naturel32* cible);
+
+    /**
+     * <résumé>Charge une valeur atomique de 64 bits depuis la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à charger.
+     * @Retourner(naturel64) Valeur chargée de manière atomique.
+     **/
     naturel64 ChargerAtomique64(volatile naturel64* cible);
+
+    /**
+     * <résumé>Stocke une valeur atomique de 32 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à stocker.
+     * @Paramètre(naturel32: valeur) Valeur à stocker de manière atomique.
+     **/
     vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur);
+
+    /**
+     * <résumé>Stocke une valeur atomique de 64 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à stocker.
+     * @Paramètre(naturel64: valeur) Valeur à stocker de manière atomique.
+     **/
     vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur);
+
+    /**
+     * <résumé>Échange une valeur atomique de 32 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à échanger.
+     * @Paramètre(naturel32: valeur) Nouvelle valeur à stocker de manière atomique.
+     * @Retourner(naturel32) Ancienne valeur échangée de manière atomique.
+     **/
     naturel32 EchangerAtomique32(volatile naturel32* cible, naturel32 valeur);
+
+    /**
+     * <résumé>Échange une valeur atomique de 64 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à échanger.
+     * @Paramètre(naturel64: valeur) Nouvelle valeur à stocker de manière atomique.
+     * @Retourner(naturel64) Ancienne valeur échangée de manière atomique.
+     **/
     naturel64 EchangerAtomique64(volatile naturel64* cible, naturel64 valeur);
+
+    /**
+     * <résumé>Ajoute une valeur atomique de 32 bits à une cible dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à modifier.
+     * @Paramètre(naturel32: valeur) Valeur à ajouter de manière atomique.
+     * @Retourner(naturel32) Ancienne valeur avant l'ajout de manière atomique.
+     **/
     naturel32 AjouterAtomique32(volatile naturel32* cible, naturel32 valeur);
+
+    /**
+     * <résumé>Ajoute une valeur atomique de 64 bits à une cible dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à modifier.
+     * @Paramètre(naturel64: valeur) Valeur à ajouter de manière atomique.
+     * @Retourner(naturel64) Ancienne valeur avant l'ajout de manière atomique.
+     **/
     naturel64 AjouterAtomique64(volatile naturel64* cible, naturel64 valeur);
+
+    /**
+     * <résumé>Compare et échange une valeur atomique de 32 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à comparer et échanger.
+     * @Paramètre(naturel32: attendu) Valeur attendue pour effectuer l'échange.
+     * @Paramètre(naturel32: desire) Nouvelle valeur à stocker si la comparaison réussit.
+     * @Retourner(naturel32) Ancienne valeur avant l'échange de manière atomique.
+     **/
     naturel32 ComparerEchanger32(volatile naturel32* cible, naturel32 attendu, naturel32 desire);
+
+    /**
+     * <résumé>Compare et échange une valeur atomique de 64 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à comparer et échanger.
+     * @Paramètre(naturel64: attendu) Valeur attendue pour effectuer l'échange.
+     * @Paramètre(naturel64: desire) Nouvelle valeur à stocker si la comparaison réussit.
+     * @Retourner(naturel64) Ancienne valeur avant l'échange de manière atomique.
+     **/
     naturel64 ComparerEchanger64(volatile naturel64* cible, naturel64 attendu, naturel64 desire);
+
+    /**
+     * <résumé>Insère une barrière mémoire pour garantir l'ordre des opérations.</résumé>
+     **/
     vide BarriereMemoire();
+
+    /**
+     * <résumé>Insère une pause pour le processeur, utile dans les boucles d'attente.</résumé>
+     **/
     vide PauseProcesseur();
 }
 
 espace GalacticShrine::GsPP::Systeme {
+
+    /**
+     * <résumé>Vue non propriétaire sur une zone de mémoire octet par octet.</résumé>
+     * @Champ(octet*: Donnees) Adresse du premier octet de la zone.
+     * @Champ(naturel64: Taille) Nombre d'octets accessibles dans la zone.
+     **/
     structure VueOctets {
+
         octet* Donnees;
         naturel64 Taille;
         alias Data = Donnees;
         alias Size = Taille;
     };
 
+    /**
+     * <résumé>Vue non propriétaire sur une zone de mémoire de caractères.</résumé>
+     * @Champ(caractère*: Donnees) Adresse du premier caractère de la zone.
+     * @Champ(naturel64: Taille) Nombre de caractères accessibles dans la zone.
+     **/
     structure VueTexte {
+
         caractère* Donnees;
         naturel64 Taille;
         alias Data = Donnees;
         alias Size = Taille;
     };
 
+    /**
+     * <résumé>Verrou atomique pour la synchronisation entre threads.</résumé>
+     * @Champ(volatile naturel32: Etat) État du verrou, 0 pour libre, 1 pour acquis.
+     **/
     structure VerrouAtomique {
+
         volatile naturel32 Etat;
         alias State = Etat;
     };
 
+    /**
+     * <résumé>Remplit une zone mémoire avec une valeur spécifique.</résumé>
+     * @Paramètre(octet*: destination) Adresse du premier octet de la zone à remplir.
+     * @Paramètre(octet: valeur) Valeur à utiliser pour remplir la zone.
+     * @Paramètre(naturel64: taille) Nombre d'octets à remplir.
+     **/
     publique vide RemplirMemoire(octet* destination, octet valeur, naturel64 taille);
+
+    /**
+     * <résumé>Copie une zone mémoire vers une autre.</résumé>
+     * @Paramètre(octet*: destination) Adresse du premier octet de la zone de destination.
+     * @Paramètre(octet*: source) Adresse du premier octet de la zone source.
+     * @Paramètre(naturel64: taille) Nombre d'octets à copier.
+     **/
     publique vide CopierMemoire(octet* destination, octet* source, naturel64 taille);
+
+    /**
+     * <résumé>Compare deux zones mémoire octet par octet.</résumé>
+     * @Paramètre(octet*: gauche) Adresse du premier octet de la première zone.
+     * @Paramètre(octet*: droite) Adresse du premier octet de la deuxième zone.
+     * @Paramètre(naturel64: taille) Nombre d'octets à comparer.
+     * @Retourner(entier32) -1 si la première zone est inférieure, 1 si elle est supérieure, 0 si elles sont égales.
+     **/
     publique entier32 ComparerMemoire(octet* gauche, octet* droite, naturel64 taille);
+
+    /**
+     * <résumé>Vérifie si deux zones mémoire sont égales octet par octet.</résumé>
+     * @Paramètre(octet*: gauche) Adresse du premier octet de la première zone.
+     * @Paramètre(octet*: droite) Adresse du premier octet de la deuxième zone.
+     * @Paramètre(naturel64: taille) Nombre d'octets à comparer.
+     * @Retourner(booléen) `vrai` si les zones sont égales, `faux` sinon.
+     **/
     publique booléen MemoiresEgales(octet* gauche, octet* droite, naturel64 taille);
 
+    /**
+     * <résumé>Construit une vue non propriétaire sur une zone de mémoire octet par octet.</résumé>
+     * @Paramètre(octet*: donnees) Adresse du premier octet.
+     * @Paramètre(naturel64: taille) Nombre d'octets accessibles.
+     * @Retourner(VueOctets) Vue formée à partir de l'adresse et de la taille.
+     **/
     publique VueOctets CreerVueOctets(octet* donnees, naturel64 taille);
+
+    /**
+     * <résumé>Construit une sous-vue à partir d'une vue existante.</résumé>
+     * @Paramètre(VueOctets: vue) Vue source à partir de laquelle créer la sous-vue.
+     * @Paramètre(naturel64: debut) Index de départ pour la sous-vue.
+     * @Paramètre(naturel64: taille) Nombre d'octets dans la sous-vue.
+     * @Retourner(VueOctets) Nouvelle vue représentant la sous-zone.
+     **/
     publique VueOctets SousVueOctets(VueOctets vue, naturel64 debut, naturel64 taille);
+
+    /**
+     * <résumé>Compare deux vues de mémoire octet par octet.</résumé>
+     * @Paramètre(VueOctets: gauche) Première vue à comparer.
+     * @Paramètre(VueOctets: droite) Deuxième vue à comparer.
+     * @Retourner(booléen) `vrai` si les tailles et contenus sont identiques, `faux` sinon.
+     **/
     publique booléen VuesOctetsEgales(VueOctets gauche, VueOctets droite);
+
+    /**
+     * <résumé>Cherche un octet spécifique dans une vue de mémoire.</résumé>
+     * @Paramètre(VueOctets: vue) Vue dans laquelle effectuer la recherche.
+     * @Paramètre(octet: valeur) Octet à rechercher.
+     * @Retourner(naturel64) Index du premier octet trouvé, ou la taille de la vue si non trouvé.
+     **/
     publique naturel64 ChercherOctet(VueOctets vue, octet valeur);
 
+    /**
+     * <résumé>Calcule la longueur d'une chaîne de caractères terminée par un caractère nul.</résumé>
+     * @Paramètre(caractère*: texte) Adresse du premier caractère de la chaîne.
+     * @Retourner(naturel64) Nombre de caractères avant le caractère nul.
+     **/
     publique naturel64 LongueurTexte(caractère* texte);
+
+    /**
+     * <résumé>Construit une vue non propriétaire sur une zone de mémoire de caractères.</résumé>
+     * @Paramètre(caractère*: texte) Adresse du premier caractère.
+     * @Retourner(VueTexte) Vue formée à partir de l'adresse et de la longueur calculée.
+     **/
     publique VueTexte CreerVueTexte(caractère* texte);
+
+    /**
+     * <résumé>Compare deux vues de texte octet par octet.</résumé>
+     * @Paramètre(VueTexte: gauche) Première vue à comparer.
+     * @Paramètre(VueTexte: droite) Deuxième vue à comparer.
+     * @Retourner(booléen) `vrai` si les tailles et contenus sont identiques, `faux` sinon.
+     **/
     publique booléen VuesTexteEgales(VueTexte gauche, VueTexte droite);
+
+    /**
+     * <résumé>Compare deux vues de texte lexicographiquement.</résumé>
+     * @Paramètre(VueTexte: gauche) Première vue à comparer.
+     * @Paramètre(VueTexte: droite) Deuxième vue à comparer.
+     * @Retourner(entier32) -1 si la première vue est inférieure, 1 si elle est supérieure, 0 si elles sont égales.
+     **/
     publique entier32 ComparerVuesTexte(VueTexte gauche, VueTexte droite);
+
+    /**
+     * <résumé>Cherche un caractère spécifique dans une vue de texte.</résumé>
+     * @Paramètre(VueTexte: vue) Vue dans laquelle effectuer la recherche.
+     * @Paramètre(caractère: valeur) Caractère à rechercher.
+     * @Retourner(naturel64) Index du premier caractère trouvé, ou la taille de la vue si non trouvé.
+     **/
     publique naturel64 ChercherCaractere(VueTexte vue, caractère valeur);
 
+    /**
+     * <résumé>Effectue une rotation à gauche sur une valeur entière de 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel32) Valeur après la rotation.
+     **/
     publique naturel32 RotationGauche32(naturel32 valeur, naturel32 distance);
+
+    /**
+     * <résumé>Effectue une rotation à gauche sur une valeur entière de 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel64) Valeur après la rotation.
+     **/
     publique naturel64 RotationGauche64(naturel64 valeur, naturel32 distance);
+
+    /**
+     * <résumé>Effectue une rotation à droite sur une valeur entière de 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel32) Valeur après la rotation.
+     **/
     publique naturel32 RotationDroite32(naturel32 valeur, naturel32 distance);
+
+    /**
+     * <résumé>Effectue une rotation à droite sur une valeur entière de 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à faire tourner.
+     * @Paramètre(naturel32: distance) Nombre de positions à faire tourner.
+     * @Retourner(naturel64) Valeur après la rotation.
+     **/
     publique naturel64 RotationDroite64(naturel64 valeur, naturel32 distance);
+
+    /**
+     * <résumé>Compte le nombre de bits à 1 dans une valeur entière de 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à analyser.
+     * @Retourner(naturel32) Nombre de bits à 1.
+     **/
     publique naturel32 CompterBitsUn32(naturel32 valeur);
+
+    /**
+     * <résumé>Compte le nombre de bits à 1 dans une valeur entière de 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à analyser.
+     * @Retourner(naturel32) Nombre de bits à 1.
+     **/
     publique naturel32 CompterBitsUn64(naturel64 valeur);
+
+    /**
+     * <résumé>Inverse l'ordre des octets dans une valeur entière de 32 bits.</résumé>
+     * @Paramètre(naturel32: valeur) Valeur à inverser.
+     * @Retourner(naturel32) Valeur avec les octets inversés.
+     **/
     publique naturel32 InverserOctets32(naturel32 valeur);
+
+    /**
+     * <résumé>Inverse l'ordre des octets dans une valeur entière de 64 bits.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à inverser.
+     * @Retourner(naturel64) Valeur avec les octets inversés.
+     **/
     publique naturel64 InverserOctets64(naturel64 valeur);
+
+    /**
+     * <résumé>Vérifie si une valeur entière est une puissance de deux.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à vérifier.
+     * @Retourner(booléen) `vrai` si la valeur est une puissance de deux, `faux` sinon.
+     **/
     publique booléen EstPuissanceDeux(naturel64 valeur);
+
+    /**
+     * <résumé>Aligne une valeur entière vers le haut selon un alignement spécifié.</résumé>
+     * @Paramètre(naturel64: valeur) Valeur à aligner.
+     * @Paramètre(naturel64: alignement) Alignement souhaité (doit être une puissance de deux).
+     * @Retourner(naturel64) Valeur alignée vers le haut.
+     **/
     publique naturel64 AlignerSuperieur(naturel64 valeur, naturel64 alignement);
 
+    /**
+     * <résumé>Charge une valeur atomique de 32 bits depuis la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à charger.
+     * @Retourner(naturel32) Valeur chargée de manière atomique.
+     **/
     publique naturel32 ChargerAtomique32(volatile naturel32* cible);
+
+    /**
+     * <résumé>Charge une valeur atomique de 64 bits depuis la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à charger.
+     * @Retourner(naturel64) Valeur chargée de manière atomique.
+     **/
     publique naturel64 ChargerAtomique64(volatile naturel64* cible);
+
+    /**
+     * <résumé>Stocke une valeur atomique de 32 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à stocker.
+     * @Paramètre(naturel32: valeur) Valeur à stocker de manière atomique.
+     **/
     publique vide StockerAtomique32(volatile naturel32* cible, naturel32 valeur);
+
+    /**
+     * <résumé>Stocke une valeur atomique de 64 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à stocker.
+     * @Paramètre(naturel64: valeur) Valeur à stocker de manière atomique.
+     **/
     publique vide StockerAtomique64(volatile naturel64* cible, naturel64 valeur);
+
+    /**
+     * <résumé>Échange une valeur atomique de 32 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à échanger.
+     * @Paramètre(naturel32: valeur) Nouvelle valeur à stocker de manière atomique.
+     * @Retourner(naturel32) Ancienne valeur échangée de manière atomique.
+     **/
     publique naturel32 EchangerAtomique32(volatile naturel32* cible, naturel32 valeur);
+
+    /**
+     * <résumé>Échange une valeur atomique de 64 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à échanger.
+     * @Paramètre(naturel64: valeur) Nouvelle valeur à stocker de manière atomique.
+     * @Retourner(naturel64) Ancienne valeur échangée de manière atomique.
+     **/
     publique naturel64 EchangerAtomique64(volatile naturel64* cible, naturel64 valeur);
+
+    /**
+     * <résumé>Ajoute une valeur atomique de 32 bits à une cible dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à modifier.
+     * @Paramètre(naturel32: valeur) Valeur à ajouter de manière atomique.
+     * @Retourner(naturel32) Ancienne valeur avant l'ajout de manière atomique.
+     **/
     publique naturel32 AjouterAtomique32(volatile naturel32* cible, naturel32 valeur);
+
+    /**
+     * <résumé>Ajoute une valeur atomique de 64 bits à une cible dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à modifier.
+     * @Paramètre(naturel64: valeur) Valeur à ajouter de manière atomique.
+     * @Retourner(naturel64) Ancienne valeur avant l'ajout de manière atomique.
+     **/
     publique naturel64 AjouterAtomique64(volatile naturel64* cible, naturel64 valeur);
+
+    /**
+     * <résumé>Compare et échange une valeur atomique de 32 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel32*: cible) Adresse de la valeur à comparer et échanger.
+     * @Paramètre(naturel32: attendu) Valeur attendue pour effectuer l'échange.
+     * @Paramètre(naturel32: desire) Nouvelle valeur à stocker si la comparaison réussit.
+     * @Retourner(naturel32) Ancienne valeur avant l'échange de manière atomique.
+     **/
     publique naturel32 ComparerEchanger32(volatile naturel32* cible, naturel32 attendu, naturel32 desire);
+
+    /**
+     * <résumé>Compare et échange une valeur atomique de 64 bits dans la mémoire.</résumé>
+     * @Paramètre(volatile naturel64*: cible) Adresse de la valeur à comparer et échanger.
+     * @Paramètre(naturel64: attendu) Valeur attendue pour effectuer l'échange.
+     * @Paramètre(naturel64: desire) Nouvelle valeur à stocker si la comparaison réussit.
+     * @Retourner(naturel64) Ancienne valeur avant l'échange de manière atomique.
+     **/
     publique naturel64 ComparerEchanger64(volatile naturel64* cible, naturel64 attendu, naturel64 desire);
+
+    /**
+     * <résumé>Insère une barrière mémoire pour garantir l'ordre des opérations.</résumé>
+     **/
     publique vide BarriereMemoire();
+
+    /**
+     * <résumé>Insère une pause pour le processeur, utile dans les boucles d'attente.</résumé>
+     **/
     publique vide PauseProcesseur();
+
+    /**
+     * <résumé>Initialise un verrou atomique.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à initialiser.
+     **/
     publique vide InitialiserVerrou(VerrouAtomique* verrou);
+
+    /**
+     * <résumé>Tente d'acquérir un verrou atomique sans bloquer.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à acquérir.
+     * @Retourner(booléen) `vrai` si le verrou a été acquis, `faux` sinon.
+     **/
     publique booléen EssayerAcquerirVerrou(VerrouAtomique* verrou);
+
+    /**
+     * <résumé>Acquiert un verrou atomique, bloquant jusqu'à ce qu'il soit disponible.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à acquérir.
+     **/
     publique vide AcquerirVerrou(VerrouAtomique* verrou);
+
+    /**
+     * <résumé>Libère un verrou atomique précédemment acquis.</résumé>
+     * @Paramètre(VerrouAtomique*: verrou) Adresse du verrou à libérer.
+     **/
     publique vide LibererVerrou(VerrouAtomique* verrou);
 
     alias FillMemory = RemplirMemoire;

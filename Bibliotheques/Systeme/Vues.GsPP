@@ -1,75 +1,192 @@
+/**
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
+ *
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
+ **/
+
 espace GalacticShrine::GsPP::Systeme {
+
+    /**
+     * <résumé>Construit une vue non propriétaire sur une zone d'octets.</résumé>
+     * @Paramètre(octet*: donnees) Adresse du premier octet.
+     * @Paramètre(naturel64: taille) Nombre d'octets accessibles.
+     * @Retourner(VueOctets) Vue formée à partir de l'adresse et de la taille.
+     **/
     publique VueOctets CreerVueOctets(octet* donnees, naturel64 taille) {
+
         retourner {donnees, taille};
     }
 
-    publique VueOctets SousVueOctets(
-        VueOctets vue, naturel64 debut, naturel64 taille) {
-        si (debut > vue.Taille) retourner {&vue.Donnees[vue.Taille], 0};
+    /**
+     * <résumé>Construit une sous-vue sur une vue existante.</résumé>
+     * @Paramètre(VueOctets: vue) Vue source.
+     * @Paramètre(naturel64: debut) Index du premier octet de la sous-vue.
+     * @Paramètre(naturel64: taille) Nombre d'octets de la sous-vue.
+     * @Retourner(VueOctets) Sous-vue formée à partir de l'index et de la taille.
+     **/
+    publique VueOctets SousVueOctets(VueOctets vue, naturel64 debut, naturel64 taille) {
+
+        si (debut > vue.Taille)
+            retourner {&vue.Donnees[vue.Taille], 0};
+
         naturel64 disponible = vue.Taille - debut;
-        si (taille > disponible) taille = disponible;
+        si (taille > disponible)
+            taille = disponible;
+
         retourner {&vue.Donnees[debut], taille};
     }
 
+    /**
+     * <résumé>Compare deux vues d'octets octet par octet.</résumé>
+     * @Paramètre(VueOctets: gauche) Première vue à comparer.
+     * @Paramètre(VueOctets: droite) Deuxième vue à comparer.
+     * @Retourner(booléen) `vrai` si les tailles et contenus sont identiques.
+     **/
     publique booléen VuesOctetsEgales(VueOctets gauche, VueOctets droite) {
-        si (gauche.Taille != droite.Taille) retourner faux;
+
+        si (gauche.Taille != droite.Taille)
+            retourner faux;
+
         naturel64 index = 0;
         tantque (index < gauche.Taille) {
-            si (gauche.Donnees[index] != droite.Donnees[index]) retourner faux;
+
+            si (gauche.Donnees[index] != droite.Donnees[index])
+                retourner faux;
+
             index = index + 1;
         }
+
         retourner vrai;
     }
 
+    /**
+     * <résumé>Recherche un octet dans une vue d'octets.</résumé>
+     * @Paramètre(VueOctets: vue) Vue dans laquelle chercher.
+     * @Paramètre(octet: valeur) Octet à rechercher.
+     * @Retourner(naturel64) Index du premier octet trouvé, ou la taille de la vue si non trouvé.
+     **/
     publique naturel64 ChercherOctet(VueOctets vue, octet valeur) {
+
         naturel64 index = 0;
         tantque (index < vue.Taille) {
-            si (vue.Donnees[index] == valeur) retourner index;
+
+            si (vue.Donnees[index] == valeur)
+                retourner index;
+
             index = index + 1;
         }
+
         retourner vue.Taille;
     }
 
+    /**
+     * <résumé>Calcule la longueur d'un texte terminé par un caractère nul.</résumé>
+     * @Paramètre(caractère*: texte) Adresse du premier caractère.
+     * @Retourner(naturel64) Nombre de caractères avant le caractère nul.
+     **/
     publique naturel64 LongueurTexte(caractère* texte) {
+
         naturel64 longueur = 0;
-        tantque (texte[longueur] != 0) longueur = longueur + 1;
+        tantque (texte[longueur] != 0)
+            longueur = longueur + 1;
+
         retourner longueur;
     }
 
+    /**
+     * <résumé>Construit une vue sur un texte terminé par un caractère nul.</résumé>
+     * @Paramètre(caractère*: texte) Adresse du premier caractère.
+     * @Retourner(VueTexte) Vue qui exclut le caractère nul final.
+     **/
     publique VueTexte CreerVueTexte(caractère* texte) {
+
         retourner {texte, LongueurTexte(texte)};
     }
 
+    /**
+     * <résumé>Compare deux vues de texte octet par octet.</résumé>
+     * @Paramètre(VueTexte: gauche) Première vue à comparer.
+     * @Paramètre(VueTexte: droite) Deuxième vue à comparer.
+     * @Retourner(booléen) `vrai` si les tailles et contenus sont identiques.
+     **/
     publique booléen VuesTexteEgales(VueTexte gauche, VueTexte droite) {
-        si (gauche.Taille != droite.Taille) retourner faux;
+
+        si (gauche.Taille != droite.Taille)
+            retourner faux;
+
         naturel64 index = 0;
         tantque (index < gauche.Taille) {
-            si (gauche.Donnees[index] != droite.Donnees[index]) retourner faux;
+
+            si (gauche.Donnees[index] != droite.Donnees[index])
+                retourner faux;
+
             index = index + 1;
         }
+
         retourner vrai;
     }
 
+    /**
+     * <résumé>Compare deux vues de texte octet par octet.</résumé>
+     * @Paramètre(VueTexte: gauche) Première vue à comparer.
+     * @Paramètre(VueTexte: droite) Deuxième vue à comparer.
+     * @Retourner(entier32) Valeur négative si la première est inférieure, positive si supérieure, zéro si égales.
+     **/
     publique entier32 ComparerVuesTexte(VueTexte gauche, VueTexte droite) {
+
         naturel64 limite = gauche.Taille;
-        si (droite.Taille < limite) limite = droite.Taille;
+        si (droite.Taille < limite)
+            limite = droite.Taille;
+
         naturel64 index = 0;
         tantque (index < limite) {
-            si (gauche.Donnees[index] < droite.Donnees[index]) retourner -1;
-            si (gauche.Donnees[index] > droite.Donnees[index]) retourner 1;
+
+            si (gauche.Donnees[index] < droite.Donnees[index])
+                retourner -1;
+
+            si (gauche.Donnees[index] > droite.Donnees[index])
+                retourner 1;
+
             index = index + 1;
         }
-        si (gauche.Taille < droite.Taille) retourner -1;
-        si (gauche.Taille > droite.Taille) retourner 1;
+
+        si (gauche.Taille < droite.Taille)
+            retourner -1;
+
+        si (gauche.Taille > droite.Taille)
+            retourner 1;
+
         retourner 0;
     }
 
+    /**
+     * <résumé>Recherche un caractère dans une vue de texte.</résumé>
+     * @Paramètre(VueTexte: vue) Vue dans laquelle chercher.
+     * @Paramètre(caractère: valeur) Caractère à rechercher.
+     * @Retourner(naturel64) Index du premier caractère trouvé, ou la taille de la vue si non trouvé.
+     **/
     publique naturel64 ChercherCaractere(VueTexte vue, caractère valeur) {
+
         naturel64 index = 0;
         tantque (index < vue.Taille) {
-            si (vue.Donnees[index] == valeur) retourner index;
+
+            si (vue.Donnees[index] == valeur)
+                retourner index;
+
             index = index + 1;
         }
+
         retourner vue.Taille;
     }
 }

@@ -1,13 +1,38 @@
 /**
- * Frontend auto-hébergé Gs++ 0.27 : première tranche sémantique.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - All Rights Reserved.
+ * Copyright © 2026, ⋞Galactic-Shrine⋟ - Tous droits réservés.
  *
- * Le passage consomme l'AST syntaxique compact sans le modifier. Le stockage
- * des symboles et des résolutions appartient à l'appelant.
+ * Mozilla Public License 2.0 / Licence Publique Mozilla 2.0
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * If a copy of the MPL was not distributed with this file, You can obtain one at
+ * https://mozilla.org/MPL/2.0/. Modifications to this file must be shared under the same Mozilla
+ * Public License, v. 2.0.
+ *
+ * Cette Forme de Code Source est soumise aux termes de la Licence Publique Mozilla, version 2.0.
+ * Si une copie de la MPL ne vous a pas été distribuée avec ce fichier, vous pouvez en obtenir une à
+ * l'adresse suivante : https://mozilla.org/MPL/2.0/. Les modifications apportées à ce fichier
+ * doivent être partagées sous la même Licence Publique Mozilla, v. 2.0.
  **/
 
 espace GalacticShrine::GsPP::Autohebergement {
+
+    /**
+     * <résumé>Codes d'erreur pour l'analyse sémantique.</résumé>
+     * @etc. Les codes d'erreur sont utilisés pour indiquer le résultat de l'analyse sémantique.
+     **/
     énumération ErreurAnalyseSemantique {
+
+        /**
+         * <résumé>Aucune erreur.</résumé>
+         * @etc. Aucune erreur n'a été détectée lors de l'analyse sémantique.
+         **/
         Reussite = 0,
+
+        /**
+         * <résumé>No errors.</résumé>
+         * @etc. No errors were detected during the semantic analysis.
+         **/
         Success = 0,
         ArgumentInvalide = 1,
         InvalidArgument = 1,
@@ -189,9 +214,20 @@ espace GalacticShrine::GsPP::Autohebergement {
         ConstantDivisionByZero = 89,
         ConstanteHorsPlageType = 90,
         ConstantOutsideTypeRange = 90,
+        CapaciteGlobalesInsuffisante = 91,
+        InsufficientGlobalCapacity = 91,
+        CapaciteDonneesGlobalesInsuffisante = 92,
+        InsufficientGlobalDataCapacity = 92,
+        CapaciteRelocalisationsGlobalesInsuffisante = 93,
+        InsufficientGlobalRelocationCapacity = 93,
     };
 
+    /**
+     * <résumé>Catégories de symboles sémantiques.</résumé>
+     * @etc. Les symboles sémantiques sont utilisés pour représenter les entités déclarées dans le code source.
+     **/
     énumération GenreSymboleSemantique {
+
         Inconnu = 0,
         Unknown = 0,
         Type = 1,
@@ -212,7 +248,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         LocalVariable = 9,
     };
 
+    /**
+     * <résumé>Drapeaux de résolution sémantique.</résumé>
+     * @etc. Les drapeaux de résolution sémantique sont utilisés pour indiquer les propriétés des résolutions.
+     **/
     énumération DrapeauResolutionSemantique {
+
         Aucun = 0,
         None = 0,
         GroupeSurcharges = 1,
@@ -261,7 +302,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         ArrayElement = 2097152,
     };
 
+    /**
+     * <résumé>Décrit un symbole déclaré dans le code source.</résumé>
+     * @etc. Les symboles sémantiques sont utilisés pour représenter les entités déclarées dans le code source.
+     **/
     structure SymboleSemantique {
+
         naturel64 IndexNoeud;
         naturel64 IndexPortee;
         naturel64 HachageNom;
@@ -277,6 +323,7 @@ espace GalacticShrine::GsPP::Autohebergement {
      * décalage relatif en octets et non un hachage de type.
      **/
     structure ResolutionSemantique {
+
         naturel64 IndexNoeud;
         naturel64 IndexSymbole;
         naturel64 HachageType;
@@ -284,7 +331,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel32 Drapeaux;
     };
 
+    /**
+     * <résumé>Résultats de l'analyse sémantique.</résumé>
+     * @etc. Les résultats de l'analyse sémantique incluent les erreurs, les statistiques et les capacités requises.
+     **/
     structure ResultatAnalyseSemantique {
+
         ErreurAnalyseSemantique Erreur;
         naturel32 LigneErreur;
         naturel32 ColonneErreur;
@@ -296,7 +348,12 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 NombreOctetsArene;
     };
 
+    /**
+     * <résumé>Requête pour l'analyse sémantique.</résumé>
+     * @etc. La requête pour l'analyse sémantique contient les entrées et sorties de la passe.
+     **/
     structure RequeteAnalyseSemantique {
+
         constante caractère* Source;
         naturel64 TailleSource;
         constante NoeudDeclaration* Noeuds;
@@ -313,12 +370,94 @@ espace GalacticShrine::GsPP::Autohebergement {
      * @Paramètre(RequeteAnalyseSemantique*: requete) Entrée et sorties de la passe.
      * @Retourner(ErreurAnalyseSemantique) État final ou capacité requise.
      **/
-    publique ErreurAnalyseSemantique AnalyserSemantique(
-        RequeteAnalyseSemantique* requete);
+    publique ErreurAnalyseSemantique AnalyserSemantique(RequeteAnalyseSemantique* requete);
 
     alias SemanticSymbol = SymboleSemantique;
     alias SemanticResolution = ResolutionSemantique;
     alias SemanticAnalysisResult = ResultatAnalyseSemantique;
     alias SemanticAnalysisRequest = RequeteAnalyseSemantique;
     alias AnalyzeSemantics = AnalyserSemantique;
+
+    /**
+     * <résumé>Stockage d'une globale définie, dans les données ou la zone zéro.</résumé>
+     * @etc. Decalage est relatif à la zone choisie par Initialisee (bit 0).
+     * Le bit 1 indique une globale publique. Les imports n'occupent aucun stockage.
+     **/
+    structure GlobaleEmise {
+
+        naturel64 IndexNoeud;
+        naturel64 IndexSymbole;
+        naturel64 Decalage;
+        naturel64 Taille;
+        naturel64 Alignement;
+        naturel32 Drapeaux;
+        naturel32 Reserve;
+    };
+
+    /**
+     * <résumé>Adresse de fonction à résoudre par le futur éditeur de liens.</résumé>
+     * @etc. Decalage est relatif à la globale désignée par IndexNoeudGlobale.
+     * IndexSymboleCible désigne la même table que AnalyserSemantique.
+     * Genre vaut 1 pour une adresse absolue de 64 bits ; les huit octets sont nuls.
+     **/
+    structure RelocalisationGlobale {
+
+        naturel64 IndexNoeudGlobale;
+        naturel64 Decalage;
+        naturel64 IndexSymboleCible;
+        naturel32 Genre;
+        naturel32 Reserve;
+    };
+
+    /**
+     * <résumé>Diagnostic et capacités exactes de l'émission des globales.</résumé>
+     * @etc. Les nombres indiquent les besoins même lorsque les tampons sont trop petits.
+     * NombreOctetsZero décrit un stockage à réserver, sans tampon associé.
+     **/
+    structure ResultatEmissionGlobales {
+
+        ErreurAnalyseSemantique Erreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+        naturel32 Detail;
+        naturel64 NombreGlobales;
+        naturel64 NombreOctetsDonnees;
+        naturel64 NombreOctetsZero;
+        naturel64 NombreRelocalisations;
+        naturel64 NombreOctetsArene;
+    };
+
+    /**
+     * <résumé>Entrées et tampons appartenant à l'appelant pour l'émission des globales.</résumé>
+     * @etc. Une capacité nulle permet d'interroger les besoins avec un pointeur nul.
+     * Aucun tampon n'est écrit tant que les trois capacités ne sont pas suffisantes.
+     * Les tampons de sortie doivent être distincts et ne pas recouvrir les entrées.
+     **/
+    structure RequeteEmissionGlobales {
+
+        constante caractère* Source;
+        naturel64 TailleSource;
+        constante NoeudDeclaration* Noeuds;
+        naturel64 NombreNoeuds;
+        GlobaleEmise* Globales;
+        naturel64 CapaciteGlobales;
+        octet* Donnees;
+        naturel64 CapaciteDonnees;
+        RelocalisationGlobale* Relocalisations;
+        naturel64 CapaciteRelocalisations;
+        ResultatEmissionGlobales Resultat;
+    };
+
+    /**
+     * <résumé>Analyse puis émet les données et relocalisations des globales.</résumé>
+     * @Paramètre(RequeteEmissionGlobales*: requete) Source, AST et sorties bornées.
+     * @Retourner(ErreurAnalyseSemantique) Diagnostic ou succès de l'émission.
+     **/
+    publique ErreurAnalyseSemantique EmettreGlobales(RequeteEmissionGlobales* requete);
+
+    alias EmittedGlobal = GlobaleEmise;
+    alias GlobalRelocation = RelocalisationGlobale;
+    alias GlobalEmissionResult = ResultatEmissionGlobales;
+    alias GlobalEmissionRequest = RequeteEmissionGlobales;
+    alias EmitGlobals = EmettreGlobales;
 }

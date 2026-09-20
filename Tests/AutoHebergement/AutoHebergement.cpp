@@ -3,6 +3,7 @@
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
 #include "GsPP/Lexeur.hpp"
+#include "GsPP/GenerateurX64.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #if defined(_WIN32)
@@ -176,6 +178,45 @@ namespace
         ResultatAnalyseSemantiqueHote Resultat;
     };
 
+    struct GlobaleEmiseHote
+    {
+        std::uint64_t IndexNoeud, IndexSymbole, Decalage, Taille, Alignement;
+        std::uint32_t Drapeaux, Reserve;
+    };
+
+    struct RelocalisationGlobaleHote
+    {
+        std::uint64_t IndexNoeudGlobale, Decalage, IndexSymboleCible;
+        std::uint32_t Genre, Reserve;
+    };
+
+    struct ResultatEmissionGlobalesHote
+    {
+        std::uint32_t Erreur, LigneErreur, ColonneErreur, Detail;
+        std::uint64_t NombreGlobales, NombreOctetsDonnees, NombreOctetsZero;
+        std::uint64_t NombreRelocalisations, NombreOctetsArene;
+    };
+
+    struct RequeteEmissionGlobalesHote
+    {
+        const char* Source;
+        std::uint64_t TailleSource;
+        const NoeudDeclarationHote* Noeuds;
+        std::uint64_t NombreNoeuds;
+        GlobaleEmiseHote* Globales;
+        std::uint64_t CapaciteGlobales;
+        std::uint8_t* Donnees;
+        std::uint64_t CapaciteDonnees;
+        RelocalisationGlobaleHote* Relocalisations;
+        std::uint64_t CapaciteRelocalisations;
+        ResultatEmissionGlobalesHote Resultat;
+    };
+
+    static_assert(sizeof(GlobaleEmiseHote) == 48);
+    static_assert(sizeof(RelocalisationGlobaleHote) == 32);
+    static_assert(sizeof(ResultatEmissionGlobalesHote) == 56);
+    static_assert(sizeof(RequeteEmissionGlobalesHote) == 136);
+    static_assert(offsetof(RequeteEmissionGlobalesHote, Resultat) == 80);
     static_assert(sizeof(VueTexteHote) == 16);
     static_assert(sizeof(RequeteFichierHote) == 32);
     static_assert(sizeof(DiagnosticHote) == 48);
@@ -2567,7 +2608,10 @@ namespace
                     == requete.Resultat.NombreResolutions
                 && requete.Resultat.NombreOctetsArene != 0,
             "interrogation de capacité sémantique incorrecte pour "
-                + std::string(nomCorpus));
+                + std::string(nomCorpus) + " : code=" + std::to_string(interrogation)
+                + ", ligne=" + std::to_string(requete.Resultat.LigneErreur)
+                + ", colonne=" + std::to_string(requete.Resultat.ColonneErreur)
+                + ", détail=" + std::to_string(requete.Resultat.Detail));
 
         std::vector<SymboleSemantiqueHote> symboles(
             static_cast<std::size_t>(requete.Resultat.NombreSymboles));
@@ -2689,6 +2733,297 @@ namespace
                 + ")");
     }
 
+    using EmetteurGlobalesAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequeteEmissionGlobalesHote*);
+
+    void ComparerEmissionGlobales(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique,
+        EmetteurGlobalesAutoHeberge emettre,
+        const std::string& source,
+        std::string_view nomCorpus)
+    {
+        auto programme = GsPP::AnalyseurSyntaxique(
+            GsPP::Lexeur(source, std::string(nomCorpus)).Analyser(),
+            std::string(nomCorpus)).Analyser();
+        GsPP::AnalyseurSemantique().Analyser(programme);
+        const auto machine = GsPP::GenerateurX64().Generer(programme);
+        const auto sortie = AnalyserSemantiqueValide(syntaxe, semantique, source, nomCorpus);
+        const auto nombreGlobales = static_cast<std::uint64_t>(std::count_if(
+            programme.VariablesGlobales.begin(), programme.VariablesGlobales.end(),
+            [](const auto& variable) { return !variable.EstExterne; }));
+        std::vector<GsPP::CodeMachine::Relocalisation> relocationsReference;
+        for (const auto& relocation : machine.Relocalisations)
+            if (relocation.Section == GsPP::SectionMachine::Donnees)
+                relocationsReference.push_back(relocation);
+        RequeteEmissionGlobalesHote requete{
+            source.data(), source.size(), sortie.Noeuds.data(), sortie.Noeuds.size(),
+            nullptr, 0, nullptr, 0, nullptr, 0, {}};
+        const auto interrogationEmission = emettre(&requete);
+        Exiger(interrogationEmission == (nombreGlobales ? 91U : 0U),
+               "interrogation de l'émission incorrecte : " + std::string(nomCorpus)
+                   + ", code=" + std::to_string(interrogationEmission)
+                   + ", ligne=" + std::to_string(requete.Resultat.LigneErreur)
+                   + ", détail=" + std::to_string(requete.Resultat.Detail));
+        const auto besoins = requete.Resultat;
+        Exiger(besoins.NombreGlobales == nombreGlobales
+                   && besoins.NombreOctetsDonnees == machine.Donnees.size()
+                   && besoins.NombreOctetsZero == machine.TailleZero
+                   && besoins.NombreRelocalisations == relocationsReference.size()
+                   && besoins.NombreOctetsArene != 0,
+               "besoins d'émission différents du bootstrap : " + std::string(nomCorpus));
+
+        // Une sentinelle au-delà de chaque capacité protège aussi le cas exact.
+        std::vector<GlobaleEmiseHote> globales(nombreGlobales + 1);
+        std::vector<std::uint8_t> donnees(machine.Donnees.size() + 1, 0xA5);
+        std::vector<RelocalisationGlobaleHote> relocations(relocationsReference.size() + 1);
+        std::memset(globales.data(), 0xA5, globales.size() * sizeof(globales[0]));
+        std::memset(relocations.data(), 0xA5, relocations.size() * sizeof(relocations[0]));
+        const auto globalesVierges = globales;
+        const auto relocationsVierges = relocations;
+        requete.Globales = globales.data();
+        requete.CapaciteGlobales = nombreGlobales;
+        requete.Donnees = donnees.data();
+        requete.CapaciteDonnees = machine.Donnees.size();
+        requete.Relocalisations = relocations.data();
+        requete.CapaciteRelocalisations = relocationsReference.size();
+        const auto sortiesIntactes = [&]
+        {
+            return std::memcmp(globales.data(), globalesVierges.data(),
+                               globales.size() * sizeof(globales[0])) == 0
+                && std::memcmp(relocations.data(), relocationsVierges.data(),
+                               relocations.size() * sizeof(relocations[0])) == 0
+                && std::all_of(donnees.begin(), donnees.end(),
+                               [](auto octet) { return octet == 0xA5; });
+        };
+        const auto capaciteInsuffisante = [&](std::uint64_t& capacite, std::uint32_t code)
+        {
+            if (capacite == 0) return;
+            --capacite;
+            Exiger(emettre(&requete) == code && requete.Resultat.Erreur == code
+                       && requete.Resultat.NombreGlobales == besoins.NombreGlobales
+                       && requete.Resultat.NombreOctetsDonnees == besoins.NombreOctetsDonnees
+                       && requete.Resultat.NombreOctetsZero == besoins.NombreOctetsZero
+                       && requete.Resultat.NombreRelocalisations == besoins.NombreRelocalisations
+                       && sortiesIntactes(),
+                   "capacité partielle ou sortie modifiée : " + std::string(nomCorpus));
+            ++capacite;
+        };
+        capaciteInsuffisante(requete.CapaciteGlobales, 91);
+        capaciteInsuffisante(requete.CapaciteDonnees, 92);
+        capaciteInsuffisante(requete.CapaciteRelocalisations, 93);
+        Exiger(emettre(&requete) == 0 && requete.Resultat.Erreur == 0,
+               "émission échouée : " + std::string(nomCorpus));
+        Exiger(std::equal(machine.Donnees.begin(), machine.Donnees.end(), donnees.begin()),
+               "octets globaux différents du bootstrap : " + std::string(nomCorpus));
+        Exiger(donnees.back() == 0xA5
+                   && std::memcmp(&globales.back(), &globalesVierges.back(), sizeof(globales[0])) == 0
+                   && std::memcmp(&relocations.back(), &relocationsVierges.back(), sizeof(relocations[0])) == 0,
+               "écriture au-delà d'une capacité d'émission");
+
+        std::unordered_map<std::string, GsPP::Structure*> structures;
+        for (auto& structure : programme.Structures)
+            structures.emplace(structure.NomComplet(), &structure);
+        std::size_t indexGlobale = 0;
+        for (const auto& variable : programme.VariablesGlobales)
+        {
+            if (variable.EstExterne) continue;
+            const auto& globale = globales[indexGlobale++];
+            Exiger(globale.IndexNoeud < sortie.Noeuds.size()
+                       && globale.IndexSymbole < sortie.Symboles.size(),
+                   "index de globale émise hors table");
+            const auto& noeud = sortie.Noeuds[globale.IndexNoeud];
+            const auto& symbole = sortie.Symboles[globale.IndexSymbole];
+            const auto reference = std::find_if(machine.Symboles.begin(), machine.Symboles.end(),
+                [&](const auto& candidat) { return candidat.Nom == variable.NomComplet(); });
+            Exiger(reference != machine.Symboles.end()
+                       && noeud.Genre == 3 && symbole.Genre == 3
+                       && symbole.IndexNoeud == globale.IndexNoeud
+                       && noeud.Ligne == variable.Position.Ligne
+                       && noeud.Colonne == variable.Position.Colonne
+                       && globale.Decalage == reference->Decalage
+                       && globale.Taille == reference->Taille
+                       && globale.Alignement == GsPP::AnalyseurSemantique::AlignementType(variable.Type, structures)
+                       && globale.Drapeaux == ((variable.EstInitialisee ? 1U : 0U) | (variable.EstPublique ? 2U : 0U))
+                       && globale.Reserve == 0,
+                   "disposition globale différente : " + variable.NomComplet());
+        }
+        for (std::size_t index = 0; index < relocationsReference.size(); ++index)
+        {
+            const auto& relocation = relocations[index];
+            const auto& reference = relocationsReference[index];
+            const auto globale = std::find_if(globales.begin(), globales.begin() + nombreGlobales,
+                [&](const auto& candidat) { return candidat.IndexNoeud == relocation.IndexNoeudGlobale; });
+            Exiger(globale != globales.begin() + nombreGlobales
+                       && relocation.IndexSymboleCible < sortie.Symboles.size()
+                       && relocation.Genre == 1 && relocation.Reserve == 0
+                       && reference.Type == GsPP::TypeRelocalisationMachine::Adresse64
+                       && globale->Decalage + relocation.Decalage == reference.Decalage,
+                   "position ou genre de relocalisation différent du bootstrap");
+            const auto& cible = sortie.Symboles[relocation.IndexSymboleCible];
+            const auto& noeudCible = sortie.Noeuds[cible.IndexNoeud];
+            const auto fonction = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                [&](const auto& candidat) { return candidat.NomComplet() == reference.Symbole; });
+            Exiger(cible.Genre == 2 && fonction != programme.Fonctions.end()
+                       && noeudCible.Ligne == fonction->Position.Ligne
+                       && noeudCible.Colonne == fonction->Position.Colonne,
+                   "cible de relocalisation différente du bootstrap");
+        }
+        const auto premiereEmission = donnees;
+        const auto premieresGlobales = globales;
+        const auto premieresRelocalisations = relocations;
+        Exiger(emettre(&requete) == 0 && premiereEmission == donnees
+                   && std::memcmp(globales.data(), premieresGlobales.data(),
+                                  globales.size() * sizeof(globales[0])) == 0
+                   && std::memcmp(relocations.data(), premieresRelocalisations.data(),
+                                  relocations.size() * sizeof(relocations[0])) == 0,
+               "émission non déterministe lors du second appel");
+    }
+
+    void TesterEmissionGlobales(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique,
+        EmetteurGlobalesAutoHeberge emettre)
+    {
+        const std::string francais = R"(
+espace Donnees {
+    énumération Etat { Negatif = -2, Suivant, Positif = 7, };
+    structure Vide {};
+    structure Petit { octet Etiquette; entier32 Valeur; };
+    union Choix { entier16 Court; entier64 Long; };
+    structure Paquet {
+        octet Marque;
+        Petit Elements[2];
+        naturel16 Grille[2][3];
+        pointeur_fonction<entier32()> Rappels[2];
+        Choix Option;
+    };
+    publique entier32 Fonction() { retourner 42; }
+    externe entier32 Importee();
+    externe entier32 GlobaleImportee;
+    publique entier8 S8 = -128;
+    entier16 S16 = -32768;
+    entier32 S32 = -2147483648;
+    entier64 S64 = -9223372036854775808;
+    naturel8 U8 = 255;
+    naturel16 U16 = 65535;
+    naturel32 U32 = 4294967295;
+    naturel64 U64 = 18446744073709551615;
+    caractère Caractere = -1;
+    booléen CourtCircuit = faux && ((1 / 0) == 0);
+    entier64 Etendu = convertir<entier64>(convertir<entier8>(-1));
+    entier32 Calcul = ((20 * 3) / 4 % 7) + ((16 >> 2) ^ 3);
+    entier32 Decalage = -8 >> 2;
+    Etat Enumeration = Etat::Suivant;
+    Petit Structure = {2, -3};
+    Choix Union = {-7};
+    Paquet Agregat = {9, {{1, 2}, {3}}, {{1, 2}, {3}}, {&Fonction, Importee}, {4}};
+    pointeur_fonction<entier32()> Rappel = Fonction;
+    entier32 ScalaireVide = {};
+    Vide ObjetVide = {};
+    Paquet AgregatVide = {};
+    publique octet ZeroPetit;
+    entier64 ZeroGrand;
+    Paquet ZeroAgregat[2];
+    entier32* ZeroPointeur;
+}
+)";
+        std::string anglais = francais;
+        // La traduction des seuls mots-clés garde les noms et valeurs identiques.
+        for (const auto& [fr, en] : std::vector<std::pair<std::string, std::string>>{
+                 {"espace", "namespace"}, {"énumération", "enumeration"},
+                 {"structure", "struct"}, {"publique", "public"}, {"externe", "extern"},
+                 {"retourner", "return"}, {"pointeur_fonction", "function_pointer"},
+                 {"convertir", "cast"}, {"naturel", "uint"}, {"entier", "int"},
+                 {"octet", "byte"}, {"caractère", "char"}, {"booléen", "bool"}, {"faux", "false"}})
+        {
+            std::size_t position = 0;
+            while ((position = anglais.find(fr, position)) != std::string::npos)
+            {
+                anglais.replace(position, fr.size(), en);
+                position += en.size();
+            }
+        }
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, francais, "emission-globales-francais");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, anglais, "emission-globales-anglais");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            "externe entier32 Importee; publique vide F() {}", "emission-import-seul");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            "int32 Zero; public void F() {}", "emission-zero-seul");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            "public void F() {}", "emission-sans-globale");
+
+        const auto verifierRefus = [&](const std::string& texte, std::uint32_t code,
+                                      bool differentiel)
+        {
+            if (differentiel)
+                ComparerErreurSemantique(syntaxe, semantique, texte, code, "emission-refusee");
+            const auto ast = ComparerDeclarations(syntaxe, texte, "emission-refusee");
+            std::array<GlobaleEmiseHote, 4> globales;
+            std::array<RelocalisationGlobaleHote, 4> relocations;
+            std::array<std::uint8_t, 256> donnees;
+            std::memset(globales.data(), 0xA5, sizeof(globales));
+            std::memset(relocations.data(), 0xA5, sizeof(relocations));
+            donnees.fill(0xA5);
+            const auto globalesAvant = globales;
+            const auto relocationsAvant = relocations;
+            RequeteEmissionGlobalesHote requete{
+                texte.data(), texte.size(), ast.data(), ast.size(),
+                globales.data(), globales.size(), donnees.data(), donnees.size(),
+                relocations.data(), relocations.size(), {}};
+            Exiger(emettre(&requete) == code && requete.Resultat.Erreur == code
+                       && requete.Resultat.LigneErreur != 0
+                       && requete.Resultat.ColonneErreur != 0
+                       && std::memcmp(globales.data(), globalesAvant.data(), sizeof(globales)) == 0
+                       && std::memcmp(relocations.data(), relocationsAvant.data(), sizeof(relocations)) == 0
+                       && std::all_of(donnees.begin(), donnees.end(), [](auto b) { return b == 0xA5; }),
+                   "refus d'émission incorrect ou sortie partiellement écrite : " + texte);
+            if (differentiel)
+            {
+                RequeteAnalyseSemantiqueHote analyse{
+                    texte.data(), texte.size(), ast.data(), ast.size(), nullptr, 0, nullptr, 0, {}};
+                Exiger(semantique(&analyse) == code
+                           && requete.Resultat.LigneErreur == analyse.Resultat.LigneErreur
+                           && requete.Resultat.ColonneErreur == analyse.Resultat.ColonneErreur,
+                       "position du diagnostic perdue pendant l'émission");
+            }
+        };
+        verifierRefus("entier32 A = 42; entier32 B = 1 / 0; publique vide F() {}", 89, true);
+        verifierRefus("int32 A = 42; int32 B = 1 / 0; public void F() {}", 89, true);
+        verifierRefus("externe entier32 I; entier32* P = &I; publique vide F() {}", 83, true);
+        verifierRefus("extern int32 I; int32* P = &I; public void F() {}", 83, true);
+        verifierRefus("espace A { énumération E { X }; } espace B { énumération E { X }; } "
+                     "A::E Valeur = B::E::X; publique vide F() {}", 45, true);
+        verifierRefus("namespace A { enumeration E { X }; } namespace B { enumeration E { X }; } "
+                     "A::E Value = B::E::X; public void F() {}", 45, true);
+        verifierRefus("publique booléen F() { retourner vrai; } "
+                     "pointeur_fonction<entier32()> R[1] = {F};", 45, true);
+        verifierRefus("public bool F() { return true; } "
+                     "function_pointer<int32()> R[1] = {F};", 45, true);
+        // Chaque objet tient sur 32 bits, mais leur zone commune dépasse la limite.
+        verifierRefus("octet A[2147483647]; octet B[2147483647]; octet C[2]; publique vide F() {}", 58, false);
+        verifierRefus("byte A[2147483647] = {}; byte B[2147483647] = {}; byte C[2] = {}; public void F() {}", 58, false);
+        Exiger(emettre(nullptr) == 1, "requête d'émission nulle acceptée");
+        RequeteEmissionGlobalesHote invalide{};
+        Exiger(emettre(&invalide) == 1 && invalide.Resultat.Erreur == 1,
+               "source d'émission nulle acceptée");
+        const std::string source = "entier32 Globale = 1; publique vide F() {}";
+        auto noeuds = ComparerDeclarations(syntaxe, source, "emission-arguments");
+        invalide = {source.data(), source.size(), noeuds.data(), noeuds.size(),
+                    nullptr, 0, nullptr, 0, nullptr, 0, {}};
+        for (auto* capacite : {&invalide.CapaciteGlobales, &invalide.CapaciteDonnees,
+                              &invalide.CapaciteRelocalisations})
+        {
+            *capacite = 1;
+            Exiger(emettre(&invalide) == 1 && invalide.Resultat.Erreur == 1,
+                   "tampon d'émission nul avec capacité accepté");
+            *capacite = 0;
+        }
+        noeuds[1].Parent = 1;
+        Exiger(emettre(&invalide) == 2 && invalide.Resultat.Erreur == 2,
+               "AST invalide accepté pendant l'émission");
+    }
+
     void TesterAnalyseurSemantique(
         const std::string& chemin,
         const std::string& cheminSyntaxe)
@@ -2751,6 +3086,14 @@ namespace
                "export de l’analyseur sémantique Gs++ absent");
         const auto semantique =
             reinterpret_cast<AnalyseurSemantiqueAutoHeberge>(*adresse);
+        const auto adresseEmission = image.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::EmettreGlobales");
+        const auto aliasEmission = image.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::EmitGlobals");
+        Exiger(adresseEmission.has_value() && aliasEmission == adresseEmission,
+               "exports français et anglais de l'émission absents ou différents");
+        TesterEmissionGlobales(syntaxe, semantique,
+            reinterpret_cast<EmetteurGlobalesAutoHeberge>(*adresseEmission));
 
         const std::string francais =
             "espace Semantique {\n"

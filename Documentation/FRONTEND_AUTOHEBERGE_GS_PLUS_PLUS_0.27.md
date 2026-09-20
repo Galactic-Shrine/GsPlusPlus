@@ -1,7 +1,7 @@
 # Frontend auto-hébergé Gs++ 0.27
 
-**EN COURS — lexeur, AST syntaxique, indexation, sélection typée et contraintes
-des expressions couvertes VALIDÉS — 29 août 2026.**
+**EN COURS — lexeur, AST syntaxique, indexation, sélection typée, contraintes
+des expressions couvertes et émission des globales VALIDÉS — 20 septembre 2026.**
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -977,13 +977,93 @@ globales et ne produit pas leurs relocalisations. Elle ne constitue donc ni un
 frontend auto-hébergé complet ni un compilateur reconstruit fonctionnellement
 par Gs++.
 
+## Émission des données globales — développement du 20 septembre 2026
+
+La nouvelle API exportée par `Frontend.GsE` réutilise l’analyse sémantique et
+son arène privée, puis produit les données initiales et les informations de
+stockage nécessaires au futur backend auto-hébergé :
+
+```text
+GalacticShrine::GsPP::Autohebergement::EmettreGlobales(
+    RequeteEmissionGlobales*) -> ErreurAnalyseSemantique
+```
+
+L’alias anglais `EmitGlobals` pointe sur la même fonction. Les nouvelles
+structures n’étendent ni ne déplacent les champs des contrats AST/sémantique
+existants. Leur disposition sous `GsAbi:x64-ms-v1` est contrôlée dans les tests :
+
+| Structure | Taille | Rôle |
+| --- | ---: | --- |
+| `GlobaleEmise` / `EmittedGlobal` | 48 octets | nœud, symbole, décalage, taille, alignement et drapeaux |
+| `RelocalisationGlobale` / `GlobalRelocation` | 32 octets | nœud global, décalage relatif, symbole cible et genre |
+| `ResultatEmissionGlobales` / `GlobalEmissionResult` | 56 octets | diagnostic, quatre besoins et consommation de l’arène |
+| `RequeteEmissionGlobales` / `GlobalEmissionRequest` | 136 octets | source, AST, trois tampons/capacités et résultat à l’offset 80 |
+
+La requête fournit la même source et le même AST que `AnalyserSemantique`.
+Un premier appel avec trois capacités nulles mesure les besoins sans remplir
+les tampons. Le résultat indique le nombre de globales définies, le nombre
+d’octets initialisés, le stockage zéro et le nombre de relocalisations.
+Après allocation des trois tampons, un second appel effectue l’émission.
+Une unité sans aucune globale définie réussit dès la mesure.
+
+| Code | Diagnostic | Capacité insuffisante |
+| ---: | --- | --- |
+| 91 | `CapaciteGlobalesInsuffisante` | descripteurs de globales |
+| 92 | `CapaciteDonneesGlobalesInsuffisante` | octets initialisés |
+| 93 | `CapaciteRelocalisationsGlobalesInsuffisante` | relocalisations |
+
+Les besoins sont complets pour ces trois diagnostics, testés dans cet ordre.
+Une erreur sémantique conserve son code et sa position ; les compteurs d’une
+analyse en erreur ne constituent pas une émission valide. Les trois tampons
+restent intacts en cas d’erreur ou de capacité insuffisante. Ils appartiennent
+à l’appelant et ne doivent se recouvrir ni entre eux, ni avec la source, l’AST
+ou la requête. Une capacité non nulle avec un pointeur nul est refusée.
+Les allocations privées sont libérées avant le retour, y compris sur erreur.
+
+Les globales apparaissent dans l’ordre source, sans stockage pour les imports.
+Le bit 0 de `Drapeaux` désigne la zone initialisée, le bit 1 une globale publique ;
+`Reserve` vaut zéro. Les zones initialisée et zéro sont alignées séparément.
+`Decalage` est relatif à la zone choisie et `NombreOctetsZero` n’exige aucun
+tampon. Chaque zone est limitée à `UINT32_MAX`, comme les offsets du backend
+actuel ; un dépassement retourne `TailleObjetInvalide` sans écrire les sorties.
+
+Les entiers, booléens et énumérations sont encodés en little-endian, selon leur
+largeur et leur signe. Les tableaux multidimensionnels, structures et unions
+sont parcourus récursivement ; éléments omis, listes vides et octets de
+remplissage valent zéro. Une cible de fonction directe ou précédée de `&`
+produit huit octets nuls et une relocalisation de genre `1` (adresse absolue
+64 bits). Son décalage est relatif à la globale ; son indice cible désigne la
+table obtenue par `AnalyserSemantique` avec les mêmes entrées, que la fonction
+soit définie ou importée.
+
+Les tests comparent les octets avec `GenerateurX64::Generer`, les positions et
+tailles avec ses symboles, et les relocalisations avec leurs cibles exactes.
+Ils couvrent cinq corpus, dont une paire français/anglais avec valeurs limites,
+signes, conversions, énumérations relatives à l’espace courant, agrégats,
+unions, tableaux de callbacks, imports et zones zéro. Les tailles exactes ou
+insuffisantes, sentinelles, appels répétés, arguments invalides, erreurs sans
+écriture partielle et dépassements de section sont aussi vérifiés. Huit refus
+différentiels supplémentaires portent la matrice sémantique à 203 corpus.
+
+Validation locale : **4/4 CTest sous Visual Studio 2026, 5/5 sous GNU/Linux**,
+avec la cible de préparation `tests_gspp_preparation`. Les deux chaînes
+produisent un `Frontend.GsE` GsE 1.0 identique de **328 270 octets**, ABI 1,
+75 exports et deux imports, accepté par `gseverifier`. SHA-256 :
+`1bf0c652b7cd6d51c8434cbc7d8fc2a21da00385dbf26fd3965426a3a5a70d5d`.
+
+Cette tranche émet des **données en mémoire**, pas un fichier GsObj complet.
+Le bootstrap reste responsable de la génération du code machine, des tables
+virtuelles, des littéraux chaînes, des écrivains de formats et de la liaison.
+Les nouvelles cibles natives et les SDK de la décision multi-cible restent
+prévus, non implémentés ici. Il ne s’agit pas d’un compilateur auto-hébergé complet.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les conversions implicites composées et les qualifications encore
   absentes de la matrice différentielle ;
-- compléter les relocalisations et l’émission des octets des initialiseurs
-  globaux, ainsi que les autres familles sémantiques encore prises en charge
-  par le bootstrap ;
+- compléter les autres familles sémantiques encore prises en charge par le
+  bootstrap ; le raccordement des données globales aux écrivains d’objets
+  auto-hébergés appartient au jalon backend ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;

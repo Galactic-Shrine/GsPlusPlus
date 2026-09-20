@@ -27,7 +27,7 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — `0.27.0-alpha.8`**
+> **Current status — `0.27.0-alpha.9`**
 >
 > This prerelease can be used to evaluate and develop with the current Gs++
 > toolchain. Binary formats 1.0 and ABI 1 are validated, while the self-hosted
@@ -51,7 +51,9 @@ official aliases with the same semantics and generated code.
 > unsigned operations, conversions, and logical short-circuiting; division by
 > zero and out-of-range values are rejected. The `EmitGlobals` API now produces
 > initial bytes, data/zero layouts, and function relocations, compared with the
-> bootstrap. The remaining implicit conversions and other semantic families
+> bootstrap. Alpha.9 also checks explicit casts, function signatures, and
+> out-of-range constant conversions. The remaining implicit conversions and
+> other semantic families
 > still need to be migrated; this API does not yet replace the backend or
 > object-file writers.
 
@@ -221,7 +223,7 @@ On Linux:
 
 ## Downloading a prerelease
 
-The [`0.27.0-alpha.8` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.8)
+The [`0.27.0-alpha.9` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.9)
 provides x86-64 packages for Windows and Linux. Each package contains the
 tools, SDK headers, Gs++ libraries, examples, and Markdown documentation. Use
 `SHA256SUMS.txt` to verify downloads.
@@ -251,7 +253,7 @@ GsPlusPlus/
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Conformance matrix](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Self-hosted frontend 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [`0.27.0-alpha.8` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md)
+- [`0.27.0-alpha.9` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
 - [Roadmap](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 All normative documentation is maintained in Markdown as its primary source.
@@ -273,7 +275,8 @@ All normative documentation is maintained in Markdown as its primary source.
 - qualified reference bindings, inheritance conversions, assignments, and
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
-  initializers aligned with the bootstrap compiler, for a total of **203**
+  initializers and explicit casts aligned with the bootstrap compiler,
+  for a total of **257**
   negative corpora whose code, line, and column are checked;
 - self-hosted global data and function relocation emission, comparing bytes,
   alignments, targets, and caller-buffer bounds against the bootstrap.

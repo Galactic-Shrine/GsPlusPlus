@@ -162,6 +162,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         PATTERN "*.GsPs"
     )
     install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/AutoHebergement/"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/GsPlusPlus/AutoHebergement"
+        FILES_MATCHING PATTERN "*.HGsPP"
+    )
+    install(
         DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Documentation/"
         DESTINATION "${CMAKE_INSTALL_DOCDIR}/Documentation"
         FILES_MATCHING PATTERN "*.md"

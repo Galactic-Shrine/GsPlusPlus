@@ -10,6 +10,49 @@
 
 # Journal des modifications
 
+## Gs++ 0.27.0-alpha.9 — 2026-09-20
+
+### Français
+
+- publication des avancées du frontend depuis alpha.8 : contraintes des
+  expressions indirectes et des opérateurs, plans de durée de vie, références,
+  affectations, retours, constantes, globales et émission de leurs données ;
+- validation des conversions explicites `convertir` / `cast` : catégories
+  scalaires, séparation pointeurs/entiers, identité des signatures de fonction,
+  types nommés et plages des constantes, y compris conversions imbriquées,
+  énumérations et branches à court-circuit ;
+- conservation des qualificatifs de pointeurs et suppression du caractère
+  référence sur le résultat d’une conversion ; les appels indirects à travers
+  un pointeur de fonction converti retrouvent sa signature dans la source ;
+- diagnostics bilingues 94 à 99 et 54 refus différentiels supplémentaires,
+  portant le total à 257 corpus négatifs, sans modifier l’ABI publique existante ;
+- version centralisée dans `VERSION`, métadonnées et paquets alpha.9 ; formats
+  GsObj/GsA/GsE 1.0, ABI machine 1 et préfixe `GalacticShrine::GsPP::` conservés ;
+- inclusion des quatre interfaces publiques du frontend dans les paquets,
+  sous `share/GsPlusPlus/AutoHebergement`, à côté des bibliothèques livrées ;
+- validation Windows 4/4, GNU/Linux 5/5, conformité 20/20, smoke 4/4 sur les
+  deux chaînes, puis compilation et exécution depuis les paquets extraits ;
+- le frontend reste partiel ; backend auto-hébergé, sorties natives multi-cibles
+  et SDK de destination ne sont pas livrés par cette alpha.
+
+### English
+
+- release the frontend work completed since alpha.8: indirect expressions and
+  operators, lifetime plans, references, assignments, returns, constants, global
+  declarations, and in-memory global data/relocation emission;
+- validate explicit casts, including scalar categories, pointer/integer
+  separation, function signatures, named targets, constant ranges, nested
+  conversions, enum values, and short-circuited branches;
+- preserve pointer qualifiers, make cast results values rather than references,
+  and recover cast function-pointer signatures for subsequent indirect calls;
+- add bilingual diagnostics 94–99 and 54 differential rejection cases, for
+  257 negative corpora; retain existing public ABI layouts, formats 1.0 and ABI 1;
+- ship all four frontend interfaces under `share/GsPlusPlus/AutoHebergement`;
+- pass Windows 4/4 and GNU/Linux 5/5 tests, 20/20 conformance and 4/4 smoke
+  scenarios on each toolchain, plus extracted-package compilation/execution;
+- keep the frontend marked partial: a self-hosted backend, native multi-target
+  outputs, and destination SDKs remain future work.
+
 ## Développement après Gs++ 0.27.0-alpha.8 — 2026-09-20
 
 - ajout de l’API `EmettreGlobales` / `EmitGlobals` dans `Frontend.GsE` :

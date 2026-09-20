@@ -3024,6 +3024,101 @@ espace Donnees {
                "AST invalide accepté pendant l'émission");
     }
 
+    void TesterConversionsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const auto traduire = [](std::string texte)
+        {
+            for (const auto& [fr, en] : std::vector<std::pair<std::string, std::string>>{
+                     {"pointeur_fonction", "function_pointer"}, {"convertir", "cast"},
+                     {"constante", "const"}, {"énumération", "enumeration"},
+                     {"structure", "struct"}, {"classe", "class"}, {"espace", "namespace"},
+                     {"publique", "public"}, {"retourner", "return"},
+                     {"naturel", "uint"}, {"entier", "int"}, {"booléen", "bool"},
+                     {"vide", "void"}, {"vrai", "true"}, {"faux", "false"}})
+            {
+                std::size_t position = 0;
+                while ((position = texte.find(fr, position)) != std::string::npos)
+                {
+                    texte.replace(position, fr.size(), en);
+                    position += en.size();
+                }
+            }
+            return texte;
+        };
+        const std::string valide = R"(
+énumération Etat { Limite = 127 };
+publique entier32 Cible(entier32 valeur) { retourner valeur; }
+publique constante entier32* Vue(entier32* valeur) {
+    retourner convertir<constante entier32*>(convertir<vide*>(valeur));
+}
+publique entier32 Conversions(entier32 valeur, entier32* adresse,
+    pointeur_fonction<entier32(entier32)> rappel) {
+    entier8 etroit = convertir<entier8>(convertir<entier32>(127));
+    entier8 dynamique = convertir<entier8>(valeur);
+    booléen logique = convertir<booléen>(-3);
+    Etat etat = convertir<Etat>(1);
+    entier32 valeurEnum = convertir<entier32>(Etat::Limite);
+    entier32 reference = convertir<entier32&>(valeur);
+    constante entier32* lecture = convertir<constante entier32*>(convertir<vide*>(adresse));
+    volatile entier32* materiel = convertir<volatile entier32*>(adresse);
+    entier32 copie = *convertir<entier32*>(convertir<vide*>(adresse));
+    pointeur_fonction<entier32(entier32)> fonction = convertir<pointeur_fonction<entier32(entier32)>>(rappel);
+    pointeur_fonction<entier32(entier32)>* caseRappel = convertir<pointeur_fonction<entier32(entier32)>*>(&rappel);
+    entier32 appel = (convertir<pointeur_fonction<entier32(entier32)>>(rappel))(valeur);
+    entier32 direct = (convertir<pointeur_fonction<entier32(entier32)>>(Cible))(valeur);
+    retourner appel + direct + copie + valeurEnum + reference;
+}
+entier64 Minimum = convertir<entier64>(-9223372036854775808);
+naturel64 Maximum = convertir<naturel64>(18446744073709551615);
+)";
+        for (const auto& texte : {valide, traduire(valide)})
+        {
+            auto programme = GsPP::AnalyseurSyntaxique(
+                GsPP::Lexeur(texte, "conversions-valides").Analyser(), "conversions-valides").Analyser();
+            GsPP::AnalyseurSemantique().Analyser(programme);
+            AnalyserSemantiqueValide(syntaxe, semantique, texte, "conversions-valides");
+        }
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"publique vide F() { convertir<vide>(1); }", 94},
+            {"structure S {}; publique vide F() { convertir<S>(1); }", 94},
+            {"union U { entier32 V; }; publique vide F() { convertir<U>(1); }", 94},
+            {"classe C {}; publique vide F() { convertir<C>(1); }", 94},
+            {"publique vide F() { convertir<Absent*>(1); }", 99},
+            {"structure S {}; publique vide F() { S valeur = {}; convertir<entier32>(valeur); }", 95},
+            {"publique vide F() { entier32 valeurs[2] = {}; convertir<entier32>(valeurs); }", 95},
+            {"publique vide V() {} publique vide F() { convertir<entier32>(V()); }", 95},
+            {"publique vide F() { convertir<entier32*>(1); }", 96},
+            {"publique vide F(entier32* p) { convertir<entier64>(p); }", 96},
+            {"publique vide Cible() {} publique vide F() { convertir<entier64>(Cible); }", 96},
+            {"publique vide F() { convertir<pointeur_fonction<vide()>>(1); }", 96},
+            {"publique entier32 Cible() { retourner 1; } publique vide F() { convertir<pointeur_fonction<vide()>>(Cible); }", 97},
+            {"publique vide Cible(entier32 v) {} publique vide F() { convertir<pointeur_fonction<vide(entier64)>>(Cible); }", 97},
+            {"publique vide Cible() {} publique vide F() { convertir<vide*>(Cible); }", 97},
+            {"publique vide F(vide* p) { convertir<pointeur_fonction<vide()>>(p); }", 97},
+            {"publique vide Cible() {} publique vide F() { convertir<constante pointeur_fonction<vide()>>(Cible); }", 97},
+            {"entier8 Globale = convertir<entier8>(128); publique vide F() {}", 98},
+            {"publique vide F() { convertir<naturel64>(-1); }", 98},
+            {"structure S { naturel8 V; }; S Valeur = {convertir<naturel8>(256)}; publique vide F() {}", 98},
+            {"publique vide F() { convertir<entier64>(convertir<entier8>(128)); }", 98},
+            {"énumération E { X = 128 }; publique vide F() { convertir<entier8>(E::X); }", 98},
+            {"publique vide F() { faux && (convertir<entier8>(128) == 0); }", 98},
+            {"publique vide F() { convertir<entier32>(1 / 0); }", 89},
+            {"énumération E { X = convertir<entier8>(128) }; publique vide F() {}", 98},
+            {"publique vide F(entier32 valeur) { entier32& r = convertir<entier32&>(valeur); }", 69},
+            {"publique vide F(entier32* p) { entier32* q = convertir<constante entier32*>(p); }", 45},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "conversion-refusee-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, traduire(texte), code,
+                "conversion-refusee-en-" + std::to_string(index));
+        }
+    }
+
     void TesterAnalyseurSemantique(
         const std::string& chemin,
         const std::string& cheminSyntaxe)
@@ -3094,6 +3189,7 @@ espace Donnees {
                "exports français et anglais de l'émission absents ou différents");
         TesterEmissionGlobales(syntaxe, semantique,
             reinterpret_cast<EmetteurGlobalesAutoHeberge>(*adresseEmission));
+        TesterConversionsSemantiques(syntaxe, semantique);
 
         const std::string francais =
             "espace Semantique {\n"

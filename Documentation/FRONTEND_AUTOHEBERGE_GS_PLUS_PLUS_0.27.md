@@ -212,7 +212,7 @@ compare chaque nœud au programme produit par `GsPP::AnalyseurSyntaxique` :
 
 Les constructions MSVC et GNU produisent un `Frontend.GsE` identique bit à
 bit. La dernière matrice publique conservée est celle de
-[`0.27.0-alpha.8`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md).
+[`0.27.0-alpha.9`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md).
 
 Cette tranche construit l’AST des corps, de leurs instructions et de leurs
 expressions. Les classes sont couvertes pour leurs données, leur héritage, leurs
@@ -285,7 +285,7 @@ complète du langage.
 
 La matrice publique conservée, ses empreintes reproductibles et les contrôles
 des paquets extraits sont consignés dans la validation de
-[`0.27.0-alpha.8`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md).
+[`0.27.0-alpha.9`](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md).
 
 ## Première sélection typée des surcharges — alpha.8
 
@@ -1057,6 +1057,45 @@ virtuelles, des littéraux chaînes, des écrivains de formats et de la liaison.
 Les nouvelles cibles natives et les SDK de la décision multi-cible restent
 prévus, non implémentés ici. Il ne s’agit pas d’un compilateur auto-hébergé complet.
 
+## Conversions explicites — alpha.9
+
+Le frontend valide maintenant les expressions `convertir<Type>(valeur)` et
+`cast<Type>(value)` avant de les laisser participer à une initialisation, une
+affectation, un retour, une opération ou un appel indirect. Le type cible est
+relu à la position du mot-clé dans la source, sans agrandir l’AST public.
+La signature d’un callback converti reste disponible pour les opérations
+suivantes, y compris son appel indirect.
+
+| Code | Diagnostic | Condition refusée |
+| ---: | --- | --- |
+| 94 | `CibleConversionNonScalaire` | conversion vers `vide`, une structure, une union ou une classe par valeur |
+| 95 | `SourceConversionNonScalaire` | source agrégée, tableau ou valeur `vide` |
+| 96 | `ConversionPointeurEntierInterdite` | conversion entre catégories adresse et numérique |
+| 97 | `SignatureConversionIncompatible` | signature ou qualifications de pointeur de fonction incompatibles |
+| 98 | `ConstanteConversionHorsPlage` | constante non représentable dans le type converti |
+| 99 | `TypeConversionIntrouvable` | cible nommée inconnue |
+
+Le contrôle de plage s’applique aux globales et aux agrégats, aux expressions
+locales, aux conversions imbriquées et aux initialiseurs d’énumérateurs. Il
+ne réduit pas silencieusement une constante hors plage. Une conversion vers
+un booléen conserve la règle zéro/non-zéro du bootstrap ; les conversions
+étroites d’une valeur calculée à l’exécution restent autorisées. Chaque
+conversion est contrôlée même dans une branche à court-circuit, comme dans le
+bootstrap. Le résultat perd le marqueur de référence, sans devenir une valeur
+gauche, mais conserve les qualificatifs de pointeur explicitement demandés.
+
+Les 27 paires françaises/anglaises de refus ajoutent 54 corpus, pour un total
+de **257**. Les cas positifs incluent les pointeurs `constante`/`volatile`, les
+conversions numériques imbriquées, les valeurs d’énumération, les références
+converties en valeurs et les appels à travers des callbacks convertis.
+Les tailles de l’AST et des requêtes publiques ne changent pas.
+
+L’image alpha.9 est identique sous MSVC et GNU : **334 318 octets**, 75 exports,
+format GsE 1.0, ABI 1, SHA-256
+`aef86685f1444466f78951725e0b08cbfe81f70dcb9c9ba5f38eb69cc1597c95`.
+La [matrice de publication](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
+regroupe les tests, benchmarks et contrôles de paquets actuels.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les conversions implicites composées et les qualifications encore
@@ -1068,5 +1107,5 @@ prévus, non implémentés ici. Il ne s’agit pas d’un compilateur auto-hébe
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.8`. Aucun statut
+Les outils de la tranche publique annoncent `0.27.0-alpha.9`. Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

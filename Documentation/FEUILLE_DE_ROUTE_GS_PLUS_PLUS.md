@@ -243,7 +243,8 @@ Les prochains jalons sont donc réservés à Gs++ :
    leurs initialiseurs, agrégats et pointeurs, puis calcul numérique des
    constantes et valeurs d’énumération avec contrôles de plage et de division
    par zéro, puis émission des octets globaux, disposition des zones
-   données/zéro et relocalisations de fonctions ; conversions implicites
+   données/zéro et relocalisations de fonctions, puis validation des conversions
+   explicites et plages constantes dans l’alpha.9 ; conversions implicites
    composées et autres familles sémantiques encore à migrer, raccordement aux
    écrivains d’objets auto-hébergés dans le jalon backend ;
 5. 0.28 — backend, formats et linker auto-hébergés, sélection de cible native

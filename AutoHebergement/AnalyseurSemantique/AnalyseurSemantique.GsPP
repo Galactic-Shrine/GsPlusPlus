@@ -379,12 +379,50 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner vrai;
     }
 
+    /**
+     * <résumé>Relit la cible d'une conversion sans étendre l'AST public.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Source et jetons de l'analyse.
+     * @Paramètre(naturel64: indexNoeud) Expression convertir/cast.
+     * @Paramètre(DescriptionTypeJetonsSemantique*: type) Cible et début de sa signature.
+     * @Retourner(booléen) Vrai si la position et le type correspondent à l'AST.
+     **/
+    booléen LireTypeConversionSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexNoeud,
+        DescriptionTypeJetonsSemantique* type) {
+
+        si (indexNoeud >= etat->Requete->NombreNoeuds
+            || etat->Requete->Noeuds[indexNoeud].Genre != 31)
+            retourner faux;
+        constante NoeudDeclaration* conversion = &etat->Requete->Noeuds[indexNoeud];
+        naturel64 indexJeton = 0;
+        tantque (indexJeton + 2 < etat->NombreJetonsTypes) {
+
+            JetonLexe* jeton = &etat->JetonsTypes[indexJeton];
+            si (jeton->Ligne == conversion->Ligne && jeton->Colonne == conversion->Colonne) {
+
+                si (jeton->Genre != 27 || etat->JetonsTypes[indexJeton + 1].Genre != 48)
+                    retourner faux;
+                CurseurTypeJetonsSemantique curseur = {indexJeton + 2, faux};
+                si (!AnalyserTypeJetonsSemantique(etat, &curseur, type)
+                    || !AccepterFermetureTypeJetonsSemantique(etat, &curseur)
+                    || type->HachageType != conversion->HachageType)
+                    retourner faux;
+                type->DebutType = indexJeton + 2;
+                retourner vrai;
+            }
+            indexJeton = indexJeton + 1;
+        }
+        retourner faux;
+    }
+
     booléen LireTypeNoeudSemantique(EtatAnalyseSemantique* etat, naturel64 indexNoeud, DescriptionTypeJetonsSemantique* type) {
 
         si (indexNoeud >= etat->Requete->NombreNoeuds || etat->JetonsTypes == NulJetonsTypesSemantiques)
             retourner faux;
 
         constante NoeudDeclaration* noeudType = &etat->Requete->Noeuds[indexNoeud];
+        si (noeudType->Genre == 31)
+            retourner LireTypeConversionSemantique(etat, indexNoeud, type);
         naturel64 indexNomType = 0;
 
         tantque (indexNomType < etat->NombreJetonsTypes && etat->JetonsTypes[indexNomType].Debut != noeudType->DebutNom)
@@ -1791,6 +1829,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner etat->Requete->NombreNoeuds;
         constante NoeudDeclaration* expressionOrigine =
             &etat->Requete->Noeuds[indexExpression];
+        si (expressionOrigine->Genre == 31)
+            retourner indexExpression;
         si (expressionOrigine->Genre == 24
             || expressionOrigine->Genre == 29) {
             naturel64 cibleOrigine = TrouverCibleSymboleExpressionSemantique(
@@ -2026,14 +2066,29 @@ espace GalacticShrine::GsPP::Autohebergement {
         constante NoeudDeclaration* noeudPointeurFonction =
             &etat->Requete->Noeuds[indexNoeud];
         naturel64 indexNomPointeurFonction = 0;
-        tantque (indexNomPointeurFonction < etat->NombreJetonsTypes
-            && etat->JetonsTypes[indexNomPointeurFonction].Debut
-                != noeudPointeurFonction->DebutNom)
-            indexNomPointeurFonction = indexNomPointeurFonction + 1;
-        si (indexNomPointeurFonction >= etat->NombreJetonsTypes)
-            retourner faux;
-
         naturel64 debutPointeurFonction = 0;
+        si (noeudPointeurFonction->Genre == 31) {
+
+            DescriptionTypeJetonsSemantique cibleConversion;
+            si (!LireTypeConversionSemantique(etat, indexNoeud, &cibleConversion)
+                || cibleConversion.Genre != 14)
+                retourner faux;
+            debutPointeurFonction = cibleConversion.DebutType;
+            CurseurTypeJetonsSemantique finConversion = {cibleConversion.DebutType, faux};
+            si (!AnalyserTypeJetonsSemantique(etat, &finConversion, &cibleConversion))
+                retourner faux;
+            indexNomPointeurFonction = finConversion.Index;
+        }
+        sinon {
+
+            tantque (indexNomPointeurFonction < etat->NombreJetonsTypes
+                && etat->JetonsTypes[indexNomPointeurFonction].Debut
+                    != noeudPointeurFonction->DebutNom)
+                indexNomPointeurFonction = indexNomPointeurFonction + 1;
+            si (indexNomPointeurFonction >= etat->NombreJetonsTypes)
+                retourner faux;
+        }
+
         tantque (debutPointeurFonction < indexNomPointeurFonction) {
             naturel32 genreDebutPointeur =
                 etat->JetonsTypes[debutPointeurFonction].Genre;
@@ -2488,8 +2543,14 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner HachageTypeMembreSemantique(
                 etat, indexExpression);
         }
-        si (expression->Genre == 31)
-            retourner expression->HachageType;
+        si (expression->Genre == 31) {
+
+            DescriptionTypeJetonsSemantique cibleConversion;
+            si (!LireTypeConversionSemantique(etat, indexExpression, &cibleConversion))
+                retourner 0;
+            cibleConversion.Qualificatifs = cibleConversion.Qualificatifs & 3;
+            retourner HacherDescriptionTypeJetonsSemantique(&cibleConversion);
+        }
         si (expression->Genre == 30)
             retourner HachageTypeIndexationSemantique(
                 etat, indexExpression);
@@ -3758,7 +3819,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     HachageTypeExpressionSemantique(etat, indexValeur),
                     &sourceConversion)
                 || !DecrireTypeNumeriqueSemantique(
-                    etat, expression->HachageType, &cibleConversion))
+                    etat, HachageTypeExpressionSemantique(etat, indexExpression), &cibleConversion))
                 retourner SignalerErreurSemantique(
                     etat,
                     ErreurAnalyseSemantique::AstInvalide,
@@ -3777,6 +3838,13 @@ espace GalacticShrine::GsPP::Autohebergement {
             }
             sinon *valeur = NormaliserValeurNumeriqueSemantique(
                 valeurEtendue, &cibleConversion);
+            si (cibleConversion.Booleen == 0
+                && !ValeurDansTypeNumeriqueSemantique(etat, valeurSource,
+                    HachageTypeExpressionSemantique(etat, indexValeur),
+                    HachageTypeExpressionSemantique(etat, indexExpression)))
+                retourner SignalerErreurSemantique(
+                    etat, ErreurAnalyseSemantique::ConstanteConversionHorsPlage,
+                    indexExpression, 0);
             retourner ErreurAnalyseSemantique::Reussite;
         }
         retourner SignalerErreurSemantique(
@@ -6515,6 +6583,11 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 originePointeurFonctionExpression =
             TrouverOrigineTypeExpressionSemantique(
                 etat, indexExpression);
+        si (TrouverSymboleNoeudSemantique(etat, originePointeurFonctionExpression, 2)
+                < etat->NombreSymboles
+            && hachageType == HacherPointeurFonctionDeclarationSemantique(
+                etat, originePointeurFonctionExpression))
+            retourner vrai;
         DescriptionTypeJetonsSemantique descriptionPointeurFonctionExpression;
         retourner LireDescriptionPointeurFonctionNoeudSemantique(
             etat,
@@ -7271,6 +7344,91 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
+    /**
+     * <résumé>Vérifie les catégories et signatures d'une conversion explicite.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Tables et types résolus.
+     * @Paramètre(naturel64: indexConversion) Expression convertir/cast.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic de conversion.
+     **/
+    ErreurAnalyseSemantique ValiderConversionSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexConversion) {
+
+        DescriptionTypeJetonsSemantique cible;
+        si (!LireTypeConversionSemantique(etat, indexConversion, &cible))
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::AstInvalide, indexConversion, 64);
+        naturel64 typeNomme = etat->NombreSymboles;
+        si (cible.Genre == 13) {
+
+            typeNomme = TrouverTypeDepuisHachageSemantique(
+                etat, cible.HachageType, cible.NiveauPointeur);
+            si (typeNomme >= etat->NombreSymboles)
+                retourner SignalerErreurSemantique(
+                    etat, ErreurAnalyseSemantique::TypeConversionIntrouvable, indexConversion, 0);
+        }
+        si (cible.NiveauPointeur == 0 && (cible.Qualificatifs & 4) == 0
+            && (cible.Genre == 12
+                || (typeNomme < etat->NombreSymboles
+                    && etat->Requete->Noeuds[etat->SymbolesTravail[typeNomme].IndexNoeud].Genre != 8)))
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::CibleConversionNonScalaire, indexConversion, 0);
+
+        naturel64 indexSource = TrouverEnfantDirectSemantique(etat, indexConversion, 0);
+        naturel64 typeSource = HachageTypeExpressionSemantique(etat, indexSource);
+        si (!EstExpressionScalaireIntrinsequeSemantique(etat, indexSource, typeSource))
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::SourceConversionNonScalaire, indexConversion, 0);
+        booléen sourceAdresse = EstExpressionAdresseIntrinsequeSemantique(etat, indexSource, typeSource);
+        booléen cibleAdresse = (cible.NiveauPointeur != 0 || cible.Genre == 14)
+            && (cible.Qualificatifs & 4) == 0;
+        si (sourceAdresse != cibleAdresse)
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::ConversionPointeurEntierInterdite, indexConversion, 0);
+
+        booléen sourceFonction = EstPointeurFonctionExpressionSemantique(etat, indexSource, typeSource);
+        si (sourceFonction) {
+
+            DescriptionTypeJetonsSemantique signatureSource;
+            naturel64 origineSource = TrouverOrigineTypeExpressionSemantique(etat, indexSource);
+            si (LireDescriptionPointeurFonctionNoeudSemantique(
+                    etat, origineSource, typeSource, &signatureSource))
+                sourceFonction = signatureSource.NiveauPointeur == 0;
+        }
+        booléen cibleFonction = cible.Genre == 14 && cible.NiveauPointeur == 0
+            && (cible.Qualificatifs & 4) == 0;
+        si ((sourceFonction || cibleFonction) && typeSource != cible.HachageType)
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::SignatureConversionIncompatible, indexConversion, 0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Contrôle aussi les conversions constantes locales après les énumérations.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Valeurs d'énumération disponibles.
+     * @Retourner(ErreurAnalyseSemantique) Premier calcul ou contrôle de plage en erreur.
+     **/
+    ErreurAnalyseSemantique ValiderConversionsConstantesSemantiques(EtatAnalyseSemantique* etat) {
+
+        naturel64 index = 0;
+        tantque (index < etat->Requete->NombreNoeuds) {
+
+            si (etat->Requete->Noeuds[index].Genre == 31) {
+
+                naturel64 typeCible = HachageTypeExpressionSemantique(etat, index);
+                si (!EstExpressionAdresseIntrinsequeSemantique(etat, index, typeCible)
+                    && EstExpressionConstanteGlobaleSemantique(etat, index)) {
+
+                    naturel64 valeur = 0;
+                    ErreurAnalyseSemantique erreur = EvaluerConstanteNumeriqueSemantique(etat, index, &valeur);
+                    si (erreur != ErreurAnalyseSemantique::Reussite)
+                        retourner erreur;
+                }
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
     ErreurAnalyseSemantique ResoudreExpressionsSemantiques(
         EtatAnalyseSemantique* etat) {
         naturel64 indexExpression = etat->Requete->NombreNoeuds;
@@ -7298,6 +7456,9 @@ espace GalacticShrine::GsPP::Autohebergement {
                 && expressionCourante->Genre == 26)
                 erreurExpression = ValiderBinaireIntrinsequeSemantique(
                     etat, indexExpression);
+            si (erreurExpression == ErreurAnalyseSemantique::Reussite
+                && expressionCourante->Genre == 31)
+                erreurExpression = ValiderConversionSemantique(etat, indexExpression);
             si (erreurExpression == ErreurAnalyseSemantique::Reussite
                 && expressionCourante->Genre == 30)
                 erreurExpression = ValiderIndexationSemantique(
@@ -7754,6 +7915,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             erreur = ResoudreExpressionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = CalculerEnumerationsSemantiques(&etat);
+        si (erreur == ErreurAnalyseSemantique::Reussite)
+            erreur = ValiderConversionsConstantesSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreConstructionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)

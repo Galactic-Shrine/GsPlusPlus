@@ -280,7 +280,8 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
   constantes, agrégats et pointeurs de leurs initialiseurs, l’évaluation
   numérique des constantes et valeurs d’énumération, les contrôles de plage et
   les divisions par zéro, puis l’émission en mémoire des données globales,
-  de leur disposition et des relocalisations de fonctions ;
+  de leur disposition et des relocalisations de fonctions ; l’alpha.9 ajoute
+  les contraintes des conversions explicites, signatures et plages constantes ;
 - **EN COURS** : compléter les conversions implicites composées et les autres
   familles sémantiques ; raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;

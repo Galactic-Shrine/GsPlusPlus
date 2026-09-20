@@ -29,7 +29,7 @@ Le français est la syntaxe canonique du langage. Les mots-clés anglais
 documentés sont des alias officiels avec la même sémantique et la même
 génération de code.
 
-> **État actuel — `0.27.0-alpha.8`**
+> **État actuel — `0.27.0-alpha.9`**
 >
 > Cette préversion permet d’évaluer et de développer avec la chaîne Gs++
 > actuelle. Les formats binaires 1.0 et l’ABI 1 sont validés, mais le frontend
@@ -55,8 +55,10 @@ génération de code.
 > signées, les conversions et les courts-circuits logiques ; elle refuse les
 > divisions par zéro et les valeurs hors plage. L’API `EmettreGlobales` produit
 > maintenant les octets initiaux, la disposition des zones données/zéro et les
-> relocalisations de fonctions, comparés au bootstrap. Les conversions
-> implicites restantes et les autres familles sémantiques restent à migrer ;
+> relocalisations de fonctions, comparés au bootstrap. L’alpha.9 vérifie aussi
+> les conversions explicites, les signatures de fonctions et les constantes
+> converties hors plage. Les conversions implicites restantes et les autres
+> familles sémantiques restent à migrer ;
 > cette API ne remplace pas encore le backend ni l’écriture des fichiers objets.
 
 ## Principes du langage
@@ -227,7 +229,7 @@ Sous Linux :
 
 ## Télécharger une préversion
 
-La [release `0.27.0-alpha.8`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.8)
+La [release `0.27.0-alpha.9`](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.9)
 propose des paquets x86-64 pour Windows et Linux. Chaque paquet contient les
 outils, les en-têtes SDK, les bibliothèques Gs++, les exemples et la
 documentation Markdown. Le fichier `SHA256SUMS.txt` permet de vérifier les
@@ -258,7 +260,7 @@ GsPlusPlus/
 - [ABI native x86-64](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Matrice de conformité](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [Validation de `0.27.0-alpha.8`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md)
+- [Validation de `0.27.0-alpha.9`](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
 - [Feuille de route](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 Toute la documentation normative est maintenue en Markdown comme source
@@ -281,7 +283,8 @@ principale.
 - liaisons de références qualifiées, conversions d’héritage, affectations et
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
-  initialiseurs globaux alignées sur le bootstrap, pour un total de **203**
+  initialiseurs globaux et conversions explicites alignées sur le bootstrap,
+  pour un total de **257**
   corpus négatifs dont le code, la ligne et la colonne sont contrôlés ;
 - émission auto-hébergée des données globales et relocalisations de fonctions,
   avec comparaison des octets, alignements, cibles et limites des tampons.

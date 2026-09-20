@@ -26,7 +26,7 @@ consultables dans l’historique Git.
 - [Matrice de conformité 1.0](CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
 - [Protocole de benchmark](PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md)
-- [Dernière matrice de publication : 0.27.0-alpha.8](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.8.md)
+- [Dernière matrice de publication : 0.27.0-alpha.9](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
 
 Le [`CHANGELOG.md`](../CHANGELOG.md) conserve la chronologie synthétique des
 versions et du développement postérieur à la dernière préversion publique.

@@ -220,6 +220,18 @@ espace GalacticShrine::GsPP::Autohebergement {
         InsufficientGlobalDataCapacity = 92,
         CapaciteRelocalisationsGlobalesInsuffisante = 93,
         InsufficientGlobalRelocationCapacity = 93,
+        CibleConversionNonScalaire = 94,
+        NonScalarCastTarget = 94,
+        SourceConversionNonScalaire = 95,
+        NonScalarCastSource = 95,
+        ConversionPointeurEntierInterdite = 96,
+        PointerIntegerCastForbidden = 96,
+        SignatureConversionIncompatible = 97,
+        IncompatibleCastSignature = 97,
+        ConstanteConversionHorsPlage = 98,
+        ConstantCastOutOfRange = 98,
+        TypeConversionIntrouvable = 99,
+        UnknownCastType = 99,
     };
 
     /**

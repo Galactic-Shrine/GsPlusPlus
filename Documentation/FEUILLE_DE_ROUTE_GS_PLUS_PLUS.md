@@ -220,6 +220,10 @@ Le socle nécessaire à Sanctuaire SE est techniquement atteint depuis Gs++
 comme produit réellement exploitable avant de développer activement
 Sanctuaire SE 0.11, Gs# ou les autres couches.
 
+La préversion actuelle est **0.27.0-alpha.10**, validée avec ses paquets extraits
+dans sa [matrice propre](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md),
+sans clôture du frontend 0.27.
+
 Les prochains jalons sont donc réservés à Gs++ :
 
 1. 0.24 — contrat du langage et suite de conformité — terminé ;
@@ -244,15 +248,38 @@ Les prochains jalons sont donc réservés à Gs++ :
    constantes et valeurs d’énumération avec contrôles de plage et de division
    par zéro, puis émission des octets globaux, disposition des zones
    données/zéro et relocalisations de fonctions, puis validation des conversions
-   explicites et plages constantes dans l’alpha.9 ; conversions implicites
-   composées et autres familles sémantiques encore à migrer, raccordement aux
+   explicites et plages constantes dans l’alpha.9 ; adaptations implicites des
+   constantes composées et sélection des surcharges, puis références de callbacks,
+   signatures imbriquées et tableaux de pointeurs à indirections profondes dans
+   le développement suivant, puis résolution contextuelle des types nommés
+   dans les signatures et appels de callbacks stockés dans les champs, puis
+   contraintes récursives de signatures, limites d'arité avec récepteur
+   implicite et opérateurs libres sur structures/unions, puis chaînes d'alias
+   de champs, validation des alias inutilisés et diagnostics de cycles/cibles
+   introuvables avec stockage canonique commun aux accès et initialisations ;
+   puis alias racines de types, fonctions libres et globales, chaînes et
+   déclarations anticipées, noms qualifiés prioritaires, diagnostics 109–112
+   et relocalisations vers les fonctions canoniques ; puis appels via alias de
+   méthodes non liées, récepteur `Classe&` explicite, visibilité des appels
+   directs, callbacks et relocalisations vers les méthodes canoniques ;
+   contraintes restantes d'héritage à compléter ;
+   matrice des qualifications et autres familles sémantiques encore à compléter, raccordement aux
    écrivains d’objets auto-hébergés dans le jalon backend ;
 5. 0.28 — backend, formats et linker auto-hébergés, sélection de cible native
    ou explicite, sorties Windows PE et Linux ELF et conservation de GsE pour
-   la cible Galactic-Shrine ;
+   la cible Galactic-Shrine ; remplacement de `.GsA` par `.Glib` pour les
+   bibliothèques statiques à partir de 0.28.0, `.GdLib` réservé aux éventuelles
+   bibliothèques dynamiques, `.GsE` conservé pour les exécutables ;
 6. 0.29 — durcissement, reproductibilité, SDK et distribution, exécution sur
    les systèmes cibles et validation des combinaisons de compilation croisée ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.
+
+**Décision du 21 septembre 2026 — prévue pour 0.28.0, non implémentée :**
+les extensions de bibliothèques deviennent `.Glib` (statique, remplacement de
+`.GsA`) et `.GdLib` (dynamique, si ce support est introduit). `.GsE` reste
+l'extension des exécutables. Les outils et paquets 0.27 conservent `.GsA` ;
+la migration des extensions ne change pas à elle seule les signatures binaires
+ni l'ABI et ne signifie pas que la liaison dynamique est déjà disponible.
 
 **Décision du 19 septembre 2026 — prévue, non encore implémentée :** compiler
 pour l'environnement utilisé par défaut, avec choix explicite d'une autre

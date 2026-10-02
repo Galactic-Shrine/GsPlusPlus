@@ -15,6 +15,8 @@ Testing/
 .vscode/
 *.sln
 *.vcxproj*
+!/VisualStudio/*.vcxproj
+!/VisualStudio/*.vcxproj.filters
 *.suo
 *.user
 

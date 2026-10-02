@@ -228,9 +228,9 @@ def default_tool(source_root: Path, name: str) -> Path:
     suffix = ".exe" if os.name == "nt" else ""
     toolchain = "VisualStudio" if os.name == "nt" else "Ninja"
     return (
-        source_root.parent
+        source_root
         / "Construction"
-        / "GsPlusPlus-Development"
+        / "CMake"
         / toolchain
         / "Release"
         / "Bin"
@@ -1051,7 +1051,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     output_root = (
         arguments.output_root
-        or source_root.parent
+        or source_root
         / "Construction"
         / "Benchmarks"
         / "GsPlusPlus"

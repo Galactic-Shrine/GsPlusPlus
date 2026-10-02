@@ -27,8 +27,8 @@ Benchmarks/invoke-gsplusplus-benchmark.sh --mode smoke
 Depuis la racine autonome de Gs++, le pilote localise par défaut les outils
 dans les constructions permanentes de publication :
 
-- Windows : `../Construction/GsPlusPlus-Development/VisualStudio/Release/Bin/` ;
-- GNU/Linux : `../Construction/GsPlusPlus-Development/Ninja/Release/Bin/`.
+- Windows : `Construction/CMake/VisualStudio/Release/Bin/` ;
+- GNU/Linux : `Construction/CMake/Ninja/Release/Bin/`.
 
 Un autre chemin peut être fourni avec `--compiler` et `--loader`, ou avec les
 paramètres PowerShell `-Compiler` et `-Loader`. Une version différente de
@@ -68,7 +68,7 @@ Benchmarks/invoke-gsplusplus-benchmark.sh \
 Chaque invocation crée une nouvelle session sans écraser les précédentes :
 
 ```text
-../Construction/Benchmarks/GsPlusPlus/<plateforme>/<session>/
+Construction/Benchmarks/GsPlusPlus/<plateforme>/<session>/
 ├── session.json
 ├── results.jsonl
 ├── summary.json

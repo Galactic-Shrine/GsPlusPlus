@@ -1,7 +1,8 @@
 # Documentation Gs++
 
-Ce dossier contient uniquement les contrats courants et la dernière preuve de
-publication de Gs++. Les rapports de jalons remplacés ont été retirés du dépôt
+Ce dossier contient les contrats courants, la dernière matrice de validation
+de Gs++ et la preuve historique de publication alpha.9.
+Les rapports de jalons remplacés ont été retirés du dépôt
 actif afin que la documentation publiée reste lisible ; ils demeurent
 consultables dans l’historique Git.
 
@@ -26,7 +27,8 @@ consultables dans l’historique Git.
 - [Matrice de conformité 1.0](CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
 - [Protocole de benchmark](PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md)
-- [Dernière matrice de publication : 0.27.0-alpha.9](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
+- [Dernière matrice : 0.27.0-alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
+- [Matrice historique de publication alpha.9](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
 
 Le [`CHANGELOG.md`](../CHANGELOG.md) conserve la chronologie synthétique des
 versions et du développement postérieur à la dernière préversion publique.

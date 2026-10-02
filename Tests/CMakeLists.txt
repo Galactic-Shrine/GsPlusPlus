@@ -74,6 +74,11 @@ add_test(
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(
+    NAME gspp_projets_visualstudio
+    COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Conformite/verifier_projets_visualstudio.py"
+)
+add_test(
     NAME gspp_style_sources
     COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/Conformite/verifier_style_sources.py"

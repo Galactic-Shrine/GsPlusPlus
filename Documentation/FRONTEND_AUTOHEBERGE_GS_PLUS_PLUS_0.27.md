@@ -1,7 +1,14 @@
 # Frontend auto-hébergé Gs++ 0.27
 
 **EN COURS — lexeur, AST syntaxique, indexation, sélection typée, contraintes
-des expressions couvertes et émission des globales VALIDÉS — 20 septembre 2026.**
+des expressions couvertes, alias racines et émission des globales VALIDÉS
+dans le périmètre testé — 2 octobre 2026.**
+
+Les sources actuelles annoncent `0.27.0-alpha.10`.
+La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
+regroupe les résultats courants. Les sections de jalons ci-dessous conservent
+leurs versions, empreintes et limites au moment de chaque validation ; les
+mentions de `VERSION` resté à alpha.9 décrivent ces étapes historiques.
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -1094,18 +1101,419 @@ L’image alpha.9 est identique sous MSVC et GNU : **334 318 octets**, 75 export
 format GsE 1.0, ABI 1, SHA-256
 `aef86685f1444466f78951725e0b08cbfe81f70dcb9c9ba5f38eb69cc1597c95`.
 La [matrice de publication](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
-regroupe les tests, benchmarks et contrôles de paquets actuels.
+regroupe les tests, benchmarks et contrôles de paquets de cette publication.
+
+## Adaptations implicites — développement après alpha.9
+
+La tranche du 20 septembre 2026 remplace le contrôle limité aux littéraux par
+une évaluation partagée des constantes entières composées. Les appels
+surchargés, méthodes, constructeurs, opérateurs et initialiseurs appliquent les
+règles du bootstrap, sans introduire d'élargissement automatique des variables
+numériques ni de conversion implicite entre booléens, énumérations et entiers.
+
+- une surcharge de type exact reste prioritaire ; une constante représentable
+  vaut un point de conversion, un dépassement exclut le candidat et une égalité
+  des meilleurs scores reste ambiguë ;
+- les qualificatifs scalaires sont traités selon le bootstrap ; les identités
+  qualifiées des pointeurs et les restrictions des liaisons de références sont
+  conservées, y compris pour les références locales de classe vers une base ;
+- une référence locale de classe n'est plus traitée comme un objet à construire ;
+- les énumérateurs sont résolus et calculés dans l'ordre avant leur utilisation
+  dans les expressions des fonctions, sans dupliquer leurs résolutions ;
+- les erreurs de calcul, dont la division par zéro, ne sont plus remplacées par
+  un diagnostic générique de surcharge lors de la recherche de candidats ;
+- les types adaptés des opérandes sont conservés dans l'arène privée de
+  l'analyse. Les comparaisons, divisions et restes constants puis les octets
+  globaux sont comparés au bootstrap. Le type écrit d'un `convertir` / `cast`
+  reste distinct de l'adaptation implicite appliquée à son résultat.
+
+La suite ajoute **42 refus français/anglais**, portant le corpus négatif de
+257 à **299**. Elle ajoute aussi **36 corpus sémantiques valides**, dont six
+vérifiant la surcharge effectivement choisie, ainsi que **deux corpus bilingues
+d'émission** comparant les octets des globales. Les cas refusés comparent le
+code attendu et la position au bootstrap ; ils couvrent aussi les pertes de
+qualificatifs, les références vers des temporaires et les limites de `caractère`.
+
+Validation locale : CTest **4/4 Windows / Visual Studio 2026**, **5/5 GNU/Linux**,
+conformité **20/20** sur chaque chaîne et contrôle de style réussi. Commandes :
+
+```text
+cmake --build --preset windows-release --target espace_travail --parallel
+ctest --preset windows-release
+cmake --build --preset linux-release --target espace_travail --parallel 4
+ctest --preset linux-release
+```
+
+L'image de développement est identique entre MSVC et GNU : **332 926 octets**,
+**75 exports**, SHA-256
+`da0ce2c48274649216a64bda033bb31c4d1469ebfe68497da952f1d8d02d2201`.
+L'AST public, les requêtes d'analyse et d'émission, les formats 1.0 et l'ABI 1
+ne changent pas. Cette image n'est pas celle de la release alpha.9 ; `VERSION`
+reste à `0.27.0-alpha.9` tant qu'une nouvelle publication n'est pas préparée.
+
+Les contrôles smoke réussissent également **4/4** sur chaque chaîne. Les deux
+distributions de développement ont été produites par CPack puis extraites dans
+des dossiers neufs : vérification de l'image, compilation de `Bonjour.Gs++`,
+compilation/exécution d'un programme utilisant une surcharge et une constante
+composée (retour **42**), puis suite d'auto-hébergement complète contre le
+`Frontend.GsE` extrait. Ces paquets locaux se trouvent sous
+`D:\『Projet』 Archives Transition\Retrait-GSLSE-2026-10-02\GSLSE\Construction\GsPlusPlus-Development\ConversionsImplicites\Packages\`
+(archives locales, anciennement sous `D:\GSLSE`) ; ils
+ne remplacent pas les archives alpha.9 publiées sur GitHub.
+
+Cette tranche ne clôt pas toute la matrice des conversions et qualifications.
+En particulier, les définitions de fonctions retournant une référence restent
+interdites par le bootstrap ; aucune nouvelle capacité de ce type n'est revendiquée.
+
+## Types composés — développement après alpha.9
+
+La tranche du 21 septembre 2026 complète la reconnaissance des références de
+pointeurs de fonction et des indirections profondes. Un index de descriptions
+de types est construit dans l'arène privée à partir des jetons de la source ;
+les transformations de référence, qualification et indirection conservent la
+signature d'origine. Aucun champ n'est ajouté aux interfaces publiques.
+
+Les nouveaux tests couvrent :
+
+- les références locales et paramètres de callbacks, leur passage aux appels
+  directs ou indirects, la surcharge réellement sélectionnée et leur invocation ;
+- la prise d'adresse d'une référence de callback, le déréférencement de son
+  emplacement et la liaison d'un élément de tableau de callbacks ;
+- les signatures imbriquées, dont les appels renvoyant un callback par valeur
+  ou par référence. Ce dernier cas concerne une signature de pointeur de
+  fonction acceptée par le bootstrap, pas une nouvelle autorisation de définir
+  des fonctions retournant des références ;
+- les qualifications `constante` et `volatile`, sans autoriser les pertes de
+  qualification ni les liaisons à des temporaires refusées par le bootstrap ;
+- les pointeurs primitifs et nommés à trois et cinq indirections, leurs
+  références et tableaux multidimensionnels, y compris la disposition globale ;
+- la distinction entre une fonction et l'emplacement d'un pointeur de fonction :
+  ce dernier peut être converti via `vide*` comme le bootstrap, sans autoriser la
+  conversion d'un pointeur de fonction lui-même vers `vide*`.
+
+Les types d'éléments et d'indexations sont relus depuis la déclaration au lieu
+de dépendre seulement d'une recherche limitée à deux ou quatre indirections.
+Les dimensions restantes sont réappliquées au type complet, signature comprise.
+
+La suite ajoute **30 corpus valides français/anglais**, dont deux contrôlent
+la surcharge choisie, **36 refus différentiels**, portant le total de 299 à
+**335**, et **deux corpus d'émission** comparant les tailles, alignements et
+octets globaux au bootstrap. Les refus contrôlent code, ligne et colonne.
+
+Validation locale : CTest **4/4 Windows / Visual Studio 2026** et **5/5 GNU/Linux**,
+conformité **20/20** et smoke **4/4** sur chaque chaîne. Les commandes de
+construction et CTest restent celles indiquées dans la section précédente.
+L'image reconstruite est identique entre MSVC et GNU : **337 982 octets**,
+**75 exports**, SHA-256
+`c6c7fd50bd804a3782a8ffa3e889098d2c4ceeaf154355b301394513522f1bcc`.
+Les formats 1.0 et l'ABI 1 sont inchangés. Les mesures de la section précédente
+décrivent la tranche du 20 septembre, non cette nouvelle image.
+
+Cette couverture ne constitue pas une preuve d'exhaustivité des conversions,
+des qualifications ou des types nommés dans toutes les signatures imbriquées.
+Le frontend 0.27 reste partiel. `VERSION` demeure à `0.27.0-alpha.9` ; ces
+changements locaux ne modifient pas la release publique alpha.9.
+
+## Types nommés dans les signatures — développement après alpha.9
+
+Cette étape du 21 septembre 2026 poursuit la tranche précédente. Les types
+nommés relus dans les déclarations et les conversions sont résolus dans leur
+contexte, récursivement dans les signatures de pointeurs de fonction. Dans
+`espace N`, `S` et `N::S` désignent le même type si aucun type global `S` ne
+prend priorité ; `A::S` et `B::S` restent distincts, même si leurs signatures
+étaient écrites avec le même nom court.
+
+La recherche suit le bootstrap : d'abord le nom complet écrit, puis ce nom
+préfixé par l'espace effectif de la déclaration. Elle ne parcourt pas librement
+tous les espaces ni tous leurs parents. Le contexte des paramètres et corps
+de méthodes tient compte de l'espace de classe utilisé par le bootstrap.
+
+La requête et ses nœuds sont copiés dans l'état privé de l'analyse. Les
+empreintes de types de cette copie et des symboles de travail sont normalisées,
+sans modifier l'AST fourni par l'appelant. Le pointeur d'entrée et les octets
+des nœuds sont contrôlés après les analyses valides et les refus différentiels.
+Les requêtes de capacité et l'émission globale empruntent le même chemin.
+
+Le diagnostic bilingue **100** (`TypeNommeIntrouvable` / `UnknownNamedType`)
+signale un type déclaré inconnu, y compris au sein d'une signature imbriquée.
+Le diagnostic **99** reste utilisé pour une cible de conversion inconnue.
+Les dispositions binaires des structures publiques, les formats 1.0 et l'ABI 1
+ne changent pas ; les empreintes sémantiques de noms qualifiés peuvent désormais
+différer des empreintes syntaxiques d'entrée, ce qui est intentionnel.
+
+Un accès membre utilisé comme cible d'appel recherche d'abord une méthode,
+puis un champ si aucune méthode de ce nom n'existe. Un champ callback passe
+alors par la validation des appels indirects, sans contourner visibilité,
+arité, qualifications ou identité des types.
+
+La matrice ajoute **32 corpus valides français/anglais**, **42 refus** (total
+**377**) et **deux corpus d'émission globale**. Elle couvre les structures,
+énumérations, signatures imbriquées, noms relatifs, homonymes, priorité du type
+global, références, conversions, champs callbacks et méthodes. Les empreintes
+canoniques sont explicitement comparées pour des noms équivalents et distincts ;
+l'émission compare également les relocalisations de callbacks globaux et de
+tableaux de champs au bootstrap.
+
+Validation locale : CTest **4/4 Windows / Visual Studio 2026**, **5/5 GNU/Linux**,
+conformité **20/20** et smoke **4/4** sur chaque chaîne. Le `Frontend.GsE`
+reconstruit est identique entre MSVC et GNU : **344 462 octets**, **75 exports**,
+SHA-256 `563a14af3eae573ab4a4f789c596d5ca049f2fbda52706ef3ed268bb62012fda`.
+Les tailles des sections précédentes sont les mesures de leurs étapes
+respectives. Cette tranche est locale, non publiée, et ne clôt pas le frontend
+0.27 ni l'ensemble des familles sémantiques du bootstrap.
+
+## Contraintes des signatures — développement après alpha.9
+
+Cette tranche du 21 septembre 2026 contrôle les signatures déclarées, même
+lorsqu'elles ne sont jamais appelées. La validation récursive des callbacks
+refuse les paramètres `vide` par valeur et applique les limites du bootstrap :
+quatre paramètres au maximum, réduits à trois pour un retour de structure,
+union ou classe par valeur. Un retour par pointeur ou référence et un retour
+d'énumération ne sont pas assimilés à un retour d'agrégat par valeur.
+
+Pour les fonctions déclarées, les paramètres tableaux, `vide` et `vide&`, ainsi
+que les retours par référence, sont refusés. Les références de tableaux sont
+contrôlées avant les contraintes propres au contexte de déclaration. Les limites
+de quatre/trois paramètres comptent aussi le récepteur implicite des méthodes
+et constructeurs ; aucune extension de l'ABI machine n'est introduite.
+
+Les restrictions des définitions ne sont pas imposées arbitrairement aux
+signatures de callbacks : les cas de référence acceptés par le bootstrap dans
+ces signatures restent acceptés. Les erreurs imbriquées sont conservées dans
+l'ordre de validation des types, sans être remplacées par une erreur de nom ou
+d'arité de la signature englobante.
+
+| Code | Identifiant français | Identifiant anglais |
+|---:|---|---|
+| 101 | `ReferenceTableauInterdite` | `ArrayReferenceForbidden` |
+| 102 | `ParametreCallbackInvalide` | `InvalidCallbackParameter` |
+| 103 | `AriteSignatureCallbackInvalide` | `InvalidCallbackSignatureArity` |
+| 104 | `RetourReferenceInterdit` | `ReferenceReturnForbidden` |
+| 105 | `ParametreFonctionInvalide` | `InvalidFunctionParameter` |
+| 106 | `AriteSignatureFonctionInvalide` | `InvalidFunctionSignatureArity` |
+
+La relecture d'une déclaration d'opérateur reconnaît désormais le type qui
+précède le mot-clé `opérateur` / `operator`. La sélection des opérateurs libres
+s'applique également aux structures et unions, pas seulement aux classes ; les
+énumérations ne sont pas traitées comme des agrégats. Les surcharges compatibles,
+absentes et incompatibles sont couvertes différentiellement.
+
+La suite ajoute **42 corpus valides français/anglais** et **66 refus
+différentiels**, portant le total à **443**. Deux corpus d'émission comparent
+les callbacks globaux aux limites autorisées. Quatre refus supplémentaires de
+l'API d'émission vérifient que des signatures invalides ne modifient aucun
+tampon de sortie ; ces contrôles ne sont pas ajoutés au total différentiel.
+Les contrôles d'immuabilité de l'AST et de capacité restent actifs.
+
+Validation locale : CTest **4/4 Windows / Visual Studio 2026**, **5/5 GNU/Linux**,
+conformité **20/20** et smoke **4/4** sur chaque chaîne. Les images `Frontend.GsE`
+sont identiques : **348 686 octets**, **75 exports**, SHA-256
+`fbb9406629bee93ea9046a577eeeddf41580fbcfd11ff20458085e07bfb9df30`.
+L'énumération des diagnostics est étendue, mais les dispositions des structures
+publiques, les formats 1.0 et l'ABI 1 restent inchangés.
+
+Cette tranche ne clôt pas les autres contraintes de déclarations, la résolution
+des alias de types ou la totalité du frontend. Elle n'est pas une publication :
+`VERSION` reste à `0.27.0-alpha.9`, et la migration `.GsA` vers `.Glib` reste
+prévue pour 0.28.0.
+
+## Chaînes d'alias de champs — développement après alpha.9
+
+Cette tranche locale du 2 octobre 2026 complète la normalisation des alias de
+champs dans le frontend auto-hébergé. Tous les alias d'une structure, union ou
+classe sont résolus après ses champs, même si aucun accès ni constructeur ne
+les utilise. Les cibles déclarées plus loin et les chaînes sont acceptées.
+Le champ final doit appartenir directement au type déclarant : une globale,
+une fonction ou un champ seulement hérité n'est pas une cible valide.
+
+Le parcours est itératif. Son cache de cibles et d'états appartient à l'arène
+privée, libérée à la fin de chaque requête ; l'AST de l'appelant et les symboles
+publics d'alias restent intacts. Les accès `.` / `->`, adresses, tableaux,
+callbacks et listes d'initialisation de constructeurs utilisent le symbole du
+champ canonique. Sa visibilité, sa qualification constante et son ordre
+d'initialisation continuent à s'appliquer. Un alias ne crée aucun champ ni
+stockage supplémentaire.
+
+| Code | Français | Anglais |
+|---|---|---|
+| 107 | `CycleAliasChamp` | `FieldAliasCycle` |
+| 108 | `CibleAliasChampIntrouvable` | `UnknownFieldAliasTarget` |
+
+La suite ajoute **30 corpus valides bilingues**, dont une chaîne de 128 alias,
+et **40 refus différentiels**. Deux corpus d'émission comparent les octets et
+dispositions de structures/unions contenant des alias avec le bootstrap.
+Quatre refus d'émission supplémentaires vérifient l'absence d'écriture dans
+les tampons lors d'un cycle ou d'une cible inconnue. Ces quatre corpus sont
+aussi différentiels : le total est désormais **487**, compté directement par
+la suite à l'exécution. Le code, la ligne, la colonne et l'immuabilité de l'AST
+sont vérifiés pour chaque refus différentiel.
+
+Validation locale : CTest **5/5 Windows / Visual Studio 2026**, **6/6 GNU/Linux**,
+et validation **MSBuild native sans CMake** réussis ; conformité **20/20** sur
+chaque construction. Les trois images `Frontend.GsE` sont identiques :
+**351 150 octets**, **75 exports**, SHA-256
+`3013cf046b5ab2904ee9ccf09732d9e64bffb6ba4a992c140409eb75d2e4c09c`.
+Les dispositions ABI publiques, les formats 1.0 et l'ABI 1 restent inchangés.
+
+Cette tranche ne complète pas la résolution des alias de types, fonctions et
+globales du frontend auto-hébergé. Elle ne constitue pas une publication :
+`VERSION` reste à `0.27.0-alpha.9`, `.GsA` reste l'extension actuelle et la
+migration `.Glib` / `.GdLib` reste prévue pour 0.28.0.
+
+## Alias racines — développement après alpha.9
+
+Cette tranche locale du 2 octobre 2026 résout tous les alias racines avant la
+normalisation des types déclarés, même s'ils ne sont jamais utilisés. Les
+cibles sont des structures, unions, classes, fonctions ou globales, directement
+ou par une chaîne d'alias. Comme dans le bootstrap, une énumération ou un
+énumérateur n'est pas une cible d'alias ; une fonction surchargée est ambiguë.
+Le nom complet écrit est prioritaire sur le nom relatif à l'espace déclarant,
+y compris quand des types ou fonctions homonymes existent dans plusieurs espaces.
+Les noms d'alias et cibles qualifiés peuvent contenir espaces et commentaires.
+
+Le parcours itératif comprime les chaînes dans un cache privé à trois états,
+libéré avec l'arène. Les types des déclarations et signatures imbriquées sont
+normalisés dans la copie privée de l'AST ; l'AST public et l'empreinte de cible
+des symboles d'alias restent intacts. Les accès, adresses, tableaux, callbacks
+et appels libres visent la déclaration canonique. Les types d'héritage valides
+peuvent aussi être désignés par un alias. Les globales conservent leur constance
+et leur stockage unique ; les callbacks globaux produisent des relocalisations
+vers les fonctions canoniques.
+
+| Code | Français | Anglais |
+|---|---|---|
+| 109 | `CycleAlias` | `AliasCycle` |
+| 110 | `CibleAliasIntrouvable` | `UnknownAliasTarget` |
+| 111 | `CibleAliasAmbigue` | `AmbiguousAliasTarget` |
+| 112 | `AliasFonctionSurchargeeAmbigu` | `AmbiguousOverloadedFunctionAlias` |
+
+Les conflits de noms racines précèdent la résolution des alias ; les erreurs
+d'énumération restent prioritaires. La matrice couvre notamment les cibles
+inutilisées, cycles internes, cibles anticipées, ambiguïtés de surcharges,
+constance des globales, types non utilisables comme alias et appels libres
+aux arguments incompatibles. Le code 111 conserve le contrôle des collisions
+entre familles de cibles ; la matrice de cette tranche ne revendique pas un
+corpus qui atteint ce diagnostic après l'indexation préalable des conflits.
+
+La suite ajoute **64 corpus valides bilingues**, dont une chaîne de 128 alias
+et la comparaison des empreintes de types canoniques avec le bootstrap,
+**68 refus différentiels** et **six refus d'émission** sans écriture dans les
+tampons. Le total différentiel, compté à l'exécution, est **561**. Quatre corpus
+d'émission supplémentaires comparent les octets, zones données/zéro et
+relocalisations. Les contrôles de capacité et d'immuabilité de l'AST restent
+actifs. L'ancien frontend refusait encore un paramètre utilisant un alias de
+type valide ; le même test passe avec la nouvelle image.
+
+Validation locale : CTest **5/5 Windows**, **6/6 GNU/Linux** et validation
+**MSBuild native sans CMake**, avec conformité **20/20**. Les trois images
+`Frontend.GsE` sont identiques : **363 038 octets**, **75 exports**, SHA-256
+`3ab9482badd3507757ad8aaee501ff8bd25f5f6e300b31e2e0503e536ade0768`.
+Les dispositions publiques, les formats 1.0 et l'ABI 1 restent inchangés.
+
+Les cibles de méthodes qualifiées sont indexées, y compris pour refuser les
+surcharges inutilisées, mais les appels via alias de méthodes avec récepteur
+implicite ne sont pas validés par cette tranche. Les contraintes restantes
+de l'héritage et les exports machine d'alias appartiennent aux travaux suivants.
+Ce lot ne constitue ni un frontend complet ni une publication : `VERSION`
+reste à `0.27.0-alpha.9`, et `.Glib` / `.GdLib` restent prévus pour 0.28.0.
+
+## Alias de méthodes non liées — développement après alpha.9
+
+Cette tranche locale du 2 octobre 2026 complète les appels via alias racines
+de méthodes. L'alias représente une fonction **non liée à une instance** :
+le récepteur implicite de la déclaration devient le premier argument explicite
+de l'appel, une référence mutable vers la classe déclarante. Par exemple :
+
+```cpp
+classe C {
+    publique entier32 Lire(entier32 valeur) { retourner valeur; }
+};
+alias Appeler = C::Lire;
+pointeur_fonction<entier32(C&, entier32)> Rappel = Appeler;
+publique entier32 F(C& objet) { retourner Rappel(objet, 42); }
+```
+
+`Appeler(objet, 42)` et `(&Appeler)(objet, 42)` sont également validés.
+Un pointeur `C*` doit être déréférencé ; une référence constante, une instance
+temporaire ou un objet de classe étrangère ne peuvent pas servir de récepteur
+mutable. Un objet dérivé peut être lié au récepteur de la classe de base ; la
+signature d'un callback reste celle de la classe déclarante, sans substitution
+de `Base&` par `Derivee&` dans le type du pointeur de fonction.
+
+La signature canonique inclut le récepteur avant les paramètres explicites,
+sans ajouter de nœud à l'AST public ni modifier le comptage des paramètres des
+appels membres déjà liés. Les chaînes d'alias, espaces de noms, homonymes,
+callbacks locaux/globaux, adresses, conversions explicites et retours de
+structures utilisent la déclaration réelle. Les relocalisations globales
+visent la méthode canonique, pas son alias. Les appels directs portent aussi
+le drapeau sémantique de méthode.
+
+Les appels directs vérifient d'abord les arguments, puis la visibilité, comme
+le bootstrap. Les signatures et appels indirects conservent ses diagnostics
+existants, notamment 21, 25, 45, 54, 55, 90 et 97, avec contrôle du code,
+de la ligne et de la colonne. **Limite héritée du bootstrap actuel :** une
+prise d'adresse de méthode privée/protégée ne vérifie pas sa visibilité, et
+un appel par le callback ainsi obtenu ne la revérifie pas. Ce lot conserve
+ce comportement de référence ; il ne revendique pas un contrôle de visibilité
+supplémentaire pour ces chemins indirects.
+
+La suite ajoute **48 corpus valides bilingues**, **52 refus différentiels**
+et **six refus d'émission** sans écriture partielle. Le total différentiel
+compté à l'exécution est **619**. Quatre corpus d'émission supplémentaires
+comparent les octets, dispositions et relocalisations, avec sentinelles,
+capacités insuffisantes et répétition déterministe. L'AST d'entrée reste
+intact. Le test de régression sans récepteur échouait avec l'ancienne image,
+qui acceptait l'appel refusé par le bootstrap ; il passe avec la nouvelle.
+
+Validation locale : CTest **5/5 Windows**, **6/6 GNU/Linux** et validation
+**MSBuild native sans CMake**, avec conformité **20/20**. Les trois images
+`Frontend.GsE` sont identiques : **366 718 octets**, **75 exports**, **deux
+imports**, SHA-256
+`949903207b8b73b46927efa6730c3e5c7e35211f17aa0877ae12cabed948f9cf`.
+Les dispositions publiques, les formats 1.0 et l'ABI 1 restent inchangés.
+
+Cette tranche ne termine pas l'ensemble des contraintes d'héritage ni des
+autres familles sémantiques. Elle ne constitue pas une validation intégrale
+des appels virtuels via alias, des exports machine d'alias ou du backend
+auto-hébergé. Aucune publication : `VERSION` reste à `0.27.0-alpha.9`, et la
+migration `.Glib` / `.GdLib` reste prévue pour 0.28.0.
+
+## Consolidation — alpha.10
+
+Le 2 octobre 2026, `VERSION` passe à `0.27.0-alpha.10` pour consolider les lots
+développés après alpha.9. Les outils et les métadonnées des images construites
+annoncent alpha.10, sans changer les formats ni l'ABI. CTest **5/5 Windows**,
+**6/6 GNU/Linux**, validation **MSBuild native sans CMake**, conformité
+**20/20** sur les trois constructions et benchmark smoke **4/4** sous
+Windows/CMake et GNU/Linux réussissent à nouveau.
+
+Les trois images frontend restent identiques : **366 719 octets**, **75
+exports**, deux imports, SHA-256
+`4cccad8f5ad8b57168f9942caf00b5d37d4495d7a070071512cc0c1c3a8bf401`.
+L'octet supplémentaire par rapport au lot précédent correspond à la version
+alpha.10 dans les métadonnées. La suite contrôle toujours **619 refus**.
+
+Les deux paquets extraits réussissent **11/11 contrôles de distribution**,
+y compris la suite différentielle contre le frontend livré et l'exécution des
+bibliothèques livrées. Les archives de diffusion sont reconstruites depuis un
+export du commit signé, puis contrôlées à nouveau avant publication.
+Le périmètre complet
+et les limites sont dans la
+[matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md).
 
 ## Travaux restant dans Gs++ 0.27
 
-- compléter les conversions implicites composées et les qualifications encore
+- compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
 - compléter les autres familles sémantiques encore prises en charge par le
-  bootstrap ; le raccordement des données globales aux écrivains d’objets
+  bootstrap, notamment les contraintes restantes d'héritage ; le
+  raccordement des données globales aux écrivains d’objets
   auto-hébergés appartient au jalon backend ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend
   cohérent ;
 - reconstruire les benchmarks avant la version 0.27.0 finale ;
 
-Les outils de la tranche publique annoncent `0.27.0-alpha.9`. Aucun statut
+Les outils de la préversion actuelle annoncent `0.27.0-alpha.10` ;
+la tranche historique alpha.9 conserve sa version et ses preuves.
+Aucun statut
 `VALIDÉ` ni `stable` n’est revendiqué pour Gs++ 0.27 dans son ensemble.

@@ -5,7 +5,7 @@
 **A bilingual native systems language, from source code to machine code.**
 
 [![Gs++ validation](https://github.com/Galactic-Shrine/GsPlusPlus/actions/workflows/validation.yml/badge.svg)](https://github.com/Galactic-Shrine/GsPlusPlus/actions/workflows/validation.yml)
-[![Version](https://img.shields.io/github/v/release/Galactic-Shrine/GsPlusPlus?include_prereleases&label=version)](https://github.com/Galactic-Shrine/GsPlusPlus/releases)
+[![GitHub release](https://img.shields.io/github/v/release/Galactic-Shrine/GsPlusPlus?include_prereleases&label=release)](https://github.com/Galactic-Shrine/GsPlusPlus/releases)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-5865f2)](#building)
 [![MPL-2.0 license](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 
@@ -27,7 +27,7 @@ GsObj, GsA, and GsE binary formats.
 French is the canonical language syntax. Documented English keywords are
 official aliases with the same semantics and generated code.
 
-> **Current status — `0.27.0-alpha.9`**
+> **Current source status — `0.27.0-alpha.10`**
 >
 > This prerelease can be used to evaluate and develop with the current Gs++
 > toolchain. Binary formats 1.0 and ABI 1 are validated, while the self-hosted
@@ -52,7 +52,12 @@ official aliases with the same semantics and generated code.
 > zero and out-of-range values are rejected. The `EmitGlobals` API now produces
 > initial bytes, data/zero layouts, and function relocations, compared with the
 > bootstrap. Alpha.9 also checks explicit casts, function signatures, and
-> out-of-range constant conversions. The remaining implicit conversions and
+> out-of-range constant conversions. Alpha.10 extends implicit
+> adaptation to compound constants, overload selection and related qualifiers.
+> It adds nested callback signatures, context-aware named types, signature
+> constraints, field aliases and root type, function and global aliases,
+> then calls through method aliases with an explicit `Class&` receiver.
+> The remaining implicit conversions and
 > other semantic families
 > still need to be migrated; this API does not yet replace the backend or
 > object-file writers.
@@ -156,6 +161,10 @@ work and its acceptance criteria.
 | Libraries | `.GsA` |
 | Executables | `.GsE` |
 
+Planned for **0.28.0**: `.Glib` will replace `.GsA` for static libraries;
+`.GdLib` is reserved for dynamic libraries if that support is introduced.
+`.GsE` remains unchanged. The 0.27 toolchain still uses `.GsA`.
+
 Projects and solutions use a strict XML 1.0 schema:
 
 ```xml
@@ -173,13 +182,30 @@ The equivalent French XML vocabulary uses `GsProjet`, `Source Chemin`, and
 
 ### Requirements
 
+For the native solution, install Visual Studio 2026 with MSVC v145 C++ tools
+and the Windows SDK. **CMake is not required for this mode.**
+The following requirements apply to the CMake build:
+
 - CMake 4.2 or newer on Windows for the Visual Studio 2026 generator;
 - CMake 3.20 or newer on Linux;
 - a C++20 compiler;
 - Python 3 for the conformance suite;
 - Ninja, Bash, and common GNU tools for Linux integration tests.
 
-### Windows — Visual Studio 2026
+### Windows — native Visual Studio 2026 solution, without CMake
+
+Open [`GsPlusPlus.slnx`](GsPlusPlus.slnx) and build `Release | x64`.
+From a Visual Studio developer terminal:
+
+```powershell
+msbuild GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64
+msbuild VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64
+```
+
+Outputs are under `Construction/MSBuild/x64/Release/`.
+See the [Visual Studio guide](VisualStudio/README.md) for targets and tests.
+
+### Windows — CMake with Visual Studio 2026
 
 ```powershell
 cmake --preset windows-release
@@ -195,18 +221,18 @@ cmake --build --preset linux-release --target espace_travail
 ctest --preset linux-release
 ```
 
-Build output stays outside the repository under
-`../Construction/GsPlusPlus-Development/...`. Tools are written to its `Bin`
+Local CMake output is ignored by Git and stays under
+`Construction/CMake/...`. Tools are written to its `Bin`
 subdirectory, while Gs++ libraries are written to `Artefacts/GsPlusPlus`.
 
 The root [`VERSION`](VERSION) file is the single technical source of truth for
-the product version. CMake propagates it to the tools, default GsE metadata,
-tests, benchmarks, and package names.
+the product version. CMake and MSBuild propagate it to tools and GsE metadata;
+tests, benchmarks and CMake package names also use this file.
 
 After a Windows build:
 
 ```powershell
-../Construction/GsPlusPlus-Development/VisualStudio/Release/Bin/gsppc.exe `
+./Construction/CMake/VisualStudio/Release/Bin/gsppc.exe `
   Exemples/Hello.GsPlusPlus `
   --format gsobj `
   -o Hello.GsObj
@@ -215,7 +241,7 @@ After a Windows build:
 On Linux:
 
 ```bash
-../Construction/GsPlusPlus-Development/Ninja/Release/Bin/gsppc \
+./Construction/CMake/Ninja/Release/Bin/gsppc \
   Exemples/Hello.GsPlusPlus \
   --format gsobj \
   -o Hello.GsObj
@@ -223,10 +249,13 @@ On Linux:
 
 ## Downloading a prerelease
 
-The [`0.27.0-alpha.9` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.9)
+The [`0.27.0-alpha.10` release](https://github.com/Galactic-Shrine/GsPlusPlus/releases/tag/v0.27.0-alpha.10)
 provides x86-64 packages for Windows and Linux. Each package contains the
 tools, SDK headers, Gs++ libraries, examples, and Markdown documentation. Use
 `SHA256SUMS.txt` to verify downloads.
+
+Source and extracted-package validation is recorded in the
+[alpha.10 matrix](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md).
 
 ## Repository layout
 
@@ -253,7 +282,8 @@ GsPlusPlus/
 - [Native x86-64 ABI](Documentation/ABI_GS_PLUS_PLUS_X64_MS_V1.md)
 - [Conformance matrix](Documentation/CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Self-hosted frontend 0.27](Documentation/FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [`0.27.0-alpha.9` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
+- [`0.27.0-alpha.10` validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
+- [Historical alpha.9 publication validation](Documentation/Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)
 - [Roadmap](Documentation/FEUILLE_DE_ROUTE_GS_PLUS_PLUS.md)
 
 All normative documentation is maintained in Markdown as its primary source.
@@ -261,7 +291,8 @@ All normative documentation is maintained in Markdown as its primary source.
 ## Current validation
 
 - portable conformance: **20/20** on MSVC and GNU;
-- CTest: **4/4** on Windows and **5/5** on Linux;
+- alpha.10 source CTest: **5/5** on Windows and **6/6** on Linux
+  (**4/4** and **5/5** for the published alpha.9 tranche);
 - four successful smoke benchmark scenarios on each host;
 - Windows and Linux GitHub CI;
 - the single self-hosted `Frontend.GsE` image, which combines all four frontend
@@ -276,8 +307,22 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  for a total of **257**
-  negative corpora whose code, line, and column are checked;
+  with **619 negative corpora** in alpha.10 sources (**257** in the published
+  alpha.9), whose code, line, and column are checked;
+- callback references, nested signatures and deeply indirect pointer arrays
+  covered by development differential tests;
+- context-aware named types in signatures, distinct same-name types, calls
+  through callback fields and preservation of the caller's input AST;
+- function and callback signature constraints, parameter limits including
+  implicit receivers, and free operators on structures/unions;
+- canonical field-alias chains, including validation of unused aliases,
+  cycles and unknown targets;
+- canonical type, free-function and global aliases, including forward
+  declarations, chains and qualified names, with rejection of unknown targets,
+  cycles and ambiguous overloaded-function targets;
+- calls through unbound method aliases with an explicit `Class&` receiver,
+  argument checking and direct-call visibility checks, callback signatures and
+  relocations targeting the canonical method;
 - self-hosted global data and function relocation emission, comparing bytes,
   alignments, targets, and caller-buffer bounds against the bootstrap.
 

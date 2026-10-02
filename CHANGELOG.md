@@ -10,6 +10,355 @@
 
 # Journal des modifications
 
+## Gs++ 0.27.0-alpha.10 — 2026-10-02
+
+### Français
+
+- passage de la source centrale `VERSION` à `0.27.0-alpha.10`, propagée par
+  CMake et MSBuild aux outils, métadonnées d'application GsE et noms de paquets ;
+- consolidation des adaptations implicites composées, types et signatures de
+  callbacks, alias de champs, alias racines et appels via alias de méthodes
+  développés après alpha.9 ; suite différentielle de 619 corpus négatifs ;
+- intégration de la solution native Visual Studio 2026 `.slnx` et de sa
+  validation indépendante de CMake ;
+- notes bilingues et matrice de validation propres à l'alpha.10 ; la preuve
+  historique de publication alpha.9 reste intacte ;
+- CTest Windows 5/5, GNU/Linux 6/6, validation MSBuild native et conformité
+  20/20 sur les trois constructions ; benchmark smoke 4/4 Windows/GNU ; images
+  frontend identiques de 366 719 octets, 75 exports et deux imports ;
+- formats 1.0, ABI 1 et extension `.GsA` inchangés ; frontend encore partiel,
+  migration `.Glib` / `.GdLib` toujours prévue pour 0.28.0 ;
+- contrôles de distribution reproductibles : 11/11 sur chaque paquet extrait,
+  dont exécution des alias de méthodes français/anglais et suite différentielle
+  du frontend livré ; distribution en préversion depuis un commit et un tag signés.
+
+### English
+
+- update the central `VERSION` source to `0.27.0-alpha.10`, propagated by CMake
+  and MSBuild to tools, GsE application metadata and package names;
+- consolidate compound implicit adaptations, callback types and signatures,
+  field aliases, root aliases and method-alias calls developed after alpha.9;
+  619 negative differential corpora;
+- include the native Visual Studio 2026 `.slnx` solution and validation without
+  CMake;
+- maintain bilingual alpha.10 notes and a dedicated validation matrix while
+  preserving historical alpha.9 publication evidence;
+- pass Windows CTest 5/5, GNU/Linux 6/6, native MSBuild validation and 20/20
+  conformance on all three builds; Windows/GNU smoke benchmarks 4/4;
+  identical 366,719-byte frontend images, 75 exports and two imports;
+- retain formats 1.0, ABI 1 and `.GsA`; the frontend remains partial and the
+  `.Glib` / `.GdLib` migration stays planned for 0.28.0;
+- reproducible distribution checks: 11/11 on each extracted package, including
+  French/English method-alias execution and the distributed frontend differential
+  suite; distribute as a prerelease from a signed commit and tag.
+
+## Alias de méthodes non liées — développement après Gs++ 0.27.0-alpha.9 — 2026-10-02
+
+### Français
+
+- validation des appels via alias racines de méthodes : le premier argument
+  est une référence mutable vers la classe déclarante, suivie des paramètres
+  explicites ; conversions dérivé/base et visibilité des appels directs
+  alignées sur le bootstrap ;
+- signatures de callbacks incluant ce récepteur, appels par adresse, conversions
+  explicites, retours de structures et relocalisations globales vers la méthode
+  canonique ; AST public, dispositions et ABI inchangés ;
+- 48 corpus valides bilingues, 52 refus différentiels et six refus d'émission
+  sans écriture partielle ; total différentiel contrôlé à l'exécution : 619 ;
+  quatre corpus d'émission comparent octets, dispositions et relocalisations ;
+- CTest Windows 5/5, GNU/Linux 6/6 et validation native Visual Studio 2026 sans
+  CMake réussis, conformité 20/20 ; images frontend identiques, 366 718 octets,
+  75 exports et deux imports ;
+- prise d'adresse des méthodes privées/protégées conservée selon le comportement
+  actuel du bootstrap, distinct du contrôle de visibilité d'un appel direct ;
+- lot local non publié, `VERSION` inchangé ; les autres contraintes sémantiques
+  et le backend auto-hébergé restent à compléter.
+
+### English
+
+- validate calls through root method aliases: a mutable reference to the
+  declaring class comes first, followed by explicit parameters; match bootstrap
+  derived-to-base conversions and direct-call visibility checks;
+- include the receiver in callback signatures, address-based calls, explicit
+  casts, aggregate returns and global relocations targeting the canonical
+  method; preserve the public AST, layouts and ABI;
+- add 48 bilingual valid corpora, 52 differential rejections and six emission
+  rejections without partial writes; runtime-checked differential total: 619;
+  compare bytes, layouts and relocations in four emission corpora;
+- pass Windows CTest 5/5, GNU/Linux 6/6 and native Visual Studio 2026 validation
+  without CMake, with 20/20 conformance cases; identical frontend images,
+  366,718 bytes, 75 exports and two imports;
+- preserve the current bootstrap behavior for taking private/protected method
+  addresses, distinct from direct-call visibility checking;
+- keep this local tranche unpublished and `VERSION` unchanged; other semantic
+  constraints and the self-hosted backend remain unfinished.
+
+## Alias racines — développement après Gs++ 0.27.0-alpha.9 — 2026-10-02
+
+### Français
+
+- résolution anticipée des alias de structures, unions, classes, fonctions et
+  globales, y compris inutilisés, déclarations anticipées et chaînes ;
+- cache itératif privé des cibles canoniques, noms qualifiés et priorité au nom
+  complet écrit avant la recherche dans l'espace déclarant ; diagnostics
+  bilingues 109–112 pour cycles, cibles absentes et ambiguïtés ;
+- types canoniques dans les paramètres, retours, champs, tableaux, références,
+  callbacks et conversions ; accès aux globales et appels libres vers la vraie
+  déclaration, sans contourner la constance ni créer de stockage supplémentaire ;
+- 64 corpus valides bilingues, dont une chaîne de 128 alias, 68 refus
+  différentiels et six refus d'émission sans écriture partielle : 561 au total ;
+  quatre corpus comparent octets, dispositions et relocalisations au bootstrap ;
+- CTest Windows 5/5, GNU/Linux 6/6 et validation native Visual Studio 2026
+  réussis, conformité 20/20 ; images frontend identiques, 75 exports et ABI
+  publique inchangée ;
+- développement local non publié, `VERSION` inchangé ; appels via alias de
+  méthodes avec récepteur implicite et autres contraintes sémantiques encore
+  à compléter, sans déclarer le frontend complet.
+
+### English
+
+- eagerly resolve structure, union, class, function and global aliases,
+  including unused aliases, forward declarations and chains;
+- private iterative canonical-target cache, qualified names and written-name
+  priority before namespace-relative lookup; bilingual diagnostics 109–112
+  for cycles, missing targets and ambiguities;
+- canonical parameter, return, field, array, reference, callback and cast
+  types; resolve global accesses and free calls to their actual declarations,
+  preserving constness and avoiding duplicate storage;
+- add 64 bilingual valid corpora, including a 128-alias chain, 68 differential
+  rejections and six emission rejections without partial writes: 561 total;
+  compare bytes, layouts and relocations in four bootstrap emission corpora;
+- pass Windows CTest 5/5, GNU/Linux 6/6 and native Visual Studio 2026 validation,
+  with 20/20 conformance cases, identical frontend images, 75 exports and
+  unchanged public ABI;
+- keep this local development unpublished and `VERSION` unchanged; method-alias
+  calls with implicit receivers and other semantic constraints remain unfinished,
+  without claiming a complete frontend.
+
+## Retrait de l'ancien espace GSLSE — développement local — 2026-10-02
+
+### Français
+
+- trois worktrees historiques déplacés avec `git worktree move` dans
+  `Construction/Worktrees/PackageSource` et `Construction/Worktrees/ReleaseSource` ;
+- ancien dossier commun archivé hors des dépôts actifs dans
+  `D:\『Projet』 Archives Transition\Retrait-GSLSE-2026-10-02\GSLSE`, sans
+  suppression des archives, synthèses communes ni résultats historiques ;
+- inventaire SHA-256 et contrôle des révisions, états et liens Git conservés
+  avec l'archive ; liens documentaires locaux adaptés ;
+- aucune évolution du langage, de `VERSION`, des formats ou de l'ABI dans
+  cette opération ; les constructions actives restent propres à chaque projet.
+
+### English
+
+- move three historical worktrees through `git worktree move` into
+  `Construction/Worktrees/PackageSource` and `Construction/Worktrees/ReleaseSource`;
+- archive the former shared workspace outside the active repositories at
+  `D:\『Projet』 Archives Transition\Retrait-GSLSE-2026-10-02\GSLSE`, preserving
+  archives, shared documents and historical build/validation outputs;
+- keep a SHA-256 inventory and Git revision, status and backlink checks beside
+  the archive, and update local documentation paths;
+- do not change language behavior, `VERSION`, binary formats or ABI; each
+  active project retains its independent build tree.
+
+## Alias de champs — développement après Gs++ 0.27.0-alpha.9 — 2026-10-02
+
+### Français
+
+- résolution anticipée de tous les alias de champs du frontend auto-hébergé,
+  y compris inutilisés, avec chaînes et déclarations anticipées ;
+- parcours itératif et cache privé des champs canoniques, sans modifier l'AST
+  de l'appelant ni la disposition des structures ABI publiques ;
+- diagnostics bilingues 107/108 pour les cycles et cibles introuvables ; les
+  cibles restent des champs directs du type déclarant, comme dans le bootstrap ;
+- normalisation commune aux accès, callbacks, tableaux et initialiseurs de
+  constructeurs ; les alias ne contournent pas la visibilité du champ cible ;
+- 30 corpus valides bilingues, dont une chaîne de 128 alias ; 40 refus
+  différentiels et quatre refus d'émission supplémentaires, soit 487 au total,
+  maintenant comptés à l'exécution ; deux corpus d'émission comparent le
+  stockage canonique aux octets produits par le bootstrap ;
+- CTest Windows 5/5, GNU/Linux 6/6 et validation native Visual Studio 2026
+  réussis, conformité 20/20 ; frontend identique sur les trois constructions ;
+- développement local non publié : `VERSION` reste à `0.27.0-alpha.9` et les
+  alias de types, fonctions et globales restent à compléter dans l'auto-hébergement.
+
+### English
+
+- eagerly resolve all self-hosted field aliases, including unused aliases,
+  forward declarations and chains;
+- iterative traversal and private canonical-field cache, preserving the
+  caller's AST and public ABI structure layouts;
+- bilingual diagnostics 107/108 for cycles and unknown targets; targets remain
+  direct fields of the declaring type, matching the bootstrap compiler;
+- share canonical targets across member access, callbacks, arrays and constructor
+  initializers; aliases cannot bypass the target field's access restrictions;
+- add 30 bilingual valid corpora, including a 128-alias chain, 40 differential
+  rejections and four emission rejections: 487 total, now counted at runtime;
+  compare canonical storage against bootstrap bytes in two emission corpora;
+- pass Windows CTest 5/5, GNU/Linux 6/6 and native Visual Studio 2026 validation,
+  with 20/20 conformance cases and identical frontend images in all three builds;
+- keep this local development unpublished, `VERSION` at `0.27.0-alpha.9`, and
+  self-hosted type, function and global aliases explicitly unfinished.
+
+## Construction indépendante et Visual Studio natif — développement local — 2026-09-21
+
+### Français
+
+- dépôt déplacé dans `D:\Langage-GsPlusPlus`, historique Git, worktrees et
+  modifications locales conservés ; aucune nouvelle publication ;
+- solution `GsPlusPlus.slnx` native Visual Studio 2026 / MSVC v145, sans CMake ;
+- compilation des outils, bibliothèques, frontend et exécutables de tests par
+  MSBuild ; cible explicite de validation utilisant aussi Python ;
+- `VERSION` reste commun aux deux constructions ; sorties locales séparées dans
+  `Construction/CMake` et `Construction/MSBuild`, chemins des benchmarks adaptés ;
+- originaux graphiques externes, copie de diffusion du logo conservée dans `Assets`.
+
+### English
+
+- checkout relocated to `D:\Langage-GsPlusPlus`, preserving Git history, linked
+  worktrees and local changes; no new release published;
+- native Visual Studio 2026 / MSVC v145 `GsPlusPlus.slnx`, without CMake;
+- MSBuild builds tools, libraries, frontend and test executables; an explicit
+  validation target also uses Python;
+- shared `VERSION`, separate local CMake/MSBuild output trees and updated benchmark paths;
+- external original artwork, with the distribution logo retained in `Assets`.
+
+## Contraintes des signatures — développement après Gs++ 0.27.0-alpha.9 — 2026-09-21
+
+### Français
+
+- validation récursive des signatures de callbacks : paramètres `vide` par
+  valeur interdits, quatre paramètres au maximum, ou trois avec un retour
+  d'agrégat par valeur ; priorité des erreurs imbriquées conservée ;
+- validation des paramètres de fonctions, refus des références de tableaux et
+  des définitions retournant une référence, limites d'arité comptant le
+  récepteur implicite des méthodes et constructeurs ;
+- diagnostics bilingues 101 à 106, sans changer les dispositions ABI publiques ;
+- relecture du type de retour devant `opérateur` et sélection des opérateurs
+  libres pour les structures et unions, en plus des classes ;
+- 42 corpus valides français/anglais, 66 refus différentiels supplémentaires
+  (443 au total), deux corpus d'émission et quatre refus d'émission contrôlant
+  que les tampons restent intacts ;
+- tranche locale non publiée ; `.Glib` et `.GdLib` restent une décision future
+  pour 0.28.0, sans migration des artefacts 0.27.
+
+### English
+
+- recursively validate callback signatures: reject by-value `void` parameters,
+  allow at most four parameters or three when returning an aggregate by value,
+  and preserve nested-error precedence;
+- validate function parameters, reject array references and reference-returning
+  definitions, and include implicit receivers in method/constructor arity limits;
+- add bilingual diagnostics 101–106 without changing public ABI layouts;
+- reread return types preceding `operator` and resolve free operators on
+  structures and unions as well as classes;
+- add 42 bilingual valid corpora, 66 differential rejections (443 total), two
+  emission corpora and four emission refusals checking untouched output buffers;
+- keep this local development unpublished and the `.Glib` / `.GdLib` migration
+  planned for 0.28.0, not applied to 0.27 artifacts.
+
+## Types nommés — développement après Gs++ 0.27.0-alpha.9 — 2026-09-21
+
+### Français
+
+- résolution contextuelle des types nommés dans les signatures imbriquées,
+  paramètres, retours, champs, variables et conversions relus depuis la source ;
+- copie privée des nœuds typés : l'AST de l'appelant reste intact et les
+  symboles/résolutions utilisent les empreintes sémantiques canoniques ;
+- respect de la priorité du nom complet écrit puis du nom relatif à l'espace
+  effectif du bootstrap, sans confondre les homonymes d'espaces distincts ;
+- diagnostic bilingue 100 `TypeNommeIntrouvable` / `UnknownNamedType` ;
+  maintien du diagnostic 99 pour une cible de conversion inconnue ;
+- appel indirect d'un champ callback lorsqu'aucune méthode ne correspond,
+  avec conservation des contrôles de visibilité, d'arité et de qualification ;
+- 32 corpus valides français/anglais, 42 refus différentiels supplémentaires
+  (377 au total), deux corpus d'émission et contrôles d'immuabilité de l'AST ;
+- décision **prévue pour 0.28.0, non implémentée** : remplacer `.GsA` par `.Glib`
+  pour les bibliothèques statiques, réserver `.GdLib` aux bibliothèques dynamiques
+  si ce support est introduit, conserver `.GsE` pour les exécutables.
+
+### English
+
+- resolve named types contextually inside nested signatures and source-backed
+  parameters, returns, fields, variables and casts;
+- keep typed nodes in a private copy, preserving the caller's AST while using
+  canonical semantic hashes for symbols and resolutions;
+- match the bootstrap's written-full-name then contextual-relative-name lookup,
+  keeping identically spelled types from different namespaces distinct;
+- add bilingual diagnostic 100, `UnknownNamedType`, retaining diagnostic 99 for
+  unknown cast targets;
+- resolve callback field calls when no method matches, retaining visibility,
+  arity and qualification checks;
+- add 32 bilingual valid corpora, 42 differential rejections (377 total), two
+  emission corpora and input-AST immutability checks;
+- record a **planned, unimplemented 0.28.0 decision**: use `.Glib` instead of
+  `.GsA` for static libraries, reserve `.GdLib` for dynamic libraries if supported,
+  and retain `.GsE` for executables. This remains local development, not a release.
+
+## Types composés — développement après Gs++ 0.27.0-alpha.9 — 2026-09-21
+
+### Français
+
+- index privé des signatures de fonctions et des indirections profondes,
+  conservant les références et qualificatifs sans modifier l'AST ni l'ABI publics ;
+- références de callbacks, adresses et déréférencements, signatures imbriquées,
+  appels indirects et sélection de surcharges alignés sur les cas du bootstrap ;
+- distinction entre un pointeur de fonction et un pointeur vers son emplacement
+  lors des conversions ; maintien des refus de signatures incompatibles ;
+- types d'éléments et indexations des tableaux de pointeurs sans limite de
+  recherche fixée à deux ou quatre indirections ; tailles et alignements globaux
+  comparés au bootstrap, y compris dans les structures ;
+- 30 corpus valides français/anglais, 36 refus différentiels supplémentaires
+  (335 au total) et deux corpus d'émission ; cette tranche reste locale et ne
+  remplace pas la publication alpha.9 ni ne clôt le frontend 0.27.
+
+### English
+
+- privately index function signatures and deep pointer types while preserving
+  references and qualifiers without changing the public AST or ABI;
+- cover callback references, address/dereference operations, nested signatures,
+  indirect calls and overload selection against the bootstrap;
+- distinguish function pointers from pointers to their storage during casts,
+  retaining incompatible-signature rejection;
+- recover pointer-array element and indexing types without the previous fixed
+  two/four-indirection search limits; compare global sizes and alignments with
+  the bootstrap, including structure fields;
+- add 30 bilingual valid corpora, 36 differential rejection cases (335 total)
+  and two emission corpora; this local development does not replace the public
+  alpha.9 release or mark the 0.27 frontend complete.
+
+## Développement après Gs++ 0.27.0-alpha.9 — 2026-09-20
+
+### Français
+
+- unification des adaptations implicites de constantes entières : expressions
+  composées, qualificatifs scalaires et contrôles de plage pour les surcharges,
+  opérateurs intrinsèques, initialiseurs et appels indirects ;
+- conservation des types adaptés dans l'arène privée, sans modifier l'AST ni
+  l'ABI publique, et comparaison des octets globaux au bootstrap ;
+- calcul des énumérateurs dans l'ordre avant leur utilisation par les appels ;
+  conservation des erreurs de calcul pendant la sélection des surcharges ;
+- correction des références locales de classe traitées à tort comme des objets
+  à construire ; couverture des restrictions de qualification et d'héritage ;
+- 42 refus différentiels français/anglais supplémentaires, soit 299 au total,
+  36 corpus valides avec contrôles de sélection et deux corpus d'émission ;
+- cette tranche de développement ne remplace pas la publication alpha.9 et ne
+  déclare pas le frontend 0.27 complet.
+
+### English
+
+- unify implicit integer constant adaptation across compound expressions,
+  scalar qualifiers, overload resolution, built-in operators and initializers;
+- preserve adapted operand types in the private arena and compare emitted
+  global bytes with the bootstrap without changing the public AST or ABI;
+- evaluate enumerators in order before call resolution and preserve arithmetic
+  diagnostics when considering overload candidates;
+- stop treating local class references as objects requiring construction;
+  cover qualification and inheritance restrictions;
+- add 42 bilingual rejection cases (299 total), 36 valid semantic corpora and
+  two global-emission corpora; this is development after alpha.9, not a new
+  release or a claim of frontend completion.
+
 ## Gs++ 0.27.0-alpha.9 — 2026-09-20
 
 ### Français

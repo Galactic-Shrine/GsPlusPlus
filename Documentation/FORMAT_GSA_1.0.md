@@ -3,6 +3,12 @@
 GsA 1.0 est le format de bibliothèque native canonique de Gs++ 0.26.0. Tous
 les entiers sont non signés, en petit-boutiste. L’ABI de l’en-tête vaut `1`.
 
+Décision prévue pour **0.28.0**, non encore implémentée : l'extension `.Glib`
+remplacera `.GsA` pour les bibliothèques statiques. `.GdLib` est réservé aux
+bibliothèques dynamiques si leur support est introduit ; `.GsE` reste celui des
+exécutables. Cette spécification décrit toujours le format actuel et ne
+change pas sa signature `GSA:0` ni son ABI du seul fait de cette décision.
+
 ## En-tête de 32 octets
 
 | Position | Taille | Champ |

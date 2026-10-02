@@ -1,0 +1,19 @@
+<Solution>
+  <Configurations><Platform Name="x64" /></Configurations>
+  <Folder Name="/Compilateur et SDK/">
+    <Project Path="VisualStudio/gspp_compiler.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74101" />
+    <Project Path="VisualStudio/gsppc.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74102" />
+    <Project Path="VisualStudio/gseverifier.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74103" />
+    <Project Path="VisualStudio/gsechargeur.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74104" />
+    <Project Path="VisualStudio/gseload.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74105" />
+  </Folder>
+  <Folder Name="/Bibliothèques et auto-hébergement/">
+    <Project Path="VisualStudio/Artefacts.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74108" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="VisualStudio/gspp_tests.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74106" />
+    <Project Path="VisualStudio/gspp_autohebergement_tests.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74107" />
+    <Project Path="VisualStudio/Validation.vcxproj" Id="24b29e84-9e58-4ef0-b7c6-e25ab7b74109"><Build Project="false" /></Project>
+  </Folder>
+  <Folder Name="/Documentation/"><File Path="README.md" /><File Path="README.en.md" /><File Path="VERSION" /><File Path="VisualStudio/README.md" /></Folder>
+</Solution>

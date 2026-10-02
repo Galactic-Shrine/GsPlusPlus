@@ -263,6 +263,11 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
 
 ### Gs++ 0.27 — frontend auto-hébergé
 
+La préversion actuelle est **0.27.0-alpha.10**, avec sa
+[matrice de validation](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md).
+Cette version consolide les lots après alpha.9 et valide les paquets extraits ;
+elle ne clôt pas le frontend 0.27.
+
 - **VALIDÉ** : lexeur Gs++ complet, API bornée et comparaison différentielle
   MSVC/GNU avec le bootstrap C++ ;
 - **PARTIEL — TRANCHE SYNTAXIQUE VALIDÉE** : AST compact des déclarations,
@@ -282,8 +287,27 @@ chaque chaîne, les benchmarks smoke et la preuve QEMU/OVMF.
   les divisions par zéro, puis l’émission en mémoire des données globales,
   de leur disposition et des relocalisations de fonctions ; l’alpha.9 ajoute
   les contraintes des conversions explicites, signatures et plages constantes ;
-- **EN COURS** : compléter les conversions implicites composées et les autres
-  familles sémantiques ; raccorder les données émises aux futurs écrivains
+  le développement suivant ajoute l'adaptation implicite des constantes
+  composées, leurs types effectifs et les contrôles de sélection de surcharges,
+  puis les références de callbacks, signatures imbriquées et tableaux de
+  pointeurs à indirections profondes, avec contrôle de leur disposition globale ;
+  puis la résolution contextuelle des types nommés dans les signatures,
+  les appels de callbacks stockés dans les champs et le diagnostic 100 pour les
+  types déclarés inconnus, dans une copie privée préservant l'AST de l'appelant ;
+  puis contraintes récursives des signatures de callbacks, paramètres et limites
+  d'arité des fonctions/méthodes, diagnostics 101–106 et opérateurs libres sur
+  structures/unions ; puis résolution itérative des chaînes d'alias de champs,
+  validation des alias inutilisés et diagnostics 107–108, avec stockage
+  canonique partagé par les accès et les initialiseurs de constructeurs ;
+  puis alias racines de types, fonctions libres et globales, déclarations
+  anticipées, chaînes, noms qualifiés et diagnostics 109–112, avec cibles
+  canoniques communes aux types, accès, callbacks et relocalisations ;
+  puis appels via alias de méthodes non liées, récepteur mutable `Classe&`
+  explicite, visibilité des appels directs, signatures de callbacks et
+  relocalisations vers la méthode canonique, sans modification de l'AST public ;
+- **EN COURS** : compléter la matrice des conversions et qualifications et les autres
+  familles sémantiques, dont les contraintes restantes d'héritage ;
+  raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
@@ -294,7 +318,13 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 
 - achever l’analyse sémantique ;
 - migrer la génération x86-64 ;
-- migrer les écrivains GsObj/GsA/GsE et l’éditeur de liens ;
+- migrer les écrivains GsObj/bibliothèque/GsE et l’éditeur de liens ;
+- remplacer l'extension des bibliothèques statiques `.GsA` par `.Glib` à partir
+  de 0.28.0 ; adapter les outils, projets XML, exemples, paquets et tests ;
+- réserver `.GdLib` aux bibliothèques dynamiques si ce support est introduit ;
+  conserver `.GsE` pour les exécutables. Décision du 21 septembre 2026, prévue
+  et non encore implémentée : 0.27 continue d'utiliser `.GsA`. Le nom réservé
+  `.GdLib` ne constitue pas une annonce de support dynamique déjà disponible ;
 - migrer l’orchestration de projets ;
 - introduire la description de cible et sa sélection commune en ligne de
   commande et dans les projets XML, avec défaut natif et diagnostic des
@@ -322,7 +352,8 @@ ci-dessous sont satisfaits.
 ## Critères de sortie 1.0
 
 - [ ] périmètre du langage 1.0 figé et documenté ;
-- [ ] spécifications GsObj, GsA et GsE 1.0 complètes ;
+- [ ] spécifications GsObj, bibliothèque `.Glib` (successeur de `.GsA` à partir
+  de 0.28.0) et GsE 1.0 complètes ;
 - [ ] ABI 1 documentée et couverte par des tests inter-unités ;
 - [ ] bibliothèques système et hébergée suffisantes pour le compilateur ;
 - [ ] compilateur principalement maintenu en Gs++ ;

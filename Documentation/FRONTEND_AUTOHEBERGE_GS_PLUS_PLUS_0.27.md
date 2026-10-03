@@ -1,12 +1,17 @@
 # Frontend auto-hébergé Gs++ 0.27
 
 **EN COURS — lexeur, AST syntaxique, indexation, sélection typée, contraintes
-des expressions couvertes, alias racines et émission des globales VALIDÉS
-dans le périmètre testé — 2 octobre 2026.**
+des expressions couvertes, alias racines, déclarations d'héritage, remplacements
+virtuels, doublons de surcharges, signatures non liées, collisions de symboles
+de liaison, appels et opérateurs de groupes mixtes, priorités indépendantes
+couvertes et émission des globales VALIDÉS dans le
+périmètre testé — 3 octobre 2026.**
 
 Les sources actuelles annoncent `0.27.0-alpha.10`.
 La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
-regroupe les résultats courants. Les sections de jalons ci-dessous conservent
+regroupe les résultats de la publication, avec 619 refus différentiels.
+Le développement après alpha.10, décrit plus bas, en vérifie 1 085 et n'est pas
+encore publié. Les sections de jalons ci-dessous conservent
 leurs versions, empreintes et limites au moment de chaque validation ; les
 mentions de `VERSION` resté à alpha.9 décrivent ces étapes historiques.
 
@@ -1501,12 +1506,520 @@ Le périmètre complet
 et les limites sont dans la
 [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md).
 
+## Déclarations d'héritage — développement après alpha.10
+
+Cette tranche locale du 2 octobre 2026 valide chaque base déclarée, même quand
+la classe n'est jamais instanciée. Elle corrige l'acceptation de bases absentes,
+non-classes ou non publiques par le frontend précédent. Un test ajouté avant
+la correction reproduit le défaut : l'ancienne image accepte l'héritage privé
+alors que le bootstrap le refuse à la position de la classe dérivée.
+
+La recherche suit la résolution des types du bootstrap : nom écrit complet
+en premier, puis ce nom préfixé par l'espace déclarant. Une classe homonyme
+dans un espace sans rapport n'est plus retenue arbitrairement. Une base
+qualifiée relative (`A::B` dans `N`, donc `N::A::B`) et les chaînes d'alias de
+classes sont résolues vers la même déclaration canonique. Les commentaires
+et espaces autour du nom qualifié n'interviennent pas dans son empreinte.
+Les bases validées sont conservées dans un cache privé par symbole, utilisé
+par les dispositions, conversions dérivée/base et accès aux membres hérités.
+Les empreintes des nœuds et symboles publics ne sont pas réécrites pour la base.
+
+| Code | Français | English |
+|---|---|---|
+| 113 | `HeritageNonPublic` | `NonPublicInheritance` |
+| 114 | `BaseClasseInvalide` | `InvalidClassBase` |
+| 115 | `AutoHeritageClasse` | `ClassSelfInheritance` |
+
+Le code **100** est réutilisé pour une base introuvable ; structure, union ou
+énumération ne sont pas des bases de classe (**114**). L'auto-héritage direct
+ou via alias produit **115**. Les cycles indirects suivent le contrôle des
+dispositions existant (**57**), comme le bootstrap, et ne sont pas reclassés
+en un nouveau diagnostic de table virtuelle. Le parseur refuse déjà la syntaxe
+d'héritage sur une structure ou union ; cette tranche ne la rend pas légale.
+Les alias d'énumérations restent des cibles non prises en charge dans le
+bootstrap et sont refusés comme alias (**110**) avant la clause d'héritage.
+
+Les conflits racines, valeurs d'énumération et alias sont contrôlés avant les
+bases. Une base invalide précède ensuite une erreur de type de champ ou de
+signature, ainsi que l'absence de fonction. Les diagnostics conservent leur
+code, ligne et colonne, y compris dans les corpus multilignes français/anglais.
+
+La matrice ajoute **28 corpus valides**, **60 refus** et **16 refus d'émission**
+vérifiant l'absence de toute écriture dans les tampons de données, descriptions
+de globales et relocalisations. Le total différentiel contrôlé à l'exécution
+est **695**. Quatre corpus d'émission valides supplémentaires sont comparés
+octet par octet au bootstrap, avec les contrôles habituels de capacité,
+déterminisme et préservation de l'AST.
+
+Validation locale : CTest **5/5 Windows**, **6/6 GNU/Linux**, solution et
+validation **MSBuild natives sans CMake**, conformité **20/20** sur chaque
+construction. Les trois images `Frontend.GsE` sont identiques : **368 879
+octets**, **75 exports**, **deux imports**, SHA-256
+`7554e77d693e3f0e14dfe061162c45a1157d6cc7c8091c3af03b2a7ca13052e4`.
+
+Commandes de reconstruction et de validation depuis la racine du dépôt :
+
+```powershell
+cmake --build --preset windows-release --target espace_travail --parallel 6
+ctest --preset windows-release --output-on-failure
+wsl -d Ubuntu -- bash -lc 'cd /mnt/d/Langage-GsPlusPlus && cmake --build --preset linux-release --target espace_travail --parallel 4 && ctest --preset linux-release --output-on-failure'
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+```
+
+Cette tranche ne valide pas exhaustivement les remplacements de méthodes
+virtuelles ni les appels virtuels via alias. Elle ne produit pas un backend
+auto-hébergé ni de sorties natives PE/ELF. Les dispositions publiques, formats
+1.0 et ABI 1 restent inchangés. `VERSION` demeure à `0.27.0-alpha.10` ; les
+archives et preuves de l'alpha.10 publiée ne sont pas modifiées. La migration
+`.Glib` / `.GdLib` reste prévue pour 0.28.0.
+
+## Remplacements virtuels — développement après alpha.10
+
+Cette tranche locale du 2 octobre 2026 ajoute le contrôle des méthodes virtuelles
+héritées, même si aucun appel ni aucune instanciation ne les utilise. Un test
+ajouté avant la correction reproduit l'acceptation d'un `remplacer` dans une
+classe sans base compatible par l'ancienne image, alors que le bootstrap refuse
+la déclaration à la position de la méthode.
+
+La clé comparée comprend le nom source, les types canoniques des paramètres
+explicites et le type de retour. Le récepteur implicite ne fait pas partie de
+la comparaison : ses classes déclarante et dérivée diffèrent nécessairement.
+Qualifications, niveaux de pointeurs, références, types nommés, alias et
+signatures de callbacks doivent correspondre exactement. Une différence de
+retour ne constitue pas un remplacement covariant : elle forme une autre clé,
+comme dans le bootstrap actuel.
+
+- `remplacer` / `override` sans clé virtuelle compatible est refusé avec
+  **116**, `RemplacementVirtuelIncompatible` / `NoMatchingVirtualOverride` ;
+- une redéfinition compatible sans `remplacer` / `override`, même marquée
+  `virtuel` / `virtual`, est refusée avec **117**, `RemplacementVirtuelRequis` /
+  `VirtualOverrideRequired` ;
+- les destructeurs partagent le nom source `$destructeur`, indépendamment des
+  noms des classes ; les opérateurs sont distingués par leur opérateur ;
+- la visibilité n'intervient pas dans l'identité d'une clé virtuelle ; une
+  méthode privée virtuelle peut donc être remplacée, comme dans le bootstrap ;
+- les ancêtres sont validés avant la dérivée, y compris en cas de déclaration
+  anticipée ; une méthode non virtuelle de clé différente dans un intermédiaire
+  n'efface pas les clés virtuelles plus anciennes.
+
+Le parcours des classes utilise une pile et des états privés dans l'arène.
+Les positions des erreurs et les données publiques ne sont pas réécrites.
+Les contrôles de types, signatures et dispositions précèdent le remplacement ;
+les vérifications de globales et des corps de fonctions le suivent dans les cas
+de priorité testés. Les codes existants ne sont pas renumérotés.
+
+La détection du polymorphisme inclut désormais les destructeurs et opérateurs
+virtuels, auparavant exclus. Six corpus français/anglais comparent au bootstrap
+les offsets des tables et les pas des tableaux de deux objets : classe avec
+destructeur virtuel seul, destructeur remplacé dans une dérivée et opérateur
+virtuel introduit après un sous-objet de base non polymorphe. Ils font partie
+des **46 corpus valides** de cette tranche. La matrice ajoute **64 refus
+différentiels** et **huit refus d'émission** avec tampons intacts, pour un total
+de **767 refus** vérifiés par code, ligne et colonne, avec AST préservé.
+
+Quatre corpus d'émission valides supplémentaires contrôlent les globales et
+callbacks vers les méthodes canoniques. Le backend C++ ajoute ses tables
+virtuelles dans la zone de données avant les globales utilisateur. Le comparateur
+isole les tranches des globales de référence et recale leurs offsets et
+relocalisations dans une zone commençant à zéro ; il compare leurs octets,
+alignements, cibles, capacités et déterminisme. Cette normalisation ne valide
+pas l'émission des tables virtuelles par l'API `EmettreGlobales`, dont le contrat
+reste limité aux globales utilisateur.
+
+Validation locale avec les mêmes commandes que la section précédente : CTest
+**5/5 Windows**, **6/6 GNU/Linux**, solution et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur chaque construction. Les trois images
+`Frontend.GsE` sont identiques : **374 367 octets**, **75 exports**, **deux
+imports**, SHA-256
+`c1f616678af8bc86da9d255524fd36a5e6d8fb080619bd6cc18fd478d30b1d87`.
+
+Ce périmètre ne comprend pas les collisions de déclarations ou surcharges,
+l'attribution des indices de tables virtuelles dans les résolutions publiques,
+leur émission par un backend auto-hébergé, ni une validation exhaustive des
+appels virtuels via alias. Les dispositions ABI publiques, formats 1.0 et ABI 1
+restent inchangés. `VERSION` demeure à `0.27.0-alpha.10` ; aucun commit, paquet,
+tag ou publication n'est ajouté ou remplacé pour cette tranche locale.
+
+## Doublons de surcharges — développement après alpha.10
+
+Cette tranche locale du 2 octobre 2026 ajoute le diagnostic bilingue **118**,
+`SurchargeDeclareePlusieursFois` / `OverloadDeclaredMoreThanOnce`. Il désigne
+la seconde déclaration de la première paire identique d'un groupe de même nom.
+Un test ajouté avant la correction reproduit l'écart : avec deux fonctions
+`F()` inutilisées, l'ancienne image terminait la validation puis signalait
+la capacité de sortie absente, alors que le bootstrap refusait le doublon à
+la position de la seconde fonction.
+
+L'identité d'une surcharge comprend le nom source complet et les types
+canoniques ordonnés des paramètres, récepteur implicite des méthodes compris.
+Le retour, les noms de paramètres, la visibilité, `virtuel` et `remplacer` ne
+permettent pas de déclarer deux fois cette signature. Les qualifications,
+indirections, références et signatures de callbacks restent distinctes ; les
+alias de types désignant le même type ne créent pas une nouvelle surcharge.
+Les espaces de noms et classes déclarantes distincts ne sont pas confondus.
+
+Le contrôle inclut les fonctions libres, méthodes, constructeurs, destructeurs
+et opérateurs libres ou membres. Comme dans le bootstrap actuel, une déclaration
+`externe` suivie d'une définition de même signature dans le même programme
+analysé est également refusée : cette tranche ne fusionne pas les prototypes
+et définitions. Le nom canonique
+des constructeurs et destructeurs vient de leur classe et du nom synthétique
+déjà utilisé pour les alias.
+
+La validation intervient après la résolution des types, les contraintes des
+signatures et les dispositions, avant les remplacements virtuels, globales et
+corps de fonctions. Les tests contrôlent ces priorités dans le périmètre retenu.
+Le parcours des paires à l'intérieur d'un groupe suit celui du bootstrap ;
+un corpus à quatre déclarations vérifie que la première paire examinée peut
+désigner la quatrième déclaration, même si la troisième répète une autre
+signature. La priorité entre plusieurs groupes invalides indépendants n'est
+pas généralisée : le bootstrap les parcourt dans une table non ordonnée,
+tandis que le frontend conserve un parcours lexical déterministe.
+
+La matrice ajoute **68 refus différentiels français/anglais**, **40 corpus
+valides** de surcharges distinctes et **dix refus d'émission** vérifiant les
+tampons sentinelles et les positions des erreurs, pour un total de **845 refus**
+comparés par code, ligne et colonne, avec AST public intact. Quatre corpus
+d'émission valides supplémentaires comparent données et relocalisations avec
+des surcharges libres ou membres : les callbacks ciblent des fonctions
+distinctes qui appellent ces surcharges. Le bootstrap refuse l'adresse d'un
+groupe surchargé même dans l'initialisation d'un callback typé ; les tests ne
+contournent pas cette limite en modifiant le compilateur de référence.
+
+Validation locale avec les commandes de la section héritage : CTest
+**5/5 Windows**, **6/6 GNU/Linux**, solution et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur chaque construction. Les trois images
+`Frontend.GsE` sont identiques : **376 031 octets**, **75 exports**, **deux
+imports**, SHA-256
+`3537f51f3d22851168552ee4f7bc464c6c4cd9f536859c65fd7581e14ad46635`.
+
+Cette tranche n'ajoute pas le contrôle des collisions entre symboles de liaison
+calculés, les indices publics de slots virtuels, un backend auto-hébergé ou
+des sorties PE/ELF. Les dispositions publiques, formats 1.0 et ABI 1 sont
+inchangés ; les codes 0 à 117 sont conservés. `VERSION` reste à
+`0.27.0-alpha.10`. Aucun commit, paquet, tag ou publication n'est ajouté ou
+remplacé ; les preuves et archives de l'alpha.10 publiée restent intactes.
+
+## Signatures non liées et collisions classe/espace — développement après alpha.10
+
+Cette tranche locale du 3 octobre 2026 corrige la comparaison des surcharges
+entre une méthode et une fonction libre de même nom source complet. Une classe
+et un espace peuvent porter le même nom dans le bootstrap actuel. La méthode
+`C::F()` possède alors la signature non liée `C::F(C&)` et peut entrer en
+collision avec une fonction libre `F(C&)` déclarée dans `espace C`.
+
+Le test de régression ajouté avant la correction confirme le refus du bootstrap
+avec le diagnostic de surcharge répétée, à la position de la seconde fonction.
+L'ancienne image terminait sa validation et signalait seulement une capacité
+de sortie absente. Le frontend comparait le récepteur séparément des paramètres
+explicites, ce qui excluait à tort les paires méthode/fonction libre.
+
+Le nouveau lecteur privé de paramètres traite le récepteur implicite comme le
+premier paramètre canonique de la signature non liée, puis lit les paramètres
+explicites dans leur ordre. Le contrôle de doublons compare ces séquences
+complètes, sans modifier l'AST ni ajouter un nœud public de récepteur. Le
+diagnostic **118** est réutilisé ; les codes existants ne sont pas renumérotés.
+
+La couverture comprend les deux ordres de déclaration, espaces imbriqués,
+noms qualifiés, chaînes d'alias de classe, références, pointeurs qualifiés,
+callbacks, signatures à la limite d'arité et opérateurs libres ou membres.
+Retour et visibilité ne distinguent pas les surcharges. Les références
+constantes ou volatiles, pointeurs, types de callbacks, ordres et nombres de
+paramètres différents continuent de distinguer les signatures. Les priorités
+testées conservent les contrôles d'alias, types et héritage avant les doublons,
+puis les remplacements virtuels, globales et corps après eux.
+
+Cette comparaison ne change pas les clés virtuelles : elles continuent
+d'exclure le récepteur implicite et d'inclure le retour. Le test à plusieurs
+paires d'un même groupe conserve la position choisie par le bootstrap.
+L'ordre entre plusieurs groupes invalides indépendants reste hors du
+périmètre généralisé, comme dans la tranche précédente.
+
+La matrice ajoute **44 refus différentiels français/anglais**, **28 corpus
+valides** et **huit refus d'émission** avec tampons sentinelles intacts. Le
+total atteint **897 refus**, comparés par code, ligne et colonne avec AST
+préservé. Quatre corpus supplémentaires d'émission valides contrôlent les
+données, métadonnées et relocalisations en présence de groupes mixtes dont
+les signatures restent distinctes ; leurs callbacks ciblent une fonction
+unique, pas le groupe surchargé.
+
+Validation locale avec les commandes de la section héritage : CTest
+**5/5 Windows**, **6/6 GNU/Linux**, solution et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur chaque construction. Les trois images
+`Frontend.GsE` sont identiques : **376 287 octets**, **75 exports**, **deux
+imports**, SHA-256
+`5e721407a2babded502041e1dcb1ad971c07a897f684da75741a1ebc304011cc`.
+
+Cette tranche valide les collisions de signatures sources, pas les collisions
+entre noms de liaison calculés par `SuffixeSurcharge` dans le bootstrap. Elle
+ne généralise pas non plus la sélection des appels dans tous les groupes
+mixtes, les indices publics de slots virtuels ou un backend auto-hébergé.
+Formats 1.0, ABI 1 et dispositions publiques restent inchangés. `VERSION`
+demeure à `0.27.0-alpha.10` ; aucun commit, paquet, tag ou publication n'est
+ajouté ou remplacé. Les preuves et archives de l'alpha.10 publiée restent
+intactes ; `.Glib` / `.GdLib` reste une migration prévue pour 0.28.0.
+
+## Collisions de symboles de liaison — développement après alpha.10
+
+Cette tranche locale du 3 octobre 2026 distingue les surcharges répétées
+(diagnostic 118) des surcharges de types distincts dont les noms de liaison
+calculés sont identiques. Le nouveau diagnostic bilingue **119**,
+`CollisionSymboleFonction` / `FunctionSymbolCollision`, refuse ces collisions
+avant les remplacements virtuels, les globales et les corps, après les types,
+dispositions, signatures et doublons. Les codes 0 à 118 sont conservés.
+
+La régression a été reproduite avant la correction avec deux types ASCII
+distincts, `TypeCollision_Bf_8190k3Dbe13aCfcn` et
+`TypeCollisioncAadlNBpc0Aabp0aAaba`. Les surcharges `F(TypeA*)` et `F(TypeB*)`,
+où `TypeA` et `TypeB` représentent ces noms complets, donnent toutes deux le
+symbole **`F$949BBCA84D1140F8`** dans le bootstrap. L'ancienne image acceptait
+l'analyse avant de signaler l'absence de capacité de sortie ; la nouvelle
+refuse la seconde fonction avec le code 119 à la position attendue.
+
+Le calcul privé reproduit l'affichage canonique des paramètres de
+`TypeGs::Afficher()` et l'empreinte de `SuffixeSurcharge` : types primitifs
+normalisés en français indépendamment de la langue source, noms complets des
+types après résolution des alias, qualifications, pointeurs, références et
+callbacks récursifs. Chaque paramètre est suivi de `;`, le récepteur implicite
+`Classe&` précède les paramètres explicites et le retour n'entre pas dans
+l'identité de la fonction. Le seed du bootstrap est conservé exactement :
+`1469598103934665603`, avec multiplicateur `1099511628211` ; ce seed diffère
+de celui du hachage des noms sémantiques et n'est pas remplacé par celui-ci.
+
+Les contextes privés d'espaces de noms sont reconstruits à partir des jetons
+du lexeur, l'AST compact n'ayant pas de nœuds publics d'espaces. Les graphies
+qualifiées et imbriquées, commentaires et espaces, alias et noms UTF-8 restent
+canoniques. Cette préparation n'est effectuée qu'en présence d'un groupe de
+surcharges ; l'empreinte de chaque fonction est ensuite calculée une seule
+fois par analyse et mise en cache dans l'arène privée. Aucun champ de symbole,
+nœud d'AST ou nom de liaison public n'est ajouté.
+
+Le contrôle compare les fonctions de même nom source complet. Un suffixe
+identique dans deux fonctions de noms différents ou d'espaces distincts ne
+constitue pas une collision ; le séparateur synthétique `$` n'est pas autorisé
+dans les identifiants sources de cette grammaire. Les fonctions sont examinées
+dans l'ordre source des déclarations ultérieures, comme lors de leur insertion
+dans l'index de liaison du bootstrap. Une régression à deux paires de collisions
+vérifie cette priorité, distincte de la recherche des doublons de signatures.
+Elle ne généralise pas l'ordre de tous les diagnostics entre groupes invalides
+indépendants.
+
+Huit paires de types réellement en collision couvrent les empreintes avec
+récepteur implicite, callbacks, qualifications, espaces qualifiés ou imbriqués
+et UTF-8. Les tests C++ recalculent indépendamment les empreintes et vérifient
+que les noms et identités sémantiques restent distincts. Les fixtures sont
+stockées dans les tests : la recherche locale des collisions, conservée dans
+un dossier de construction ignoré, n'ajoute aucune dépendance Python ou SymPy
+à la compilation ou à l'exécution des tests distribués. Le bootstrap de
+référence et son AST ne sont pas modifiés pour provoquer les refus.
+
+La matrice ajoute **60 refus différentiels français/anglais**, **24 corpus
+valides**, **huit refus d'émission** avec tampons sentinelles intacts et **quatre
+corpus d'émission valides**. Le total atteint **965 refus**, comparés par code,
+ligne et colonne avec AST préservé. Les alias, déclarations anticipées,
+constructeurs, opérateurs et priorités des validations antérieures sont
+couverts ; les callbacks émis ciblent toujours une fonction unique, sans
+revendiquer la sélection d'une adresse dans un groupe surchargé.
+
+Validation locale avec les commandes de la section héritage : CTest
+**5/5 Windows**, **6/6 GNU/Linux**, solution et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur chaque construction. Les trois images
+`Frontend.GsE` sont identiques : **388 319 octets**, **75 exports**, **deux
+imports**, SHA-256
+`c6f78ab8cdb79ff700673b22d14b5a0c38edf1d9f0578668edba2230c5af9493`.
+
+Ce contrôle n'ajoute ni émission publique de noms de liaison auto-hébergés,
+ni écrivain d'objets, ni indices publics de slots virtuels, ni backend
+auto-hébergé, ni sorties PE/ELF. Formats 1.0, ABI 1 et dispositions publiques
+restent inchangés. `VERSION` demeure à `0.27.0-alpha.10` ; aucun commit, paquet,
+tag ou publication n'est ajouté ou remplacé. Les preuves et archives de
+l'alpha.10 publiée restent intactes ; `.Glib` / `.GdLib` reste une migration
+prévue pour 0.28.0.
+
+## Appels de groupes mixtes — développement après alpha.10
+
+Cette tranche locale du 3 octobre 2026 aligne la sélection des appels sur le
+groupe complet de fonctions de même nom source qualifié. Le bootstrap permet
+qu'une classe et un espace portent le même nom : une méthode `C::Lire` et une
+fonction libre déclarée dans `espace C` appartiennent alors au même groupe de
+surcharges. Leur simple déclaration ne suffit pas à prouver que les appels
+choisissent la bonne fonction.
+
+Le test ajouté avant la correction utilise une méthode `Lire()` et une fonction
+libre `Lire(constante C&)`, puis appelle `C::Lire(objet)` avec un `C&` mutable.
+Le bootstrap refuse l'appel ambigu à **1:173** ; l'ancienne image acceptait
+l'analyse avant de signaler la capacité de sortie absente. Le frontend
+excluait les méthodes de la sélection des fonctions libres, ou retenait une
+méthode d'alias avant d'examiner les autres candidates.
+
+La résolution des noms qualifiés et le comptage des surcharges utilisent
+désormais le même groupe canonique, classe déclarante comprise. Une méthode
+est comparée avec son récepteur `Classe&` en première position, une fonction
+libre avec ses seuls paramètres déclarés. Les règles de score restent celles
+du bootstrap : égalité de type, liaisons de références, conversions d'héritage,
+adaptation des constantes entières et ambiguïté en cas de meilleur score
+partagé. La visibilité n'est vérifiée qu'après sélection : une meilleure
+méthode privée provoque le refus, et n'est pas remplacée par une candidate
+publique moins adaptée. Le diagnostic d'ambiguïté précède ce contrôle d'accès.
+
+Pour `objet.Lire(...)` et `objet->Lire(...)`, le groupe est recherché dans le
+type statique, puis ses bases sans fusionner un groupe masqué. Les fonctions
+libres de même nom complet sont incluses, même si le groupe ne contient pas de
+méthode. Le récepteur synthétique est évalué avant les arguments explicites ;
+la flèche utilise le type pointé et ses qualifications. Les tranches privées
+de paramètres permettent de retirer le premier paramètre déclaré d'une
+fonction libre lorsque celui-ci reçoit l'objet. Aucun nœud de déréférencement
+ou de récepteur n'est ajouté à l'AST de l'appelant.
+
+Les résolutions conservent les indicateurs de membre, de groupe surchargé et
+de groupe hérité ; `Methode` n'est présent que si la cible effectivement choisie
+est une méthode, pour les appels qualifiés comme pour les appels par membre.
+Le retour et la cible canonique proviennent de cette déclaration sélectionnée,
+pas de la première fonction rencontrée. Les adresses de groupes surchargés et
+les alias de fonctions surchargées restent refusés ; aucun mécanisme nouveau
+de sélection contextuelle de callback n'est revendiqué.
+
+La matrice ajoute **66 corpus valides français/anglais**, **46 refus
+différentiels**, **huit refus d'émission** avec tampons sentinelles intacts et
+**quatre corpus d'émission valides**. Le total atteint **1 019 refus**, comparés
+par code, ligne et colonne avec AST préservé. Les corpus valides vérifient
+également la position de la déclaration retenue dans le bootstrap, le hachage
+de son retour et les drapeaux de résolution. Ordres de déclaration, arités,
+qualifications, références, constantes, callbacks, espaces qualifiés, alias
+de types, héritage, masquage, ambiguïtés et visibilité sont couverts. Les
+relocalisations émises visent des fonctions d'entrée uniques qui contiennent
+des appels mixtes, pas les groupes surchargés eux-mêmes.
+
+Validation locale avec les commandes de la section héritage : CTest
+**5/5 Windows**, **6/6 GNU/Linux**, solution et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur chaque construction. Les trois images
+`Frontend.GsE` sont identiques : **392 399 octets**, **75 exports**, **deux
+imports**, SHA-256
+`9ac550f425373dc954a27c9b1607320f34dbd0ba5b941e3478356c307121c3ff`.
+
+Le bootstrap de référence n'est pas modifié. Les combinaisons non présentes
+dans cette matrice, notamment les groupes d'opérateurs mixtes et les priorités
+entre groupes invalides indépendants, restent à compléter. Cette tranche ne
+génère pas de code machine auto-hébergé, de slots virtuels publics ou de sorties
+PE/ELF. AST public, diagnostics 0–119, formats 1.0 et ABI 1 sont inchangés.
+`VERSION` reste à `0.27.0-alpha.10` ; aucun commit, paquet, tag ou publication
+n'est ajouté ou remplacé. Les preuves et archives publiées restent intactes ;
+`.Glib` / `.GdLib` reste une migration prévue pour 0.28.0.
+
+## Opérateurs mixtes et priorité des groupes invalides — développement après alpha.10
+
+Cette tranche locale du 3 octobre 2026 poursuit celle des appels mixtes.
+Elle compare les opérateurs unaires et binaires dans tout le groupe canonique
+de même nom complet, méthodes et fonctions libres comprises. Un groupe peut
+être défini dans la classe, dans l'espace homonyme, ou dans les deux ; la
+recherche dans les bases s'arrête au premier groupe trouvé, sans fusionner un
+groupe masqué ni tenter un autre espace si ses candidates sont incompatibles.
+À défaut de groupe du type gauche, la recherche libre conserve la priorité du
+nom global puis de l'espace courant du bootstrap. Un objet à droite peut
+utiliser une fonction libre ; les opérateurs intrinsèques `&` et `*` ne sont
+pas remplacés par ce mécanisme.
+
+La sélection commune compare tous les opérandes. Pour une méthode, le premier
+est lié au récepteur implicite `Classe&`, avec valeur gauche, constance et
+conversion d'héritage ; pour une fonction libre, il est comparé au premier
+paramètre déclaré. Les autres paramètres conservent les adaptations, références
+et scores déjà utilisés pour les appels. Une égalité de meilleur score est
+ambiguë, même si une méthode candidate est privée. L'accès à la méthode n'est
+contrôlé qu'après sélection ; une fonction libre choisie n'est pas soumise à
+l'accès d'une méthode non retenue. `Methode` ne décrit que la cible réelle,
+`Operateur` décrit l'expression résolue, et le retour vient de la déclaration
+effectivement sélectionnée. L'AST de l'appelant reste intact.
+
+Le test introduit avant la correction oppose `C::operator+(entier32)` à une
+fonction libre `C::operator+(constante C&, entier32)` avec objet mutable.
+Le bootstrap signale l'ambiguïté à **1:227** ; l'ancienne image retenait la
+méthode et atteignait le diagnostic de capacité de sortie absente au lieu de
+refuser l'opérateur. Les corpus couvrent aussi l'ordre inversé des déclarations,
+les groupes uniquement libres du type, les espaces qualifiés, alias, opérateurs
+unaires, objets constants ou temporaires, références et adaptations de
+littéraux, héritage, masquage et visibilité.
+
+### Priorité définie pour les groupes indépendants
+
+La table de recherche du bootstrap reste une `std::unordered_map`, mais elle
+ne détermine plus l'ordre de validation des groupes de surcharges. Une liste
+privée conserve leur ordre de **première déclaration dans le programme**.
+Ce changement du bootstrap est intentionnel : il fixe la règle du produit sur
+MSVC et GNU, sans changer les types, conversions, scores, noms de liaison ou
+candidates de référence utilisés dans les comparaisons.
+
+Les règles vérifiées sont :
+
+1. Les doublons sont examinés groupe par groupe suivant leur première
+   déclaration ; dans chaque groupe, les paires gardent l'ordre existant.
+   Pour `F(a), G(a), G(b), F(b)` où les types sont identiques, le doublon de
+   `F` est signalé sur la **quatrième ligne**, bien que celui de `G` soit
+   déjà visible sur la troisième. Inverser les noms initiaux inverse le
+   groupe prioritaire, pas cette règle.
+2. Le contrôle des doublons précède celui des collisions de symboles de
+   liaison, puis les diagnostics des corps. Une vraie collision calculée
+   de `F` ne masque donc pas un doublon ultérieur de `G`.
+3. Les collisions de liaison suivent les fonctions dans l'ordre source et
+   désignent la première déclaration qui entre en collision avec une précédente.
+4. La résolution auto-hébergée traite les déclarations dans l'ordre source
+   de chaque catégorie : champs/énumérateurs, globales, fonctions. Le parcours
+   interne de chaque déclaration reste inchangé, pour résoudre les arguments
+   avant la cible surchargée d'un appel. Entre deux corps invalides indépendants,
+   le premier corps est désormais prioritaire. Avant la correction, un test
+   signalait l'ambiguïté de la seconde fonction à **6:43**, au lieu de celle de
+   la première fonction à **5:49** dans le bootstrap.
+
+Cette matrice ne généralise pas toutes les priorités de diagnostics. En
+particulier, plusieurs erreurs dans un même corps, les instructions voisines,
+les sous-expressions et les interactions entre passes non testées restent à
+compléter. Les sections de jalons précédentes conservent leurs limites
+historiques ; leur mention de la table non ordonnée décrit l'état avant cette
+tranche.
+
+### Preuves locales et portée
+
+La matrice ajoute **38 corpus d'opérateurs valides français/anglais**, **26
+refus d'opérateurs**, **28 refus de priorité** et **12 refus d'émission**
+avec tampons sentinelles intacts, soit **66 nouveaux refus** et un total de
+**1 085 refus** comparés par code, ligne et colonne avec AST préservé.
+Les positions attendues de priorité sont aussi assertées indépendamment dans
+les tests du bootstrap. Quatre corpus d'émission valides comparent données,
+alignements et relocalisations vers des fonctions d'entrée uniques contenant
+des opérateurs mixtes, sans prendre l'adresse d'un groupe surchargé.
+
+Validation avec les commandes de la section héritage : **CTest 5/5 Windows**,
+**6/6 GNU/Linux**, solution `GsPlusPlus.slnx` et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur chaque construction. Les trois images
+`Frontend.GsE` sont identiques : **392 687 octets**, **trois segments**, **huit
+sections**, **75 exports**, **deux imports**, SHA-256
+`22641f4e2bda2438ae734ba91abc132b28cece87f3028b5dc1f7d6c8d8e1a9d6`.
+Le vérificateur confirme une image GsE 1.0 valide. Le contrat public, les
+diagnostics 0–119, les formats 1.0 et l'ABI 1 sont inchangés. Aucun backend
+auto-hébergé, slot virtuel public ou sortie PE/ELF n'est ajouté.
+
+Les trois en-têtes `VersionProduit.hpp` auparavant restés à alpha.9 ont aussi
+été régénérés depuis `VERSION` :
+
+- `Construction/MSBuild/x64/Debug/Generated/GsPP/VersionProduit.hpp`, avec
+  `VisualStudio/Prepare-Version.ps1 -OutputRoot Construction/MSBuild/x64/Debug` ;
+- `D:/Systeme-Sanctuaire-SE/Construction/CMake/VisualStudio/Release/GsPlusPlus/Generated/GsPP/VersionProduit.hpp`,
+  avec `cmake --preset windows-release` depuis ce consommateur local ;
+- `D:/Systeme-Sanctuaire-SE/Construction/CMake/Ninja/Release/GsPlusPlus/Generated/GsPP/VersionProduit.hpp`,
+  avec `cmake --preset linux-release` sous WSL depuis ce consommateur local.
+
+Ils contiennent tous `0.27.0-alpha.10`. Cette régénération ne reconstruit pas
+leurs exécutables Debug ou système et ne réécrit aucun paquet publié.
+`VERSION` reste à alpha.10 ; aucun commit, paquet, tag ou publication n'est
+créé ou remplacé. `.Glib` / `.GdLib` reste prévu pour 0.28.0.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
 - compléter les autres familles sémantiques encore prises en charge par le
-  bootstrap, notamment les contraintes restantes d'héritage ; le
+  bootstrap, notamment les erreurs multiples dans un même corps et les
+  interactions de priorité entre passes non encore testées ; le
   raccordement des données globales aux écrivains d’objets
   auto-hébergés appartient au jalon backend ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend

@@ -2606,7 +2606,15 @@ namespace
         auto jetons = GsPP::Lexeur(source, std::string(nomCorpus)).Analyser();
         auto programme = GsPP::AnalyseurSyntaxique(
             std::move(jetons), std::string(nomCorpus)).Analyser();
-        GsPP::AnalyseurSemantique().Analyser(programme);
+        try
+        {
+            GsPP::AnalyseurSemantique().Analyser(programme);
+        }
+        catch (const GsPP::ErreurCompilation& erreur)
+        {
+            throw std::runtime_error("le bootstrap refuse le corpus valide "
+                + std::string(nomCorpus) + " : " + erreur.what());
+        }
         RequeteAnalyseSemantiqueHote requete{
             source.data(),
             static_cast<std::uint64_t>(source.size()),
@@ -2693,6 +2701,28 @@ namespace
 
     std::size_t NombreRefusSemantiquesDifferentiels = 0;
 
+    const std::string NomCollisionLiaisonA = "TypeCollision_Bf_8190k3Dbe13aCfcn";
+    const std::string NomCollisionLiaisonB = "TypeCollisioncAadlNBpc0Aabp0aAaba";
+    const std::string NomCollisionRecepteurA = "TypeCollisionmNbc8KY0YC1ce13aCfcn";
+    const std::string NomCollisionRecepteurB = "TypeCollisionaAaddD2paDrbbp0aAaba";
+    const std::string NomCollisionCallbackA = "TypeCollisionnNbcH390k3Dbe13aCfcn";
+    const std::string NomCollisionCallbackB = "TypeCollisionbAadtLBpc0Aabp0aAaba";
+    const std::string NomCollisionConstanteA = "TypeCollisioneWZejA79h339acE1Jcfc";
+    const std::string NomCollisionConstanteB = "TypeCollisiona0ibbBPgbPphbbBQBbab";
+    const std::string NomCollisionEspaceA = "TypeCollisione5gek990e149bO5e5_nc";
+    const std::string NomCollisionEspaceB = "TypeCollisiona0bbaHdpa0ohcxPagfab";
+    const std::string NomCollisionQualifieA = "TypeCollisionn51c99N09F59b97Q41nc";
+    const std::string NomCollisionQualifieB = "TypeCollisionb0PdghApAApjah0qpPab";
+    const std::string NomCollisionMethodeQualifieA = "TypeCollisiona5ge0190k3Dbe13aCfcn";
+    const std::string NomCollisionMethodeQualifieB = "TypeCollisionePbbtNBpc0Aabp0aAaba";
+    const std::string NomCollisionUtf8A = "TypeCollisione3fa9GZ0ySE1bZ7c4cnc";
+    const std::string NomCollisionUtf8B = "TypeCollisiona0aboB1pa0BPci0cpbab";
+
+    std::string DeclarerTypesCollisionLiaison(const std::string& a, const std::string& b)
+    {
+        return "structure " + a + " {}; structure " + b + " {}; ";
+    }
+
     void ComparerErreurSemantique(
         AnalyseurDeclarationsAutoHeberge syntaxe,
         AnalyseurSemantiqueAutoHeberge semantique,
@@ -2704,6 +2734,7 @@ namespace
         const auto noeudsAvant = noeuds;
         std::uint32_t ligne = 0;
         std::uint32_t colonne = 0;
+        std::string diagnosticBootstrap;
         try
         {
             auto jetons = GsPP::Lexeur(
@@ -2716,6 +2747,7 @@ namespace
         {
             ligne = static_cast<std::uint32_t>(erreur.Ligne());
             colonne = static_cast<std::uint32_t>(erreur.Colonne());
+            diagnosticBootstrap = erreur.what();
         }
         catch (const std::exception& erreur)
         {
@@ -2756,7 +2788,7 @@ namespace
                 + ", obtenu " + std::to_string(obtenu)
                 + " à " + std::to_string(requete.Resultat.LigneErreur)
                 + ":" + std::to_string(requete.Resultat.ColonneErreur)
-                + ")");
+                + "; bootstrap : " + diagnosticBootstrap + ")");
         ++NombreRefusSemantiquesDifferentiels;
     }
 
@@ -2779,10 +2811,48 @@ namespace
         const auto nombreGlobales = static_cast<std::uint64_t>(std::count_if(
             programme.VariablesGlobales.begin(), programme.VariablesGlobales.end(),
             [](const auto& variable) { return !variable.EstExterne; }));
+        std::unordered_map<std::string, GsPP::Structure*> structures;
+        for (auto& structure : programme.Structures)
+            structures.emplace(structure.NomComplet(), &structure);
+        std::vector<std::uint8_t> donneesReference;
+        std::unordered_map<std::string, std::uint64_t> decalagesReference;
         std::vector<GsPP::CodeMachine::Relocalisation> relocationsReference;
-        for (const auto& relocation : machine.Relocalisations)
-            if (relocation.Section == GsPP::SectionMachine::Donnees)
-                relocationsReference.push_back(relocation);
+        /**
+         * Le backend place ses tables virtuelles avant les données utilisateur.
+         * L'API du frontend émet seulement les globales : on isole leurs octets
+         * du bootstrap et on recale les offsets et relocalisations, sans prétendre
+         * valider l'émission des tables virtuelles du futur backend auto-hébergé.
+         **/
+        for (const auto& variable : programme.VariablesGlobales)
+        {
+            if (variable.EstExterne) continue;
+            const auto symbole = std::find_if(machine.Symboles.begin(), machine.Symboles.end(),
+                [&](const auto& candidat) { return candidat.Nom == variable.NomComplet(); });
+            Exiger(symbole != machine.Symboles.end(), "globale absente du bootstrap");
+            if (!variable.EstInitialisee)
+            {
+                decalagesReference.emplace(variable.NomComplet(), symbole->Decalage);
+                continue;
+            }
+            const auto alignement = GsPP::AnalyseurSemantique::AlignementType(variable.Type, structures);
+            const auto decalage = (donneesReference.size() + alignement - 1) & ~(std::size_t(alignement) - 1);
+            decalagesReference.emplace(variable.NomComplet(), decalage);
+            Exiger(symbole->Section == GsPP::SectionMachine::Donnees
+                       && std::uint64_t(symbole->Decalage) + symbole->Taille <= machine.Donnees.size(),
+                "tranche de globale hors des données du bootstrap");
+            donneesReference.resize(decalage, 0);
+            donneesReference.insert(donneesReference.end(), machine.Donnees.begin() + symbole->Decalage,
+                machine.Donnees.begin() + symbole->Decalage + symbole->Taille);
+            for (const auto& relocation : machine.Relocalisations)
+                if (relocation.Section == GsPP::SectionMachine::Donnees
+                    && relocation.Decalage >= symbole->Decalage
+                    && std::uint64_t(relocation.Decalage) < std::uint64_t(symbole->Decalage) + symbole->Taille)
+                {
+                    auto reference = relocation;
+                    reference.Decalage = static_cast<std::uint32_t>(decalage + relocation.Decalage - symbole->Decalage);
+                    relocationsReference.push_back(std::move(reference));
+                }
+        }
         RequeteEmissionGlobalesHote requete{
             source.data(), source.size(), sortie.Noeuds.data(), sortie.Noeuds.size(),
             nullptr, 0, nullptr, 0, nullptr, 0, {}};
@@ -2794,7 +2864,7 @@ namespace
                    + ", détail=" + std::to_string(requete.Resultat.Detail));
         const auto besoins = requete.Resultat;
         Exiger(besoins.NombreGlobales == nombreGlobales
-                   && besoins.NombreOctetsDonnees == machine.Donnees.size()
+                   && besoins.NombreOctetsDonnees == donneesReference.size()
                    && besoins.NombreOctetsZero == machine.TailleZero
                    && besoins.NombreRelocalisations == relocationsReference.size()
                    && besoins.NombreOctetsArene != 0,
@@ -2802,7 +2872,7 @@ namespace
 
         // Une sentinelle au-delà de chaque capacité protège aussi le cas exact.
         std::vector<GlobaleEmiseHote> globales(nombreGlobales + 1);
-        std::vector<std::uint8_t> donnees(machine.Donnees.size() + 1, 0xA5);
+        std::vector<std::uint8_t> donnees(donneesReference.size() + 1, 0xA5);
         std::vector<RelocalisationGlobaleHote> relocations(relocationsReference.size() + 1);
         std::memset(globales.data(), 0xA5, globales.size() * sizeof(globales[0]));
         std::memset(relocations.data(), 0xA5, relocations.size() * sizeof(relocations[0]));
@@ -2811,7 +2881,7 @@ namespace
         requete.Globales = globales.data();
         requete.CapaciteGlobales = nombreGlobales;
         requete.Donnees = donnees.data();
-        requete.CapaciteDonnees = machine.Donnees.size();
+        requete.CapaciteDonnees = donneesReference.size();
         requete.Relocalisations = relocations.data();
         requete.CapaciteRelocalisations = relocationsReference.size();
         const auto sortiesIntactes = [&]
@@ -2841,16 +2911,13 @@ namespace
         capaciteInsuffisante(requete.CapaciteRelocalisations, 93);
         Exiger(emettre(&requete) == 0 && requete.Resultat.Erreur == 0,
                "émission échouée : " + std::string(nomCorpus));
-        Exiger(std::equal(machine.Donnees.begin(), machine.Donnees.end(), donnees.begin()),
+        Exiger(std::equal(donneesReference.begin(), donneesReference.end(), donnees.begin()),
                "octets globaux différents du bootstrap : " + std::string(nomCorpus));
         Exiger(donnees.back() == 0xA5
                    && std::memcmp(&globales.back(), &globalesVierges.back(), sizeof(globales[0])) == 0
                    && std::memcmp(&relocations.back(), &relocationsVierges.back(), sizeof(relocations[0])) == 0,
                "écriture au-delà d'une capacité d'émission");
 
-        std::unordered_map<std::string, GsPP::Structure*> structures;
-        for (auto& structure : programme.Structures)
-            structures.emplace(structure.NomComplet(), &structure);
         std::size_t indexGlobale = 0;
         for (const auto& variable : programme.VariablesGlobales)
         {
@@ -2868,7 +2935,7 @@ namespace
                        && symbole.IndexNoeud == globale.IndexNoeud
                        && noeud.Ligne == variable.Position.Ligne
                        && noeud.Colonne == variable.Position.Colonne
-                       && globale.Decalage == reference->Decalage
+                       && globale.Decalage == decalagesReference.at(variable.NomComplet())
                        && globale.Taille == reference->Taille
                        && globale.Alignement == GsPP::AnalyseurSemantique::AlignementType(variable.Type, structures)
                        && globale.Drapeaux == ((variable.EstInitialisee ? 1U : 0U) | (variable.EstPublique ? 2U : 0U))
@@ -3057,6 +3124,127 @@ espace Donnees {
             "emission-alias-methode-retour-agrege-fr");
         ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(retourAgregeMethode),
             "emission-alias-methode-retour-agrege-en");
+        const std::string heritage =
+            "espace N { classe B { publique: entier32 X; }; alias Vue = B; "
+            "classe D : publique Vue {}; } entier32 A = 42; "
+            "publique entier32 F(N::D& objet) { retourner objet.X; }";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, heritage, "emission-heritage-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(heritage),
+            "emission-heritage-en");
+        const std::string heritageQualifie =
+            "espace N { espace A { classe B {}; } classe D : publique A::B {}; } "
+            "entier32 A = 42; publique vide F(N::D& objet) { N::A::B& base = objet; }";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, heritageQualifie,
+            "emission-heritage-qualifie-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(heritageQualifie),
+            "emission-heritage-qualifie-en");
+        const std::string remplacements =
+            "classe B { publique: virtuel entier32 Lire(entier32 x) { retourner x; } }; "
+            "classe D : publique B { publique: remplacer entier32 Lire(entier32 x) { retourner x + 1; } }; "
+            "alias LireBase = B::Lire; alias LireDerivee = D::Lire; entier32 A = 42; "
+            "pointeur_fonction<entier32(B&, entier32)> RappelBase = LireBase; "
+            "pointeur_fonction<entier32(D&, entier32)> RappelDerive = LireDerivee;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, remplacements, "emission-remplacements-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(remplacements),
+            "emission-remplacements-en");
+        const std::string destructeursVirtuels =
+            "classe B { publique: virtuel destructeur() {} }; classe D : publique B { "
+            "publique: remplacer destructeur() {} }; entier32 A = 42; publique vide F(D& objet) {}";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, destructeursVirtuels,
+            "emission-destructeurs-virtuels-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(destructeursVirtuels),
+            "emission-destructeurs-virtuels-en");
+        const std::string surchargesLibres =
+            "publique entier32 Lire(entier32 x) { retourner x; } "
+            "publique entier64 Lire(entier64 x) { retourner x; } entier32 A = 42; "
+            "publique entier32 Appeler(entier32 x) { "
+            "retourner Lire(x) + convertir<entier32>(Lire(convertir<entier64>(x))); } "
+            "pointeur_fonction<entier32(entier32)> Rappel = Appeler;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, surchargesLibres,
+            "emission-surcharges-distinctes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(surchargesLibres),
+            "emission-surcharges-distinctes-en");
+        const std::string surchargesMethodes =
+            "classe C { publique: entier32 Lire(entier32 x) { retourner x; } "
+            "entier64 Lire(entier64 x) { retourner x; } }; entier32 A = 42; "
+            "publique entier32 AppelerCourt(C& objet, entier32 x) { retourner objet.Lire(x); } "
+            "publique entier64 AppelerLong(C& objet, entier64 x) { retourner objet.Lire(x); } "
+            "pointeur_fonction<entier32(C&, entier32)> Court = AppelerCourt; "
+            "pointeur_fonction<entier64(C&, entier64)> Long = AppelerLong;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, surchargesMethodes,
+            "emission-surcharges-methodes-distinctes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(surchargesMethodes),
+            "emission-surcharges-methodes-distinctes-en");
+        const std::string signaturesNonLiees =
+            "classe C { publique: vide F() {} }; espace C { publique vide F(C* objet) {} } "
+            "entier32 A = 42; publique entier32 PointEntree() { retourner A; } "
+            "pointeur_fonction<entier32()> Rappel = PointEntree;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, signaturesNonLiees,
+            "emission-signatures-non-liees-distinctes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(signaturesNonLiees),
+            "emission-signatures-non-liees-distinctes-en");
+        const std::string signaturesNonLieesQualifiees =
+            "espace N { classe C { publique: vide F(entier32 x) {} }; "
+            "espace C { publique vide F(N::C& objet, entier64 y) {} } } "
+            "entier32 A = 42; publique vide PointEntree() {} "
+            "pointeur_fonction<vide()> Rappel = PointEntree;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, signaturesNonLieesQualifiees,
+            "emission-signatures-non-liees-qualifiees-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(signaturesNonLieesQualifiees), "emission-signatures-non-liees-qualifiees-en");
+        const std::string appelsMixtes =
+            "classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+            "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+            "entier32 A = 42; publique entier32 AppelerMethode(C& objet) { retourner C::Lire(objet, A); } "
+            "publique entier32 AppelerLibre(C& objet) { retourner objet.Lire(vrai); } "
+            "pointeur_fonction<entier32(C&)> Rappels[2] = {AppelerMethode, AppelerLibre};";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, appelsMixtes, "emission-appels-mixtes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(appelsMixtes), "emission-appels-mixtes-en");
+        const std::string appelsMixtesQualifies =
+            "espace N { classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+            "espace C { publique entier32 Lire(N::C& objet, booléen x) { retourner 2; } } } "
+            "entier32 A = 42; publique entier32 Appeler(N::C* objet) { retourner objet->Lire(vrai); } "
+            "pointeur_fonction<entier32(N::C*)> Rappel = Appeler;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, appelsMixtesQualifies, "emission-appels-mixtes-qualifies-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(appelsMixtesQualifies), "emission-appels-mixtes-qualifies-en");
+        const std::string operateursMixtes =
+            "classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "espace C { publique entier32 opérateur+(C& objet, booléen x) { retourner 2; } } "
+            "entier32 A = 42; publique entier32 AppelerMembre(C& objet) { retourner objet + A; } "
+            "publique entier32 AppelerLibre(C& objet) { retourner objet + vrai; } "
+            "pointeur_fonction<entier32(C&)> Rappels[2] = {AppelerMembre, AppelerLibre};";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, operateursMixtes, "emission-operateurs-mixtes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(operateursMixtes), "emission-operateurs-mixtes-en");
+        const std::string operateursUnairesMixtes =
+            "classe C { publique: booléen opérateur!() { retourner vrai; } }; "
+            "espace C { publique booléen opérateur!(constante C& objet) { retourner faux; } } "
+            "entier32 A = 42; publique booléen Appeler(constante C& objet) { retourner !objet; } "
+            "pointeur_fonction<booléen(constante C&)> Rappel = Appeler;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, operateursUnairesMixtes,
+            "emission-operateurs-unaires-mixtes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(operateursUnairesMixtes), "emission-operateurs-unaires-mixtes-en");
+        const std::string nomsLiaisonDistincts =
+            DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB)
+            + "publique entier32 F(" + NomCollisionLiaisonA + "* x) { retourner 1; } "
+              "publique entier32 G(" + NomCollisionLiaisonB + "* x) { retourner 2; } "
+              "entier32 A = 42; pointeur_fonction<entier32(" + NomCollisionLiaisonA + "*)> Rappel = F;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, nomsLiaisonDistincts,
+            "emission-noms-liaison-distincts-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(nomsLiaisonDistincts),
+            "emission-noms-liaison-distincts-en");
+        const std::string surchargesSansCollision =
+            DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB)
+            + "publique vide F(" + NomCollisionLiaisonA + "* x) {} "
+              "publique vide F(" + NomCollisionLiaisonB + "** x) {} entier32 A = 42; "
+              "publique vide PointEntree() {} pointeur_fonction<vide()> Rappel = PointEntree;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, surchargesSansCollision,
+            "emission-surcharges-sans-collision-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, TraduireCorpusConversions(surchargesSansCollision),
+            "emission-surcharges-sans-collision-en");
         ComparerEmissionGlobales(syntaxe, semantique, emettre,
             "externe entier32 Importee; publique vide F() {}", "emission-import-seul");
         ComparerEmissionGlobales(syntaxe, semantique, emettre,
@@ -3130,7 +3318,93 @@ espace Donnees {
                  {"entier32 A = 42; classe C { publique: entier32 Lire() { retourner 42; } }; alias Appeler = C::Lire; "
                   "publique entier32 F() { retourner Appeler(); }", 21},
                  {"entier32 A = 42; classe C { privée: entier32 Lire() { retourner 42; } }; alias Appeler = C::Lire; "
-                  "publique entier32 F(C& objet) { retourner Appeler(objet); }", 25}})
+                  "publique entier32 F(C& objet) { retourner Appeler(objet); }", 25},
+                 {"entier32 A = 42; classe B {}; classe D : privée B {}; publique vide F() {}", 113},
+                 {"entier32 A = 42; classe B {}; classe D : protégée B {}; publique vide F() {}", 113},
+                 {"entier32 A = 42; classe D : publique Absente {}; publique vide F() {}", 100},
+                 {"entier32 A = 42; structure B {}; classe D : publique B {}; publique vide F() {}", 114},
+                 {"entier32 A = 42; énumération B { X }; classe D : publique B {}; publique vide F() {}", 114},
+                 {"entier32 A = 42; classe D : publique D {}; publique vide F() {}", 115},
+                 {"entier32 A = 42; classe D : publique Vue {}; alias Vue = D; publique vide F() {}", 115},
+                 {"entier32 A = 42; classe B : publique C {}; classe C : publique B {}; publique vide F() {}", 57},
+                 {"entier32 A = 42; classe C { publique: remplacer entier32 Lire() { retourner 1; } };", 116},
+                 {"entier32 A = 42; classe B { publique: virtuel entier32 Lire() { retourner 1; } }; "
+                  "classe D : publique B { publique: entier32 Lire() { retourner 2; } };", 117},
+                 {"entier32 A = 42; classe C { publique: remplacer destructeur() {} };", 116},
+                 {"entier32 A = 42; classe B { publique: virtuel entier32 opérateur+(entier32 x) { retourner x; } }; "
+                  "classe D : publique B { publique: entier32 opérateur+(entier32 x) { retourner x; } };", 117},
+                 {"entier32 A = 42; publique vide F() {} publique vide F() {}", 118},
+                 {"entier32 A = 42; classe C { publique: constructeur() {} constructeur() {} };", 118},
+                 {"entier32 A = 42; classe C { publique: destructeur() {} destructeur() {} };", 118},
+                 {"entier32 A = 42; classe C { publique: entier32 opérateur+(entier32 a) { retourner a; } "
+                  "entier32 opérateur+(entier32 b) { retourner b; } };", 118},
+                 {"entier32 A = 42; structure S {}; publique entier32 opérateur+(S& a, entier32 x) { retourner x; } "
+                  "publique entier32 opérateur+(S& b, entier32 y) { retourner y; }", 118},
+                 {"entier32 A = 42; classe C { publique: vide F() {} }; "
+                  "espace C { publique vide F(C& objet) {} }", 118},
+                 {"entier32 A = 42; alias Vue = C; classe C { publique: vide F() {} }; "
+                  "espace C { publique vide F(Vue& objet) {} }", 118},
+                 {"entier32 A = 42; classe C { publique: entier32 opérateur+(entier32 a) { retourner a; } }; "
+                  "espace C { publique entier32 opérateur+(C& objet, entier32 b) { retourner b; } }", 118},
+                 {"entier32 A = 42; espace C { publique booléen opérateur!(C& objet) { retourner vrai; } } "
+                  "classe C { publique: booléen opérateur!() { retourner faux; } };", 118}})
+        {
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        for (const auto& [texte, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"entier32 A = 42; classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+                  "espace C { publique entier32 opérateur+(constante C& objet, entier32 x) { retourner x; } } "
+                  "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", 22},
+                 {"entier32 A = 42; classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+                  "publique entier32 G(constante C& objet, entier32 x) { retourner objet + x; }", 21},
+                 {"entier32 A = 42; classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+                  "espace C { publique entier32 opérateur+(C& objet, entier64 x) { retourner 2; } } "
+                  "publique entier32 G(C& objet) { retourner objet + 7; }", 25},
+                 {"entier32 A = 42; publique vide F(entier32 a) {} publique vide G(entier32 a) {} "
+                  "publique vide G(entier32 b) {} publique vide F(entier32 b) {}", 118},
+                 {"entier32 A = 42; classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+                  "classe D { publique: booléen opérateur!() { retourner vrai; } }; "
+                  "publique entier32 F(C& objet) { retourner objet + 7; } "
+                  "publique booléen G(constante D& objet) { retourner !objet; }", 25},
+                 {DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB)
+                  + "entier32 A = 42; publique vide F(" + NomCollisionLiaisonA + "* a) {} "
+                    "publique vide G(entier32 a) {} publique vide F(" + NomCollisionLiaisonB + "* b) {} "
+                    "publique vide G(entier32 b) {}", 118}})
+        {
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        for (const auto& texte : std::vector<std::string>{
+                 DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB)
+                     + "entier32 A = 42; publique vide F(" + NomCollisionLiaisonA + "* x) {} "
+                       "publique vide F(" + NomCollisionLiaisonB + "* y) {}",
+                 DeclarerTypesCollisionLiaison(NomCollisionRecepteurA, NomCollisionRecepteurB)
+                     + "entier32 A = 42; classe C { publique: vide F(" + NomCollisionRecepteurA + "* x) {} "
+                       "vide F(" + NomCollisionRecepteurB + "* y) {} };",
+                 DeclarerTypesCollisionLiaison(NomCollisionCallbackA, NomCollisionCallbackB)
+                     + "entier32 A = 42; publique vide F(pointeur_fonction<vide(" + NomCollisionCallbackA + "*)> x) {} "
+                       "publique vide F(pointeur_fonction<vide(" + NomCollisionCallbackB + "*)> y) {}",
+                 "espace A::B { " + DeclarerTypesCollisionLiaison(NomCollisionQualifieA, NomCollisionQualifieB)
+                     + "} entier32 A = 42; publique vide F(A::B::" + NomCollisionQualifieA + "* x) {} "
+                       "publique vide F(A::B::" + NomCollisionQualifieB + "* y) {}"})
+        {
+            verifierRefus(texte, 119, true);
+            verifierRefus(TraduireCorpusConversions(texte), 119, true);
+        }
+        for (const auto& [texte, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"entier32 A = 42; classe C { publique: entier32 Lire() { retourner 1; } }; "
+                  "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+                  "publique entier32 G(C& objet) { retourner C::Lire(objet); }", 22},
+                 {"entier32 A = 42; classe C { publique: entier32 Lire() { retourner 1; } }; "
+                  "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+                  "publique entier32 G(C* objet) { retourner objet->Lire(); }", 22},
+                 {"entier32 A = 42; classe C { privée: entier32 Lire(entier32 x) { retourner x; } }; "
+                  "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+                  "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(x); }", 25},
+                 {"entier32 A = 42; classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+                  "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+                  "publique entier32 G(C& objet) { retourner objet.Lire(); }", 21}})
         {
             verifierRefus(texte, code, true);
             verifierRefus(TraduireCorpusConversions(texte), code, true);
@@ -3166,6 +3440,8 @@ espace Donnees {
                  {"constante", "const"}, {"énumération", "enumeration"},
                  {"structure", "struct"}, {"classe", "class"}, {"espace", "namespace"},
                  {"constructeur", "constructor"}, {"opérateur", "operator"},
+                 {"destructeur", "destructor"}, {"virtuel", "virtual"}, {"remplacer", "override"},
+                 {"externe", "extern"},
                  {"soi", "this"}, {"caractère", "char"}, {"octet", "byte"},
                  {"publique", "public"}, {"retourner", "return"},
                  {"privée", "private"}, {"protégée", "protected"},
@@ -3872,6 +4148,1025 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         }
     }
 
+    void TesterDeclarationsHeritageSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe B {}; classe D : privée B {}; publique vide F() {}", 113},
+            {"classe B {}; classe D : protégée B {}; publique vide F() {}", 113},
+            {"\n\nclasse D : publique Absente {};\npublique vide F() {}", 100},
+            {"structure B {}; classe D : publique B {}; publique vide F() {}", 114},
+            {"union B { entier32 X; }; classe D : publique B {}; publique vide F() {}", 114},
+            {"énumération B { X }; classe D : publique B {}; publique vide F() {}", 114},
+            {"classe D : publique D {}; publique vide F() {}", 115},
+            {"classe D : publique Vue {}; alias Vue = D; publique vide F() {}", 115},
+            {"espace N {\n  classe D : publique N::D {};\n}\npublique vide F() {}", 115},
+            {"espace N { classe D : publique Copie {}; alias Vue = D; alias Copie = Vue; } "
+             "publique vide F() {}", 115},
+            {"espace A { classe B {}; } espace N { classe D : publique B {}; } "
+             "publique vide F() {}", 100},
+            {"espace N { structure B {}; classe D : publique B {}; } publique vide F() {}", 114},
+            {"espace A { classe B {}; } espace N { classe D : publique A::Absente {}; } "
+             "publique vide F() {}", 100},
+            {"structure B {}; alias Vue = B; classe D : publique Vue {}; publique vide F() {}", 114},
+            {"énumération B { X }; alias Vue = B; classe D : publique Vue {}; publique vide F() {}", 110},
+            {"publique vide B() {} alias Vue = B; classe D : publique Vue {};", 100},
+            {"entier32 B; alias Vue = B; classe D : publique Vue {}; publique vide F() {}", 100},
+            {"classe A : publique B {}; classe B : publique A {}; publique vide F() {}", 57},
+            {"classe A : publique B {}; classe B : publique C {}; classe C : publique A {}; "
+             "publique vide F() {}", 57},
+            {"classe A : publique Vue {}; alias Vue = B; classe B : publique A {}; "
+             "publique vide F() {}", 57},
+            {"classe D : privée Absente { Inconnu X; }; publique vide F() {}", 113},
+            {"classe D : publique Absente { Inconnu X; }; publique vide F() {}", 100},
+            {"structure B {}; classe D : publique B { Inconnu X; }; publique vide F() {}", 114},
+            {"classe D : publique D { Inconnu X; }; publique vide F() {}", 115},
+            {"classe B {}; classe D : privée B {}; alias Vue = Absente; publique vide F() {}", 110},
+            {"classe B {}; classe D : privée B {}; énumération E { X = 1 / 0 }; publique vide F() {}", 89},
+            {"classe D : publique Absente {}; classe D {}; publique vide F() {}", 6},
+            {"classe D : publique Absente {};", 100},
+            {"classe D : publique Absente {}; publique vide F(Inconnu p) {}", 100},
+            {"espace N { classe B {}; } structure B {}; espace N { classe D : publique B {}; } "
+             "publique vide F() {}", 114}};
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "heritage-refus-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(texte), code,
+                "heritage-refus-en-" + std::to_string(index));
+        }
+        const std::vector<std::string> valides{
+            "classe B {}; classe D : publique B {}; publique vide F(D& objet) {}",
+            "classe B {}; classe D : B {}; publique vide F(D& objet) {}",
+            "classe D : publique B {}; classe B {}; publique vide F(D& objet) {}",
+            "classe B {}; alias Vue = B; alias Copie = Vue; classe D : publique Copie {}; "
+            "publique vide F(D& objet) { B& base = objet; }",
+            "espace N { classe B {}; classe D : publique B {}; } publique vide F(N::D& objet) {}",
+            "espace A { classe B {}; } espace N { classe D : publique A::B {}; } "
+            "publique vide F(N::D& objet) { A::B& base = objet; }",
+            "espace A { classe B {}; } espace N { alias Vue = A::B; classe D : publique Vue {}; } "
+            "publique vide F(N::D& objet) { A::B& base = objet; }",
+            "classe B {}; espace N { structure B {}; classe D : publique B {}; } "
+            "publique vide F(N::D& objet) { B& base = objet; }",
+            "espace N { structure B {}; } classe B {}; espace N { classe D : publique B {}; } "
+            "publique vide F(N::D& objet) { B& base = objet; }",
+            "espace N { espace A { classe B {}; } classe D : publique A::B {}; } "
+            "publique vide F(N::D& objet) { N::A::B& base = objet; }",
+            "classe A {}; classe B : publique A {}; classe C : publique B {}; "
+            "publique vide F(C& objet) { A& base = objet; }",
+            "classe B { publique: entier32 X; }; classe D : publique B {}; "
+            "publique entier32 F(D& objet) { retourner objet.X; }",
+            "espace A { classe B { publique: entier32 X; }; } "
+            "espace N { classe B { publique: entier32 Y; }; classe D : publique B {}; } "
+            "publique entier32 F(N::D& objet) { retourner objet.Y; }",
+            "espace N { classe B {}; classe D : /* base */ publique /* nom */ N /* qualifie */ :: B {}; } "
+            "publique vide F(N::D& objet) { N::B& base = objet; }"};
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            AnalyserSemantiqueValide(syntaxe, semantique, valides[index],
+                "heritage-valide-fr-" + std::to_string(index));
+            AnalyserSemantiqueValide(syntaxe, semantique, TraduireCorpusConversions(valides[index]),
+                "heritage-valide-en-" + std::to_string(index));
+        }
+    }
+
+    /**
+     * <résumé>Compare les doublons et les surcharges distinctes aux signatures canoniques du bootstrap.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterDoublonsSurchargesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"publique vide F() {} publique vide F() {}", 118},
+            {"publique entier32 F(entier32 a) { retourner a; } "
+             "publique entier32 F(entier32 b) { retourner b; }", 118},
+            {"publique entier32 F() { retourner 1; } publique entier64 F() { retourner 2; }", 118},
+            {"publique vide F(constante entier32 a) {} publique vide F(constante entier32 b) {}", 118},
+            {"publique vide F(entier32** a) {} publique vide F(entier32** b) {}", 118},
+            {"publique vide F(constante entier32& a) {} publique vide F(constante entier32& b) {}", 118},
+            {"publique vide F(pointeur_fonction<entier32(entier32&)> a) {} "
+             "publique vide F(pointeur_fonction<entier32(entier32&)> b) {}", 118},
+            {"structure S {}; alias Vue = S; publique vide F(S* a) {} publique vide F(Vue* b) {}", 118},
+            {"publique vide F(Vue* a) {} publique vide F(S* b) {} "
+             "alias Vue = Copie; alias Copie = S; structure S {};", 118},
+            {"espace A { structure S {}; } espace N { alias Vue = A::S; "
+             "publique vide F(A::S* a) {} publique vide F(Vue* b) {} }", 118},
+            {"classe C { publique: entier32 F(entier32 a) { retourner a; } "
+             "entier32 F(entier32 b) { retourner b; } };", 118},
+            {"classe C { publique: entier32 F() { retourner 1; } entier64 F() { retourner 2; } };", 118},
+            {"classe C { publique: vide F(constante entier32& a) {} vide F(constante entier32& b) {} };", 118},
+            {"classe C { publique: constructeur() {} constructeur() {} };", 118},
+            {"classe C { publique: constructeur(entier32 a) {} constructeur(entier32 b) {} };", 118},
+            {"classe C { publique: destructeur() {} destructeur() {} };", 118},
+            {"classe C { publique: entier32 opérateur+(entier32 a) { retourner a; } "
+             "entier32 opérateur+(entier32 b) { retourner b; } };", 118},
+            {"classe C { publique: booléen opérateur!() { retourner vrai; } "
+             "booléen opérateur!() { retourner faux; } };", 118},
+            {"classe C { privée: vide F() {} publique: vide F() {} };", 118},
+            {"classe C { publique: virtuel vide F() {} vide F() {} };", 118},
+            {"classe B { publique: virtuel vide F() {} }; classe D : publique B { "
+             "publique: remplacer vide F() {} remplacer vide F() {} };", 118},
+            {"publique vide F(entier32 a) {}\npublique vide F(booléen a) {}\n"
+             "publique vide F(booléen b) {}\npublique vide F(entier32 b) {}", 118},
+            {"classe C {\n publique:\n vide F(\n entier32 a\n ) {}\n"
+             " vide F(\n entier32 b\n ) {}\n};", 118},
+            {"publique vide F() { Introuvable(); } publique vide F() {}", 118},
+            {"entier32 Globale = Introuvable(); publique vide F() {} publique vide F() {}", 118},
+            {"publique vide F() {} publique vide F() {} publique vide G(Introuvable x) {}", 100},
+            {"classe C : publique C {}; publique vide F() {} publique vide F() {}", 115},
+            {"structure S { S X; }; publique vide F() {} publique vide F() {}", 57},
+            {"publique vide F(entier32 a, entier32 b, entier32 c, entier32 d, entier32 e) {} "
+             "publique vide F(entier32 a, entier32 b, entier32 c, entier32 d, entier32 e) {}", 106},
+            {"classe C { publique: vide F(C* a) {} vide F(Vue* b) {} }; alias Vue = C;", 118},
+            {"externe entier32 F(entier32 a); publique entier32 F(entier32 b) { retourner b; }", 118},
+            {"espace N { publique vide F() {} } espace N { publique vide F() {} }", 118},
+            {"structure S {}; publique entier32 opérateur+(S& a, entier32 x) { retourner x; } "
+             "publique entier32 opérateur+(S& b, entier32 y) { retourner y; }", 118},
+            {"structure S {}; publique booléen opérateur!(constante S& a) { retourner vrai; } "
+             "publique booléen opérateur!(constante S& b) { retourner faux; }", 118},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "doublon-surcharge-refuse-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(texte), code,
+                "doublon-surcharge-refuse-en-" + std::to_string(index));
+        }
+
+        const std::vector<std::string> valides{
+            "publique vide F() {} publique vide F(entier32 a) {}",
+            "publique vide F(entier32 a) {} publique vide F(entier64 a) {}",
+            "publique vide F(entier32 a) {} publique vide F(constante entier32 a) {}",
+            "publique vide F(entier32* a) {} publique vide F(entier32** a) {}",
+            "publique vide F(entier32& a) {} publique vide F(constante entier32& a) {}",
+            "publique vide F(entier32 a) {} publique vide F(entier32& a) {}",
+            "publique vide F(pointeur_fonction<entier32()> a) {} "
+            "publique vide F(pointeur_fonction<entier64()> a) {}",
+            "publique vide F(pointeur_fonction<vide(entier32)> a) {} "
+            "publique vide F(pointeur_fonction<vide(entier64)> a) {}",
+            "espace A { publique vide F(entier32 a) {} } espace B { publique vide F(entier32 a) {} }",
+            "classe A { publique: vide F(entier32 a) {} }; classe B { publique: vide F(entier32 a) {} };",
+            "classe C { publique: vide F(entier32 a) {} }; publique vide F(C& a, entier32 b) {}",
+            "classe B { publique: vide F(entier32 a) {} }; classe D : publique B { publique: vide F(entier32 a) {} };",
+            "classe C { publique: constructeur() {} constructeur(entier32 a) {} };",
+            "classe A { publique: destructeur() {} }; classe B { publique: destructeur() {} };",
+            "classe C { publique: entier32 opérateur+(entier32 a) { retourner a; } "
+            "entier64 opérateur+(entier64 a) { retourner a; } };",
+            "espace A { structure S {}; } espace B { structure S {}; } "
+            "publique vide F(A::S* a) {} publique vide F(B::S* a) {}",
+            "publique vide F(entier32 a, entier64 b) {} publique vide F(entier64 a, entier32 b) {}",
+            "publique vide F(constante entier32* a) {} publique vide F(volatile entier32* a) {}",
+            "structure S {}; publique entier32 opérateur+(S& a, entier32 x) { retourner x; } "
+            "publique entier64 opérateur+(S& a, entier64 x) { retourner x; }",
+            "structure S {}; publique booléen opérateur!(S& a) { retourner vrai; } "
+            "publique booléen opérateur!(constante S& a) { retourner faux; }",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            AnalyserSemantiqueValide(syntaxe, semantique, valides[index],
+                "surcharge-distincte-fr-" + std::to_string(index));
+            AnalyserSemantiqueValide(syntaxe, semantique, TraduireCorpusConversions(valides[index]),
+                "surcharge-distincte-en-" + std::to_string(index));
+        }
+    }
+
+    /**
+     * <résumé>Compare les collisions entre récepteurs implicites et paramètres explicites de même nom complet.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterCollisionsSignaturesNonLieesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe C { publique: vide F() {} }; espace C { publique vide F(C& objet) {} }", 118},
+            {"espace C { publique vide F(C& objet) {} } classe C { publique: vide F() {} };", 118},
+            {"classe C { publique: vide F(entier32 a) {} }; "
+             "espace C { publique vide F(C& objet, entier32 b) {} }", 118},
+            {"classe C { publique: entier32 F() { retourner 1; } }; "
+             "espace C { publique entier64 F(C& objet) { retourner 2; } }", 118},
+            {"classe C { privée: vide F() {} }; espace C { publique vide F(C& objet) {} }", 118},
+            {"espace C { externe vide F(C& objet); } classe C { publique: vide F() {} };", 118},
+            {"espace N { classe C { publique: vide F() {} }; "
+             "espace C { publique vide F(N::C& objet) {} } }", 118},
+            {"alias Vue = Copie; alias Copie = C; classe C { publique: vide F() {} }; "
+             "espace C { publique vide F(Vue& objet) {} }", 118},
+            {"classe C { publique: vide F(pointeur_fonction<vide(entier32)> a) {} }; "
+             "espace C { publique vide F(C& objet, pointeur_fonction<vide(entier32)> b) {} }", 118},
+            {"classe C { publique: vide F(constante entier32** a) {} }; "
+             "espace C { publique vide F(C& objet, constante entier32** b) {} }", 118},
+            {"classe C { publique: vide F(entier32& a) {} }; "
+             "espace C { publique vide F(C& objet, entier32& b) {} }", 118},
+            {"classe C { publique: vide F(entier32 a, entier64 b, booléen c) {} }; "
+             "espace C { publique vide F(C& objet, entier32 x, entier64 y, booléen z) {} }", 118},
+            {"classe C { publique: entier32 opérateur+(entier32 a) { retourner a; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, entier32 b) { retourner b; } }", 118},
+            {"espace C { publique booléen opérateur!(C& objet) { retourner vrai; } } "
+             "classe C { publique: booléen opérateur!() { retourner faux; } };", 118},
+            {"espace C { publique vide F(C& objet, entier32 x) {} }\n"
+             "classe C { publique:\n vide F(booléen b) {}\n vide F(entier32 y) {} };\n"
+             "espace C { publique vide F(C& objet, booléen c) {} }", 118},
+            {"classe B { publique: virtuel vide F() {} }; classe C : publique B { publique: vide F() {} }; "
+             "espace C { publique vide F(C& objet) {} }", 118},
+            {"classe B { publique: virtuel vide F() {} }; classe C : publique B { publique: remplacer vide F() {} }; "
+             "espace C { publique vide F(C& objet) {} }", 118},
+            {"classe C { publique: vide F() { Introuvable(); } }; "
+             "espace C { publique vide F(C& objet) {} }", 118},
+            {"entier32 Globale = Introuvable(); classe C { publique: vide F() {} }; "
+             "espace C { publique vide F(C& objet) {} }", 118},
+            {"classe C { publique: vide F() {} }; espace C { publique vide F(C& objet) {} } "
+             "alias Appeler = C::F;", 112},
+            {"classe C { publique: vide F() {} }; espace C { publique vide F(C& objet) {} } "
+             "publique vide G(Introuvable x) {}", 100},
+            {"classe C : publique C { publique: vide F() {} }; espace C { publique vide F(C& objet) {} }", 115},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "collision-signature-non-liee-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(texte), code,
+                "collision-signature-non-liee-en-" + std::to_string(index));
+        }
+
+        const std::vector<std::string> valides{
+            "classe C { publique: vide F() {} }; espace C { publique vide F() {} }",
+            "classe C { publique: vide F() {} }; espace C { publique vide F(C* objet) {} }",
+            "classe C { publique: vide F() {} }; espace C { publique vide F(constante C& objet) {} }",
+            "classe C { publique: vide F() {} }; espace C { publique vide F(volatile C& objet) {} }",
+            "classe C { publique: vide F(entier32 a) {} }; espace C { publique vide F(C& objet, entier64 b) {} }",
+            "classe C { publique: vide F(entier32 a) {} }; espace C { publique vide F(entier32 b, C& objet) {} }",
+            "classe C { publique: vide F(C& autre) {} }; espace C { publique vide F(C& objet) {} }",
+            "classe B {}; classe C { publique: vide F() {} }; espace C { publique vide F(B& objet) {} }",
+            "classe C { publique: vide F() {} }; alias Vue = C; espace Vue { publique vide F(C& objet) {} }",
+            "espace N { classe C { publique: vide F() {} }; espace C { publique vide F(constante N::C& objet) {} } }",
+            "classe C { publique: vide F(pointeur_fonction<entier32()> a) {} }; "
+            "espace C { publique vide F(C& objet, pointeur_fonction<entier64()> b) {} }",
+            "classe C { publique: entier32 opérateur+(entier32 a) { retourner a; } }; "
+            "espace C { publique entier64 opérateur+(C& objet, entier64 b) { retourner b; } }",
+            "classe C { publique: booléen opérateur!() { retourner vrai; } }; "
+            "espace C { publique booléen opérateur!(constante C& objet) { retourner faux; } }",
+            "classe C { publique: vide F(constante entier32& a) {} }; "
+            "espace C { publique vide F(C& objet, entier32& b) {} }",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            AnalyserSemantiqueValide(syntaxe, semantique, valides[index],
+                "signature-non-liee-distincte-fr-" + std::to_string(index));
+            AnalyserSemantiqueValide(syntaxe, semantique, TraduireCorpusConversions(valides[index]),
+                "signature-non-liee-distincte-en-" + std::to_string(index));
+        }
+    }
+
+    /**
+     * <résumé>Compare les appels de groupes mêlant méthodes non liées et fonctions libres de même nom complet.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterAppelsGroupesMixtesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet); }", 22},
+            {"espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet); }", 22},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(); }", 22},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "publique entier32 G(C* objet) { retourner objet->Lire(); }", 22},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet); }", 21},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(); }", 21},
+            {"classe C { privée: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner C::Lire(objet, x); }", 25},
+            {"classe C { privée: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(x); }", 25},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "pointeur_fonction<entier32(C&)> Rappel = C::Lire;", 19},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "alias Appeler = C::Lire;", 112},
+            {"classe C { publique: entier32 Lire(entier32& x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner C::Lire(objet, x); }", 22},
+            {"classe C { publique: entier32 Lire(entier32& x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(x); }", 22},
+            {"classe C { publique: entier32 Lire(entier8 x) { retourner 1; } }; "
+             "espace C { publique entier32 Lire(C& objet, naturel8 x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(7); }", 22},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(constante C& objet, entier32 x) { retourner objet.Lire(x); }", 21},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C* objet, entier32* x) { retourner objet->Lire(x); }", 21},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C* objet, entier32 x) { retourner C::Lire(objet, x); }", 21},
+            {"classe C { privée: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, entier64 x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(7); }", 25},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } entier32 Lire(booléen x) { retourner 1; } }; "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet); }", 21},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique vide G() { pointeur_fonction<entier32(C&)> rappel = &C::Lire; }", 19},
+            {"espace N { classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante N::C& objet) { retourner 2; } } } "
+             "publique entier32 G(N::C& objet) { retourner N::C::Lire(objet); }", 22},
+            {"classe C { privée: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(); }", 22},
+            {"classe B { publique: entier32 Lire() { retourner 1; } }; classe C : publique B { "
+             "publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(); }", 21},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "publique entier32 G(constante C& objet) { retourner objet.Lire(); }", 21},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "appel-groupe-mixte-refuse-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(texte), code,
+                "appel-groupe-mixte-refuse-en-" + std::to_string(index));
+        }
+
+        const std::string groupe =
+            "classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+            "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } ";
+        const std::string inverse =
+            "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+            "classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; ";
+        const std::string groupeQualifie =
+            "espace N { classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+            "espace C { publique entier32 Lire(N::C& objet, booléen x) { retourner 2; } } } ";
+        const std::vector<std::pair<std::string, bool>> valides{
+            {groupe + "publique entier32 G(C& objet, entier32 x) { retourner C::Lire(objet, x); }", true},
+            {groupe + "publique entier32 G(C& objet) { retourner C::Lire(objet, vrai); }", false},
+            {inverse + "publique entier32 G(C& objet, entier32 x) { retourner C::Lire(objet, x); }", true},
+            {inverse + "publique entier32 G(C& objet) { retourner C::Lire(objet, vrai); }", false},
+            {groupe + "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(x); }", true},
+            {groupe + "publique entier32 G(C& objet) { retourner objet.Lire(vrai); }", false},
+            {groupe + "publique entier32 G(C* objet, entier32 x) { retourner objet->Lire(x); }", true},
+            {groupe + "publique entier32 G(C* objet) { retourner objet->Lire(vrai); }", false},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire() { retourner 2; } } "
+             "publique entier32 G() { retourner C::Lire(); }", false},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire() { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet); }", true},
+            {"classe C { privée: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(vrai); }", false},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "publique entier32 G(constante C& objet) { retourner objet.Lire(); }", false},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(constante C& objet) { retourner 2; } } "
+             "publique entier32 G(constante C* objet) { retourner objet->Lire(); }", false},
+            {groupeQualifie + "publique entier32 G(N::C& objet, entier32 x) { retourner N::C::Lire(objet, x); }", true},
+            {groupeQualifie + "publique entier32 G(N::C& objet) { retourner objet.Lire(vrai); }", false},
+            {groupe + "alias Vue = C; publique entier32 G(Vue& objet) { retourner C::Lire(objet, vrai); }", false},
+            {groupe + "alias Vue = C; publique entier32 G(Vue* objet, entier32 x) { retourner objet->Lire(x); }", true},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } entier32 Lire(booléen x) { retourner 2; } }; "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet, vrai); }", true},
+            {"classe C { publique: entier32 Lire() { retourner 1; } }; "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet); }", true},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, entier64 x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(7); }", true},
+            {"classe C { publique: entier32 Lire(entier64 x) { retourner 1; } }; "
+             "espace C { publique entier32 Lire(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet) { retourner C::Lire(objet, 7); }", false},
+            {"classe C { publique: entier32 Lire(entier32& x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(7); }", false},
+            {"classe C { publique: entier32 Lire(constante entier32& x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet, constante entier32& x) { retourner C::Lire(objet, x); }", true},
+            {"classe C { publique: entier32 Lire(pointeur_fonction<entier32()> x) { retourner 1; } }; "
+             "espace C { publique entier32 Lire(C& objet, pointeur_fonction<booléen()> x) { retourner 2; } } "
+             "publique entier32 G(C& objet, pointeur_fonction<booléen()> x) { retourner objet.Lire(x); }", false},
+            {"classe B {}; classe C : publique B { publique: entier32 Lire() { retourner 1; } }; "
+             "espace C { publique entier32 Lire(B& objet) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(); }", true},
+            {"classe B { publique: entier32 Lire() { retourner 1; } }; classe D : publique B {}; "
+             "espace B { publique entier32 Lire(D& objet) { retourner 2; } } "
+             "publique entier32 G(D& objet) { retourner objet.Lire(); }", false},
+            {"classe B { publique: entier32 Lire() { retourner 1; } }; classe D : publique B {}; "
+             "espace B { publique entier32 Lire(D& objet) { retourner 2; } } "
+             "publique entier32 G(D* objet) { retourner objet->Lire(); }", false},
+            {"classe B { publique: entier32 Lire() { retourner 1; } }; classe C : publique B { "
+             "publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(vrai); }", false},
+            {"classe C {}; espace C { publique entier32 Lire(C& objet) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(); }", false},
+            {"classe C { privée: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(vrai); }", false},
+            {"classe C { publique: virtuel entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet.Lire(vrai); }", false},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(volatile C& objet, entier32 x) { retourner objet.Lire(x); }", true},
+            {"classe C { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+             "espace C { publique entier64 Lire(C& objet, booléen x) { retourner 2; } } "
+             "publique entier64 G(C& objet) { retourner C::Lire(objet, vrai); }", false},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index].first, TraduireCorpusConversions(valides[index].first)})
+            {
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "appel-groupe-mixte-valide-" + std::to_string(index));
+                auto programme = GsPP::AnalyseurSyntaxique(
+                    GsPP::Lexeur(texte, "appel-groupe-mixte-reference").Analyser(), "appel-groupe-mixte-reference").Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                const auto appelant = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                    [](const auto& fonction) { return fonction.NomSourceComplet() == "G"; });
+                Exiger(appelant != programme.Fonctions.end() && appelant->Corps && appelant->Corps->Instructions.size() == 1
+                           && appelant->Corps->Instructions.front()->Genre == GsPP::GenreInstruction::Retour,
+                    "le corpus d'appel mixte ne contient pas son retour de référence");
+                const auto& retour = static_cast<const GsPP::InstructionRetour&>(*appelant->Corps->Instructions.front());
+                Exiger(retour.Valeur && retour.Valeur->Genre == GsPP::GenreExpression::Appel,
+                    "le retour du corpus mixte n'est pas un appel");
+                const auto& appel = static_cast<const GsPP::ExpressionAppel&>(*retour.Valeur);
+                const auto fonctionReference = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                    [&](const auto& fonction) { return fonction.NomComplet() == appel.NomDirect; });
+                Exiger(fonctionReference != programme.Fonctions.end() && fonctionReference->EstMethode == valides[index].second,
+                    "la cible prévue du corpus mixte ne correspond pas au bootstrap");
+                std::size_t nombreAppels = 0;
+                for (const auto& resolution : resultat.Resolutions)
+                {
+                    const auto& cible = resultat.Noeuds[resolution.IndexNoeud];
+                    if ((cible.Genre != 24 && cible.Genre != 29)
+                        || resultat.Noeuds[cible.Parent].Genre != 28
+                        || resolution.IndexNoeud != cible.Parent + 1)
+                        continue;
+                    const auto& declaration = resultat.Noeuds[resultat.Symboles[resolution.IndexSymbole].IndexNoeud];
+                    Exiger((declaration.Genre == 12) == valides[index].second,
+                        "la mauvaise surcharge du groupe mixte a été sélectionnée : " + std::to_string(index));
+                    Exiger(declaration.Ligne == fonctionReference->Position.Ligne
+                               && declaration.Colonne == fonctionReference->Position.Colonne
+                               && resolution.HachageType == HacherTypeDeclaration(fonctionReference->TypeRetour),
+                        "la déclaration ou le retour choisi diffère du bootstrap : " + std::to_string(index));
+                    Exiger(((resolution.Drapeaux & 32U) != 0) == valides[index].second,
+                        "le drapeau de méthode ne correspond pas à la cible sélectionnée");
+                    ++nombreAppels;
+                }
+                Exiger(nombreAppels == 1, "résolution d'appel mixte absente ou dupliquée");
+            }
+    }
+
+    /**
+     * <résumé>Compare les groupes d'opérateurs complets et leur récepteur au bootstrap.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur des corpus bilingues.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterOperateursGroupesMixtesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string groupe =
+            "classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "espace C { publique entier32 opérateur+(C& objet, booléen x) { retourner 2; } } ";
+        const std::string inverse =
+            "espace C { publique entier32 opérateur+(C& objet, booléen x) { retourner 2; } } "
+            "classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(constante C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", 22},
+            {"classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(constante C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", 22},
+            {groupe + "publique entier32 G(constante C& objet, entier32 x) { retourner objet + x; }", 21},
+            {groupe + "publique entier32 G(C& objet, entier32* x) { retourner objet + x; }", 21},
+            {"classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, entier64 x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet + 7; }", 25},
+            {"classe C { publique: entier32 opérateur+(entier8 x) { retourner 1; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, naturel8 x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet + 7; }", 22},
+            {"classe C { publique: booléen opérateur!() { retourner vrai; } }; "
+             "espace C { publique booléen opérateur!(constante C& objet) { retourner faux; } } "
+             "publique booléen G(C& objet) { retourner !objet; }", 22},
+            {"classe C { publique: booléen opérateur!() { retourner vrai; } }; "
+             "publique booléen G(constante C& objet) { retourner !objet; }", 21},
+            {"classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "publique entier32 opérateur+(constante C& objet, booléen x) { retourner 2; } "
+             "publique entier32 G(C& objet) { retourner objet + vrai; }", 21},
+            {"classe B { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "classe D : publique B {}; espace D { publique entier32 opérateur+(D& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(D& objet, entier32 x) { retourner objet + x; }", 21},
+            {"classe C {}; espace C { publique entier32 opérateur+(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(constante C& objet, entier32 x) { retourner objet + x; }", 21},
+            {"classe C {}; publique entier32 opérateur+(C& objet, booléen x) { retourner 1; } "
+             "espace N { publique entier32 opérateur+(C& objet, entier32 x) { retourner x; } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet + x; } }", 21},
+            {"classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "externe C Creer(); publique entier32 G() { retourner Creer() + 7; }", 21},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+            for (const auto& texte : {refus[index].first, TraduireCorpusConversions(refus[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "operateur-groupe-mixte-refuse-" + std::to_string(index));
+
+        const std::vector<std::pair<std::string, bool>> valides{
+            {groupe + "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", true},
+            {groupe + "publique entier32 G(C& objet) { retourner objet + vrai; }", false},
+            {inverse + "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", true},
+            {inverse + "publique entier32 G(C& objet) { retourner objet + vrai; }", false},
+            {groupe + "alias Vue = C; publique entier32 G(Vue& objet) { retourner objet + vrai; }", false},
+            {groupe + "publique entier32 G(volatile C& objet, entier32 x) { retourner objet + x; }", true},
+            {"classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, booléen x) { retourner 2; } } "
+             "publique entier32 G(C& objet) { retourner objet + vrai; }", false},
+            {"classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier64 opérateur+(constante C& objet, entier32 x) { retourner 2; } } "
+             "publique entier64 G(constante C& objet, entier32 x) { retourner objet + x; }", false},
+            {"classe C { publique: entier32 opérateur+(entier64 x) { retourner 1; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet) { retourner objet + 7; }", false},
+            {"classe C { publique: entier32 opérateur+(entier32& x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet) { retourner objet + 7; }", false},
+            {"classe C { publique: booléen opérateur!() { retourner vrai; } }; "
+             "espace C { publique booléen opérateur!(constante C& objet) { retourner faux; } } "
+             "publique booléen G(constante C& objet) { retourner !objet; }", false},
+            {"classe C { publique: entier32 opérateur~() { retourner 1; } }; "
+             "publique entier32 G(C& objet) { retourner ~objet; }", true},
+            {"classe C {}; espace C { publique entier32 opérateur+(C& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", false},
+            {"classe C {}; espace C { publique booléen opérateur!(constante C& objet) { retourner faux; } } "
+             "publique booléen G(constante C& objet) { retourner !objet; }", false},
+            {"classe B { publique: entier32 opérateur+(entier32 x) { retourner x; } }; classe D : publique B {}; "
+             "espace B { publique entier64 opérateur+(D& objet, entier32 x) { retourner 2; } } "
+             "publique entier64 G(D& objet, entier32 x) { retourner objet + x; }", false},
+            {"classe B {}; classe C : publique B { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(B& objet, entier32 x) { retourner x; } } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet + x; }", true},
+            {"espace N { classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; "
+             "espace C { publique entier32 opérateur+(N::C& objet, booléen x) { retourner 2; } } } "
+             "publique entier32 G(N::C& objet) { retourner objet + vrai; }", false},
+            {"classe C {}; publique entier32 opérateur+(entier32 x, C& objet) { retourner x; } "
+             "publique entier32 G(C& objet, entier32 x) { retourner x + objet; }", false},
+            {"classe C {}; espace N { publique entier32 opérateur+(C& objet, entier32 x) { retourner x; } "
+             "publique entier32 G(C& objet, entier32 x) { retourner objet + x; } }", false},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index].first, TraduireCorpusConversions(valides[index].first)})
+            {
+                const auto nom = "operateur-groupe-mixte-valide-" + std::to_string(index);
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                const auto appelant = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                    [](const auto& fonction) { return fonction.NomSource == "G"; });
+                Exiger(appelant != programme.Fonctions.end(), "appelant du corpus d'opérateur absent");
+                const auto& retour = static_cast<const GsPP::InstructionRetour&>(*appelant->Corps->Instructions.front());
+                const auto& nomCible = retour.Valeur->Genre == GsPP::GenreExpression::Unaire
+                    ? static_cast<const GsPP::ExpressionUnaire&>(*retour.Valeur).NomSurcharge
+                    : static_cast<const GsPP::ExpressionBinaire&>(*retour.Valeur).NomSurcharge;
+                const auto reference = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                    [&](const auto& fonction) { return fonction.NomComplet() == nomCible; });
+                Exiger(reference != programme.Fonctions.end() && reference->EstMethode == valides[index].second,
+                    "la cible prévue de l'opérateur ne correspond pas au bootstrap : " + nom);
+                std::size_t nombre = 0;
+                for (const auto& resolution : resultat.Resolutions)
+                {
+                    if ((resolution.Drapeaux & 256U) == 0) continue;
+                    const auto& declaration = resultat.Noeuds[resultat.Symboles[resolution.IndexSymbole].IndexNoeud];
+                    Exiger(declaration.Ligne == reference->Position.Ligne && declaration.Colonne == reference->Position.Colonne
+                               && resolution.HachageType == HacherTypeDeclaration(reference->TypeRetour)
+                               && ((resolution.Drapeaux & 32U) != 0) == reference->EstMethode,
+                        "cible, retour ou drapeau de méthode de l'opérateur différent du bootstrap : " + nom);
+                    ++nombre;
+                }
+                Exiger(nombre == 1, "résolution d'opérateur absente ou dupliquée : " + nom);
+            }
+    }
+
+    /**
+     * <résumé>Fixe une priorité de diagnostics indépendante des tables de hachage de l'hôte.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur des corpus bilingues.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesGroupesInvalidesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        struct CorpusPriorite { std::string Source; std::uint32_t Code; std::size_t Ligne; };
+        const std::vector<CorpusPriorite> corpus{
+            {"publique vide F(entier32 a) {}\n"
+             "publique vide G(entier32 a) {}\n"
+             "publique vide G(entier32 b) {}\n"
+             "publique vide F(entier32 b) {}", 118, 4},
+            {"publique vide G(entier32 a) {}\n"
+             "publique vide F(entier32 a) {}\n"
+             "publique vide F(entier32 b) {}\n"
+             "publique vide G(entier32 b) {}", 118, 4},
+            {"publique vide F(entier32 a) {}\n"
+             "publique vide G(entier32 a) {}\n"
+             "publique vide F(entier64 a) {}\n"
+             "publique vide G(entier32 b) {}\n"
+             "publique vide F(entier32 b) {}\n"
+             "publique vide F(entier64 b) {}", 118, 5},
+            {"espace A { publique vide Lire(entier32 a) {} }\n"
+             "espace B { publique vide Lire(entier32 a) {} }\n"
+             "espace B { publique vide Lire(entier32 b) {} }\n"
+             "espace A { publique vide Lire(entier32 b) {} }", 118, 4},
+            {"classe C { publique: entier32 Lire(entier32 a) { retourner a; } };\n"
+             "publique vide F(entier32 a) {}\n"
+             "publique vide F(entier32 b) {}\n"
+             "espace C { publique entier32 Lire(C& objet, entier32 b) { retourner b; } }", 118, 4},
+            {"classe C {};\n"
+             "publique entier32 opérateur+(C& objet, entier32 a) { retourner a; }\n"
+             "publique booléen opérateur!(C& objet) { retourner vrai; }\n"
+             "publique booléen opérateur!(C& autre) { retourner faux; }\n"
+             "publique entier32 opérateur+(C& autre, entier32 b) { retourner b; }", 118, 5},
+            {"publique vide F(entier32 a) {}\n"
+             "publique vide G(entier32 a) {}\n"
+             "publique vide G(entier32 b) {}\n"
+             "publique vide F(entier32 b) {}\n"
+             "publique vide H() { Introuvable(); }", 118, 4},
+            {"publique vide F() { Introuvable(); }\n"
+             "publique vide G(entier32 a) {}\n"
+             "publique vide G(entier32 b) {}", 118, 3},
+            {"classe C { publique: entier32 opérateur+(entier8 x) { retourner 1; } };\n"
+             "espace C { publique entier32 opérateur+(C& objet, naturel8 x) { retourner 2; } }\n"
+             "classe D { publique: booléen opérateur!() { retourner vrai; } };\n"
+             "espace D { publique booléen opérateur!(constante D& objet) { retourner faux; } }\n"
+             "publique entier32 F(C& objet) { retourner objet + 7; }\n"
+             "publique booléen G(D& objet) { retourner !objet; }", 22, 5},
+            {"classe C { publique: entier32 opérateur+(entier8 x) { retourner 1; } };\n"
+             "espace C { publique entier32 opérateur+(C& objet, naturel8 x) { retourner 2; } }\n"
+             "classe D { publique: booléen opérateur!() { retourner vrai; } };\n"
+             "espace D { publique booléen opérateur!(constante D& objet) { retourner faux; } }\n"
+             "publique booléen G(D& objet) { retourner !objet; }\n"
+             "publique entier32 F(C& objet) { retourner objet + 7; }", 22, 5},
+            {"classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } };\n"
+             "classe D { publique: booléen opérateur!() { retourner vrai; } };\n"
+             "publique entier32 F(C& objet) { retourner objet + 7; }\n"
+             "publique booléen G(constante D& objet) { retourner !objet; }", 25, 3},
+            {"classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } };\n"
+             "classe D { publique: booléen opérateur!() { retourner vrai; } };\n"
+             "publique booléen G(constante D& objet) { retourner !objet; }\n"
+             "publique entier32 F(C& objet) { retourner objet + 7; }", 21, 3},
+            {DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB) + "\n"
+             "publique vide F(" + NomCollisionLiaisonA + "* a) {}\n"
+             "publique vide G(" + NomCollisionLiaisonA + "* a) {}\n"
+             "publique vide G(" + NomCollisionLiaisonB + "* b) {}\n"
+             "publique vide F(" + NomCollisionLiaisonB + "* b) {}", 119, 4},
+            {DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB) + "\n"
+             "publique vide F(" + NomCollisionLiaisonA + "* a) {}\n"
+             "publique vide G(entier32 a) {}\n"
+             "publique vide F(" + NomCollisionLiaisonB + "* b) {}\n"
+             "publique vide G(entier32 b) {}", 118, 5},
+        };
+        for (std::size_t index = 0; index < corpus.size(); ++index)
+            for (const auto& texte : {corpus[index].Source, TraduireCorpusConversions(corpus[index].Source)})
+            {
+                const auto nom = "priorite-groupes-invalides-" + std::to_string(index);
+                bool refuse = false;
+                try
+                {
+                    auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                    GsPP::AnalyseurSemantique().Analyser(programme);
+                }
+                catch (const GsPP::ErreurCompilation& erreur)
+                {
+                    refuse = true;
+                    Exiger(erreur.Ligne() == corpus[index].Ligne,
+                        "priorité de groupe non conforme à l'ordre source : " + nom
+                        + " (attendu ligne " + std::to_string(corpus[index].Ligne)
+                        + ", obtenu " + std::to_string(erreur.Ligne()) + ")");
+                }
+                Exiger(refuse, "corpus de priorité accepté par le bootstrap : " + nom);
+                ComparerErreurSemantique(syntaxe, semantique, texte, corpus[index].Code, nom);
+            }
+    }
+
+    /**
+     * <résumé>Vérifie de vraies collisions d'empreintes de liaison, sans modifier le bootstrap ni l'AST public.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterCollisionsNomsLiaisonSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const auto verifierEmpreinte = [](const std::string& a, const std::string& b,
+                                         std::string_view avant, std::string_view apres)
+        {
+            const auto calculer = [](const std::string& texte)
+            {
+                std::uint64_t empreinte = 1469598103934665603ULL;
+                for (const unsigned char octet : texte)
+                {
+                    empreinte ^= octet;
+                    empreinte *= 1099511628211ULL;
+                }
+                return empreinte;
+            };
+            Exiger(a != b && HacherTexte(a) != HacherTexte(b)
+                       && calculer(std::string(avant) + a + std::string(apres))
+                           == calculer(std::string(avant) + b + std::string(apres)),
+                "le corpus n'expose pas une collision réelle de liaison entre deux types distincts");
+        };
+        verifierEmpreinte(NomCollisionLiaisonA, NomCollisionLiaisonB, "", "*;");
+        verifierEmpreinte(NomCollisionRecepteurA, NomCollisionRecepteurB, "C&;", "*;");
+        verifierEmpreinte(NomCollisionCallbackA, NomCollisionCallbackB, "pointeur_fonction<vide(", "*)>;");
+        verifierEmpreinte(NomCollisionConstanteA, NomCollisionConstanteB, "constante ", "*;");
+        verifierEmpreinte(NomCollisionEspaceA, NomCollisionEspaceB, "N::", "*;");
+        verifierEmpreinte(NomCollisionQualifieA, NomCollisionQualifieB, "A::B::", "*;");
+        verifierEmpreinte(NomCollisionMethodeQualifieA, NomCollisionMethodeQualifieB, "N::C&;N::", "*;");
+        verifierEmpreinte(NomCollisionUtf8A, NomCollisionUtf8B, "Étage::", "*;");
+        const auto& a = NomCollisionLiaisonA;
+        const auto& b = NomCollisionLiaisonB;
+        const auto& ma = NomCollisionRecepteurA;
+        const auto& mb = NomCollisionRecepteurB;
+        const auto& ca = NomCollisionCallbackA;
+        const auto& cb = NomCollisionCallbackB;
+        const auto& qa = NomCollisionConstanteA;
+        const auto& qb = NomCollisionConstanteB;
+        const auto types = DeclarerTypesCollisionLiaison(a, b);
+        const auto methodes = DeclarerTypesCollisionLiaison(ma, mb);
+        const auto callbacks = DeclarerTypesCollisionLiaison(ca, cb);
+        const auto qualifies = DeclarerTypesCollisionLiaison(qa, qb);
+        const auto paire = "publique vide F(" + a + "* x) {} publique vide F(" + b + "* y) {}";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {types + paire, 119},
+            {types + "publique vide F(" + b + "* x) {} publique vide F(" + a + "* y) {}", 119},
+            {paire + types, 119},
+            {types + paire + " publique vide F(booléen x) {}", 119},
+            {types + "publique entier32 F(" + a + "* x) { retourner 1; } "
+             "publique entier64 F(" + b + "* y) { retourner 2; }", 119},
+            {types + "publique vide F(" + a + "**** x) {} publique vide F(" + b + "**** y) {}", 119},
+            {types + "publique vide F(" + a + "& x) {} publique vide F(" + b + "& y) {}", 119},
+            {types + "publique vide F(" + a + " x) {} publique vide F(" + b + " y) {}", 119},
+            {"énumération " + a + " { X }; énumération " + b + " { Y }; "
+             "publique vide F(" + a + " x) {} publique vide F(" + b + " y) {}", 119},
+            {types + "alias VueA = " + a + "; alias VueB = Copie; alias Copie = " + b + "; "
+             "publique vide F(VueA* x) {} publique vide F(VueB* y) {}", 119},
+            {types + "espace N { alias VueA = " + a + "; alias VueB = " + b + "; "
+             "publique vide F(VueA* x) {} publique vide F(VueB* y) {} }", 119},
+            {types + "publique vide F(\n" + a + " /* A */ * x\n) {}\n"
+             "publique vide F(\n" + b + " /* B */ * y\n) {}", 119},
+            {types + "publique vide F(" + a + "* x, entier32 y) {} "
+             "publique vide F(" + b + "* x, entier32 y) {}", 119},
+            {callbacks + "publique vide F(pointeur_fonction<vide(" + ca + "*)> x) {} "
+             "publique vide F(pointeur_fonction<vide(" + cb + "*)> y) {}", 119},
+            {qualifies + "publique vide F(constante " + qa + "* x) {} "
+             "publique vide F(constante " + qb + "* y) {}", 119},
+            {methodes + "classe C { publique: vide F(" + ma + "* x) {} vide F(" + mb + "* y) {} };", 119},
+            {methodes + "classe C { publique: constructeur(" + ma + "* x) {} constructeur(" + mb + "* y) {} };", 119},
+            {types + "publique entier32 opérateur+(" + a + "& x, entier32 y) { retourner y; } "
+             "publique entier32 opérateur+(" + b + "& x, entier32 y) { retourner y; }", 119},
+            {methodes + "classe Base { publique: virtuel vide F(" + ma + "* x) {} }; "
+             "classe C : publique Base { publique: vide F(" + ma + "* x) {} vide F(" + mb + "* y) {} };", 119},
+            {types + "entier32 Globale = Introuvable(); " + paire, 119},
+            {types + "publique vide F(" + a + "* x) { Introuvable(); } publique vide F(" + b + "* y) {}", 119},
+            {types + "publique vide F(" + a + "* x) {}\npublique vide F(" + b + "* x, booléen y) {}\n"
+             "publique vide F(" + a + "* x, booléen y) {}\npublique vide F(" + b + "* x) {}", 119},
+            {types + paire + " publique vide F(" + a + "* z) {}", 118},
+            {types + paire + " publique vide G(Introuvable x) {}", 100},
+            {types + paire + " structure S { S X; };", 57},
+            {types + paire + " alias Appeler = F;", 112},
+            {"espace N { " + DeclarerTypesCollisionLiaison(NomCollisionEspaceA, NomCollisionEspaceB)
+             + "publique vide F(" + NomCollisionEspaceA + "* x) {} "
+               "publique vide F(N::" + NomCollisionEspaceB + "* y) {} }", 119},
+            {"espace A { espace B { " + DeclarerTypesCollisionLiaison(NomCollisionQualifieA, NomCollisionQualifieB)
+             + "} } publique vide F(A::B::" + NomCollisionQualifieA + "* x) {} "
+               "publique vide F(A::B::" + NomCollisionQualifieB + "* y) {}", 119},
+            {"espace N { " + DeclarerTypesCollisionLiaison(NomCollisionMethodeQualifieA, NomCollisionMethodeQualifieB)
+             + "classe C { publique: vide F(N::" + NomCollisionMethodeQualifieA + "* x) {} "
+               "vide F(N::" + NomCollisionMethodeQualifieB + "* y) {} }; }", 119},
+            {"espace Étage { " + DeclarerTypesCollisionLiaison(NomCollisionUtf8A, NomCollisionUtf8B)
+             + "} publique vide F(Étage::" + NomCollisionUtf8A + "* x) {} "
+               "publique vide F(Étage::" + NomCollisionUtf8B + "* y) {}", 119},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "collision-nom-liaison-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(texte), code,
+                "collision-nom-liaison-en-" + std::to_string(index));
+        }
+        const std::vector<std::string> valides{
+            types + "publique vide F(" + a + "* x) {} publique vide G(" + b + "* y) {}",
+            types + "espace A { publique vide F(" + a + "* x) {} } espace B { publique vide F(" + b + "* y) {} }",
+            types + "publique vide F(" + a + "* x) {} publique vide F(" + b + "** y) {}",
+            types + "publique vide F(" + a + "& x) {} publique vide F(" + b + "* y) {}",
+            "publique vide F(entier32 x) {} publique vide F(entier64 y) {}",
+            "publique vide F(constante entier32* x) {} publique vide F(volatile entier32* y) {}",
+            "espace N { structure S {}; } alias Vue = N::S; "
+            "publique vide F(constante Vue** x) {} publique vide F(N::S& y) {}",
+            "espace A::B { structure S {}; } espace N { alias Vue = A::B::S; "
+            "publique vide F(Vue* x) {} publique vide F(entier32 x) {} }",
+            "publique vide F(pointeur_fonction<pointeur_fonction<entier32(constante entier32*)>(entier64&)> x) {} "
+            "publique vide F(pointeur_fonction<pointeur_fonction<entier64(constante entier32*)>(entier64&)> y) {}",
+            "classe C { publique: constructeur() {} constructeur(entier32 x) {} vide F() {} vide F(entier32 x) {} };",
+            "publique vide F() {} publique vide F(booléen x) {}",
+            "publique vide F(caractère x) {} publique vide F(octet x) {} publique vide F(naturel8 x) {}",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            AnalyserSemantiqueValide(syntaxe, semantique, valides[index],
+                "nom-liaison-distinct-fr-" + std::to_string(index));
+            AnalyserSemantiqueValide(syntaxe, semantique, TraduireCorpusConversions(valides[index]),
+                "nom-liaison-distinct-en-" + std::to_string(index));
+        }
+    }
+
+    void TesterRemplacementsVirtuelsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe C { publique: remplacer entier32 Lire() { retourner 1; } };", 116},
+            {"classe B { publique: entier32 Lire() { retourner 1; } }; classe D : publique B { "
+             "publique: remplacer entier32 Lire() { retourner 2; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+             "publique: remplacer entier64 Lire() { retourner 2; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire(entier32 x) { retourner x; } }; classe D : publique B { "
+             "publique: remplacer entier32 Lire(entier64 x) { retourner 2; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire(entier32 x) { retourner x; } }; classe D : publique B { "
+             "publique: remplacer entier32 Lire() { retourner 2; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+             "publique: remplacer entier32 Autre() { retourner 2; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire(entier32 x) { retourner x; } }; classe D : publique B { "
+             "publique: remplacer entier32 Lire(constante entier32 x) { retourner x; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire(entier32* x) { retourner 1; } }; classe D : publique B { "
+             "publique: remplacer entier32 Lire(entier32** x) { retourner 2; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire(entier32& x) { retourner x; } }; classe D : publique B { "
+             "publique: remplacer entier32 Lire(entier32 x) { retourner x; } };", 116},
+            {"classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+             "publique: entier32 Lire() { retourner 2; } };", 117},
+            {"classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+             "publique: virtuel entier32 Lire() { retourner 2; } };", 117},
+            {"classe C { publique: remplacer destructeur() {} };", 116},
+            {"classe B { publique: destructeur() {} }; classe D : publique B { "
+             "publique: remplacer destructeur() {} };", 116},
+            {"classe B { publique: virtuel destructeur() {} }; classe D : publique B { "
+             "publique: destructeur() {} };", 117},
+            {"classe B { publique: virtuel destructeur() {} }; classe D : publique B { "
+             "publique: virtuel destructeur() {} };", 117},
+            {"classe C { publique: remplacer entier32 opérateur+(entier32 x) { retourner x; } };", 116},
+            {"classe B { publique: virtuel entier32 opérateur+(entier32 x) { retourner x; } }; classe D : publique B { "
+             "publique: entier32 opérateur+(entier32 x) { retourner x; } };", 117},
+            {"classe A { publique: virtuel entier32 Lire() { retourner 1; } }; classe B : publique A { "
+             "publique: remplacer entier32 Lire() { retourner 2; } }; classe C : publique B { "
+             "publique: entier32 Lire() { retourner 3; } };", 117},
+            {"classe A { publique: virtuel entier32 Lire() { retourner 1; } }; classe B {}; classe D : publique B { "
+             "publique: remplacer entier32 Lire() { retourner 2; } };", 116},
+            {"espace A { structure S {}; } espace N { structure S {}; classe B { publique: "
+             "virtuel entier32 Lire(A::S* x) { retourner 1; } }; classe D : publique B { publique: "
+             "remplacer entier32 Lire(N::S* x) { retourner 2; } }; }", 116},
+            {"classe B { publique: virtuel entier32 Lire(pointeur_fonction<entier32(entier32)> x) { retourner 1; } }; "
+             "classe D : publique B { publique: remplacer entier32 Lire(pointeur_fonction<entier32(entier64)> x) "
+             "{ retourner 2; } };", 116},
+            {"classe B { privée: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+             "privée: entier32 Lire() { retourner 2; } };", 117},
+            {"classe B { publique: virtuel entier32 Lire() { retourner 1; } }; alias Vue = B; classe D : publique Vue { "
+             "publique: entier32 Lire() { retourner 2; } };", 117},
+            {"classe D : publique B { publique: remplacer entier32 Lire() { retourner 1; } }; "
+             "classe B { publique: remplacer entier32 Autre() { retourner 2; } };", 116},
+            {"classe C {\n publique: remplacer entier32 Lire() { retourner 1; }\n};\n"
+             "classe B { publique: remplacer entier32 Autre() { retourner 2; } };", 116},
+            {"classe C { publique: remplacer entier32 Lire(Inconnu x) { retourner 1; } };", 100},
+            {"classe C { publique: remplacer entier32 Lire(entier32 a, entier32 b, entier32 c, entier32 d) "
+             "{ retourner 1; } };", 106},
+            {"classe C { publique: remplacer entier32 opérateur+(entier32 x, entier32 y) { retourner x; } };", 59},
+            {"classe C { C Champ; publique: remplacer entier32 Lire() { retourner 1; } };", 57},
+            {"classe C { alias Vue = Absente; publique: remplacer entier32 Lire() { retourner 1; } };", 108},
+            {"classe C { publique: remplacer entier32 Lire() { retourner Absente; } };", 116},
+            {"classe C { publique: remplacer entier32 Lire() { retourner 1; } }; C Globale;", 116}};
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto& [texte, code] = refus[index];
+            ComparerErreurSemantique(syntaxe, semantique, texte, code,
+                "remplacement-refus-fr-" + std::to_string(index));
+            ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(texte), code,
+                "remplacement-refus-en-" + std::to_string(index));
+        }
+        const std::vector<std::string> valides{
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+            "publique: remplacer entier32 Lire() { retourner 2; } };",
+            "classe D : publique B { publique: remplacer entier32 Lire() { retourner 2; } }; "
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } };",
+            "classe A { publique: virtuel entier32 Lire() { retourner 1; } }; classe B : publique A {}; "
+            "classe C : publique B { publique: remplacer entier32 Lire() { retourner 2; } };",
+            "classe A { publique: virtuel entier32 Lire() { retourner 1; } }; classe B : publique A { "
+            "publique: remplacer entier32 Lire() { retourner 2; } }; classe C : publique B { "
+            "publique: remplacer entier32 Lire() { retourner 3; } };",
+            "classe B { publique: virtuel entier32 Lire(entier32 x) { retourner x; } "
+            "virtuel entier64 Lire(entier64 x) { retourner x; } }; classe D : publique B { "
+            "publique: remplacer entier32 Lire(entier32 x) { retourner x; } };",
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+            "publique: entier64 Lire() { retourner 2; } };",
+            "classe B { publique: virtuel entier32 Lire(entier32 x) { retourner x; } }; classe D : publique B { "
+            "publique: entier32 Lire(entier64 x) { retourner 2; } };",
+            "classe B { privée: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+            "publique: remplacer entier32 Lire() { retourner 2; } };",
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+            "privée: remplacer entier32 Lire() { retourner 2; } };",
+            "espace N { structure S {}; alias Vue = S; classe B { publique: virtuel entier32 Lire(N::S* x) "
+            "{ retourner 1; } }; classe D : publique B { publique: remplacer entier32 Lire(N::Vue* x) "
+            "{ retourner 2; } }; }",
+            "classe B { publique: virtuel entier32 Lire(pointeur_fonction<entier32(entier32)> x) { retourner 1; } }; "
+            "classe D : publique B { publique: remplacer entier32 Lire(pointeur_fonction<entier32(entier32)> x) "
+            "{ retourner 2; } };",
+            "classe B { publique: virtuel entier32 Lire(constante entier32& x) { retourner x; } }; classe D : publique B { "
+            "publique: remplacer entier32 Lire(constante entier32& x) { retourner x; } };",
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; alias Vue = B; alias Copie = Vue; "
+            "classe D : publique Copie { publique: remplacer entier32 Lire() { retourner 2; } };",
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { "
+            "publique: virtuel remplacer entier32 Lire() { retourner 2; } };",
+            "classe B { publique: virtuel destructeur() {} }; classe D : publique B { "
+            "publique: remplacer destructeur() {} };",
+            "classe B { publique: virtuel entier32 opérateur+(entier32 x) { retourner x; } }; classe D : publique B { "
+            "publique: remplacer entier32 opérateur+(entier32 x) { retourner x; } };",
+            "classe B { publique: virtuel booléen opérateur!() { retourner vrai; } }; classe D : publique B { "
+            "publique: remplacer booléen opérateur!() { retourner faux; } };",
+            "classe A { publique: virtuel entier32 Lire() { retourner 1; } }; classe B : publique A { "
+            "publique: entier64 Lire() { retourner 2; } }; classe C : publique B { "
+            "publique: remplacer entier32 Lire() { retourner 3; } };",
+            "structure S { entier32 X; }; classe B { publique: virtuel S Lire(entier32 x) { retourner {x}; } }; "
+            "classe D : publique B { publique: remplacer S Lire(entier32 x) { retourner {x}; } };",
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; "
+            "classe C { publique: virtuel entier32 Lire() { retourner 2; } }; "
+            "classe D : publique B { publique: remplacer entier32 Lire() { retourner 3; } };"};
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            AnalyserSemantiqueValide(syntaxe, semantique, valides[index],
+                "remplacement-valide-fr-" + std::to_string(index));
+            AnalyserSemantiqueValide(syntaxe, semantique, TraduireCorpusConversions(valides[index]),
+                "remplacement-valide-en-" + std::to_string(index));
+        }
+        const auto verifierDisposition = [&](const std::string& source, std::string_view nomClasse)
+        {
+            auto programme = GsPP::AnalyseurSyntaxique(
+                GsPP::Lexeur(source, "disposition-virtuelle").Analyser(), "disposition-virtuelle").Analyser();
+            GsPP::AnalyseurSemantique().Analyser(programme);
+            const auto type = std::find_if(programme.Structures.begin(), programme.Structures.end(),
+                [&](const auto& structure) { return structure.Nom == nomClasse; });
+            Exiger(type != programme.Structures.end() && type->EstPolymorphe,
+                "classe polymorphe absente du bootstrap");
+            const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, source, "disposition-virtuelle");
+            const auto variable = std::find_if(resultat.Noeuds.begin(), resultat.Noeuds.end(),
+                [&](const auto& noeud) { return noeud.Genre == 19 && noeud.HachageNom == HacherTexte("objets"); });
+            Exiger(variable != resultat.Noeuds.end(), "tableau d'objets polymorphes absent");
+            const auto indexVariable = static_cast<std::uint64_t>(std::distance(resultat.Noeuds.begin(), variable));
+            std::vector<std::uint64_t> decalages;
+            for (const auto& resolution : resultat.Resolutions)
+                if (resolution.IndexNoeud == indexVariable && (resolution.Drapeaux & 262144U) != 0)
+                {
+                    const auto& declaration = resultat.Noeuds[resultat.Symboles[resolution.IndexSymbole].IndexNoeud];
+                    if (declaration.Genre == 6 && declaration.HachageNom == HacherTexte(nomClasse))
+                        decalages.push_back(resolution.HachageType);
+                }
+            Exiger(decalages == std::vector<std::uint64_t>{type->DecalageTableVirtuelle,
+                       type->Taille + type->DecalageTableVirtuelle},
+                "disposition polymorphe différente du bootstrap : " + std::string(nomClasse));
+        };
+        for (const auto& [texte, classe] : std::vector<std::pair<std::string, std::string>>{
+                 {"classe B { publique: octet Marque; virtuel destructeur() {} }; "
+                  "publique vide F() { B objets[2]; }", "B"},
+                 {"classe B { publique: octet Marque; virtuel destructeur() {} }; classe D : publique B { "
+                  "publique: entier32 Fin; remplacer destructeur() {} }; publique vide F() { D objets[2]; }", "D"},
+                 {"classe B { publique: octet Marque; }; classe D : publique B { publique: octet Fin; "
+                  "virtuel booléen opérateur!() { retourner vrai; } }; publique vide F() { D objets[2]; }", "D"}})
+        {
+            verifierDisposition(texte, classe);
+            verifierDisposition(TraduireCorpusConversions(texte), classe);
+        }
+    }
+
     void TesterAliasesMethodesSemantiques(
         AnalyseurDeclarationsAutoHeberge syntaxe,
         AnalyseurSemantiqueAutoHeberge semantique)
@@ -4210,6 +5505,14 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         TesterAliasesChampsSemantiques(syntaxe, semantique);
         TesterAliasesRacinesSemantiques(syntaxe, semantique);
         TesterAliasesMethodesSemantiques(syntaxe, semantique);
+        TesterDeclarationsHeritageSemantiques(syntaxe, semantique);
+        TesterDoublonsSurchargesSemantiques(syntaxe, semantique);
+        TesterCollisionsSignaturesNonLieesSemantiques(syntaxe, semantique);
+        TesterCollisionsNomsLiaisonSemantiques(syntaxe, semantique);
+        TesterAppelsGroupesMixtesSemantiques(syntaxe, semantique);
+        TesterOperateursGroupesMixtesSemantiques(syntaxe, semantique);
+        TesterPrioritesGroupesInvalidesSemantiques(syntaxe, semantique);
+        TesterRemplacementsVirtuelsSemantiques(syntaxe, semantique);
 
         const std::string francais =
             "espace Semantique {\n"

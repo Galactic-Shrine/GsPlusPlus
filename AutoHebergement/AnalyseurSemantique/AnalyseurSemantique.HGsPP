@@ -258,6 +258,20 @@ espace GalacticShrine::GsPP::Autohebergement {
         AmbiguousAliasTarget = 111,
         AliasFonctionSurchargeeAmbigu = 112,
         AmbiguousOverloadedFunctionAlias = 112,
+        HeritageNonPublic = 113,
+        NonPublicInheritance = 113,
+        BaseClasseInvalide = 114,
+        InvalidClassBase = 114,
+        AutoHeritageClasse = 115,
+        ClassSelfInheritance = 115,
+        RemplacementVirtuelIncompatible = 116,
+        NoMatchingVirtualOverride = 116,
+        RemplacementVirtuelRequis = 117,
+        VirtualOverrideRequired = 117,
+        SurchargeDeclareePlusieursFois = 118,
+        OverloadDeclaredMoreThanOnce = 118,
+        CollisionSymboleFonction = 119,
+        FunctionSymbolCollision = 119,
     };
 
     /**
@@ -289,6 +303,7 @@ espace GalacticShrine::GsPP::Autohebergement {
     /**
      * <résumé>Drapeaux de résolution sémantique.</résumé>
      * @etc. Les drapeaux de résolution sémantique sont utilisés pour indiquer les propriétés des résolutions.
+     * @etc. Methode décrit la déclaration effectivement choisie, y compris dans un groupe d'opérateurs mixte.
      **/
     énumération DrapeauResolutionSemantique {
 

@@ -891,11 +891,21 @@ namespace GsPP
     {
         _Fonctions.clear();
         _Surcharges.clear();
+        std::vector<std::string> ordreGroupes;
         for (auto& fonction : programme.Fonctions)
-            _Surcharges[fonction.NomSourceComplet()].push_back(&fonction);
-
-        for (auto& [nom, groupe] : _Surcharges)
         {
+            auto [groupe, nouveau] = _Surcharges.try_emplace(fonction.NomSourceComplet());
+            if (nouveau) ordreGroupes.push_back(groupe->first);
+            groupe->second.push_back(&fonction);
+        }
+
+        /**
+         * <résumé>La première déclaration du groupe fixe sa priorité, indépendamment du hachage de l'hôte.</résumé>
+         * @etc. À l'intérieur du groupe, conserver l'ordre des paires de déclarations du langage.
+         **/
+        for (const auto& nom : ordreGroupes)
+        {
+            auto& groupe = _Surcharges.at(nom);
             for (std::size_t gauche = 0; gauche < groupe.size(); ++gauche)
                 for (std::size_t droite = gauche + 1; droite < groupe.size(); ++droite)
                 {

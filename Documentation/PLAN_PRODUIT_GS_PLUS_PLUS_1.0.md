@@ -305,8 +305,32 @@ elle ne clôt pas le frontend 0.27.
   puis appels via alias de méthodes non liées, récepteur mutable `Classe&`
   explicite, visibilité des appels directs, signatures de callbacks et
   relocalisations vers la méthode canonique, sans modification de l'AST public ;
+  puis déclarations d'héritage, résolution canonique des bases dans l'espace
+  déclarant, refus des bases non publiques, absentes ou non-classes et de
+  l'auto-héritage, cycles indirects, priorités et diagnostics 113–115 ; cette
+  tranche est locale, postérieure à la publication alpha.10 ; puis remplacements
+  de méthodes, destructeurs et opérateurs virtuels, signatures canoniques sans
+  récepteur, diagnostics 116–117 et dispositions de classes possédant uniquement
+  un destructeur ou opérateur virtuel, dans le périmètre différentiel testé ;
+  puis doublons de surcharges libres et membres, constructeurs, destructeurs
+  et opérateurs, paramètres canoniques et alias de types, retour exclu de
+  l'identité d'une surcharge, diagnostic bilingue 118 ; puis comparaison des
+  signatures non liées, récepteur implicite en première position, et collisions
+  méthode/fonction libre de même nom complet dans un espace homonyme de la
+  classe ; puis collisions entre symboles de liaison calculés pour des
+  surcharges distinctes, affichage canonique des paramètres et récepteur
+  implicite, espaces qualifiés ou UTF-8 et diagnostic bilingue 119 ; puis
+  sélection des appels qualifiés, par objet ou pointeur, dans les groupes
+  mêlant méthodes non liées et fonctions libres, avec score du récepteur,
+  visibilité après sélection, ambiguïtés, masquage et déclaration effectivement
+  retenue comparés au bootstrap, dans la matrice locale du 3 octobre 2026 ; puis
+  groupes d'opérateurs unaires et binaires mixtes, sélection avec récepteur et
+  visibilité après score ; priorité déterministe des doublons entre groupes
+  indépendants suivant leur première déclaration, collisions de liaison et
+  parcours des corps dans l'ordre source, dans le périmètre testé ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
-  familles sémantiques, dont les contraintes restantes d'héritage ;
+  familles sémantiques, notamment les erreurs multiples à l'intérieur d'un
+  même corps et les interactions de priorité entre passes non encore testées ;
   raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.

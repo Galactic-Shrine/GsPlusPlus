@@ -10,6 +10,339 @@
 
 # Journal des modifications
 
+## Opérateurs mixtes et priorité des groupes invalides — développement après Gs++ 0.27.0-alpha.10 — 2026-10-03
+
+### Français
+
+- sélection des opérateurs unaires et binaires dans le groupe canonique complet,
+  membres et fonctions libres compris ; récepteur comparé en première position,
+  constance, références, adaptations de constantes, héritage et masquage,
+  visibilité après sélection et drapeau `Methode` de la cible réelle ;
+- ordre des groupes de surcharges du bootstrap rendu déterministe par leur
+  première déclaration, sans dépendre de l'itération d'une table de hachage ;
+  priorité des doublons avant les collisions de liaison et corps ; parcours
+  auto-hébergé des déclarations dans l'ordre source, sans inverser les fonctions
+  indépendantes ni modifier le parcours interne des arguments d'un appel ;
+- 38 corpus valides français/anglais vérifiant la cible, le retour et les
+  drapeaux ; 26 refus d'opérateurs, 28 refus de priorité et 12 refus d'émission
+  sans écriture partielle ; total différentiel : 1 085 ; quatre corpus
+  supplémentaires d'émission de données et relocalisations ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild et
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  392 687 octets, 75 exports et deux imports ; AST public, diagnostics 0–119,
+  formats 1.0 et ABI 1 inchangés ;
+- trois en-têtes générés `VersionProduit.hpp` restés à alpha.9 régénérés depuis
+  `VERSION` : Debug natif Gs++, configurations Windows et Linux du consommateur
+  local ; aucune reconstruction de leurs exécutables Debug ou système revendiquée ;
+- travail local non commité et non publié ; version et archives alpha.10
+  inchangées. Les priorités entre erreurs dans un même corps et entre passes
+  non couvertes restent à étendre ; pas de backend auto-hébergé ajouté.
+
+### English
+
+- select unary and binary operators from the complete canonical group,
+  including members and free functions; score the receiver as the first
+  parameter, with constness, references, constant adaptation, inheritance and
+  hiding; check visibility after selection and flag only the actual method;
+- make bootstrap overload-group iteration deterministic by first declaration,
+  independent of host hash-table order; check duplicate overloads before link
+  collisions and bodies; process self-hosted declarations in source order
+  without reversing independent functions or changing argument traversal
+  inside calls;
+- 38 valid French/English corpora check the selected declaration, return type
+  and flags; 26 operator rejections, 28 priority rejections and 12 emission
+  rejections without partial writes; differential total 1,085; four additional
+  data and relocation emission corpora;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation, and
+  20/20 conformance on all three builds; identical 392,687-byte frontends,
+  75 exports and two imports; public AST, diagnostics 0–119, formats 1.0 and
+  ABI 1 unchanged;
+- regenerate three stale alpha.9 `VersionProduit.hpp` headers from `VERSION`:
+  native Gs++ Debug and the local consumer's Windows/Linux configurations;
+  no claim of rebuilding their Debug or system executables;
+- local, uncommitted and unpublished work; alpha.10 version and archives
+  unchanged. Priority among errors within one body and untested interactions
+  between passes still need coverage; no self-hosted backend added.
+
+## Appels de groupes mixtes — développement après Gs++ 0.27.0-alpha.10 — 2026-10-03
+
+### Français
+
+- sélection sur tout le groupe de fonctions de même nom source complet,
+  méthodes non liées et fonctions libres comprises ; appels qualifiés et
+  appels par point/flèche alignés sur le bootstrap, sans retenir une première
+  méthode ni exclure les fonctions libres du groupe ;
+- récepteur évalué comme premier paramètre non lié, avec score de conversion,
+  qualifications, héritage et masquage des groupes des bases ; visibilité
+  contrôlée après sélection, ambiguïtés conservées et drapeau `Methode` réservé
+  aux déclarations de méthodes effectivement choisies ;
+- 66 corpus valides français/anglais comparant aussi la déclaration sélectionnée,
+  le retour et les drapeaux ; 46 refus différentiels et huit refus d'émission
+  sans écriture partielle ; total différentiel : 1 019 ; quatre corpus
+  supplémentaires d'émission de données et relocalisations avec appels mixtes ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives et
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  392 399 octets, 75 exports et deux imports ; bootstrap, AST public,
+  diagnostics 0–119, formats 1.0 et ABI 1 inchangés ;
+- tranche locale non commitée et non publiée ; version et publication alpha.10
+  inchangées. Les combinaisons restantes, notamment les groupes d'opérateurs
+  mixtes et les priorités entre groupes invalides indépendants, restent à
+  compléter ; cette tranche n'ajoute pas de backend auto-hébergé.
+
+### English
+
+- select from the complete group sharing a fully qualified source name,
+  including unbound methods and free functions; qualified, dot and arrow calls
+  match the bootstrap without picking the first method or excluding the free
+  functions in the group;
+- evaluate the receiver as the first unbound parameter, with conversion scoring,
+  qualifiers, inheritance and base-group hiding; check visibility after
+  selection, retain ambiguities and set the `Method` flag only for a selected
+  method declaration;
+- 66 valid French/English corpora also compare the selected declaration, return
+  type and flags; 46 differential rejections and eight emission rejections
+  without partial writes; differential total 1,019; four additional data and
+  relocation emission corpora containing mixed calls;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation, and
+  20/20 conformance on all three builds; identical 392,399-byte frontend images,
+  75 exports and two imports; bootstrap, public AST, diagnostics 0–119,
+  formats 1.0 and ABI 1 unchanged;
+- local, uncommitted and unpublished work; alpha.10 version and release unchanged.
+  Remaining combinations, including mixed operator groups and diagnostic
+  priority across independent invalid groups, still need coverage; no
+  self-hosted backend is added in this tranche.
+
+## Collisions de symboles de liaison — développement après Gs++ 0.27.0-alpha.10 — 2026-10-03
+
+### Français
+
+- contrôle des collisions entre noms de liaison calculés pour des surcharges
+  distinctes : affichage canonique des paramètres aligné sur `TypeGs::Afficher()`
+  et empreinte alignée sur `SuffixeSurcharge`, avec récepteur implicite en
+  première position et retour exclu ; nouveau diagnostic bilingue 119 ;
+- alias, callbacks imbriqués, qualifications, espaces qualifiés ou imbriqués et
+  noms UTF-8 couverts ; contextes de noms et empreintes privés, sans modifier
+  l'AST public, les codes 0 à 118 ni les formats 1.0 et l'ABI 1 ;
+- collisions réelles vérifiées indépendamment dans les tests, sans modifier
+  le bootstrap de référence ; première collision signalée à la fonction
+  ultérieure dans l'ordre source, avant les remplacements virtuels et les corps ;
+- 60 nouveaux refus différentiels français/anglais, huit refus d'émission sans
+  écriture partielle, 24 corpus valides et quatre corpus d'émission valides ;
+  total différentiel : 965 ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives et
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  388 319 octets, 75 exports et deux imports ;
+- tranche locale non commitée et non publiée ; version et publication alpha.10
+  inchangées. La sélection générale des appels de groupes mixtes, les priorités
+  entre groupes invalides indépendants et le backend auto-hébergé restent
+  hors du périmètre généralisé.
+
+### English
+
+- check computed link-name collisions between distinct overloads: canonical
+  parameter spelling matches `TypeGs::Afficher()` and the fingerprint matches
+  `SuffixeSurcharge`, including the implicit receiver as the first parameter
+  and excluding the return type; new bilingual diagnostic 119;
+- cover aliases, nested callbacks, qualifiers, qualified or nested namespaces
+  and UTF-8 names; private naming contexts and fingerprints, preserving the
+  public AST, codes 0 through 118, formats 1.0 and ABI 1;
+- independently verify real collisions in tests without modifying the reference
+  bootstrap; report the first collision at the later function in source order,
+  before virtual override and body checks;
+- 60 new French/English differential rejections, eight emission rejections
+  without partial writes, 24 valid corpora and four valid emission corpora;
+  differential total 965;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation, and
+  20/20 conformance on all three builds; identical 388,319-byte frontend images,
+  75 exports and two imports;
+- local, uncommitted and unpublished work; alpha.10 version and release unchanged.
+  General call selection for mixed groups, diagnostic priority across independent
+  invalid groups and the self-hosted backend remain outside the generalized scope.
+
+## Signatures non liées — développement après Gs++ 0.27.0-alpha.10 — 2026-10-03
+
+### Français
+
+- correction des collisions méthode/fonction libre de même nom complet dans
+  un espace homonyme de la classe : récepteur implicite comparé comme le
+  premier paramètre de la signature non liée, diagnostic 118 réutilisé ;
+- espaces imbriqués, déclarations anticipées, alias de classe, qualifications,
+  références, callbacks, opérateurs et limite d'arité couverts ; retour et
+  visibilité exclus de l'identité, sans changer les clés virtuelles ;
+- 28 corpus valides français/anglais, 44 refus différentiels et huit refus
+  d'émission sans écriture partielle ; total différentiel : 897 ; quatre
+  corpus supplémentaires d'émission de données et relocalisations en présence
+  de signatures mixtes distinctes ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives et
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  376 287 octets, 75 exports et deux imports ; AST public, formats 1.0, ABI 1
+  et diagnostics existants inchangés ;
+- tranche locale non commitée et non publiée ; version et publication alpha.10
+  inchangées. Les collisions de noms de liaison calculés, la sélection générale
+  des appels de groupes mixtes et le backend auto-hébergé restent hors du
+  périmètre validé.
+
+### English
+
+- fix collisions between methods and free functions with the same qualified
+  source name in a namespace sharing the class name: compare the implicit
+  receiver as the first unbound-signature parameter, reusing diagnostic 118;
+- cover nested namespaces, forward declarations, class aliases, qualifiers,
+  references, callbacks, operators and the arity limit; return types and
+  visibility do not distinguish an overload, without changing virtual keys;
+- 28 valid French/English corpora, 44 differential rejections and eight emission
+  rejections without partial writes; differential total 897; four additional
+  data and relocation emission corpora containing distinct mixed signatures;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation, and
+  20/20 conformance on all three builds; identical 376,287-byte frontend images,
+  75 exports and two imports; public AST, formats 1.0, ABI 1 and existing
+  diagnostics unchanged;
+- local, uncommitted and unpublished work; alpha.10 version and release unchanged.
+  Computed link-name collisions, general call selection for mixed groups and
+  the self-hosted backend remain outside the validated scope.
+
+## Doublons de surcharges — développement après Gs++ 0.27.0-alpha.10 — 2026-10-02
+
+### Français
+
+- refus des signatures déclarées plusieurs fois, même inutilisées : nom source
+  complet et paramètres canoniques, récepteur des méthodes compris, sans tenir
+  compte du retour, des noms de paramètres ou de la visibilité ; diagnostic
+  bilingue 118 à la seconde déclaration de la première paire identique ;
+- fonctions libres, méthodes, constructeurs, destructeurs et opérateurs libres
+  ou membres, alias de types et déclarations anticipées ; prototypes externes
+  suivis d'une définition identique dans le même programme analysé refusés
+  comme dans le bootstrap ;
+- contrôle placé avant les remplacements virtuels et les corps, après les
+  types, signatures et dispositions ; priorité des paires au sein d'un même
+  groupe vérifiée sans généraliser celle de plusieurs groupes invalides ;
+- 40 corpus valides français/anglais, 68 refus différentiels et dix refus
+  d'émission sans écriture partielle ; total différentiel : 845 ; quatre
+  corpus supplémentaires d'émission de données et relocalisations avec appels
+  de surcharges distinctes, sans changer la limite des adresses surchargées ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives et
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  376 031 octets, 75 exports et deux imports ; AST public, formats 1.0, ABI 1
+  et diagnostics existants inchangés ;
+- tranche locale non commitée et non publiée ; version et publication alpha.10
+  inchangées. Collisions de symboles de liaison, indices et émission des tables
+  virtuelles du futur backend auto-hébergé restent hors du périmètre validé.
+
+### English
+
+- reject repeated signatures, including unused declarations: canonical source
+  names and parameter types, including method receivers, without using return
+  types, parameter names or visibility to distinguish an overload; bilingual
+  diagnostic 118 at the second declaration of the first identical pair;
+- free functions, methods, constructors, destructors, free and member operators,
+  type aliases and forward declarations; reject an external prototype followed
+  by an identical definition in the same analyzed program, matching the bootstrap;
+- validate after types, signatures and layouts, before virtual overrides and
+  bodies; check pair-order priority within one group without generalizing
+  ordering across several independent invalid groups;
+- 40 valid French/English corpora, 68 differential rejections and ten emission
+  rejections without partial writes; differential total 845; four additional
+  data and relocation emission corpora calling distinct overloads, preserving
+  the bootstrap restriction on addresses of overloaded functions;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation, and
+  20/20 conformance on all three builds; identical 376,031-byte frontend images,
+  75 exports and two imports; public AST, formats 1.0, ABI 1 and existing
+  diagnostics unchanged;
+- local, uncommitted and unpublished work; alpha.10 version and release unchanged.
+  Link-symbol collisions, virtual-slot indices and table emission by the future
+  self-hosted backend remain outside the validated scope.
+
+## Remplacements virtuels — développement après Gs++ 0.27.0-alpha.10 — 2026-10-02
+
+### Français
+
+- validation des méthodes virtuelles héritées, même inutilisées : `remplacer`
+  exige une clé compatible et une redéfinition compatible exige `remplacer` ;
+  diagnostics bilingues 116–117 à la position de la méthode ;
+- clés fondées sur le nom source, les paramètres explicites et le retour
+  canoniques, sans récepteur implicite ; destructeurs et opérateurs inclus,
+  hiérarchies contrôlées base puis dérivée, indépendamment de l'ordre lexical ;
+- correction de la détection du polymorphisme pour les classes ne possédant
+  qu'un destructeur ou opérateur virtuel ; offsets de tables et pas de tableaux
+  d'objets comparés aux dispositions calculées par le bootstrap ;
+- 46 corpus valides français/anglais, 64 refus différentiels et huit refus
+  d'émission sans écriture partielle ; total différentiel : 767 ; quatre
+  corpus supplémentaires d'émission de globales et de relocalisations ;
+- comparaison des données utilisateur du bootstrap en isolant ses tables
+  virtuelles de backend, qui ne sont pas émises par l'API de globales ;
+- CTest Windows 5/5, GNU/Linux 6/6, validation MSBuild native et conformité
+  20/20 sur les trois constructions ; images frontend identiques de 374 367
+  octets, 75 exports et deux imports ; AST public, formats 1.0 et ABI 1 inchangés ;
+- tranche locale non commitée et non publiée ; version et publication alpha.10
+  inchangées. Collisions de surcharges, indices et émission des tables virtuelles
+  du futur backend auto-hébergé restent hors du périmètre validé.
+
+### English
+
+- validate inherited virtual methods, including unused declarations: `override`
+  requires a matching key, and a matching redefinition requires `override`;
+  bilingual diagnostics 116–117 at the method position;
+- match canonical source names, explicit parameters and return types without
+  the implicit receiver; include destructors and operators, validating bases
+  before derived classes regardless of lexical declaration order;
+- detect polymorphism for classes with only a virtual destructor or operator;
+  compare table offsets and object-array strides with bootstrap layouts;
+- 46 valid French/English corpora, 64 differential rejections and eight emission
+  rejections without partial writes; differential total 767; four additional
+  global-data and relocation emission corpora;
+- compare bootstrap user data separately from backend-generated virtual tables,
+  which are not emitted by the frontend global-data API;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild validation and 20/20
+  conformance on all three builds; identical 374,367-byte frontend images,
+  75 exports and two imports; public AST, formats 1.0 and ABI 1 unchanged;
+- local, uncommitted and unpublished work; alpha.10 version and release unchanged.
+  Overload collisions, slot indices and virtual-table emission by the future
+  self-hosted backend remain outside the validated scope.
+
+## Déclarations d'héritage — développement après Gs++ 0.27.0-alpha.10 — 2026-10-02
+
+### Français
+
+- validation des bases de classes, même inutilisées : héritage privé/protégé,
+  bases absentes ou non-classes et auto-héritage direct ou via alias refusés
+  avec les positions du bootstrap ; diagnostics bilingues 113–115, réemploi
+  des codes 100 pour le type absent et 57 pour les cycles indirects ;
+- résolution canonique des bases avec priorité au nom écrit puis au nom relatif
+  à l'espace déclarant, y compris les noms qualifiés et chaînes d'alias ; cache
+  privé partagé par les dispositions, conversions et recherches de membres ;
+- conflits racines, énumérations et alias résolus avant l'héritage, puis types
+  de champs et signatures, conformément aux priorités vérifiées du bootstrap ;
+- 28 corpus valides français/anglais, 60 refus différentiels et 16 refus
+  d'émission sans écriture partielle : total différentiel de 695 ; quatre
+  nouveaux corpus d'émission valides comparés octet par octet ;
+- CTest Windows 5/5, GNU/Linux 6/6, validation MSBuild native et conformité
+  20/20 sur les trois constructions ; images frontend identiques de 368 879
+  octets, 75 exports et deux imports ; AST public, formats 1.0 et ABI 1 inchangés ;
+- développement local non publié, sans modification des paquets, du tag ni de
+  la matrice alpha.10 ; `VERSION` reste à `0.27.0-alpha.10`. Les contraintes de
+  remplacement virtuel et les autres familles sémantiques restent à compléter.
+
+### English
+
+- validate unused class bases as well: reject private/protected inheritance,
+  missing or non-class bases, and direct or aliased self-inheritance at the
+  bootstrap positions; bilingual diagnostics 113–115, reusing 100 for unknown
+  types and 57 for indirect cycles;
+- resolve canonical bases using the written name before its namespace-relative
+  form, including qualified names and alias chains; share a private cache
+  between layouts, conversions and member lookup;
+- check root conflicts, enumerations and aliases before inheritance, then
+  field types and signatures, following tested bootstrap diagnostic priorities;
+- 28 valid French/English corpora, 60 differential rejections and 16 emission
+  rejections without partial writes: differential total 695; four additional
+  valid emission corpora compared byte for byte;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild validation and 20/20
+  conformance on all three builds; identical 368,879-byte frontend images,
+  75 exports and two imports; public AST, formats 1.0 and ABI 1 unchanged;
+- unpublished local development, leaving the alpha.10 packages, tag and release
+  matrix unchanged; `VERSION` remains `0.27.0-alpha.10`. Virtual-override
+  constraints and other semantic families remain to be completed.
+
 ## Gs++ 0.27.0-alpha.10 — 2026-10-02
 
 ### Français

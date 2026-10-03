@@ -307,8 +307,8 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **619 negative corpora** in alpha.10 sources (**257** in the published
-  alpha.9), whose code, line, and column are checked;
+  with **1,085 negative corpora** in development sources (**619** in the published
+  alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
 - context-aware named types in signatures, distinct same-name types, calls
@@ -323,6 +323,30 @@ All normative documentation is maintained in Markdown as its primary source.
 - calls through unbound method aliases with an explicit `Class&` receiver,
   argument checking and direct-call visibility checks, callback signatures and
   relocations targeting the canonical method;
+- inheritance declarations and canonical bases, rejecting unknown, non-class
+  or non-public bases, self-inheritance and indirect cycles, locally validated
+  after alpha.10;
+- virtual method, destructor and operator overrides, using canonical signatures
+  and base-before-derived ordering; polymorphic object-array layouts compared
+  with the bootstrap within the tested scope;
+- reject repeated overload declarations using canonical parameters, including
+  type aliases, methods, constructors, destructors and free or member operators;
+  a different return type alone does not distinguish an overload;
+- compare unbound signatures with the implicit receiver as their first parameter,
+  including collisions between a method and a free function with the same
+  fully qualified name in a namespace sharing the class name;
+- reject computed link-symbol collisions between distinct overloads, with
+  canonical types, aliases, callbacks, implicit receivers and qualified or UTF-8
+  namespaces; bilingual diagnostic 119 aligned with the bootstrap;
+- select qualified, object and pointer calls in groups mixing methods and free
+  functions with the same fully qualified name; compare the selected declaration,
+  return type and flags, checking visibility after selection and preserving
+  ambiguity diagnostics;
+- select unary and binary operators from mixed groups, including receiver,
+  constness, references, inheritance, hiding and visibility;
+- deterministic invalid-overload-group priority by first declaration, followed
+  by link collisions and function bodies in source order, verified for the
+  covered independent cases;
 - self-hosted global data and function relocation emission, comparing bytes,
   alignments, targets, and caller-buffer bounds against the bootstrap.
 

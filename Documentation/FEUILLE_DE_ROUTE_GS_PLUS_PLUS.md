@@ -262,7 +262,26 @@ Les prochains jalons sont donc réservés à Gs++ :
    et relocalisations vers les fonctions canoniques ; puis appels via alias de
    méthodes non liées, récepteur `Classe&` explicite, visibilité des appels
    directs, callbacks et relocalisations vers les méthodes canoniques ;
-   contraintes restantes d'héritage à compléter ;
+   puis déclarations d'héritage, bases canoniques dans l'espace déclarant,
+   refus des bases absentes, non-classes ou non publiques et de l'auto-héritage,
+   cycles indirects et diagnostics 113–115 dans le développement local après
+   alpha.10 ; puis remplacements de méthodes, destructeurs et opérateurs virtuels,
+   diagnostics 116–117 et dispositions des classes uniquement polymorphes par
+   leur destructeur ou opérateur dans le périmètre testé ; puis refus des
+   doublons de surcharges, avec paramètres canoniques, alias, retour exclu,
+   méthodes, constructeurs, destructeurs et opérateurs, diagnostic 118 ;
+   puis signatures non liées, récepteur implicite comparable à un premier
+   paramètre explicite Classe&, et collisions méthode/fonction libre dans un
+   espace homonyme de la classe ; puis collisions entre symboles de liaison
+   calculés pour des surcharges distinctes, types canoniques, récepteurs,
+   callbacks, espaces qualifiés ou UTF-8 et diagnostic 119, dans le périmètre
+   différentiel testé ; puis sélection des appels qualifiés, par objet ou
+   pointeur, dans les groupes mêlant méthodes et fonctions libres, récepteurs,
+   scores, ambiguïtés, visibilité et déclaration choisie comparés au bootstrap ;
+   puis groupes d'opérateurs unaires et binaires mixtes et priorité déterministe
+   des doublons entre groupes indépendants, collisions de liaison et parcours
+   des corps dans l'ordre source, dans le périmètre testé ; erreurs multiples
+   dans un même corps et interactions de priorité entre passes à compléter ;
    matrice des qualifications et autres familles sémantiques encore à compléter, raccordement aux
    écrivains d’objets auto-hébergés dans le jalon backend ;
 5. 0.28 — backend, formats et linker auto-hébergés, sélection de cible native

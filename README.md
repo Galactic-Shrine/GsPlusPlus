@@ -317,8 +317,8 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **619 corpus négatifs** dans les sources alpha.10 (**257** dans
-  l'alpha.9 publiée), dont le code, la ligne et la colonne sont contrôlés ;
+  avec **1 085 corpus négatifs** dans les sources de développement (**619** dans
+  l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
 - résolution contextuelle des types nommés dans les signatures, distinction des
@@ -333,6 +333,30 @@ principale.
 - appels via alias de méthodes non liées, avec récepteur `Classe&` explicite,
   contrôle des arguments et de la visibilité des appels directs, signatures de
   callbacks et relocalisations vers la méthode canonique ;
+- déclarations d'héritage et bases canoniques, avec refus des bases absentes,
+  non-classes ou non publiques, auto-héritage et cycles indirects, validés
+  localement après alpha.10 ;
+- remplacements de méthodes, destructeurs et opérateurs virtuels, avec
+  signatures canoniques et ordre base/dérivée ; dispositions polymorphes
+  des tableaux d'objets comparées au bootstrap dans le périmètre testé ;
+- refus des surcharges déclarées plusieurs fois, avec paramètres canoniques,
+  alias de types, méthodes, constructeurs, destructeurs et opérateurs libres
+  ou membres ; le type de retour seul ne distingue pas une surcharge ;
+- signatures non liées comparées avec le récepteur implicite en première
+  position, y compris les collisions entre une méthode et une fonction libre
+  de même nom complet dans un espace homonyme de sa classe ;
+- refus des collisions entre symboles de liaison calculés pour des surcharges
+  distinctes, avec types canoniques, alias, callbacks, récepteurs implicites et
+  espaces qualifiés ou UTF-8 ; diagnostic bilingue 119 aligné sur le bootstrap ;
+- sélection des appels qualifiés, par objet ou pointeur, dans les groupes
+  mélangeant méthodes et fonctions libres de même nom complet ; comparaison de
+  la déclaration retenue, du retour et des drapeaux, avec visibilité contrôlée
+  après sélection et ambiguïtés conservées ;
+- sélection des opérateurs unaires et binaires dans les groupes mixtes, avec
+  récepteur, constance, références, héritage, masquage et visibilité ;
+- priorité déterministe des groupes de surcharges invalides suivant leur
+  première déclaration, puis collisions de liaison et corps de fonctions dans
+  l'ordre source, vérifiée sur les cas indépendants couverts ;
 - émission auto-hébergée des données globales et relocalisations de fonctions,
   avec comparaison des octets, alignements, cibles et limites des tampons.
 

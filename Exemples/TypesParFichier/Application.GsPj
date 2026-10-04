@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GsProjet
+    Version="1.0"
+    Nom="TypesParFichier"
+    Type="executable"
+    ModeCompilation="separee"
+    PointEntree="GalacticShrine::GsPP::Exemples::TypesParFichier::Principal">
+    <Interface Chemin="Point.HGsPP" />
+    <Interface Chemin="Etat.HGsPP" />
+    <Source Chemin="Principal.GsPP" />
+    <Construction
+        RepertoireObjets="../../Construction/Exemples/TypesParFichier/Objets"
+        Sortie="../../Construction/Exemples/TypesParFichier/TypesParFichier.GsE" />
+</GsProjet>

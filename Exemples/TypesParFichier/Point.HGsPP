@@ -1,0 +1,11 @@
+espace GalacticShrine::GsPP::Exemples::TypesParFichier {
+
+    /**
+     * <résumé>Coordonnées partagées entre les unités du projet.</résumé>
+     **/
+    structure Point {
+
+        entier32 X;
+        entier32 Y;
+    };
+}

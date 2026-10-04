@@ -178,6 +178,12 @@ Projects and solutions use a strict XML 1.0 schema:
 The equivalent French XML vocabulary uses `GsProjet`, `Source Chemin`, and
 `Construction Sortie`.
 
+Structures and enumerations can each have their own `.HGsPP` interface,
+explicitly listed in the project and supplied to every separately compiled
+source. The [TypesParFichier example](Exemples/TypesParFichier/Application.GsPj)
+separates `Point`, `Etat` and their use; its entry point returns 42.
+A file's presence in the directory does not automatically expose its types.
+
 ## Building
 
 ### Requirements
@@ -307,7 +313,7 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **1,085 negative corpora** in development sources (**619** in the published
+  with **1,493 negative corpora** in development sources (**619** in the published
   alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
@@ -347,6 +353,22 @@ All normative documentation is maintained in Markdown as its primary source.
 - deterministic invalid-overload-group priority by first declaration, followed
   by link collisions and function bodies in source order, verified for the
   covered independent cases;
+- priority across successive statements, nested blocks, condition expressions,
+  branches and loops within one body;
+- operand priority, indexed object before index, assignment target before value,
+  and cast target type before source, within the differential test scope;
+- call arguments in source order, with prior indirect-target and arity checks,
+  rejection of groups without an acceptable arity and receiver, deferred
+  selection and nested calls; discard candidates with an incompatible prefix
+  in declaration order, within the tested scope, before visiting the next
+  argument; report cast-type errors only when their expression is visited;
+- analyze aggregate arguments using the selected signature's expected type,
+  after selection and visibility for direct groups, in argument order for
+  callbacks; scalar forms, structures, unions, nested field arrays and nested
+  calls covered within the differential matrix;
+- evaluate and range-check constant casts when visited, before later errors,
+  preserving prior arity and candidate-abandonment checks; compare contextual
+  aggregates and short-circuit behavior against the bootstrap;
 - self-hosted global data and function relocation emission, comparing bytes,
   alignments, targets, and caller-buffer bounds against the bootstrap.
 

@@ -52,6 +52,32 @@ officiels et doivent conduire à la même sémantique et à la même génératio
 La présentation des sources maintenues par le projet est définie dans les
 [`CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md`](CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md).
 
+### Un fichier par structure ou énumération
+
+Une structure ou une énumération peut avoir son propre fichier. Pour partager
+sa déclaration entre des sources compilées séparément, utiliser une interface
+`.HGsPP` et la déclarer explicitement dans le projet XML :
+
+```xml
+<Interface Chemin="Point.HGsPP" />
+<Interface Chemin="Etat.HGsPP" />
+<Source Chemin="Principal.GsPP" />
+```
+
+Le constructeur de projets du bootstrap fournit toutes les interfaces du projet
+à chaque unité source. Il n’y a pas de découverte automatique des types par nom
+de fichier ; aucun `#include` n’est nécessaire pour ces interfaces déclarées.
+Une déclaration dans un fichier `.GsPP` séparé doit, elle, être compilée avec ses
+consommateurs dans la même unité, par exemple en mode de compilation `agregee`.
+La compilation séparée de sources ne rend pas automatiquement leurs types
+visibles les unes aux autres.
+
+L’exemple [TypesParFichier](../Exemples/TypesParFichier/Application.GsPj) contient
+une structure `Point`, une énumération `Etat` et une source qui les utilise.
+`gsppc Exemples/TypesParFichier/Application.GsPj` construit son exécutable ;
+son point d’entrée retourne **42**. Cette preuve concerne l’orchestration du
+bootstrap, pas une orchestration de projets par le frontend auto-hébergé.
+
 ## Types fondamentaux
 
 Le contrat candidat 1.0 comprend :

@@ -10,6 +10,332 @@
 
 # Journal des modifications
 
+## Priorité des conversions constantes et types par fichier — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- calcul et contrôle de plage des conversions constantes au moment où leur
+  expression est visitée, après validation du type cible, de la source et des
+  signatures ; suppression de la passe globale tardive devenue redondante ;
+- régression reproduite puis corrigée : `convertir<naturel8>(256); objet + 7;`
+  signalait l’accès privé 25 au lieu du dépassement de plage 98 à la conversion ;
+- priorités inverses, opérandes, conversions imbriquées, appels directs,
+  callbacks, adresses de fonctions, arité, abandon de candidats et agrégats
+  contextuels comparés au bootstrap ; déclarations locales, globales, champs
+  par défaut et énumérations couvertes ; booléens, bornes, courts-circuits et
+  conversions non constantes restent acceptés dans les cas valides ;
+- 64 nouveaux refus sémantiques français/anglais, 24 corpus sémantiques valides,
+  12 refus d’émission sans écriture partielle et quatre corpus d’émission valides ;
+  total différentiel : **1 493 refus**, avec code, ligne, colonne et AST intact ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  408 975 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- exemple `TypesParFichier` : `Point.HGsPP`, `Etat.HGsPP` et `Principal.GsPP`,
+  projet XML à interfaces explicites et exécution retournant 42 ; intégré au
+  test Linux, expliqué dans la spécification et les README français/anglais ;
+- bootstrap C++, contrats publics, diagnostics 0–119, formats 1.0 et ABI 1
+  inchangés ; priorités des autres initialiseurs et contextes des constructions
+  encore à consolider ; aucun frontend 0.27 complet annoncé ;
+- alpha.10 inchangée ; ces tranches de développement ne font pas partie des
+  paquets alpha.10 publiés ; aucun nouveau tag, paquet ou release.
+
+### English
+
+- evaluate and range-check constant casts when their expression is visited,
+  after target, source and signature checks; remove the redundant late global pass;
+- reproduce and fix `cast<uint8>(256); object + 7;`, which reported private
+  access 25 instead of out-of-range constant cast 98 at the conversion;
+- compare reverse priorities, operands, nested casts, direct calls, callbacks,
+  function addresses, arity, candidate abandonment and contextual aggregates
+  against the bootstrap; cover locals, globals, default fields and enumerations;
+  retain valid booleans, boundaries, short circuits and nonconstant casts;
+- 64 new French/English semantic rejections, 24 valid semantic corpora,
+  12 emission rejections without partial writes and four valid emission corpora;
+  differential total **1,493 rejections**, checking code, line, column and intact AST;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 408,975-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- add `TypesParFichier`: separate `Point.HGsPP`, `Etat.HGsPP` and `Principal.GsPP`,
+  explicitly listed XML interfaces and an entry point returning 42; Linux
+  integration coverage, specification and French/English README instructions;
+- C++ bootstrap, public contracts, diagnostics 0–119, formats 1.0 and ABI 1
+  unchanged; other initializer priorities and construction contexts still need
+  consolidation; no complete 0.27 frontend claimed;
+- alpha.10 unchanged; these development tranches are not included in the
+  published alpha.10 packages; no new tag, package or release.
+
+## Arguments agrégés contextuels — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- report du contenu des arguments `{…}` jusqu'à l'obtention du type attendu ;
+  sélection et visibilité avant l'initialisation pour les groupes directs,
+  initialisation dans l'ordre des arguments pour les callbacks et adresses
+  explicites de fonctions ; ambiguïtés et refus de références conservés ;
+- régression corrigée : `Scalaire({1, 2}, 0)` était accepté par le frontend
+  (code 4 de demande de capacité), alors que le bootstrap exige le refus 44 ;
+- validation de la forme scalaire, structure, union et tableau de champ avant
+  leurs éléments, puis résolution et validation de chaque feuille dans l'ordre ;
+  plages numériques, références, classes non agrégeables, alias, méthodes non
+  liées, groupes mixtes et appels imbriqués couverts dans la matrice ;
+- mémorisation privée des agrégats validés dans la table de types implicites
+  existante, sans allocation supplémentaire ni duplication de résolutions
+  lors des contrôles de préfixes et de l'appel complet ; réutilisation du
+  validateur récursif d'initialiseurs pour les agrégats imbriqués ;
+- 66 nouveaux refus sémantiques français/anglais, 36 corpus sémantiques valides,
+  12 refus d'émission sans écriture partielle et quatre corpus d'émission valides ;
+  total différentiel : **1 417 refus**, code, ligne, colonne et AST intact vérifiés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  409 519 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- bootstrap C++, contrats publics, diagnostics 0–119, formats 1.0 et ABI 1
+  inchangés ; contextes des constructions et autres priorités entre passes,
+  notamment conversions constantes et initialiseurs de déclarations, encore
+  à compléter ; aucun frontend 0.27 complet annoncé ;
+- alpha.10 inchangée, tranches locales non commitées et non publiées ; aucun
+  nouveau push, tag, paquet ou release. La migration `.Glib` reste prévue en 0.28.
+
+### English
+
+- defer `{…}` argument contents until their expected type is known; selection
+  and visibility precede initialization for direct groups, while callbacks and
+  explicit function addresses initialize arguments in source order;
+  retain ambiguity and reference-rejection diagnostics;
+- fix `Scalaire({1, 2}, 0)`, previously accepted by the frontend (capacity-query
+  code 4) although the bootstrap requires rejection 44;
+- validate scalar, structure, union and field-array shape before visiting
+  elements, then resolve and validate each leaf in source order; cover numeric
+  ranges, references, non-aggregate classes, aliases, unbound methods, mixed
+  groups and nested calls within the differential matrix;
+- cache validated aggregate types privately in the existing implicit-type
+  table, without added allocation or duplicate resolutions during prefix and
+  complete-call checks; reuse the recursive initializer validator for nesting;
+- 66 new French/English semantic rejections, 36 valid semantic corpora,
+  12 emission rejections without partial writes and four valid emission corpora;
+  differential total **1,417 rejections**, checking code, line, column and intact AST;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 409,519-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- C++ bootstrap, public contracts, diagnostics 0–119, formats 1.0 and ABI 1
+  unchanged; construction contexts and other cross-pass priorities, including
+  constant casts and declaration initializers, still need coverage;
+  no complete 0.27 frontend claimed;
+- alpha.10 unchanged; local tranches remain uncommitted and unpublished, with
+  no new push, tag, package or release. The `.Glib` migration stays planned for 0.28.
+
+## Abandon ordonné des candidats d'appel — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- contrôle du préfixe des arguments résolus avant de visiter l'argument suivant,
+  pour les fonctions libres, méthodes, groupes mixtes et alias non liés ;
+  abandon des candidats incompatibles dans l'ordre de déclaration, sans évaluer
+  prématurément les candidats suivants lorsqu'un préfixe reste recevable ;
+- arité complète et récepteur toujours contrôlés ; sélection finale, scores,
+  ambiguïtés et visibilité conservés ; régression corrigée : diagnostic 25 à
+  1:559 dans le second argument au lieu du diagnostic 21 à 1:540 retenu par le
+  bootstrap après refus du premier argument ;
+- erreurs de types de conversions différées jusqu'à la visite de leur expression,
+  avant l'opérande, pour ne pas remplacer le refus préalable d'un candidat ;
+  normalisation des types privés et validation des types de déclarations
+  conservées ; bootstrap C++ et diagnostics publics inchangés ;
+- 56 nouveaux refus sémantiques français/anglais, 16 corpus sémantiques valides,
+  12 refus d'émission sans écriture partielle et quatre corpus d'émission valides ;
+  total différentiel : **1 339 refus**, code, ligne, colonne et AST intact vérifiés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  405 135 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- modification locale de mise en forme de `ConteneursDynamiques.GsPP` conservée ;
+  bibliothèque périmée reconstruite avant la nouvelle validation de
+  reproductibilité Linux, réussie avec les sources actuelles ;
+- aucun nouveau contrat public, format ou ABI ; parcours sans récursion ni
+  allocation auxiliaire supplémentaire ; initialiseurs contextuels d'arguments,
+  agrégats et autres interactions sémantiques encore à compléter ;
+- version alpha.10 inchangée, tranches locales non commitées et non publiées ;
+  aucun nouveau push, tag, paquet ou release. Le passage à 0.28 n'est pas validé.
+
+### English
+
+- check the resolved argument prefix before visiting the next argument for free
+  functions, methods, mixed groups and unbound aliases; discard incompatible
+  candidates in declaration order without prematurely evaluating later
+  candidates while a prefix remains acceptable;
+- retain full arity and receiver checks, final selection, scores, ambiguities
+  and visibility; fix diagnostic 25 at 1:559 in the second argument instead of
+  diagnostic 21 at 1:540 selected by the bootstrap after rejecting the first;
+- defer cast-type errors until their expression is visited, before its operand,
+  so they do not replace earlier candidate rejection; retain private-type
+  normalization and declaration-type validation; C++ bootstrap and public
+  diagnostics unchanged;
+- 56 new French/English semantic rejections, 16 valid semantic corpora,
+  12 emission rejections without partial writes and four valid emission corpora;
+  differential total **1,339 rejections**, checking code, line, column and intact AST;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 405,135-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- preserve the local formatting change in `ConteneursDynamiques.GsPP`; rebuild
+  the stale library before repeating Linux reproducibility validation,
+  which passes with current sources;
+- no new public contract, format or ABI; no added recursion or auxiliary
+  traversal allocation; contextual argument initializers, aggregates and other
+  semantic interactions still need coverage;
+- alpha.10 unchanged; tranches remain local, uncommitted and unpublished, with
+  no new push, tag, package or release. The transition to 0.28 is not validated.
+
+## Priorité des cibles et arguments d'appel — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- remplacement du parcours inversé des sous-arbres d'appels par le parcours
+  itératif des arguments dans l'ordre source, y compris leurs expressions et
+  appels imbriqués ; régression sur l'ancienne image : diagnostic 21 à 1:557
+  au lieu du diagnostic 25 à 1:532 du premier argument dans le bootstrap ;
+- contrôle de la cible indirecte et de son arité avant les arguments, dont
+  cibles absentes, non appelables, membres absents ou privés et variable locale
+  masquant une fonction ; validation du préfixe déjà parcouru des signatures
+  de callbacks avant l'argument suivant ;
+- rejet préalable des groupes sans signature d'arité et de récepteur
+  recevables, puis sélection de la surcharge et visibilité après les arguments ;
+- 60 nouveaux refus sémantiques français/anglais, 16 corpus sémantiques valides,
+  12 refus d'émission sans écriture partielle et quatre corpus d'émission
+  valides ; total différentiel : 1 271 refus, avec code, ligne, colonne et AST
+  intact contrôlés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  401 855 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- bootstrap inchangé, aucun nouveau diagnostic, aucune récursion ou allocation
+  auxiliaire de parcours ; AST public, formats 1.0, ABI 1 et limite de quatre
+  paramètres inchangés ;
+- abandon d'un candidat après un premier argument incompatible, initialiseurs
+  contextuels d'arguments et priorités entre passes encore à compléter ;
+- version alpha.10 inchangée ; nouvelles tranches locales non commitées,
+  sans nouveau push, tag, release ou remplacement des paquets publiés.
+
+### English
+
+- replace reverse call-subtree traversal with iterative argument traversal in
+  source order, including nested expressions and calls; old-image regression:
+  diagnostic 21 at 1:557 instead of diagnostic 25 at 1:532 in the first argument
+  selected by the bootstrap;
+- check the indirect target and arity before arguments, including unknown and
+  non-callable targets, missing or private members, and a local variable hiding
+  a function; validate the visited callback-signature argument prefix before
+  moving to the next argument;
+- reject groups without an acceptable arity and receiver before arguments,
+  then defer overload selection and visibility checks until arguments are ready;
+- 60 new French/English semantic rejections, 16 valid semantic corpora,
+  12 emission rejections without partial writes and four valid emission corpora;
+  differential total 1,271 rejections, checking code, line, column and intact AST;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 401,855-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- bootstrap unchanged, no new diagnostic, recursion or auxiliary traversal
+  allocation; public AST, formats 1.0, ABI 1 and four-parameter limit unchanged;
+- candidate discard after an incompatible first argument, contextual argument
+  initializers and cross-pass priorities still need coverage;
+- alpha.10 unchanged; new tranches remain local and uncommitted, with no new
+  push, tag, release or replacement of published packages.
+
+## Priorité des erreurs dans les expressions — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- analyse des opérandes de gauche à droite, puis contrôles de l'expression
+  parente ; objet avant indice, éléments d'agrégat dans l'ordre source,
+  cible d'affectation contrôlée avant sa valeur et type cible de conversion
+  avant sa source, conformément au bootstrap dans le périmètre testé ;
+- régression reproduite avant correction : un opérateur privé à 1:326 devait
+  être refusé avant le récepteur constant de l'opérande droit à 1:353 ;
+- parcours itératif fondé sur les indices parents de l'AST préordonné, sans
+  pile auxiliaire, allocation supplémentaire ou modification des nœuds ; les
+  appels restent des unités conservant leur parcours interne déjà validé ;
+- 50 nouveaux refus différentiels français/anglais, 18 corpus sémantiques
+  valides dont une chaîne de 128 opérations binaires, 12 refus d'émission sans
+  écriture partielle et quatre corpus d'émission valides ; total : 1 199 refus
+  avec code, ligne, colonne et AST intact contrôlés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  396 543 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- bootstrap, diagnostics 0–119, AST public, formats 1.0 et ABI 1 inchangés ;
+  priorités internes des appels et interactions entre passes non couvertes
+  encore à compléter ; aucun backend auto-hébergé ou sortie PE/ELF ajouté ;
+- le commit signé `6686761` est déjà poussé ; les nouvelles tranches de
+  priorité des instructions et expressions restent locales non commitées,
+  version alpha.10 inchangée, sans nouveau push, tag, release ou remplacement
+  des paquets publiés.
+
+### English
+
+- analyze operands left to right before parent-expression checks; indexed
+  object before index, aggregate elements in source order, assignment target
+  checked before its value and cast target type before its source, matching
+  the bootstrap within the tested scope;
+- regression reproduced before the fix: a private operator at 1:326 must be
+  rejected before the right operand's const receiver at 1:353;
+- iterative traversal using parent indices in the preorder AST, without an
+  auxiliary stack, additional allocation or node changes; calls remain units
+  retaining their previously validated internal traversal;
+- 50 new French/English differential rejections, 18 valid semantic corpora
+  including a chain of 128 binary operations, 12 emission rejections without
+  partial writes and four valid emission corpora; total 1,199 rejections with
+  code, line, column and intact input AST checked;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 396,543-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- bootstrap, diagnostics 0–119, public AST, formats 1.0 and ABI 1 unchanged;
+  internal call priorities and untested cross-pass interactions remain to
+  cover; no self-hosted backend or PE/ELF output added;
+- signed commit `6686761` is already pushed; the new statement and expression
+  priority tranches remain local and uncommitted, alpha.10 unchanged, with no
+  new push, tag, release or replacement of published packages.
+
+## Priorité des instructions dans un même corps — développement après Gs++ 0.27.0-alpha.10 — 2026-10-03
+
+### Français
+
+- parcours des instructions successives, blocs imbriqués, expressions de
+  conditions, branches et boucles dans l'ordre source ; chaque instruction ou
+  expression conserve son parcours interne, avec enfants résolus avant leurs
+  contrôles et arguments disponibles avant sélection de la cible d'un appel ;
+- test de régression : l'ancienne image signalait le refus du récepteur
+  constant à 4:1, au lieu de l'opérateur privé à 3:7 dans le bootstrap ; les
+  retours et le code inatteignable restent analysés dans l'ordre du bootstrap ;
+- 40 nouveaux refus français/anglais avec priorité de ligne attendue assertée
+  dans le bootstrap, 16 corpus valides, 12 refus d'émission sans écriture
+  partielle et quatre corpus d'émission valides ; total différentiel : 1 137 ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives MSBuild,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  393 775 octets, 75 exports et deux imports ;
+- bootstrap inchangé dans cette tranche, aucun nouveau diagnostic, aucune
+  allocation supplémentaire du parcours, AST public, formats 1.0 et ABI 1
+  inchangés ; erreurs concurrentes dans une expression et priorités entre
+  passes non couvertes encore à étendre ;
+- tranche précédente enregistrée dans le commit signé `6686761` ; cette
+  nouvelle tranche reste locale non commitée, version alpha.10 inchangée,
+  sans push, tag, release ou remplacement des paquets publiés.
+
+### English
+
+- traverse successive statements, nested blocks, condition expressions, branches
+  and loops in source order; retain traversal inside each statement or
+  expression, resolving children before their checks and arguments before
+  selecting a call target;
+- regression: the old image reported the const-receiver rejection at 4:1,
+  instead of the private operator at 3:7 in the bootstrap; return statements
+  and unreachable code retain bootstrap analysis order;
+- 40 new French/English rejections with expected line priority asserted in the
+  bootstrap, 16 valid corpora, 12 emission rejections without partial writes,
+  and four valid emission corpora; differential total 1,137;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 393,775-byte frontends,
+  75 exports and two imports;
+- bootstrap unchanged in this tranche, no new diagnostic or traversal
+  allocation; public AST, formats 1.0 and ABI 1 unchanged; competing errors
+  within one expression and untested cross-pass priorities remain to cover;
+- previous tranche recorded in signed commit `6686761`; this new tranche is
+  local and uncommitted, alpha.10 unchanged, with no push, tag, release or
+  replacement of published packages.
+
 ## Opérateurs mixtes et priorité des groupes invalides — développement après Gs++ 0.27.0-alpha.10 — 2026-10-03
 
 ### Français

@@ -280,8 +280,23 @@ Les prochains jalons sont donc réservés à Gs++ :
    scores, ambiguïtés, visibilité et déclaration choisie comparés au bootstrap ;
    puis groupes d'opérateurs unaires et binaires mixtes et priorité déterministe
    des doublons entre groupes indépendants, collisions de liaison et parcours
-   des corps dans l'ordre source, dans le périmètre testé ; erreurs multiples
-   dans un même corps et interactions de priorité entre passes à compléter ;
+   des corps dans l'ordre source, dans le périmètre testé ; puis priorité des
+   instructions, blocs, expressions de conditions, branches et boucles d'un
+   même corps ; puis priorité des opérandes, de l'objet avant l'indice, de la
+   cible d'affectation avant sa valeur et du type cible de conversion avant sa
+   source, dans le périmètre testé le 4 octobre 2026 ; puis arguments d'appels
+   dans l'ordre source, cible indirecte et arité contrôlées avant eux,
+   rejet des groupes sans arité et récepteur recevables, sélection différée
+   et appels imbriqués ; puis abandon des candidats après un préfixe incompatible
+   dans l'ordre de déclaration, avant l'argument suivant, et erreurs de types de
+   conversions différées jusqu'à la visite de leur expression, dans le périmètre
+   testé ; puis arguments agrégés contextuels, après sélection et visibilité
+   pour les groupes directs, dans l'ordre des arguments pour les callbacks,
+   avec formes scalaires, structures, unions et tableaux de champs imbriqués ;
+   puis calcul et contrôle de plage des conversions constantes au moment de leur
+   visite, avec priorité des appels, agrégats contextuels et courts-circuits dans
+   la matrice différentielle du 4 octobre 2026 ;
+   contextes des constructions et autres priorités entre passes à compléter ;
    matrice des qualifications et autres familles sémantiques encore à compléter, raccordement aux
    écrivains d’objets auto-hébergés dans le jalon backend ;
 5. 0.28 — backend, formats et linker auto-hébergés, sélection de cible native

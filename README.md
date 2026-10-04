@@ -184,6 +184,12 @@ Les projets et solutions utilisent un schéma XML strict en version 1.0 :
 Le vocabulaire XML anglais équivalent utilise `GsProject`, `Source Path` et
 `Build Output`.
 
+Les structures et énumérations peuvent avoir chacune leur propre interface
+`.HGsPP`, déclarée dans le projet et fournie à chaque source compilée séparément.
+L’exemple [TypesParFichier](Exemples/TypesParFichier/Application.GsPj) sépare
+`Point`, `Etat` et leur utilisation ; son point d’entrée retourne 42.
+La présence d’un fichier dans le dossier ne suffit pas à exposer ses types.
+
 ## Construction
 
 ### Prérequis
@@ -317,7 +323,7 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **1 085 corpus négatifs** dans les sources de développement (**619** dans
+  avec **1 493 corpus négatifs** dans les sources de développement (**619** dans
   l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
@@ -357,6 +363,24 @@ principale.
 - priorité déterministe des groupes de surcharges invalides suivant leur
   première déclaration, puis collisions de liaison et corps de fonctions dans
   l'ordre source, vérifiée sur les cas indépendants couverts ;
+- priorité des instructions successives, blocs imbriqués, expressions de
+  conditions, branches et boucles dans un même corps ;
+- priorité des opérandes, de l'objet avant l'indice, de la cible d'affectation
+  avant sa valeur et du type cible de conversion avant sa source, dans le
+  périmètre différentiel testé ;
+- arguments d'appels dans l'ordre source, avec contrôle préalable de la cible
+  indirecte et de l'arité, rejet des groupes sans signature d'arité et de
+  récepteur recevables, sélection différée et appels imbriqués ; abandon des
+  candidats après un préfixe incompatible, dans l'ordre de déclaration et le
+  périmètre testé, avant l'analyse de l'argument suivant ; erreurs de types de
+  conversions signalées seulement lorsque leur expression est visitée ;
+- arguments agrégés analysés avec le type de la signature retenue, après
+  sélection et visibilité pour les groupes directs, dans l'ordre des arguments
+  pour les callbacks ; formes scalaires, structures, unions, tableaux de champs
+  imbriqués et appels imbriqués couverts dans la matrice différentielle ;
+- calcul et contrôle de plage des conversions constantes lors de leur visite,
+  avant les erreurs suivantes, avec arité et abandon de candidats prioritaires,
+  agrégats contextuels et courts-circuits comparés au bootstrap ;
 - émission auto-hébergée des données globales et relocalisations de fonctions,
   avec comparaison des octets, alignements, cibles et limites des tampons.
 

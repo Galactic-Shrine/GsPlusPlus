@@ -1,0 +1,11 @@
+espace GalacticShrine::GsPP::Exemples::TypesParFichier {
+
+    /**
+     * <résumé>État partagé, déclaré dans son propre fichier d'interface.</résumé>
+     **/
+    énumération Etat {
+
+        Inactif = 0,
+        Actif = 1
+    };
+}

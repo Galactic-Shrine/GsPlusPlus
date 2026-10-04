@@ -3,17 +3,21 @@
 **EN COURS — lexeur, AST syntaxique, indexation, sélection typée, contraintes
 des expressions couvertes, alias racines, déclarations d'héritage, remplacements
 virtuels, doublons de surcharges, signatures non liées, collisions de symboles
-de liaison, appels et opérateurs de groupes mixtes, priorités indépendantes
-couvertes et émission des globales VALIDÉS dans le
-périmètre testé — 3 octobre 2026.**
+de liaison, appels et opérateurs de groupes mixtes, priorités indépendantes,
+entre instructions, dans les expressions, appels, abandons de candidats et
+arguments agrégés contextuels et conversions constantes lors de leur visite couverts,
+émission des globales
+VALIDÉS dans le périmètre testé — 4 octobre 2026.**
 
 Les sources actuelles annoncent `0.27.0-alpha.10`.
 La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 regroupe les résultats de la publication, avec 619 refus différentiels.
-Le développement après alpha.10, décrit plus bas, en vérifie 1 085 et n'est pas
-encore publié. Les sections de jalons ci-dessous conservent
+Le développement après alpha.10, décrit plus bas, en vérifie 1 493 ; ces tranches
+ne sont pas incluses dans les paquets alpha.10 publiés. Les sections de jalons ci-dessous conservent
 leurs versions, empreintes et limites au moment de chaque validation ; les
-mentions de `VERSION` resté à alpha.9 décrivent ces étapes historiques.
+mentions de `VERSION` resté à alpha.9 décrivent ces étapes historiques. Les
+mentions de tranches non commitées ou non publiées relatent également leur
+état à la date de validation, pas l’état actuel de la branche de développement.
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -2013,13 +2017,467 @@ leurs exécutables Debug ou système et ne réécrit aucun paquet publié.
 `VERSION` reste à alpha.10 ; aucun commit, paquet, tag ou publication n'est
 créé ou remplacé. `.Glib` / `.GdLib` reste prévu pour 0.28.0.
 
+## Priorité des instructions d'un même corps — développement après alpha.10
+
+La tranche précédente a été enregistrée dans le commit signé `6686761`, sans
+push, tag ou release. Cette nouvelle tranche locale du 3 octobre 2026 aligne
+la résolution des instructions d'un même corps sur l'ordre du bootstrap.
+L'ordre des déclarations indépendantes était déjà corrigé, mais le parcours
+inversé de toute une déclaration faisait encore passer les diagnostics de la
+dernière instruction avant ceux de la première.
+
+Le test ajouté avant la correction appelle un opérateur privé à la troisième
+ligne, puis une méthode unaire avec récepteur constant à la quatrième.
+Le bootstrap refuse le premier opérateur à **3:7**, diagnostic 25 ; l'ancienne
+image signalait le second à **4:1**, diagnostic 21. Le nouveau parcours traite
+les instructions successives, les blocs imbriqués et les expressions de
+conditions dans l'ordre source, puis les branches et corps de boucles dans
+l'ordre syntaxique du bootstrap.
+
+Les sous-arbres d'instructions retour, d'expressions autonomes et de variables
+locales restent chacun une unité. La résolution interne conserve le parcours
+déjà validé : enfants avant parent et arguments résolus avant la cible
+surchargée d'un appel. Les conditions sont traitées avant leurs blocs ; les
+branches `si` puis `sinon` sont toutes deux analysées, même si la condition est
+un littéral. Le corps d'un `tantque(faux)` et les instructions après un retour
+ne sont pas ignorés pendant l'analyse sémantique, conformément au bootstrap.
+Les expressions d'initialiseurs explicites de constructeurs gardent aussi leur
+parcours interne. Cette tranche ne change pas le bootstrap et n'ajoute pas
+de nouvelles règles de validation des types de conditions ou de construction.
+
+Le parcours utilise les indices parents de l'AST préordonné pour borner chaque
+unité. Il ne modifie pas les nœuds, n'ajoute pas de pile ni d'allocation, et
+ne résout pas deux fois une expression appartenant à une unité déjà traitée.
+Champs, énumérateurs et globales conservent le parcours de la tranche
+précédente ; ce changement s'applique aux déclarations de fonctions et membres
+exécutables.
+
+La matrice ajoute **40 refus différentiels français/anglais**, **16 corpus
+valides**, **12 refus d'émission** sans écriture partielle et **quatre corpus
+d'émission valides**. Elle couvre instructions successives, initialiseurs
+locaux contenant un appel ambigu, blocs, conditions, branches, boucles,
+retours, affectations incompatibles, code inatteignable et variantes d'ordre.
+Le total atteint **1 137 refus**, comparés par code, ligne et colonne avec
+AST intact. Les lignes prioritaires attendues sont aussi assertées directement
+dans le bootstrap ; les corpus valides contrôlent les interrogations de
+capacité puis les sorties complètes. Les tests d'émission conservent les
+tampons sentinelles en cas de refus et comparent données et relocalisations
+vers des fonctions d'entrée uniques contenant plusieurs instructions.
+
+Validation avec les commandes de la section héritage : **CTest Windows 5/5**,
+**GNU/Linux 6/6**, solution `GsPlusPlus.slnx` et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur les trois constructions. Les images
+`Frontend.GsE` sont identiques : **393 775 octets**, **trois segments**, **huit
+sections**, **75 exports**, **deux imports**, SHA-256
+`642f09521faf823e5b7d0264504c947a1b148c4f9caa74e840419ec7a5e79f01`.
+Le vérificateur confirme une image GsE 1.0 valide. Contrats publics, diagnostics
+0–119, formats 1.0 et ABI 1 sont inchangés ; aucun backend auto-hébergé,
+slot virtuel public ou sortie PE/ELF n'est ajouté.
+
+Les erreurs concurrentes dans une **même expression** et les priorités entre
+**passes différentes**, notamment les contrôles différés d'initialiseurs ou de
+conversions constantes, restent à étendre. Les preuves et limites de la
+section précédente décrivent le jalon avant ce nouveau parcours ; elles ne
+sont pas réécrites rétroactivement.
+
+Cette nouvelle tranche reste locale non commitée et non publiée. `VERSION`
+reste à `0.27.0-alpha.10` ; aucun nouveau paquet, tag ou release n'est créé.
+Les archives publiées restent intactes et `.Glib` / `.GdLib` reste une migration
+prévue pour 0.28.0.
+
+## Priorité des erreurs dans une expression — développement après alpha.10
+
+Cette tranche locale du 4 octobre 2026 complète le parcours des instructions.
+Le bootstrap C++ reste l'oracle et n'est pas modifié. Avant correction, le
+premier test ajouté associait un opérateur privé dans l'opérande gauche et
+un opérateur unaire appelé avec récepteur constant dans l'opérande droit.
+Le bootstrap retenait le diagnostic **25 à 1:326** ; le parcours inversé de
+l'image auto-hébergée signalait **21 à 1:353**. Ce refus a été reproduit avant
+la modification du parcours.
+
+### Ordre couvert et limite des appels
+
+Le parcours résout les opérandes de gauche à droite, puis contrôle leur
+expression parente. La matrice couvre notamment :
+
+- opérateurs binaires imbriqués, opérateurs unaires et appels ambigus utilisés
+  comme opérandes, avec inversion des deux erreurs pour contrôler la priorité ;
+- opérandes logiques `&&` et `||` : les deux côtés sont analysés sémantiquement,
+  sans les confondre avec le court-circuit d'exécution ;
+- objet avant indice dans une indexation, dont un membre absent ou une référence
+  introuvable face à un indice lui-même invalide ;
+- cible d'affectation avant sa valeur : valeur non modifiable, constante ou
+  tableau refusé avant l'analyse de la source ; les erreurs de l'expression
+  cible sont elles-mêmes traitées avant la compatibilité de la valeur ;
+- type cible de conversion avant sa source : cible non scalaire ou type nommé
+  introuvable refusé avant l'erreur présente dans l'opérande converti ;
+- éléments d'agrégat et références d'initialiseur d'énumération dans l'ordre
+  source ; mêmes opérandes intégrés à un initialiseur local, retour ou condition.
+
+Les appels restent des unités atomiques du nouveau parcours : **leur sous-arbre
+conserve le parcours interne précédent**. Cela préserve les cas déjà validés
+de groupes mixtes, d'alias non liés et d'arguments disponibles avant sélection
+de la cible. Cette tranche ne revendique pas encore la priorité générale
+entre cible, candidats, arité et erreurs concurrentes des arguments d'un même
+appel, ni celle des expressions imbriquées à l'intérieur de ses arguments.
+
+### Parcours et contrats préservés
+
+`ResoudreExpressionsSemantiques` utilise les indices parents de l'AST
+préordonné pour visiter les enfants dans l'ordre puis revenir aux contrôles
+parents. Le parcours est itératif, borné à la tranche fournie, sans récursion,
+pile auxiliaire, allocation supplémentaire ou modification des nœuds publics.
+Un sous-arbre d'appel est traité une seule fois par son parcours conservé.
+Les contrôles de cible d'affectation et de type cible de conversion sont
+séparés des contrôles nécessitant la valeur source déjà résolue ; les codes
+de diagnostics existants ne changent pas.
+
+### Preuves locales du 4 octobre 2026
+
+La matrice ajoute **50 refus différentiels français/anglais**, **18 corpus
+sémantiques valides**, **12 refus d'émission** avec tampons sentinelles intacts
+et **quatre corpus d'émission valides**. Les corpus valides incluent une chaîne
+de **128 opérations binaires**, des appels directs, membres et callbacks dans
+des opérandes, des indexations, agrégats et conversions imbriquées. Ils
+contrôlent l'AST d'entrée, les interrogations de capacité et les sorties
+complètes. Les tests d'émission comparent octets de données globales,
+alignements et relocalisations ; ils ne prouvent pas un backend auto-hébergé
+de code machine pour les corps de fonctions.
+
+Le total atteint **1 199 refus**, comparés au bootstrap par code, ligne et
+colonne avec AST intact. Validation avec les commandes de la section héritage :
+**CTest Windows 5/5**, **GNU/Linux 6/6**, solution `GsPlusPlus.slnx` et validation
+**MSBuild natives sans CMake**, conformité **20/20** sur les trois constructions.
+Les images `Frontend.GsE` sont identiques : **396 543 octets**, **trois segments**,
+**huit sections**, **75 exports**, **deux imports**, SHA-256
+`e99dbeea736e3619b3434d2c49cf038e4110647b8952aba8faebb7f2b29074dd`.
+Le vérificateur confirme une image GsE 1.0 valide. Diagnostics 0–119, contrats
+publics, formats 1.0 et ABI 1 sont inchangés ; aucun slot virtuel public,
+backend auto-hébergé ou sortie PE/ELF n'est ajouté.
+
+Les sections précédentes conservent leurs preuves historiques, notamment
+les **1 137 refus** avant cette tranche. Le commit signé `6686761` a depuis été
+poussé ; les nouvelles tranches de priorité des instructions et expressions
+restent locales non commitées et non publiées. `VERSION` reste à
+`0.27.0-alpha.10`, sans nouveau push, paquet, tag ou release. Les archives
+publiées restent intactes ; `.Glib` / `.GdLib` demeure prévu pour 0.28.0.
+
+## Priorité des cibles et arguments d'appel — développement après alpha.10
+
+Cette tranche locale du 4 octobre 2026 remplace l'unité atomique d'appel de
+la tranche précédente par le parcours itératif de ses enfants. Le bootstrap
+C++ reste inchangé. Avec l'ancienne image de **396 543 octets**, le nouveau
+corpus signale **21 à 1:557** dans le second argument, au lieu du diagnostic
+**25 à 1:532** dans le premier argument retenu par le bootstrap. Cet écart a
+été reproduit en exécutant les nouveaux tests sur la copie de l'image avant
+correction ; aucun ancien paquet publié n'a été remplacé pour cette preuve.
+
+### Ordre couvert
+
+- Les expressions des arguments sont analysées dans l'ordre source, avec les
+  contrôles de conversion, affectation et opérandes de la tranche précédente,
+  ainsi que les appels imbriqués.
+- Une cible indirecte est résolue et contrôlée avant les arguments : référence
+  absente, valeur non appelable, membre absent ou privé, champ callback et
+  variable locale masquant une fonction sont couverts.
+- L'arité d'un appel indirect est contrôlée avant les expressions d'arguments.
+  Pour les groupes directs ou membres, l'absence de signature d'arité et de
+  récepteur recevables est aussi signalée avant ces expressions.
+- La sélection d'une surcharge reste différée jusqu'aux arguments résolus.
+  Cela préserve les scores, groupes mixtes, alias non liés, ambiguïtés et
+  contrôles de visibilité après sélection déjà couverts.
+- Pour les signatures de callbacks décrites par les types privés, le préfixe
+  d'arguments déjà parcouru est contrôlé avant le suivant : un premier argument
+  incompatible est ainsi prioritaire sur l'expression invalide du second.
+
+Les indices parents de l'AST servent toujours au retour vers les expressions
+englobantes, sans récursion, pile auxiliaire, allocation supplémentaire ou
+modification des nœuds publics. La référence de groupe différée est résolue
+une seule fois à la fin de l'appel. Une structure privée regroupe la signature
+indirecte et la limite de son préfixe : aucun helper ni corpus ne dépasse la
+limite actuelle de **quatre paramètres** du langage.
+
+### Preuves locales
+
+La matrice ajoute **60 refus différentiels français/anglais**, **16 corpus
+sémantiques valides**, **12 refus d'émission** sans écriture partielle et
+**quatre corpus d'émission valides**. Les cas valides couvrent appels directs,
+surchargés, par point ou flèche, champs callbacks, indexations de callbacks
+et une chaîne de quatre appels imbriqués. Les interrogations de capacité et
+les sorties complètes sont comparées avec AST d'entrée intact. Les tests
+d'émission comparent octets, alignements et relocalisations des globales ;
+ils ne constituent pas un backend auto-hébergé de code machine des fonctions.
+
+Le total atteint **1 271 refus**, comparés au bootstrap par code, ligne et
+colonne. Validation avec les commandes de la section héritage : **CTest
+Windows 5/5**, **GNU/Linux 6/6**, solution `GsPlusPlus.slnx` et validation
+**MSBuild natives sans CMake**, conformité **20/20** sur les trois constructions.
+Les images `Frontend.GsE` sont identiques : **401 855 octets**, **trois segments**,
+**huit sections**, **75 exports**, **deux imports**, SHA-256
+`f7050af610b10063c404b83abf40d370e0fbd63331e4ef6467ee0d12e2a3083c`.
+Le vérificateur confirme une image GsE 1.0 valide. Diagnostics 0–119, contrats
+publics, formats 1.0 et ABI 1 sont inchangés.
+
+### Limites et publication
+
+Cette tranche ne généralise pas toutes les priorités de sélection. Le
+bootstrap peut **abandonner un candidat après un argument incompatible sans
+analyser les suivants**, puis essayer un autre candidat. Le parcours actuel
+diffère encore l'évaluation complète de ces groupes jusqu'aux arguments
+résolus ; cette priorité par candidat reste à migrer. Les initialiseurs
+contextuels des arguments, leurs agrégats, les combinaisons d'adresses de
+fonctions et les interactions entre passes restent également à étendre.
+
+Les sections précédentes conservent leurs preuves historiques, notamment
+les **1 199 refus** et le traitement atomique des appels avant cette tranche.
+Les nouvelles tranches restent locales non commitées et non publiées, après
+le commit signé déjà poussé `6686761`. `VERSION` reste à `0.27.0-alpha.10`,
+sans nouveau push, paquet, tag ou release. Les archives publiées sont intactes ;
+`.Glib` / `.GdLib` reste prévu pour 0.28.0. Aucun frontend 0.27 complet,
+backend auto-hébergé ou sortie PE/ELF n'est annoncé.
+
+## Abandon ordonné des candidats d'appel — développement après alpha.10
+
+Cette tranche locale du 4 octobre 2026 étend la priorité des appels aux
+arguments non contextuels déjà typés. Avant correction, le premier nouveau
+corpus signalait **25 à 1:559** dans le second argument, alors que le bootstrap
+C++ inchangé retenait **21 à 1:540** sur la cible : le premier argument était
+déjà incompatible avec l'unique candidat. La régression est conservée dans
+`TesterAbandonsCandidatsAppelsSemantiques`, sans assouplir la comparaison.
+
+### Préfixes et ordre des candidats
+
+- `TrancheArgumentsFonctionSemantique` porte une limite privée d'arguments
+  résolus. L'arité de l'appel complet est toujours vérifiée ; seul le préfixe
+  déjà parcouru est comparé aux paramètres avant l'argument suivant.
+- `EvaluerPrefixeGroupeAppelSemantique` réutilise les scores de conversion et
+  de références, le récepteur synthétique des appels par point ou flèche,
+  ainsi que le récepteur explicite des alias de méthodes non liées.
+- `ValiderPrefixeGroupeAppelSemantique` essaie les candidats dans l'ordre de
+  déclaration et s'arrête au premier préfixe recevable. Si tous les candidats
+  sont incompatibles, le diagnostic 21 précède l'analyse de l'argument suivant.
+- Ne pas évaluer prématurément les candidats suivants préserve la priorité des
+  calculs constants : une première surcharge `entier32` ne force pas le calcul
+  de `1 / 0` avant l'argument suivant, alors qu'une première surcharge `naturel8`
+  peut devoir l'évaluer pour adapter sa valeur. Les deux ordres de déclaration
+  et la sélection finale avec un argument suivant valide sont testés.
+- `ValiderPrefixeArgumentsAppelSemantique` réunit ce contrôle des groupes et
+  celui des signatures de callbacks. Le choix final de la meilleure surcharge,
+  ses scores, les ambiguïtés, la visibilité et les métadonnées restent confiés
+  à la sélection complète existante, une fois les arguments résolus.
+
+La passe de normalisation des types privés ne signale plus prématurément les
+erreurs de types des **expressions de conversion**. Ces erreurs sont contrôlées
+par `ValiderCibleConversionSemantique` lorsque la conversion est visitée,
+avant son opérande. Un type cible inconnu dans un argument non encore parcouru
+ne remplace donc pas le refus d'un préfixe antérieur : **21** reste prioritaire.
+Si le préfixe est compatible, cette même conversion produit toujours **99**.
+Les types de déclarations restent validés dans leur passe existante ; les
+signatures de callbacks invalides et les conversions isolées sont aussi testées.
+
+Les nœuds publics restent intacts. Aucun diagnostic public n'est ajouté ; les
+helpers respectent la limite de quatre paramètres. Le contrôle des préfixes
+n'ajoute ni récursion, ni pile de parcours, ni allocation auxiliaire.
+
+### Preuves locales
+
+La tranche ajoute **56 refus sémantiques français/anglais**, **16 corpus
+sémantiques valides**, **12 refus d'émission** sans écriture partielle et
+**quatre corpus d'émission valides** : **68 nouveaux refus**, pour un total de
+**1 339**, comparés par code, ligne et colonne au bootstrap. La matrice couvre
+les appels libres et surchargés, les références temporaires ou constantes,
+les méthodes par point ou flèche, les groupes mixtes, les alias non liés,
+les abandons après un deuxième argument et les appels imbriqués. Les cas
+valides vérifient aussi l'AST intact, les requêtes de capacité, les octets de
+données globales et leurs relocalisations ; ils ne constituent pas une
+génération auto-hébergée de code machine des fonctions.
+
+Validation avec les commandes de la section héritage : **CTest Windows 5/5**,
+**GNU/Linux 6/6**, solution `GsPlusPlus.slnx` et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur les trois constructions. Le test Linux
+de reproductibilité a d'abord comparé une bibliothèque périmée aux sources
+modifiées pendant la validation. La modification locale de mise en forme de
+`ConteneursDynamiques.GsPP` a été conservée ; après reconstruction de la
+bibliothèque, la suite complète réussit avec les mêmes entrées actuelles.
+
+Les trois images `Frontend.GsE` sont identiques : **405 135 octets**, **trois
+segments**, **huit sections**, **75 exports**, **deux imports**, SHA-256
+`0da4292bd3cad5843cb0ec599bf7d7caf1ebbcd43e2e6c3eb60497a07b706f91`.
+Le vérificateur confirme une image GsE 1.0 valide. Contrats publics, diagnostics
+0–119, formats 1.0 et ABI 1 sont inchangés.
+
+### Limites et publication
+
+Cette preuve porte sur les arguments non contextuels de la matrice. Les
+initialiseurs d'arguments nécessitant un type attendu, leurs agrégats, les
+combinaisons d'adresses de fonctions et d'autres interactions entre passes,
+notamment les validations différées de calculs constants, restent à étendre.
+Elle ne démontre pas l'équivalence exhaustive de toutes les sélections.
+
+Les sections précédentes conservent leurs preuves historiques, notamment les
+**1 271 refus** avant cette tranche. Les tranches restent locales non commitées
+et non publiées, après le commit signé déjà poussé `6686761`. `VERSION` reste à
+`0.27.0-alpha.10`, sans nouveau push, paquet, tag ou release ; les archives
+publiées sont intactes. Le passage au jalon 0.28 n'est pas encore validé.
+La migration `.Glib` / `.GdLib`, le backend auto-hébergé et les sorties PE/ELF
+restent des travaux prévus, non des capacités livrées par cette tranche.
+
+## Arguments agrégés contextuels — développement après alpha.10
+
+Cette tranche locale du 4 octobre 2026 traite les initialiseurs `{…}` utilisés
+comme arguments d'appels. Le bootstrap C++ est inchangé. Avant correction,
+le premier corpus `Scalaire({1, 2}, 0)` passait l'analyse auto-hébergée et
+retournait **4**, demande de capacité d'un résultat valide ; le bootstrap le
+refusait avec le diagnostic correspondant à **44**, trop d'éléments scalaires.
+La régression reste comparée par code, ligne et colonne.
+
+### Type attendu et ordre de validation
+
+- Le parcours principal saute le contenu d'un agrégat directement rattaché
+  à un appel. Son préfixe reste évalué comme un argument agrégé lors de la
+  sélection : score 2 pour un paramètre par valeur, refus d'une référence.
+- Pour une fonction libre, méthode ou groupe mixte, la meilleure surcharge
+  et sa visibilité sont déterminées avant le contenu des agrégats. Une
+  ambiguïté, une méthode privée ou un argument non agrégé incompatible reste
+  prioritaire sur un nom introuvable dans un agrégat différé.
+- `ValiderArgumentsAgregesFonctionSemantique` applique ensuite les paramètres
+  canoniques de la déclaration retenue, en tenant compte du récepteur
+  synthétique par point/flèche, du premier paramètre des fonctions libres
+  homonymes et du récepteur explicite des méthodes non liées.
+- Pour un callback ou une adresse explicite de fonction, le type attendu est
+  déjà disponible : l'argument agrégé est initialisé avant l'argument suivant.
+  Les champs callbacks et tableaux de callbacks sont aussi couverts.
+- `ValiderArgumentAgregeTypeSemantique` réutilise le validateur d'initialiseurs.
+  Un indicateur **privé** dans `DestinationInitialiseurSemantique.Reserve`
+  active la résolution contextuelle des feuilles. La forme et la capacité
+  sont contrôlées avant les enfants ; chaque feuille est ensuite résolue et
+  comparée à son type attendu, dans l'ordre source.
+- L'indicateur se propage aux champs et dimensions imbriqués. Les conversions
+  numériques nécessaires contrôlent aussi les bornes et les calculs constants ;
+  références vers agrégats temporaires et initialisation agrégée de classes
+  restent refusées conformément au bootstrap.
+
+Le hachage privé d'un agrégat validé est mémorisé dans la table existante des
+conversions implicites. Les vérifications successives du préfixe puis de
+l'appel complet ne résolvent pas deux fois ses feuilles. Aucune nouvelle
+allocation de parcours n'est ajoutée. Le validateur récursif existant sert aux
+agrégats imbriqués ; ses feuilles peuvent appeler le parcours d'expressions,
+notamment pour les appels imbriqués. Les contrats et nœuds publics restent
+inchangés, avec la limite de quatre paramètres par fonction.
+
+### Preuves locales
+
+La matrice ajoute **66 refus sémantiques français/anglais**, **36 corpus
+sémantiques valides**, **12 refus d'émission** sans écriture partielle et
+**quatre corpus d'émission valides** : **78 nouveaux refus**, pour un total de
+**1 417**. Elle couvre agrégats scalaires vides et imbriqués, structures,
+unions, tableaux de champs, bornes numériques, fonctions libres, alias de types
+qualifiés, méthodes par point/flèche ou non liées, groupes mixtes, callbacks
+stockés en variables, champs ou tableaux, adresses de fonctions et appels
+contextuels imbriqués. Les tests contrôlent aussi l'AST intact et les requêtes
+de capacité. Les cas d'émission valides comparent les octets de globales et
+leurs relocalisations au bootstrap ; ils ne valident pas un backend
+auto-hébergé de génération de code machine des fonctions.
+
+Commandes de validation de la section héritage : **CTest Windows 5/5**,
+**GNU/Linux 6/6**, solution `GsPlusPlus.slnx` et validation **MSBuild natives
+sans CMake**, conformité **20/20** sur les trois constructions. Les images
+`Frontend.GsE` sont identiques : **409 519 octets**, **trois segments**, **huit
+sections**, **75 exports**, **deux imports**, SHA-256
+`4789f843541cefd64d1c57e5c1ddab37e2952e946259689c655ab212d41de2ab`.
+Le vérificateur confirme une image GsE 1.0 valide. Bootstrap C++, diagnostics
+0–119, formats 1.0 et ABI 1 restent inchangés. La modification locale de
+`ConteneursDynamiques.GsPP` est conservée sans édition de cette tranche.
+
+### Limites et publication
+
+La preuve couvre les arguments des appels testés, pas tous les initialiseurs
+contextuels du langage : constructions et opérateurs restent à étendre dans
+leurs matrices respectives. Les qualifications, combinaisons d'adresses de
+fonctions, validations différées de conversions constantes et priorités des
+initialiseurs de déclarations restent à consolider entre passes. Cette tranche
+ne démontre pas une équivalence sémantique exhaustive.
+
+Les sections précédentes conservent leurs preuves historiques, dont les
+**1 339 refus** avant cette tranche. `VERSION` reste à `0.27.0-alpha.10` ; les
+tranches sont locales non commitées et non publiées, sans nouveau push, tag,
+paquet ou release. Les archives publiées restent intactes. Le passage à
+`0.28.0-alpha.1` n'est pas validé ; `.Glib` / `.GdLib`, le backend auto-hébergé
+et les sorties PE/ELF restent des travaux prévus.
+
+## Priorité des conversions constantes — développement après alpha.10
+
+**VALIDÉ dans le périmètre différentiel testé — 4 octobre 2026.**
+
+### Régression et contrôle au point de visite
+
+`convertir<naturel8>(256); objet + 7;`, avec un opérateur privé, signalait
+**25** à l’opérateur alors que le bootstrap signalait **98** à la conversion.
+Le contrôle numérique avait lieu dans une passe parcourant tous les nœuds
+après la résolution des expressions ; une erreur ultérieure pouvait le masquer.
+Le nouveau test reproduit l’écart, code, ligne et colonne compris.
+
+`ValiderConversionSemantique` contrôle désormais la valeur constante dès la
+visite de la conversion, après le type cible, la source et les signatures.
+Il réutilise `EvaluerConstanteNumeriqueSemantique` ; la passe tardive
+`ValiderConversionsConstantesSemantiques` et son appel sont supprimés.
+Une conversion non constante ou d’adresse ne déclenche pas de calcul numérique.
+Les bornes signées/non signées, la conversion booléenne et le court-circuit
+des calculs constants conservent leurs règles existantes.
+
+Les vérifications préalables d’arité et les abandons de candidats continuent
+à empêcher la visite d’arguments qui ne doivent pas encore être analysés.
+Pour un agrégat d’appel direct, sélection et visibilité restent prioritaires
+sur son contenu différé. Pour un callback, son initialisation contextuelle
+précède l’argument suivant. Les cas inversés sont aussi comparés au bootstrap.
+
+### Preuves et limites
+
+La matrice ajoute **64 refus sémantiques français/anglais**, **24 corpus
+sémantiques valides**, **12 refus d’émission** sans écriture partielle et
+**quatre corpus d’émission valides** : **76 nouveaux refus**, soit **1 493**.
+Elle couvre expressions successives, opérandes, conversions imbriquées,
+arguments directs/indirects, adresses de fonctions, agrégats contextuels,
+déclarations locales et globales, champs par défaut, énumérations et valeurs
+de retour. Code, ligne, colonne, AST intact et capacités sont vérifiés.
+Les octets de globales valides sont comparés au bootstrap ; aucun backend
+auto-hébergé de fonctions n’est revendiqué.
+
+L’exemple [TypesParFichier](../Exemples/TypesParFichier/Application.GsPj)
+vérifie aussi la séparation d’une structure et d’une énumération en interfaces
+`.HGsPP`, explicitement listées dans un projet XML. Il retourne **42** et est
+exécuté dans le test d’intégration Linux. Cette orchestration relève du
+bootstrap ; elle n’est pas une nouvelle capacité du frontend auto-hébergé.
+
+Validation complète : **CTest Windows 5/5**, **GNU/Linux 6/6**, construction de
+`GsPlusPlus.slnx` et de `VisualStudio/Validation.vcxproj` par **MSBuild natif**,
+conformité **20/20** sur les trois constructions. Les commandes sont celles
+de la section de validation héritage ; elles ont été rejouées pour cette tranche.
+Les trois images `Frontend.GsE` sont identiques : **408 975 octets**, **trois
+segments**, **huit sections**, **75 exports**, **deux imports**, SHA-256
+`c98606d6dc7134ff4275381e9d2c92e4444eed256f51f48b7fea217262dc2fd8`.
+Le vérificateur les accepte comme GsE 1.0. Les trois en-têtes générés
+`VersionProduit.hpp` indiquent `0.27.0-alpha.10`. Les diagnostics publics 0–119,
+formats 1.0 et ABI 1 sont inchangés ; la modification locale de
+`ConteneursDynamiques.GsPP` est conservée sans édition.
+
+Les autres priorités d’initialiseurs de déclarations, les contextes des
+constructions et opérateurs, les qualifications et les combinaisons encore
+absentes de la matrice restent à consolider. Il ne s’agit pas d’une preuve
+exhaustive d’équivalence. Les sections précédentes conservent leurs résultats
+historiques. `VERSION` reste à `0.27.0-alpha.10` ; ces tranches de développement
+ne font pas partie des paquets alpha.10 publiés. Aucun nouveau tag, paquet ou
+release n’est créé ; le jalon 0.28 n’est pas ouvert.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
 - compléter les autres familles sémantiques encore prises en charge par le
-  bootstrap, notamment les erreurs multiples dans un même corps et les
-  interactions de priorité entre passes non encore testées ; le
+  bootstrap, notamment les contextes des constructions et opérateurs et les
+  interactions de priorité entre passes non encore testées, dont les contrôles
+  différés d'initialiseurs de déclarations et les combinaisons de conversions
+  non encore couvertes ; le
   raccordement des données globales aux écrivains d’objets
   auto-hébergés appartient au jalon backend ;
 - étendre la conformité seulement lorsque cette tranche forme un frontend

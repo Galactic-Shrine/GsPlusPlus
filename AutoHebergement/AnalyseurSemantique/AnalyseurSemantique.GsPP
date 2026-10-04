@@ -1112,6 +1112,7 @@ espace GalacticShrine::GsPP::Autohebergement {
      * <résumé>Normalise les types dans une copie privée sans modifier l'AST de l'appelant.</résumé>
      * @Paramètre(EtatAnalyseSemantique*: etat) Requête privée et arène de cette analyse.
      * @Retourner(ErreurAnalyseSemantique) État de résolution des types déclarés et imbriqués.
+     * @etc. Les refus propres aux conversions attendent le parcours de leur expression.
      **/
     ErreurAnalyseSemantique ResoudreTypesDeclaresSemantiques(EtatAnalyseSemantique* etat) {
 
@@ -1193,10 +1194,9 @@ espace GalacticShrine::GsPP::Autohebergement {
                             etat, ErreurAnalyseSemantique::ReferenceTableauInterdite, index, 0);
                     si (etat->ErreurTypeDeclare != ErreurAnalyseSemantique::Reussite) {
 
-                        ErreurAnalyseSemantique erreur = etat->ErreurTypeDeclare;
-                        si (copie[index].Genre == 31 && erreur == ErreurAnalyseSemantique::TypeNommeIntrouvable)
-                            erreur = ErreurAnalyseSemantique::TypeConversionIntrouvable;
-                        retourner SignalerErreurSemantique(etat, erreur, index, 0);
+                        si (copie[index].Genre == 31)
+                            etat->ErreurTypeDeclare = ErreurAnalyseSemantique::Reussite;
+                        sinon retourner SignalerErreurSemantique(etat, etat->ErreurTypeDeclare, index, 0);
                     }
                     naturel32 genreDeclaration = copie[index].Genre;
                     si ((genreDeclaration == 1 || genreDeclaration == 12 || genreDeclaration == 15)
@@ -4154,6 +4154,9 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner etat->NombreSymboles;
     }
 
+    externe ErreurAnalyseSemantique ResoudreExpressionsSemantiques(
+        EtatAnalyseSemantique* etat, naturel64 debut, naturel64 fin);
+
     externe ErreurAnalyseSemantique
         ValiderInitialiseurDestinationSemantique(
             EtatAnalyseSemantique* etat,
@@ -4172,6 +4175,18 @@ espace GalacticShrine::GsPP::Autohebergement {
                 42);
         constante NoeudDeclaration* expression =
             &etat->Requete->Noeuds[indexExpression];
+
+        /** <résumé>Le contexte d'appel contrôle la forme agrégée avant de résoudre chaque feuille.</résumé> **/
+        si ((destination->Reserve & 1) != 0 && expression->Genre != 32) {
+
+            naturel64 finExpression = indexExpression + 1;
+            tantque (finExpression < etat->Requete->NombreNoeuds
+                && etat->Requete->Noeuds[finExpression].Parent >= indexExpression)
+                finExpression = finExpression + 1;
+            ErreurAnalyseSemantique erreurResolution = ResoudreExpressionsSemantiques(
+                etat, indexExpression, finExpression);
+            si (erreurResolution != ErreurAnalyseSemantique::Reussite) retourner erreurResolution;
+        }
 
         si (EstTypeReferenceSemantique(
                 etat, destination->HachageElement)) {
@@ -4283,6 +4298,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                                 etat->SymbolesTravail[champ].IndexNoeud,
                                 &destinationChamp)) {
                             destinationChamp.Globale = destination->Globale;
+                            destinationChamp.Reserve = destination->Reserve;
                             naturel64 elementStructure =
                                 TrouverEnfantDirectSemantique(
                                     etat,
@@ -4327,7 +4343,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             si (etat->Requete->Resultat.Erreur
                 != ErreurAnalyseSemantique::Reussite)
                 retourner etat->Requete->Resultat.Erreur;
-            si (destination->Globale != 0
+            si ((destination->Globale != 0 || (destination->Reserve & 1) != 0)
                 && etat->ConstanteHorsPlage != 0)
                 retourner SignalerErreurSemantique(
                     etat,
@@ -5066,9 +5082,6 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner faux;
     }
 
-    externe ErreurAnalyseSemantique ResoudreExpressionsSemantiques(
-        EtatAnalyseSemantique* etat, naturel64 debut, naturel64 fin);
-
     ErreurAnalyseSemantique CalculerEnumerationsSemantiques(
         EtatAnalyseSemantique* etat) {
         naturel64 enumerationCourante = etat->Requete->NombreNoeuds;
@@ -5681,11 +5694,14 @@ espace GalacticShrine::GsPP::Autohebergement {
             etat, etat->SymbolesTravail[cible].HachageType);
     }
 
-    /** <résumé>Positions privées de comparaison des paramètres et arguments explicites.</résumé> **/
+    /**
+     * <résumé>Positions privées et limite du préfixe d'arguments explicites déjà résolu.</résumé>
+     **/
     structure TrancheArgumentsFonctionSemantique {
 
         naturel64 PremierArgument;
         naturel64 PremierParametre;
+        naturel64 LimiteArguments;
     };
 
     /**
@@ -5693,7 +5709,7 @@ espace GalacticShrine::GsPP::Autohebergement {
      * @Paramètre(EtatAnalyseSemantique*: etat) Types privés et diagnostics.
      * @Paramètre(naturel64: indexParent) Appel ou liste d'arguments.
      * @Paramètre(naturel64: indexFonction) Déclaration candidate.
-     * @Paramètre(TrancheArgumentsFonctionSemantique*: tranche) Premiers argument et paramètre à comparer.
+     * @Paramètre(TrancheArgumentsFonctionSemantique*: tranche) Positions et limite du préfixe à comparer.
      * @Retourner(naturel32) Score compatible, ou 4_294_967_295 en cas de refus.
      **/
     naturel32 EvaluerTrancheArgumentsFonctionSemantique(
@@ -5714,7 +5730,7 @@ espace GalacticShrine::GsPP::Autohebergement {
 
         naturel32 score = 0;
         naturel64 indexArgument = 0;
-        tantque (indexArgument < nombreArguments) {
+        tantque (indexArgument < nombreArguments && indexArgument < tranche->LimiteArguments) {
             naturel64 argument = TrouverEnfantDirectSemantique(
                 etat,
                 indexParent,
@@ -5771,7 +5787,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 indexFonction,
         naturel64 premierArgument) {
 
-        TrancheArgumentsFonctionSemantique tranche = {premierArgument, 0};
+        TrancheArgumentsFonctionSemantique tranche = {premierArgument, 0, etat->Requete->NombreNoeuds};
         retourner EvaluerTrancheArgumentsFonctionSemantique(etat, indexParent, indexFonction, &tranche);
     }
 
@@ -5949,7 +5965,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
         naturel32 score = EvaluerRecepteurAppelMembreSemantique(etat, indexMembre, typeRecepteur);
         si (score == 4_294_967_295) retourner score;
-        TrancheArgumentsFonctionSemantique tranche = {1, premierParametre};
+        TrancheArgumentsFonctionSemantique tranche = {1, premierParametre, etat->Requete->NombreNoeuds};
         naturel32 scoreArguments = EvaluerTrancheArgumentsFonctionSemantique(etat, indexAppel, indexFonction, &tranche);
         si (scoreArguments == 4_294_967_295) retourner scoreArguments;
         retourner score + scoreArguments;
@@ -8294,13 +8310,75 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
+    /**
+     * <résumé>Résout un argument agrégé après obtention de son type attendu.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Résolutions et types privés.
+     * @Paramètre(naturel64: argument) Racine de l'initialiseur agrégé différé.
+     * @Paramètre(naturel64: type) Paramètre de la signature retenue.
+     * @Retourner(ErreurAnalyseSemantique) Premier refus de forme ou de feuille dans l'ordre source.
+     **/
+    ErreurAnalyseSemantique ValiderArgumentAgregeTypeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 argument, naturel64 type) {
+
+        si (etat->TypesConversionsImplicites[argument] != 0) retourner ErreurAnalyseSemantique::Reussite;
+        DestinationInitialiseurSemantique destination = {type, argument, 0, 0, 0, 1};
+        ErreurAnalyseSemantique erreur = ValiderInitialiseurDestinationSemantique(etat, argument, &destination);
+        si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
+        etat->TypesConversionsImplicites[argument] = SansQualificatifsValeurSemantique(etat, type);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Applique les paramètres canoniques de la fonction sélectionnée aux arguments agrégés.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Cible résolue et déclarations canoniques.
+     * @Paramètre(naturel64: indexAppel) Appel après sélection et visibilité.
+     * @Paramètre(naturel64: indexFonction) Déclaration effectivement retenue.
+     * @Retourner(ErreurAnalyseSemantique) Premier refus contextuel après la sélection.
+     **/
+    ErreurAnalyseSemantique ValiderArgumentsAgregesFonctionSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexAppel, naturel64 indexFonction) {
+
+        naturel64 cible = TrouverEnfantDirectSemantique(etat, indexAppel, 0);
+        naturel64 premierArgument = 1;
+        naturel64 premierParametre = 0;
+        naturel64 recepteur = HachageTypeRecepteurFonctionSemantique(etat, indexFonction);
+        si (etat->Requete->Noeuds[cible].Genre == 29 && recepteur == 0) premierParametre = 1;
+        sinon si (etat->Requete->Noeuds[cible].Genre != 29 && recepteur != 0) premierArgument = 2;
+        naturel64 nombreArguments = CompterEnfantsDirectsSemantique(etat, indexAppel);
+        naturel64 index = premierArgument;
+        tantque (index < nombreArguments) {
+
+            naturel64 argument = TrouverEnfantDirectSemantique(etat, indexAppel, index);
+            si (etat->Requete->Noeuds[argument].Genre == 32) {
+
+                naturel64 parametre = TrouverParametreFonctionSemantique(
+                    etat, indexFonction, index - premierArgument + premierParametre);
+                ErreurAnalyseSemantique erreur = ValiderArgumentAgregeTypeSemantique(
+                    etat, argument, etat->Requete->Noeuds[parametre].HachageType);
+                si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
+            }
+            index = index + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Regroupe la signature indirecte et le préfixe d'arguments à contrôler.</résumé>
+     **/
+    structure TrancheArgumentsAppelIndirectSemantique {
+
+        naturel64 DebutType;
+        naturel32 NombreParametres;
+        naturel64 Limite;
+    };
+
     ErreurAnalyseSemantique ValiderArgumentsAppelIndirectSemantique(
         EtatAnalyseSemantique* etat,
         naturel64 indexAppel,
-        naturel64 debutTypePointeurFonction,
-        naturel32 nombreParametresPointeurFonction) {
+        TrancheArgumentsAppelIndirectSemantique* tranche) {
+        naturel32 nombreParametresPointeurFonction = tranche->NombreParametres;
         CurseurTypeJetonsSemantique curseurArgumentsIndirects = {
-            debutTypePointeurFonction, faux};
+            tranche->DebutType, faux};
         booléen continuerQualificatifsAppel = vrai;
         tantque (continuerQualificatifsAppel) {
             si (AccepterTypeJetonsSemantique(
@@ -8325,7 +8403,8 @@ espace GalacticShrine::GsPP::Autohebergement {
 
         naturel32 indexArgumentIndirect = 0;
         tantque (indexArgumentIndirect
-            < nombreParametresPointeurFonction) {
+            < nombreParametresPointeurFonction
+            && convertir<naturel64>(indexArgumentIndirect) < tranche->Limite) {
             DescriptionTypeJetonsSemantique parametreAppelIndirect;
             si (!AnalyserTypeJetonsSemantique(
                     etat,
@@ -8340,7 +8419,13 @@ espace GalacticShrine::GsPP::Autohebergement {
             booléen parametreIndirectReference =
                 (parametreAppelIndirect.Qualificatifs & 4) != 0;
             booléen argumentIndirectCompatible = vrai;
-            si (parametreIndirectReference) {
+            si (etat->Requete->Noeuds[argumentAppelIndirect].Genre == 32) {
+
+                ErreurAnalyseSemantique erreurAgregat = ValiderArgumentAgregeTypeSemantique(
+                    etat, argumentAppelIndirect, parametreAppelIndirect.HachageType);
+                si (erreurAgregat != ErreurAnalyseSemantique::Reussite) retourner erreurAgregat;
+            }
+            sinon si (parametreIndirectReference) {
                 argumentIndirectCompatible =
                     LiaisonReferenceCompatibleSemantique(
                         etat,
@@ -8383,7 +8468,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (symboleCibleAppelIndirect < etat->NombreSymboles
             && etat->SymbolesTravail[
                 symboleCibleAppelIndirect].Genre == 2)
-            retourner ErreurAnalyseSemantique::Reussite;
+            retourner ValiderArgumentsAgregesFonctionSemantique(
+                etat, indexAppel, etat->SymbolesTravail[symboleCibleAppelIndirect].IndexNoeud);
 
         naturel64 typeCibleAppelIndirect =
             HachageTypeExpressionSemantique(
@@ -8440,7 +8526,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     }
                     indexArgument = indexArgument + 1;
                 }
-                retourner ErreurAnalyseSemantique::Reussite;
+                retourner ValiderArgumentsAgregesFonctionSemantique(etat, indexAppel, origineCibleAppelIndirect);
             }
             si (EvaluerArgumentsFonctionSemantique(
                     etat,
@@ -8457,7 +8543,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     premierArgumentAdresseFonction,
                     0);
             }
-            retourner ErreurAnalyseSemantique::Reussite;
+            retourner ValiderArgumentsAgregesFonctionSemantique(etat, indexAppel, origineCibleAppelIndirect);
         }
         DescriptionTypeJetonsSemantique descriptionAppelIndirect;
         si (!LireDescriptionPointeurFonctionNoeudSemantique(
@@ -8485,11 +8571,11 @@ espace GalacticShrine::GsPP::Autohebergement {
                 ErreurAnalyseSemantique::AriteAppelIndirectInvalide,
                 indexAppel,
                 convertir<naturel32>(nombreArgumentsAppelIndirect));
-        retourner ValiderArgumentsAppelIndirectSemantique(
-            etat,
-            indexAppel,
+        TrancheArgumentsAppelIndirectSemantique tranche = {
             descriptionAppelIndirect.DebutType,
-            descriptionAppelIndirect.Reserve);
+            descriptionAppelIndirect.Reserve,
+            convertir<naturel64>(descriptionAppelIndirect.Reserve)};
+        retourner ValiderArgumentsAppelIndirectSemantique(etat, indexAppel, &tranche);
     }
 
     ErreurAnalyseSemantique ResoudreOperateurSemantique(
@@ -8699,12 +8785,16 @@ espace GalacticShrine::GsPP::Autohebergement {
             && typeExpression != typeElementFinal;
     }
 
-    ErreurAnalyseSemantique ValiderAffectationSemantique(
+    /**
+     * <résumé>Contrôle la cible déjà résolue avant d'analyser la valeur d'une affectation.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST et types déjà résolus.
+     * @Paramètre(naturel64: indexAffectation) Expression d'affectation à contrôler.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic de la cible.
+     **/
+    ErreurAnalyseSemantique ValiderCibleAffectationSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexAffectation) {
         naturel64 cibleAffectation = TrouverEnfantDirectSemantique(
             etat, indexAffectation, 0);
-        naturel64 valeurAffectation = TrouverEnfantDirectSemantique(
-            etat, indexAffectation, 1);
         si (!EstValeurGaucheSemantique(etat, cibleAffectation))
             retourner SignalerErreurSemantique(
                 etat,
@@ -8725,6 +8815,16 @@ espace GalacticShrine::GsPP::Autohebergement {
                 ErreurAnalyseSemantique::AffectationTableauInterdite,
                 indexAffectation,
                 0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    ErreurAnalyseSemantique ValiderAffectationSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexAffectation) {
+
+        ErreurAnalyseSemantique erreur = ValiderCibleAffectationSemantique(etat, indexAffectation);
+        si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
+        naturel64 cibleAffectation = TrouverEnfantDirectSemantique(etat, indexAffectation, 0);
+        naturel64 valeurAffectation = TrouverEnfantDirectSemantique(etat, indexAffectation, 1);
         naturel64 typeCibleAffectation = HachageTypeExpressionSemantique(
             etat, cibleAffectation);
         si (!InitialiseurCompatibleTypeSemantique(
@@ -8798,33 +8898,56 @@ espace GalacticShrine::GsPP::Autohebergement {
     }
 
     /**
-     * <résumé>Vérifie les catégories et signatures d'une conversion explicite.</résumé>
+     * <résumé>Vérifie le type cible d'une conversion avant d'analyser sa source.</résumé>
      * @Paramètre(EtatAnalyseSemantique*: etat) Tables et types résolus.
      * @Paramètre(naturel64: indexConversion) Expression convertir/cast.
+     * @Paramètre(DescriptionTypeJetonsSemantique*: cible) Description privée du type cible.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic du type cible.
+     **/
+    ErreurAnalyseSemantique ValiderCibleConversionSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexConversion, DescriptionTypeJetonsSemantique* cible) {
+
+        etat->ErreurTypeDeclare = ErreurAnalyseSemantique::Reussite;
+        si (!LireTypeConversionSemantique(etat, indexConversion, cible))
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::AstInvalide, indexConversion, 64);
+        si (etat->ErreurTypeDeclare != ErreurAnalyseSemantique::Reussite) {
+
+            ErreurAnalyseSemantique erreurTypeCible = etat->ErreurTypeDeclare;
+            si (erreurTypeCible == ErreurAnalyseSemantique::TypeNommeIntrouvable)
+                erreurTypeCible = ErreurAnalyseSemantique::TypeConversionIntrouvable;
+            retourner SignalerErreurSemantique(etat, erreurTypeCible, indexConversion, 0);
+        }
+        naturel64 typeNomme = etat->NombreSymboles;
+        si (cible->Genre == 13) {
+
+            typeNomme = TrouverTypeDepuisHachageSemantique(
+                etat, cible->HachageType, cible->NiveauPointeur);
+            si (typeNomme >= etat->NombreSymboles)
+                retourner SignalerErreurSemantique(
+                    etat, ErreurAnalyseSemantique::TypeConversionIntrouvable, indexConversion, 0);
+        }
+        si (cible->NiveauPointeur == 0 && (cible->Qualificatifs & 4) == 0
+            && (cible->Genre == 12
+                || (typeNomme < etat->NombreSymboles
+                    && etat->Requete->Noeuds[etat->SymbolesTravail[typeNomme].IndexNoeud].Genre != 8)))
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::CibleConversionNonScalaire, indexConversion, 0);
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Vérifie source, signatures et valeur constante lors de la visite de la conversion.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST et types déjà résolus.
+     * @Paramètre(naturel64: indexConversion) Expression convertir/cast à contrôler.
      * @Retourner(ErreurAnalyseSemantique) Premier diagnostic de conversion.
      **/
     ErreurAnalyseSemantique ValiderConversionSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexConversion) {
 
         DescriptionTypeJetonsSemantique cible;
-        si (!LireTypeConversionSemantique(etat, indexConversion, &cible))
-            retourner SignalerErreurSemantique(
-                etat, ErreurAnalyseSemantique::AstInvalide, indexConversion, 64);
-        naturel64 typeNomme = etat->NombreSymboles;
-        si (cible.Genre == 13) {
-
-            typeNomme = TrouverTypeDepuisHachageSemantique(
-                etat, cible.HachageType, cible.NiveauPointeur);
-            si (typeNomme >= etat->NombreSymboles)
-                retourner SignalerErreurSemantique(
-                    etat, ErreurAnalyseSemantique::TypeConversionIntrouvable, indexConversion, 0);
-        }
-        si (cible.NiveauPointeur == 0 && (cible.Qualificatifs & 4) == 0
-            && (cible.Genre == 12
-                || (typeNomme < etat->NombreSymboles
-                    && etat->Requete->Noeuds[etat->SymbolesTravail[typeNomme].IndexNoeud].Genre != 8)))
-            retourner SignalerErreurSemantique(
-                etat, ErreurAnalyseSemantique::CibleConversionNonScalaire, indexConversion, 0);
+        ErreurAnalyseSemantique erreur = ValiderCibleConversionSemantique(etat, indexConversion, &cible);
+        si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
 
         naturel64 indexSource = TrouverEnfantDirectSemantique(etat, indexConversion, 0);
         naturel64 typeSource = HachageTypeExpressionSemantique(etat, indexSource);
@@ -8852,84 +8975,404 @@ espace GalacticShrine::GsPP::Autohebergement {
         si ((sourceFonction || cibleFonction) && typeSource != cible.HachageType)
             retourner SignalerErreurSemantique(
                 etat, ErreurAnalyseSemantique::SignatureConversionIncompatible, indexConversion, 0);
-        retourner ErreurAnalyseSemantique::Reussite;
-    }
+        si (!cibleAdresse && EstExpressionConstanteGlobaleSemantique(etat, indexConversion)) {
 
-    /**
-     * <résumé>Contrôle aussi les conversions constantes locales après les énumérations.</résumé>
-     * @Paramètre(EtatAnalyseSemantique*: etat) Valeurs d'énumération disponibles.
-     * @Retourner(ErreurAnalyseSemantique) Premier calcul ou contrôle de plage en erreur.
-     **/
-    ErreurAnalyseSemantique ValiderConversionsConstantesSemantiques(EtatAnalyseSemantique* etat) {
-
-        naturel64 index = 0;
-        tantque (index < etat->Requete->NombreNoeuds) {
-
-            si (etat->Requete->Noeuds[index].Genre == 31) {
-
-                naturel64 typeCible = HachageTypeExpressionSemantique(etat, index);
-                si (!EstExpressionAdresseIntrinsequeSemantique(etat, index, typeCible)
-                    && EstExpressionConstanteGlobaleSemantique(etat, index)) {
-
-                    naturel64 valeur = 0;
-                    ErreurAnalyseSemantique erreur = EvaluerConstanteNumeriqueSemantique(etat, index, &valeur);
-                    si (erreur != ErreurAnalyseSemantique::Reussite)
-                        retourner erreur;
-                }
-            }
-            index = index + 1;
+            naturel64 valeur = 0;
+            retourner EvaluerConstanteNumeriqueSemantique(etat, indexConversion, &valeur);
         }
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
+    /**
+     * <résumé>Résout un nœud dont les enfants ont déjà été traités.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST et résolutions privées.
+     * @Paramètre(naturel64: indexExpression) Nœud à résoudre sans parcourir ses enfants.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic propre au nœud.
+     **/
+    ErreurAnalyseSemantique ResoudreNoeudExpressionSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+
+        constante NoeudDeclaration* expressionCourante =
+            &etat->Requete->Noeuds[indexExpression];
+        ErreurAnalyseSemantique erreurExpression =
+            ErreurAnalyseSemantique::Reussite;
+        si (expressionCourante->Genre == 24)
+            erreurExpression = ResoudreReferenceSemantique(
+                etat, indexExpression);
+        sinon si (expressionCourante->Genre == 29)
+            erreurExpression = ResoudreMembreSemantique(
+                etat, indexExpression);
+        sinon si (expressionCourante->Genre == 25
+            || expressionCourante->Genre == 26)
+            erreurExpression = ResoudreOperateurSemantique(
+                etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 25)
+            erreurExpression = ValiderUnaireIntrinsequeSemantique(
+                etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 26)
+            erreurExpression = ValiderBinaireIntrinsequeSemantique(
+                etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 31)
+            erreurExpression = ValiderConversionSemantique(etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 30)
+            erreurExpression = ValiderIndexationSemantique(
+                etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 28)
+            erreurExpression = ValiderAppelIndirectSemantique(
+                etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 27)
+            erreurExpression = ValiderAffectationSemantique(
+                etat, indexExpression);
+        si (erreurExpression == ErreurAnalyseSemantique::Reussite
+            && expressionCourante->Genre == 17)
+            erreurExpression = ValiderRetourSemantique(
+                etat, indexExpression);
+        si (erreurExpression != ErreurAnalyseSemantique::Reussite)
+            retourner erreurExpression;
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Diffère la sélection d'une cible surchargée jusqu'à la résolution des arguments.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST et résolutions privées.
+     * @Paramètre(naturel64: indexCible) Premier enfant direct de l'appel.
+     * @Retourner(booléen) Vrai pour une référence de fonction ou un groupe membre.
+     **/
+    booléen EstCibleAppelDiffereeSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexCible) {
+
+        naturel32 genre = etat->Requete->Noeuds[indexCible].Genre;
+        si (genre == 24) {
+
+            si (TrouverVariableSemantique(etat, indexCible) < etat->NombreSymboles) retourner faux;
+            naturel64 cible = TrouverDeclarationRacineSemantique(etat, indexCible);
+            retourner cible < etat->NombreSymboles && etat->SymbolesTravail[cible].Genre == 2;
+        }
+        si (genre != 29) retourner faux;
+        naturel64 typeObjet = TrouverTypeObjetMembreSemantique(etat, indexCible);
+        retourner typeObjet < etat->NombreSymboles
+            && TrouverTypeDeclarantAppelMembreSemantique(etat, typeObjet, indexCible) < etat->NombreSymboles;
+    }
+
+    /**
+     * <résumé>Contrôle l'existence d'une signature d'arité recevable avant les arguments.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Symboles canoniques et récepteur résolu.
+     * @Paramètre(naturel64: indexCible) Référence ou membre appelé.
+     * @Retourner(ErreurAnalyseSemantique) Refus du groupe avant toute expression d'argument.
+     **/
+    ErreurAnalyseSemantique PreparerGroupeAppelSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexCible) {
+
+        naturel64 indexAppel = etat->Requete->Noeuds[indexCible].Parent;
+        naturel64 nombreArguments = CompterEnfantsDirectsSemantique(etat, indexAppel) - 1;
+        booléen membre = etat->Requete->Noeuds[indexCible].Genre == 29;
+        naturel64 nomGroupe = 0;
+        naturel64 cibleRacine = etat->NombreSymboles;
+        si (membre) {
+
+            naturel64 typeObjet = TrouverTypeObjetMembreSemantique(etat, indexCible);
+            naturel64 declarant = TrouverTypeDeclarantAppelMembreSemantique(etat, typeObjet, indexCible);
+            nomGroupe = HacherNomCompletSemantique(etat, etat->SymbolesTravail[declarant].IndexNoeud);
+            nomGroupe = AjouterNomNoeudSemantique(etat,
+                AjouterOctetSemantique(AjouterOctetSemantique(nomGroupe, 58), 58), indexCible);
+        }
+        sinon cibleRacine = TrouverDeclarationRacineSemantique(etat, indexCible);
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            booléen correspond = ReferenceCorrespondSymboleSemantique(etat, &etat->Requete->Noeuds[indexCible], candidat);
+            si (cibleRacine < etat->NombreSymboles) correspond = HacherNomDeclarationAliasSemantique(etat, candidat)
+                == HacherNomDeclarationAliasSemantique(etat, &etat->SymbolesTravail[cibleRacine]);
+            si (membre) correspond = HacherNomDeclarationAliasSemantique(etat, candidat) == nomGroupe;
+            si (candidat->Genre == 2 && correspond) {
+
+                naturel64 parametres = CompterParametresFonctionSemantique(etat, candidat->IndexNoeud);
+                naturel64 typeRecepteur = HachageTypeRecepteurFonctionSemantique(etat, candidat->IndexNoeud);
+                si (membre && typeRecepteur == 0 && parametres != 0) {
+
+                    naturel64 premier = TrouverParametreFonctionSemantique(etat, candidat->IndexNoeud, 0);
+                    typeRecepteur = etat->Requete->Noeuds[premier].HachageType;
+                    parametres = parametres - 1;
+                }
+                sinon si (!membre && typeRecepteur != 0) parametres = parametres + 1;
+                booléen recepteurCompatible = !membre || (typeRecepteur != 0
+                    && EvaluerRecepteurAppelMembreSemantique(etat, indexCible, typeRecepteur) != 4_294_967_295);
+                si (parametres == nombreArguments && recepteurCompatible)
+                    retourner ErreurAnalyseSemantique::Reussite;
+            }
+            index = index + 1;
+        }
+        retourner SignalerErreurSemantique(etat, ErreurAnalyseSemantique::AucuneSurchargeCompatible,
+            indexCible, convertir<naturel32>(nombreArguments));
+    }
+
+    /**
+     * <résumé>Contrôle la cible indirecte et son arité avant les arguments.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Cible déjà résolue et signatures privées.
+     * @Paramètre(naturel64: indexAppel) Expression d'appel.
+     * @Retourner(ErreurAnalyseSemantique) Premier refus de cible ou d'arité.
+     **/
+    ErreurAnalyseSemantique PreparerAppelIndirectSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexAppel) {
+
+        naturel64 cible = TrouverEnfantDirectSemantique(etat, indexAppel, 0);
+        naturel64 type = HachageTypeExpressionSemantique(etat, cible);
+        naturel64 origine = TrouverOrigineTypeExpressionSemantique(etat, cible);
+        naturel64 symboleOrigine = TrouverSymboleNoeudSemantique(etat, origine, 2);
+        naturel64 nombreArguments = CompterEnfantsDirectsSemantique(etat, indexAppel) - 1;
+        naturel64 nombreParametres = 0;
+        si (symboleOrigine < etat->NombreSymboles
+            && type == HacherPointeurFonctionDeclarationSemantique(etat, origine))
+            nombreParametres = CompterParametresSignatureFonctionSemantique(etat, origine);
+        sinon {
+
+            DescriptionTypeJetonsSemantique description;
+            si (!LireDescriptionPointeurFonctionNoeudSemantique(etat, origine, type, &description)
+                || description.NiveauPointeur != 0)
+                retourner SignalerErreurSemantique(etat, ErreurAnalyseSemantique::CibleAppelIndirectInvalide, cible, 0);
+            nombreParametres = convertir<naturel64>(description.Reserve);
+        }
+        si (nombreArguments != nombreParametres)
+            retourner SignalerErreurSemantique(etat, ErreurAnalyseSemantique::AriteAppelIndirectInvalide,
+                indexAppel, convertir<naturel32>(nombreArguments));
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Compare seulement les arguments déjà parcourus à une signature candidate.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Types privés des arguments résolus.
+     * @Paramètre(naturel64: indexCible) Référence ou membre appelé.
+     * @Paramètre(naturel64: indexFonction) Déclaration candidate canonique.
+     * @Paramètre(naturel64: limite) Nombre d'arguments directs déjà parcourus.
+     * @Retourner(naturel32) Score compatible ou 4_294_967_295 si le préfixe élimine la candidate.
+     **/
+    naturel32 EvaluerPrefixeGroupeAppelSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexCible, naturel64 indexFonction, naturel64 limite) {
+
+        naturel64 indexAppel = etat->Requete->Noeuds[indexCible].Parent;
+        TrancheArgumentsFonctionSemantique tranche = {1, 0, limite};
+        naturel64 typeRecepteur = HachageTypeRecepteurFonctionSemantique(etat, indexFonction);
+        si (etat->Requete->Noeuds[indexCible].Genre == 29) {
+
+            si (typeRecepteur == 0) {
+
+                si (CompterParametresFonctionSemantique(etat, indexFonction) == 0) retourner 4_294_967_295;
+                naturel64 premierParametre = TrouverParametreFonctionSemantique(etat, indexFonction, 0);
+                typeRecepteur = etat->Requete->Noeuds[premierParametre].HachageType;
+                tranche.PremierParametre = 1;
+            }
+            si (EvaluerRecepteurAppelMembreSemantique(etat, indexCible, typeRecepteur) == 4_294_967_295)
+                retourner 4_294_967_295;
+        }
+        sinon si (typeRecepteur != 0) {
+
+            naturel64 recepteur = TrouverEnfantDirectSemantique(etat, indexAppel, 1);
+            si (!LiaisonReferenceCompatibleSemantique(etat, recepteur, typeRecepteur)) retourner 4_294_967_295;
+            tranche.PremierArgument = 2;
+            tranche.LimiteArguments = limite - 1;
+        }
+        retourner EvaluerTrancheArgumentsFonctionSemantique(etat, indexAppel, indexFonction, &tranche);
+    }
+
+    /**
+     * <résumé>Abandonne les candidats incompatibles avant de visiter l'argument suivant.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Groupe canonique et préfixe déjà résolu.
+     * @Paramètre(naturel64: indexCible) Référence ou membre appelé.
+     * @Paramètre(naturel64: limite) Nombre d'arguments directs déjà parcourus.
+     * @Retourner(ErreurAnalyseSemantique) Premier refus de préfixe dans l'ordre des candidats.
+     * @etc. Ne pas évaluer une candidate ultérieure tant que le préfixe de la première reste recevable.
+     **/
+    ErreurAnalyseSemantique ValiderPrefixeGroupeAppelSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexCible, naturel64 limite) {
+
+        booléen membre = etat->Requete->Noeuds[indexCible].Genre == 29;
+        naturel64 nomGroupe = 0;
+        naturel64 cibleRacine = etat->NombreSymboles;
+        si (membre) {
+
+            naturel64 typeObjet = TrouverTypeObjetMembreSemantique(etat, indexCible);
+            naturel64 declarant = TrouverTypeDeclarantAppelMembreSemantique(etat, typeObjet, indexCible);
+            nomGroupe = HacherNomCompletSemantique(etat, etat->SymbolesTravail[declarant].IndexNoeud);
+            nomGroupe = AjouterNomNoeudSemantique(etat,
+                AjouterOctetSemantique(AjouterOctetSemantique(nomGroupe, 58), 58), indexCible);
+        }
+        sinon cibleRacine = TrouverDeclarationRacineSemantique(etat, indexCible);
+        naturel64 index = 0;
+        tantque (index < etat->NombreSymboles) {
+
+            SymboleSemantique* candidat = &etat->SymbolesTravail[index];
+            booléen correspond = ReferenceCorrespondSymboleSemantique(etat, &etat->Requete->Noeuds[indexCible], candidat);
+            si (cibleRacine < etat->NombreSymboles) correspond = HacherNomDeclarationAliasSemantique(etat, candidat)
+                == HacherNomDeclarationAliasSemantique(etat, &etat->SymbolesTravail[cibleRacine]);
+            si (membre) correspond = HacherNomDeclarationAliasSemantique(etat, candidat) == nomGroupe;
+            si (candidat->Genre == 2 && correspond) {
+
+                naturel32 score = EvaluerPrefixeGroupeAppelSemantique(etat, indexCible, candidat->IndexNoeud, limite);
+                si (etat->Requete->Resultat.Erreur != ErreurAnalyseSemantique::Reussite)
+                    retourner etat->Requete->Resultat.Erreur;
+                si (score != 4_294_967_295) retourner ErreurAnalyseSemantique::Reussite;
+            }
+            index = index + 1;
+        }
+        naturel64 indexAppel = etat->Requete->Noeuds[indexCible].Parent;
+        retourner SignalerErreurSemantique(etat, ErreurAnalyseSemantique::AucuneSurchargeCompatible,
+            indexCible, convertir<naturel32>(CompterEnfantsDirectsSemantique(etat, indexAppel) - 1));
+    }
+
+    /**
+     * <résumé>Valide les paramètres déjà parcourus avant de passer à l'argument suivant.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) Cible et préfixe d'arguments résolus.
+     * @Paramètre(naturel64: indexAppel) Expression d'appel.
+     * @Paramètre(naturel64: limite) Nombre d'arguments déjà parcourus.
+     * @Retourner(ErreurAnalyseSemantique) Premier refus de groupe ou d'argument indirect.
+     **/
+    ErreurAnalyseSemantique ValiderPrefixeArgumentsAppelSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexAppel, naturel64 limite) {
+
+        naturel64 cible = TrouverEnfantDirectSemantique(etat, indexAppel, 0);
+        si (EstCibleAppelDiffereeSemantique(etat, cible))
+            retourner ValiderPrefixeGroupeAppelSemantique(etat, cible, limite);
+        naturel64 type = HachageTypeExpressionSemantique(etat, cible);
+        naturel64 origine = TrouverOrigineTypeExpressionSemantique(etat, cible);
+        naturel64 fonction = TrouverSymboleNoeudSemantique(etat, origine, 2);
+        naturel64 argument = TrouverEnfantDirectSemantique(etat, indexAppel, limite);
+        si (fonction < etat->NombreSymboles && type == HacherPointeurFonctionDeclarationSemantique(etat, origine)
+            && etat->Requete->Noeuds[argument].Genre == 32) {
+
+            naturel64 typeParametre = HachageTypeRecepteurFonctionSemantique(etat, origine);
+            naturel64 position = limite - 1;
+            si (typeParametre == 0 || position != 0) {
+
+                si (typeParametre != 0) position = position - 1;
+                naturel64 parametre = TrouverParametreFonctionSemantique(etat, origine, position);
+                typeParametre = etat->Requete->Noeuds[parametre].HachageType;
+            }
+            ErreurAnalyseSemantique erreurAgregat = ValiderArgumentAgregeTypeSemantique(etat, argument, typeParametre);
+            si (erreurAgregat != ErreurAnalyseSemantique::Reussite) retourner erreurAgregat;
+        }
+        DescriptionTypeJetonsSemantique description;
+        si (LireDescriptionPointeurFonctionNoeudSemantique(etat, origine, type, &description)
+            && description.NiveauPointeur == 0) {
+
+            TrancheArgumentsAppelIndirectSemantique tranche = {description.DebutType, description.Reserve, limite};
+            retourner ValiderArgumentsAppelIndirectSemantique(etat, indexAppel, &tranche);
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Résout les sous-arbres dans l'ordre des opérandes, puis leurs contrôles parents.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST préordonné et résolutions privées.
+     * @Paramètre(naturel64: debut) Première position du sous-arbre.
+     * @Paramètre(naturel64: fin) Borne exclusive de la tranche.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic du parcours couvert.
+     * @etc. Les parents servent de pile implicite ; aucun nœud ni allocation supplémentaire.
+     **/
     ErreurAnalyseSemantique ResoudreExpressionsSemantiques(
         EtatAnalyseSemantique* etat, naturel64 debut, naturel64 fin) {
-        naturel64 indexExpression = fin;
-        tantque (indexExpression > debut) {
-            indexExpression = indexExpression - 1;
-            constante NoeudDeclaration* expressionCourante =
-                &etat->Requete->Noeuds[indexExpression];
-            ErreurAnalyseSemantique erreurExpression =
-                ErreurAnalyseSemantique::Reussite;
-            si (expressionCourante->Genre == 24)
-                erreurExpression = ResoudreReferenceSemantique(
-                    etat, indexExpression);
-            sinon si (expressionCourante->Genre == 29)
-                erreurExpression = ResoudreMembreSemantique(
-                    etat, indexExpression);
-            sinon si (expressionCourante->Genre == 25
-                || expressionCourante->Genre == 26)
-                erreurExpression = ResoudreOperateurSemantique(
-                    etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 25)
-                erreurExpression = ValiderUnaireIntrinsequeSemantique(
-                    etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 26)
-                erreurExpression = ValiderBinaireIntrinsequeSemantique(
-                    etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 31)
-                erreurExpression = ValiderConversionSemantique(etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 30)
-                erreurExpression = ValiderIndexationSemantique(
-                    etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 28)
-                erreurExpression = ValiderAppelIndirectSemantique(
-                    etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 27)
-                erreurExpression = ValiderAffectationSemantique(
-                    etat, indexExpression);
-            si (erreurExpression == ErreurAnalyseSemantique::Reussite
-                && expressionCourante->Genre == 17)
-                erreurExpression = ValiderRetourSemantique(
-                    etat, indexExpression);
-            si (erreurExpression != ErreurAnalyseSemantique::Reussite)
-                retourner erreurExpression;
+
+        naturel64 prochain = debut;
+        tantque (prochain < fin) {
+
+            naturel64 indexExpression = prochain;
+            naturel64 parentExpression = etat->Requete->Noeuds[indexExpression].Parent;
+            booléen argumentAgregeDiffere = etat->Requete->Noeuds[indexExpression].Genre == 32
+                && parentExpression < indexExpression && etat->Requete->Noeuds[parentExpression].Genre == 28;
+            si (etat->Requete->Noeuds[indexExpression].Genre == 31) {
+
+                DescriptionTypeJetonsSemantique cible;
+                ErreurAnalyseSemantique erreurCibleConversion = ValiderCibleConversionSemantique(etat, indexExpression, &cible);
+                si (erreurCibleConversion != ErreurAnalyseSemantique::Reussite) retourner erreurCibleConversion;
+            }
+            prochain = prochain + 1;
+            si (argumentAgregeDiffere)
+                tantque (prochain < fin && etat->Requete->Noeuds[prochain].Parent >= indexExpression)
+                    prochain = prochain + 1;
+            booléen termine = prochain >= fin
+                || etat->Requete->Noeuds[prochain].Parent != indexExpression;
+            tantque (termine) {
+
+                naturel64 indexParent = etat->Requete->Noeuds[indexExpression].Parent;
+                booléen parentPresent = indexParent >= debut && indexParent < indexExpression;
+                booléen enfantAppel = parentPresent && etat->Requete->Noeuds[indexParent].Genre == 28;
+                booléen cibleAppel = enfantAppel && indexExpression == indexParent + 1;
+                booléen cibleDifferee = cibleAppel && EstCibleAppelDiffereeSemantique(etat, indexExpression);
+                si (etat->Requete->Noeuds[indexExpression].Genre == 28) {
+
+                    naturel64 cibleFinale = TrouverEnfantDirectSemantique(etat, indexExpression, 0);
+                    si (EstCibleAppelDiffereeSemantique(etat, cibleFinale)) {
+
+                        ErreurAnalyseSemantique erreurSelection = ResoudreNoeudExpressionSemantique(etat, cibleFinale);
+                        si (erreurSelection != ErreurAnalyseSemantique::Reussite) retourner erreurSelection;
+                    }
+                }
+                si (!cibleDifferee) {
+
+                    ErreurAnalyseSemantique erreurNoeud = ResoudreNoeudExpressionSemantique(etat, indexExpression);
+                    si (erreurNoeud != ErreurAnalyseSemantique::Reussite) retourner erreurNoeud;
+                }
+                si (cibleAppel) {
+
+                    ErreurAnalyseSemantique erreurPreparation = ErreurAnalyseSemantique::Reussite;
+                    si (cibleDifferee) erreurPreparation = PreparerGroupeAppelSemantique(etat, indexExpression);
+                    sinon erreurPreparation = PreparerAppelIndirectSemantique(etat, indexParent);
+                    si (erreurPreparation != ErreurAnalyseSemantique::Reussite) retourner erreurPreparation;
+                }
+                sinon si (enfantAppel) {
+
+                    naturel64 limiteArguments = 1;
+                    tantque (TrouverEnfantDirectSemantique(etat, indexParent, limiteArguments) != indexExpression)
+                        limiteArguments = limiteArguments + 1;
+                    ErreurAnalyseSemantique erreurArgument = ValiderPrefixeArgumentsAppelSemantique(etat, indexParent, limiteArguments);
+                    si (erreurArgument != ErreurAnalyseSemantique::Reussite) retourner erreurArgument;
+                }
+                si (parentPresent && etat->Requete->Noeuds[indexParent].Genre == 27
+                    && indexExpression == indexParent + 1) {
+
+                    ErreurAnalyseSemantique erreurCibleAffectation = ValiderCibleAffectationSemantique(etat, indexParent);
+                    si (erreurCibleAffectation != ErreurAnalyseSemantique::Reussite) retourner erreurCibleAffectation;
+                }
+                termine = parentPresent && (prochain >= fin || etat->Requete->Noeuds[prochain].Parent < indexParent);
+                indexExpression = indexParent;
+            }
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    /**
+     * <résumé>Résout les instructions et conditions d'un corps dans l'ordre source.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST préordonné et résolutions privées.
+     * @Paramètre(naturel64: debut) Première déclaration du sous-arbre à parcourir.
+     * @Paramètre(naturel64: fin) Borne exclusive du sous-arbre.
+     * @Retourner(ErreurAnalyseSemantique) Premier diagnostic de l'instruction ou branche analysée.
+     * @etc. Chaque expression garde son parcours interne ; les blocs et branches ne sont pas inversés.
+     **/
+    ErreurAnalyseSemantique ResoudreInstructionsSemantiques(
+        EtatAnalyseSemantique* etat, naturel64 debut, naturel64 fin) {
+
+        naturel64 index = debut;
+        tantque (index < fin) {
+
+            naturel32 genre = etat->Requete->Noeuds[index].Genre;
+            booléen unite = (genre >= 17 && genre <= 19)
+                || (genre >= 22 && genre <= 35);
+            si (unite) {
+
+                naturel64 finUnite = index + 1;
+                tantque (finUnite < fin && etat->Requete->Noeuds[finUnite].Parent >= index)
+                    finUnite = finUnite + 1;
+                ErreurAnalyseSemantique erreur = ResoudreExpressionsSemantiques(etat, index, finUnite);
+                si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
+                index = finUnite;
+            }
+            sinon index = index + 1;
         }
         retourner ErreurAnalyseSemantique::Reussite;
     }
@@ -8938,7 +9381,7 @@ espace GalacticShrine::GsPP::Autohebergement {
      * <résumé>Résout les déclarations dans l'ordre source, sans inverser les fonctions indépendantes.</résumé>
      * @Paramètre(EtatAnalyseSemantique*: etat) AST préordonné et résolutions privées.
      * @Retourner(ErreurAnalyseSemantique) Premier diagnostic dans la catégorie de déclaration analysée.
-     * @etc. Conserver le parcours interne qui résout les arguments avant la cible surchargée d'un appel.
+     * @etc. Les groupes attendent les arguments ; les cibles indirectes et arités sont contrôlées avant eux.
      **/
     ErreurAnalyseSemantique ResoudreExpressionsDeclarationsSemantiques(EtatAnalyseSemantique* etat) {
 
@@ -8957,7 +9400,9 @@ espace GalacticShrine::GsPP::Autohebergement {
                     naturel64 fin = index + 1;
                     tantque (fin < etat->Requete->NombreNoeuds && etat->Requete->Noeuds[fin].Parent >= index)
                         fin = fin + 1;
-                    ErreurAnalyseSemantique erreur = ResoudreExpressionsSemantiques(etat, index, fin);
+                    ErreurAnalyseSemantique erreur = ErreurAnalyseSemantique::Reussite;
+                    si (phase == 2) erreur = ResoudreInstructionsSemantiques(etat, index, fin);
+                    sinon erreur = ResoudreExpressionsSemantiques(etat, index, fin);
                     si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
                     index = fin;
                 }
@@ -9465,8 +9910,6 @@ espace GalacticShrine::GsPP::Autohebergement {
             erreur = ValiderGlobalesSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreExpressionsDeclarationsSemantiques(&etat);
-        si (erreur == ErreurAnalyseSemantique::Reussite)
-            erreur = ValiderConversionsConstantesSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)
             erreur = ResoudreConstructionsSemantiques(&etat);
         si (erreur == ErreurAnalyseSemantique::Reussite)

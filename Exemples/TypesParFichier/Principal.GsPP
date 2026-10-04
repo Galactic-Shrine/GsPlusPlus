@@ -1,0 +1,14 @@
+espace GalacticShrine::GsPP::Exemples::TypesParFichier {
+
+    /**
+     * <résumé>Utilise la structure et l'énumération déclarées dans deux autres fichiers.</résumé>
+     * @Retourner(entier32) La valeur 42 lorsque les interfaces sont bien transmises au compilateur.
+     **/
+    publique entier32 Principal() {
+
+        Point position = {20, 21};
+        Etat etat = Etat::Actif;
+
+        retourner position.X + position.Y + convertir<entier32>(etat);
+    }
+}

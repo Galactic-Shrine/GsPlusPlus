@@ -327,16 +327,45 @@ elle ne clôt pas le frontend 0.27.
   groupes d'opérateurs unaires et binaires mixtes, sélection avec récepteur et
   visibilité après score ; priorité déterministe des doublons entre groupes
   indépendants suivant leur première déclaration, collisions de liaison et
-  parcours des corps dans l'ordre source, dans le périmètre testé ;
+  parcours des corps dans l'ordre source, dans le périmètre testé ; puis
+  priorité des instructions successives, blocs, expressions de conditions,
+  branches et boucles d'un même corps ; puis priorité des opérandes, de l'objet
+  avant l'indice, de la cible d'affectation avant sa valeur et du type cible de
+  conversion avant sa source, dans la matrice du 4 octobre 2026, avec parcours
+  itératif sans pile auxiliaire, AST et sorties d'émission préservés ; puis
+  arguments d'appels dans l'ordre source, cible indirecte et arité contrôlées
+  avant eux, rejet des groupes sans arité et récepteur recevables, sélection
+  différée et appels imbriqués ; puis abandon des candidats après un préfixe
+  incompatible, dans l'ordre de déclaration avant l'argument suivant, avec
+  erreurs de types de conversions différées jusqu'à la visite de leur expression,
+  dans le périmètre testé le 4 octobre 2026 ; puis arguments agrégés contextuels,
+  après sélection et visibilité pour les groupes directs, dans l'ordre des
+  arguments pour les callbacks, avec formes scalaires, structures, unions,
+  tableaux de champs imbriqués, alias et appels imbriqués dans la matrice testée ;
+  puis priorité du calcul et du contrôle de plage des conversions constantes
+  lors de leur visite, avec arguments, agrégats contextuels, déclarations et
+  courts-circuits dans la matrice du 4 octobre 2026 ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
-  familles sémantiques, notamment les erreurs multiples à l'intérieur d'un
-  même corps et les interactions de priorité entre passes non encore testées ;
+  familles sémantiques, notamment les contextes des constructions et les
+  interactions de priorité entre passes non encore testées, dont les
+  initialiseurs de déclarations et les combinaisons de conversions non encore
+  couvertes ;
   raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
 
 Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits dans
 [`FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md`](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md).
+
+Le passage au jalon 0.28 n'est pas encore validé. Les prochaines tranches
+portent sur les interactions sémantiques restantes, notamment les initialiseurs
+de déclarations et les constructions, puis sur
+la consolidation de la conformité et des
+benchmarks du frontend 0.27. Le nombre de corpus réussis n'est ni un pourcentage
+d'achèvement ni un déclencheur automatique de changement de version.
+`VERSION` reste à `0.27.0-alpha.10` ; aucune date de sortie 0.28 n'est fixée ici.
+L'ouverture d'une `0.28.0-alpha.1` marquera le début du jalon suivant, pas
+l'achèvement du backend ni la livraison d'une `0.28.0` finale.
 
 ### Gs++ 0.28 — backend et chaîne auto-hébergés
 

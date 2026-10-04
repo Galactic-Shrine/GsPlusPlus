@@ -3227,6 +3227,85 @@ espace Donnees {
             "emission-operateurs-unaires-mixtes-fr");
         ComparerEmissionGlobales(syntaxe, semantique, emettre,
             TraduireCorpusConversions(operateursUnairesMixtes), "emission-operateurs-unaires-mixtes-en");
+        const std::string instructionsOrdonnees =
+            "classe L { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+            "espace L { publique entier32 Lire(L& objet, booléen x) { retourner 2; } } "
+            "entier32 A = 42; publique entier32 G(L& objet, entier32 x) { "
+            "entier32 a = objet.Lire(x); { entier32 b = objet.Lire(vrai); a = a + b; } retourner a; } "
+            "publique entier32 H(L& objet, entier32 x) { si (x == 0) { retourner objet.Lire(vrai); } "
+            "retourner objet.Lire(x); } "
+            "pointeur_fonction<entier32(L&, entier32)> Rappels[2] = {G, H};";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, instructionsOrdonnees,
+            "emission-instructions-ordonnees-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(instructionsOrdonnees), "emission-instructions-ordonnees-en");
+        const std::string boucleOrdonnee =
+            "entier32 A = 42; publique entier32 G(entier32 x) { entier32 a = 0; "
+            "tantque (a < x) { a = a + 1; } retourner a; } "
+            "pointeur_fonction<entier32(entier32)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, boucleOrdonnee, "emission-boucle-ordonnee-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(boucleOrdonnee), "emission-boucle-ordonnee-en");
+        const std::string expressionsOrdonnees =
+            "entier32 A = (2 + 3) * (4 - 1); publique entier32 G(entier32 x) { "
+            "entier32 valeurs[2] = {x + 1, x + 2}; retourner valeurs[0] + valeurs[1]; } "
+            "pointeur_fonction<entier32(entier32)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, expressionsOrdonnees, "emission-expressions-ordonnees-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(expressionsOrdonnees), "emission-expressions-ordonnees-en");
+        const std::string indexationsOrdonnees =
+            "entier32 Valeurs[2] = {3, 4}; publique entier32 G(entier32* p, entier32 x) { "
+            "retourner p[x] + p[x + 1]; } "
+            "pointeur_fonction<entier32(entier32*, entier32)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, indexationsOrdonnees, "emission-indexations-ordonnees-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(indexationsOrdonnees), "emission-indexations-ordonnees-en");
+        const std::string callbacksOrdonnes =
+            "entier32 A = 42; publique entier32 Appliquer("
+            "pointeur_fonction<entier32(entier32, entier32)> operation, entier32 x) { "
+            "retourner operation(x + 1, x - 1); } "
+            "pointeur_fonction<entier32(pointeur_fonction<entier32(entier32, entier32)>, entier32)> Rappel = Appliquer;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, callbacksOrdonnes, "emission-callbacks-ordonnes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(callbacksOrdonnes), "emission-callbacks-ordonnes-en");
+        const std::string appelsMembresOrdonnes =
+            "classe L { publique: entier32 Lire(entier32 a, entier32 b) { retourner a + b; } }; "
+            "entier32 A = 42; publique entier32 G(L& objet, entier32 x) { retourner objet.Lire(x + 1, x - 1); } "
+            "pointeur_fonction<entier32(L&, entier32)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, appelsMembresOrdonnes, "emission-appels-membres-ordonnes-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(appelsMembresOrdonnes), "emission-appels-membres-ordonnes-en");
+        const std::string candidatSuivant =
+            "entier32 A = 42; publique entier32 Lire(entier32& a, entier32 b) { retourner b; } "
+            "publique entier32 Lire(booléen a, entier32 b) { retourner b; } "
+            "publique entier32 G(entier32 x) { retourner Lire(vrai, x + 1); } "
+            "pointeur_fonction<entier32(entier32)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, candidatSuivant, "emission-candidat-suivant-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(candidatSuivant), "emission-candidat-suivant-en");
+        const std::string candidatMembreSuivant =
+            "classe L { publique: entier32 Lire(entier32 a, entier32 b) { retourner b; } }; "
+            "espace L { publique entier32 Lire(L& objet, booléen a, entier32 b) { retourner b; } } "
+            "entier32 A = 42; publique entier32 G(L& objet, entier32 x) { retourner objet.Lire(vrai, x + 1); } "
+            "pointeur_fonction<entier32(L&, entier32)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, candidatMembreSuivant, "emission-candidat-membre-suivant-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(candidatMembreSuivant), "emission-candidat-membre-suivant-en");
+        const std::string argumentsContextuels =
+            "entier32 A = 42; structure Point { entier32 X; entier32 Y; }; "
+            "publique entier32 Lire(Point p) { retourner p.X + p.Y; } "
+            "publique entier32 G() { retourner Lire({1, {2}}); } "
+            "pointeur_fonction<entier32()> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, argumentsContextuels, "emission-arguments-contextuels-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(argumentsContextuels), "emission-arguments-contextuels-en");
+        const std::string callbackContextuel =
+            "entier32 A = 42; publique entier32 Lire(entier32 x) { retourner x; } "
+            "publique entier32 G(pointeur_fonction<entier32(entier32)> f) { retourner f({{Lire({3})}}); } "
+            "pointeur_fonction<entier32(pointeur_fonction<entier32(entier32)>)> Rappel = G;";
+        ComparerEmissionGlobales(syntaxe, semantique, emettre, callbackContextuel, "emission-callback-contextuel-fr");
+        ComparerEmissionGlobales(syntaxe, semantique, emettre,
+            TraduireCorpusConversions(callbackContextuel), "emission-callback-contextuel-en");
         const std::string nomsLiaisonDistincts =
             DeclarerTypesCollisionLiaison(NomCollisionLiaisonA, NomCollisionLiaisonB)
             + "publique entier32 F(" + NomCollisionLiaisonA + "* x) { retourner 1; } "
@@ -3409,6 +3488,111 @@ espace Donnees {
             verifierRefus(texte, code, true);
             verifierRefus(TraduireCorpusConversions(texte), code, true);
         }
+        const std::string declarationsPriorites =
+            "entier32 A = 42; classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "publique: booléen opérateur!() { retourner vrai; } }; "
+            "publique entier32 Choisir(entier8 x) { retourner 1; } "
+            "publique entier32 Choisir(naturel8 x) { retourner 2; } ";
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"objet + 7; !autre;", 25},
+                 {"!autre; objet + 7;", 21},
+                 {"entier32 a = Choisir(7); objet + 7;", 22},
+                 {"entier32 a = 0; a = vrai; !autre;", 73},
+                 {"si (!autre) { objet + 7; } Choisir(7);", 21},
+                 {"tantque (faux) { objet + 7; } !autre;", 25}})
+        {
+            const auto texte = declarationsPriorites + "publique vide G(C& objet, constante C& autre) { "
+                + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"(objet + 7) + convertir<entier32>(!autre);", 25},
+                 {"convertir<entier32>(!autre) + (objet + 7);", 21},
+                 {"objet.Absent[Choisir(7)];", 24},
+                 {"1 = objet + 7;", 70},
+                 {"convertir<C>(objet + 7);", 94},
+                 {"entier32 valeurs[2] = {objet + 7, convertir<entier32>(!autre)};", 25}})
+        {
+            const auto texte = declarationsPriorites + "publique vide G(C& objet, constante C& autre) { "
+                + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"operation(objet + 7, convertir<entier32>(!autre));", 25},
+                 {"operation(convertir<entier32>(!autre), objet + 7);", 21},
+                 {"operation(objet + 7);", 54},
+                 {"entier32 x = 0; x(objet + 7);", 53},
+                 {"Absente(objet + 7);", 18},
+                 {"operation(vrai, objet + 7);", 55}})
+        {
+            const auto texte = declarationsPriorites + "publique vide G(C& objet, constante C& autre, "
+                "pointeur_fonction<entier32(entier32, entier32)> operation) { " + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::string declarationsAbandons =
+            "entier32 A = 42; classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "publique: entier32 Lire(entier32 a, entier32 b) { retourner b; } }; "
+            "publique entier32 Unique(entier32 a, entier32 b) { retourner b; } "
+            "publique entier32 Reference(entier32& a, entier32 b) { retourner b; } ";
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"Unique(vrai, objet + 7);", 21},
+                 {"Unique(objet + 7, vrai);", 25},
+                 {"Reference(1, objet + 7);", 21},
+                 {"objet.Lire(vrai, objet + 7);", 21},
+                 {"Unique(vrai, convertir<Inconnue*>(objet + 7));", 21},
+                 {"Unique(0, convertir<Inconnue*>(objet + 7));", 99}})
+        {
+            const auto texte = declarationsAbandons + "publique vide G(C& objet) { " + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::string declarationsContextuelles =
+            "entier32 A = 42; structure P { entier32 X; }; "
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "publique vide Scalaire(entier32 a, entier32 b) {} "
+            "publique vide Agrege(P p) {} publique vide Reference(entier32& x) {} "
+            "publique vide Ambigu(entier32 x) {} publique vide Ambigu(entier64 x) {} ";
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"Scalaire({Absente, 2}, 0);", 44},
+                 {"Scalaire({Absente}, objet + 7);", 25},
+                 {"Ambigu({Absente});", 22},
+                 {"Agrege({Absente, 2});", 43},
+                 {"pointeur_fonction<vide(entier32, entier32)> f = Scalaire; f({Absente, 2}, objet + 7);", 44},
+                 {"pointeur_fonction<vide(entier32&)> f = Reference; f({Absente});", 69}})
+        {
+            const auto texte = declarationsContextuelles + "publique vide G(C& objet) { " + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::string declarationsConversions =
+            "entier32 A = 42; classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "publique vide Lire(naturel8 x, entier32 y) {} ";
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"convertir<naturel8>(256); objet + 7;", 98},
+                 {"objet + 7; convertir<naturel8>(256);", 25},
+                 {"convertir<entier32>(1 / 0); objet + 7;", 89},
+                 {"Lire(convertir<naturel8>(256), objet + 7);", 98},
+                 {"Lire(vrai, convertir<naturel8>(256));", 21},
+                 {"pointeur_fonction<vide(naturel8, entier32)> f = Lire; "
+                  "f(convertir<naturel8>(256), objet + 7);", 98}})
+        {
+            const auto texte = declarationsConversions + "publique vide G(C& objet) { " + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::vector<std::string> conversionsValides{
+            "naturel8 Octet = convertir<naturel8>(255); booléen Actif = convertir<booléen>(300); "
+            "publique naturel8 G(entier32 valeur) { retourner convertir<naturel8>(valeur); }",
+            "énumération E { X = convertir<naturel8>(255) }; naturel8 Octet = convertir<naturel8>(E::X); "
+            "publique vide G() { convertir<naturel8>(faux && (1 / 0)); }",
+        };
+        for (std::size_t index = 0; index < conversionsValides.size(); ++index)
+            for (const auto& texte : {conversionsValides[index], TraduireCorpusConversions(conversionsValides[index])})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
+                    "emission-conversion-constante-valide-" + std::to_string(index));
         // Chaque objet tient sur 32 bits, mais leur zone commune dépasse la limite.
         verifierRefus("octet A[2147483647]; octet B[2147483647]; octet C[2]; publique vide F() {}", 58, false);
         verifierRefus("byte A[2147483647] = {}; byte B[2147483647] = {}; byte C[2] = {}; public void F() {}", 58, false);
@@ -4871,6 +5055,587 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
     }
 
     /**
+     * <résumé>Compare la première erreur entre instructions et branches d'un même corps.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur des corpus bilingues.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesInstructionsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "publique: booléen opérateur!() { retourner vrai; } }; "
+            "publique entier32 Choisir(entier8 x) { retourner 1; } "
+            "publique entier32 Choisir(naturel8 x) { retourner 2; }\n";
+        struct CorpusInstruction { std::string Corps; std::uint32_t Code; std::size_t Ligne; };
+        const std::vector<CorpusInstruction> refus{
+            {"objet + 7;\n!autre;", 25, 3},
+            {"!autre;\nobjet + 7;", 21, 3},
+            {"Choisir(7);\nobjet + 7;", 22, 3},
+            {"objet + 7;\nChoisir(7);", 25, 3},
+            {"entier32 a = Choisir(7);\n!autre;", 22, 3},
+            {"!autre;\nentier32 a = Choisir(7);", 21, 3},
+            {"{\nobjet + 7;\n}\n!autre;", 25, 4},
+            {"!autre;\n{\nobjet + 7;\n}", 21, 3},
+            {"{\nChoisir(7);\n}\n{\n!autre;\n}", 22, 4},
+            {"si (!autre) {\nobjet + 7;\n}\nChoisir(7);", 21, 3},
+            {"si (vrai) {\nobjet + 7;\n} sinon {\n!autre;\n}", 25, 4},
+            {"si (faux) {\n!autre;\n} sinon {\nobjet + 7;\n}", 21, 4},
+            {"si (vrai) {\nsi (vrai) {\nChoisir(7);\n}\n!autre;\n}\nobjet + 7;", 22, 5},
+            {"tantque (!autre) {\nobjet + 7;\n}\nChoisir(7);", 21, 3},
+            {"tantque (faux) {\nobjet + 7;\n}\n!autre;", 25, 4},
+            {"!autre;\ntantque (faux) {\nobjet + 7;\n}", 21, 3},
+            {"retourner !autre;\nobjet + 7;", 21, 3},
+            {"objet + 7;\nretourner !autre;", 25, 3},
+            {"entier32 a = 0;\na = vrai;\n!autre;", 73, 4},
+            {"!autre;\nentier32 a = 0;\na = vrai;", 21, 3},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet, constante C& autre) {\n"
+                + refus[index].Corps + "\n}";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "priorite-instructions-refusee-" + std::to_string(index);
+                bool refuse = false;
+                try
+                {
+                    auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                    GsPP::AnalyseurSemantique().Analyser(programme);
+                }
+                catch (const GsPP::ErreurCompilation& erreur)
+                {
+                    refuse = true;
+                    Exiger(erreur.Ligne() == refus[index].Ligne,
+                        "la première instruction invalide n'est pas prioritaire dans le bootstrap : " + nom
+                        + " (attendu ligne " + std::to_string(refus[index].Ligne)
+                        + ", obtenu " + std::to_string(erreur.Ligne()) + ")");
+                }
+                Exiger(refuse, "corpus de priorité accepté par le bootstrap : " + nom);
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].Code, nom);
+            }
+        }
+        const std::vector<std::string> valides{
+            "publique entier32 G(entier32 x) { entier32 a = x; { entier32 b = a; b = x; } retourner a; }",
+            "publique entier32 G(entier32 x) { si (x == 0) { retourner 1; } sinon { retourner x; } }",
+            "publique entier32 G(entier32 x) { entier32 a = 0; tantque (a < x) { a = a + 1; } retourner a; }",
+            "publique entier32 G(entier32 x) { entier32 a = x; si (vrai) { tantque (faux) { a = x; } } retourner a; }",
+            "classe L { publique: entier32 Lire() { retourner 1; } }; "
+            "publique entier32 G(L& objet) { entier32 a = objet.Lire(); { entier32 b = objet.Lire(); a = a + b; } retourner a; }",
+            "publique entier32 Lire(entier32 x) { retourner x; } "
+            "publique entier32 G(pointeur_fonction<entier32(entier32)> rappel) { entier32 a = rappel(7); retourner Lire(a); }",
+            "classe B { publique: constructeur(entier32 x) {} }; classe D : publique B { "
+            "publique: constructeur(entier32 x) : parent(x) { entier32 a = x; a = a + 1; } }; publique vide G() {}",
+            "classe L { publique: entier32 Valeur; constructeur(entier32 x) : Valeur(x) { "
+            "entier32 a = x; a = a + 1; } }; publique vide G() {}",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "priorite-instructions-valide-" + std::to_string(index));
+    }
+
+    /**
+     * <résumé>Compare les erreurs concurrentes des opérandes, indexations et contrôles préalables.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur des corpus bilingues.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesExpressionsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "publique: booléen opérateur!() { retourner vrai; } }; "
+            "publique entier32 Choisir(entier8 x) { retourner 1; } "
+            "publique entier32 Choisir(naturel8 x) { retourner 2; } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"(objet + 7) + convertir<entier32>(!autre);", 25},
+            {"convertir<entier32>(!autre) + (objet + 7);", 21},
+            {"Choisir(7) + (objet + 7);", 22},
+            {"(objet + 7) + Choisir(7);", 25},
+            {"((objet + 7) + 1) * convertir<entier32>(!autre);", 25},
+            {"convertir<entier32>(!autre) * ((objet + 7) + 1);", 21},
+            {"(objet + 7 == 0) && !autre;", 25},
+            {"!autre || (objet + 7 == 0);", 21},
+            {"objet.Absent[Choisir(7)];", 24},
+            {"Inconnue[objet + 7];", 18},
+            {"p[convertir<entier32>(!autre)] + (objet + 7);", 21},
+            {"(objet + 7) + p[convertir<entier32>(!autre)];", 25},
+            {"1 = objet + 7;", 70},
+            {"x = objet + 7;", 71},
+            {"entier32 tableau[2]; tableau = objet + 7;", 72},
+            {"(objet + 7) = convertir<entier32>(!autre);", 25},
+            {"convertir<C>(objet + 7);", 94},
+            {"convertir<vide>(!autre);", 94},
+            {"convertir<Introuvable*>(objet + 7);", 99},
+            {"entier32 valeurs[2] = {objet + 7, convertir<entier32>(!autre)};", 25},
+            {"entier32 valeurs[2] = {convertir<entier32>(!autre), objet + 7};", 21},
+            {"entier32 a = (objet + 7) + convertir<entier32>(!autre);", 25},
+            {"retourner (objet + 7) + convertir<entier32>(!autre);", 25},
+            {"si ((objet + 7 == 0) && !autre) {}", 25},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet, constante C& autre, entier32* p, constante entier32 x) { "
+                + refus[index].first + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "priorite-expression-refusee-" + std::to_string(index));
+        }
+        const std::string enumeration = "énumération E { A = Premiere + Seconde }; publique vide G() {}";
+        ComparerErreurSemantique(syntaxe, semantique, enumeration, 18, "priorite-enumeration-fr");
+        ComparerErreurSemantique(syntaxe, semantique, TraduireCorpusConversions(enumeration), 18, "priorite-enumeration-en");
+        std::string expressionProfonde = "a";
+        for (std::size_t profondeur = 0; profondeur < 128; ++profondeur) expressionProfonde += " + 1";
+        const std::vector<std::string> valides{
+            "publique entier32 G(entier32 a) { retourner " + expressionProfonde + "; }",
+            "publique entier32 G(entier32 a, entier32 b) { retourner (a + b) * (a - b); }",
+            "publique entier32 G(entier32* p, entier32 x) { retourner p[x] + p[x + 1]; }",
+            "publique entier32 G(entier32& x, entier32 y) { x = y + 1; retourner x; }",
+            "publique entier32 Lire(entier32 x) { retourner x; } "
+            "publique entier32 G(entier32 x) { retourner Lire(x + 1) + Lire(x - 1); }",
+            "classe L { publique: entier32 Lire(entier32 x) { retourner x; } }; "
+            "publique entier32 G(L& objet, entier32 x) { retourner objet.Lire(x + 1) + objet.Lire(x - 1); }",
+            "publique entier32 G(pointeur_fonction<entier32(entier32)> rappel, entier32 x) { retourner rappel(x + 1) + rappel(x - 1); }",
+            "publique entier32 G(entier32 a, entier32 b) { entier32 valeurs[2] = {a + 1, b + 1}; retourner valeurs[0] + valeurs[1]; }",
+            "publique entier32 G(entier32 a) { retourner convertir<entier32>(convertir<entier64>(a)) + a; }",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "priorite-expression-valide-" + std::to_string(index));
+    }
+
+    /**
+     * <résumé>Compare les priorités de cible, arité et arguments à l'intérieur des appels.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesAppelsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "publique: booléen opérateur!() { retourner vrai; } "
+            "entier32 Lire(entier32 a, entier32 b) { retourner a + b; } }; "
+            "publique entier32 Deux(entier32 a, entier32 b) { retourner a + b; } "
+            "publique entier32 Choisir(entier8 a, entier32 b) { retourner b; } "
+            "publique entier32 Choisir(naturel8 a, entier32 b) { retourner b; } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"operation(objet + 7, convertir<entier32>(!autre));", 25},
+            {"operation(convertir<entier32>(!autre), objet + 7);", 21},
+            {"Deux(objet + 7, convertir<entier32>(!autre));", 25},
+            {"Deux(convertir<entier32>(!autre), objet + 7);", 21},
+            {"Choisir(objet + 7, convertir<entier32>(!autre));", 25},
+            {"objet.Lire(objet + 7, convertir<entier32>(!autre));", 25},
+            {"p->Lire(convertir<entier32>(!autre), objet + 7);", 21},
+            {"operation((objet + 7) + convertir<entier32>(!autre), 0);", 25},
+            {"Deux(0, (objet + 7) + convertir<entier32>(!autre));", 25},
+            {"operation(Deux(objet + 7, convertir<entier32>(!autre)), 0);", 25},
+            {"Absente(objet + 7, convertir<entier32>(!autre));", 18},
+            {"x(objet + 7, convertir<entier32>(!autre));", 53},
+            {"objet.Absent(objet + 7);", 24},
+            {"x.Absent(objet + 7);", 23},
+            {"operation(objet + 7);", 54},
+            {"operation(objet + 7, 0, 0);", 54},
+            {"Deux(objet + 7);", 21},
+            {"Choisir(objet + 7);", 21},
+            {"objet.Lire(objet + 7);", 21},
+            {"autre.Lire(objet + 7, 0);", 21},
+            {"operation(vrai, objet + 7);", 55},
+            {"operation(objet + 7, vrai);", 25},
+            {"(objet + 7)(convertir<entier32>(!autre));", 25},
+            {"Absente(operation(objet + 7, 0));", 18},
+            {"operation(Deux(objet + 7, 0));", 54},
+            {"p->Absent(operation(objet + 7, 0));", 24},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations
+                + "publique vide G(C& objet, constante C& autre, C* p, "
+                  "pointeur_fonction<entier32(entier32, entier32)> operation) { entier32 x = 0; "
+                + refus[index].first + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "priorite-appel-refuse-" + std::to_string(index));
+        }
+        std::string appelProfond = "x";
+        for (std::size_t profondeur = 0; profondeur < 4; ++profondeur)
+            appelProfond = "Lire(" + appelProfond + ")";
+        const std::vector<std::string> valides{
+            "publique entier32 Lire(entier32 x) { retourner x; } publique entier32 G(entier32 x) { retourner " + appelProfond + "; }",
+            "publique entier32 G(pointeur_fonction<entier32(entier32, entier32)> operation, entier32 x) { retourner operation(x + 1, x - 1); }",
+            declarations + "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(x + 1, x - 1); }",
+            declarations + "publique entier32 G(C* p, entier32 x) { retourner p->Lire(x + 1, x - 1); }",
+            declarations + "publique entier32 G(entier32 x) { retourner Deux(Deux(x, 1), Deux(x, 2)); }",
+            declarations + "publique entier32 G(entier8 x) { retourner Choisir(x, Deux(1, 2)); }",
+            "classe L { publique: pointeur_fonction<entier32(entier32, entier32)> Operation; }; "
+            "publique entier32 G(L& objet, entier32 x) { retourner objet.Operation(x + 1, x - 1); }",
+            "publique entier32 G(pointeur_fonction<entier32(entier32, entier32)>* operations, entier32 x) { retourner operations[0](x + 1, x - 1); }",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "priorite-appel-valide-" + std::to_string(index));
+        const std::vector<std::pair<std::string, std::uint32_t>> champsRefuses{
+            {"classe L { privée: pointeur_fonction<entier32(entier32)> Operation; }; "
+             "publique entier32 G(L& objet) { retourner objet.Operation(Absente); }", 25},
+            {"classe L { publique: entier32 Operation; }; "
+             "publique entier32 G(L& objet) { retourner objet.Operation(Absente); }", 53},
+            {"classe L { publique: pointeur_fonction<entier32(entier32)> Operation; }; "
+             "publique entier32 G(L& objet) { retourner objet.Operation(Absente, AutreAbsente); }", 54},
+            {"publique entier32 Lire(entier32 x) { retourner x; } "
+             "publique entier32 G(entier32 Lire) { retourner Lire(Absente); }", 53},
+        };
+        for (std::size_t index = 0; index < champsRefuses.size(); ++index)
+            for (const auto& texte : {champsRefuses[index].first, TraduireCorpusConversions(champsRefuses[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, champsRefuses[index].second,
+                    "priorite-cible-appel-refusee-" + std::to_string(index));
+    }
+
+    /**
+     * <résumé>Compare l'abandon ordonné des candidats avant les arguments suivants.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterAbandonsCandidatsAppelsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "publique: entier32 Lire(entier32 a, entier32 b) { retourner a + b; } }; "
+            "publique entier32 Unique(entier32 a, entier32 b) { retourner a + b; } "
+            "publique entier32 Choisir(entier32 a, entier32 b) { retourner b; } "
+            "publique entier32 Choisir(entier64 a, entier32 b) { retourner b; } "
+            "publique entier32 Reference(entier32& a, entier32 b) { retourner b; } "
+            "publique entier32 Trois(entier32 a, entier32 b, entier32 c) { retourner c; } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"Unique(vrai, objet + 7);", 21},
+            {"Unique(objet + 7, vrai);", 25},
+            {"Unique(&x, objet + 7);", 21},
+            {"Choisir(vrai, objet + 7);", 21},
+            {"Choisir(objet + 7, vrai);", 25},
+            {"Reference(1, objet + 7);", 21},
+            {"constante entier32 fixe = 0; Reference(fixe, objet + 7);", 21},
+            {"Reference(x, objet + 7);", 25},
+            {"objet.Lire(vrai, objet + 7);", 21},
+            {"p->Lire(vrai, objet + 7);", 21},
+            {"C::Lire(objet, vrai, objet + 7);", 21},
+            {"Trois(x, vrai, objet + 7);", 21},
+            {"Unique(vrai, Absente());", 21},
+            {"Unique(0, Absente());", 18},
+            {"Unique(vrai, convertir<Inconnue*>(objet + 7));", 21},
+            {"Unique(0, convertir<Inconnue*>(objet + 7));", 99},
+            {"Unique(vrai, convertir<vide>(objet + 7));", 21},
+            {"Unique(vrai, convertir<pointeur_fonction<entier32(entier32, entier32, entier32, entier32, entier32)>>(0));", 21},
+            {"convertir<Inconnue*>(0); Unique(vrai, objet + 7);", 99},
+            {"(objet + 7) + convertir<Inconnue*>(0);", 25},
+            {"convertir<Inconnue*>(0) + (objet + 7);", 99},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet, entier32 x, C* p) { "
+                + refus[index].first + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "abandon-candidat-refuse-" + std::to_string(index));
+        }
+        const std::vector<std::pair<std::string, std::uint32_t>> groupesRefuses{
+            {declarations + "alias Appeler = Unique; publique vide G(C& objet) { Appeler(vrai, objet + 7); }", 21},
+            {declarations + "alias Appeler = C::Lire; publique vide G(C& objet) { Appeler(objet, vrai, objet + 7); }", 21},
+            {declarations + "espace C { publique entier32 Lire(C& objet, entier64 a, entier32 b) { retourner b; } } "
+             "publique vide G(C& objet) { objet.Lire(vrai, objet + 7); }", 21},
+            {declarations + "publique entier32 Retenir(entier32& a, entier32 b) { retourner b; } "
+             "publique entier32 Retenir(booléen a, entier32 b) { retourner b; } "
+             "publique vide G(C& objet) { Retenir(vrai, objet + 7); }", 25},
+            {declarations + "publique entier32 Ordre(entier32 a, entier32 b) { retourner b; } "
+             "publique entier32 Ordre(naturel8 a, entier32 b) { retourner b; } "
+             "publique vide G(C& objet) { Ordre(1 / 0, objet + 7); }", 25},
+            {declarations + "publique entier32 Ordre(naturel8 a, entier32 b) { retourner b; } "
+             "publique entier32 Ordre(entier32 a, entier32 b) { retourner b; } "
+             "publique vide G(C& objet) { Ordre(1 / 0, objet + 7); }", 89},
+            {declarations + "publique entier32 Ordre(entier32 a, entier32 b) { retourner b; } "
+             "publique entier32 Ordre(naturel8 a, entier32 b) { retourner b; } "
+             "publique vide G(C& objet) { Ordre(1 / 0, 0); }", 89},
+        };
+        for (std::size_t index = 0; index < groupesRefuses.size(); ++index)
+            for (const auto& texte : {groupesRefuses[index].first, TraduireCorpusConversions(groupesRefuses[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, groupesRefuses[index].second,
+                    "abandon-groupe-refuse-" + std::to_string(index));
+        const std::vector<std::string> valides{
+            declarations + "publique entier32 G(entier32 x) { retourner Choisir(x, Unique(x, 1)); }",
+            declarations + "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(x, Unique(x, 1)); }",
+            declarations + "publique entier32 G(C* p, entier32 x) { retourner p->Lire(x, Unique(x, 1)); }",
+            declarations + "publique entier32 Retenir(entier32& a, entier32 b) { retourner b; } "
+            "publique entier32 Retenir(booléen a, entier32 b) { retourner b; } "
+            "publique entier32 G() { retourner Retenir(vrai, Unique(1, 2)); }",
+            declarations + "alias Appeler = C::Lire; publique entier32 G(C& objet, entier32 x) { retourner Appeler(objet, x, Unique(x, 1)); }",
+            declarations + "publique entier32 Ordre(entier32 a, entier32 b) { retourner b; } "
+            "publique entier32 Ordre(naturel8 a, entier32 b) { retourner b; } "
+            "publique entier32 G(entier32 x) { retourner Ordre(x, Unique(x, 1)); }",
+            declarations + "espace C { publique entier32 Lire(C& objet, booléen a, entier32 b) { retourner b; } } "
+            "publique entier32 G(C& objet, entier32 x) { retourner objet.Lire(vrai, Unique(x, 1)); }",
+            declarations + "alias AliasC = C; publique entier32 Accepter(AliasC& a, entier32 b) { retourner b; } "
+            "publique entier32 Accepter(booléen a, entier32 b) { retourner b; } "
+            "publique entier32 G() { retourner Accepter(vrai, Unique(1, 2)); }",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "abandon-candidat-valide-" + std::to_string(index));
+    }
+
+    /**
+     * <résumé>Compare les arguments agrégés dans le contexte de la signature retenue.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterArgumentsContextuelsAppelsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "structure Point { entier32 X; entier32 Y; }; "
+            "structure Bloc { Point P; naturel8 Octets[2]; }; "
+            "union Choix { entier32 X; entier64 Y; }; "
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } "
+            "vide Prive(entier32 x) {} publique: vide Lire(entier32 x, entier32 y) {} }; "
+            "publique vide Scalaire(entier32 a, entier32 b) {} "
+            "publique vide Petit(naturel8 a) {} "
+            "publique vide Agrege(Point p, entier32 x) {} "
+            "publique vide Imbrique(Bloc p) {} "
+            "publique vide Union(Choix p) {} "
+            "publique vide Reference(entier32& x) {} "
+            "publique vide Ambigu(entier32 x) {} "
+            "publique vide Ambigu(entier64 x) {} "
+            "publique entier32 Identite(entier32 x) { retourner x; } "
+            "alias Appeler = C::Lire; ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"Scalaire({1, 2}, 0);", 44},
+            {"Scalaire({Absente, 2}, 0);", 44},
+            {"Scalaire({vrai}, 0);", 45},
+            {"Scalaire({Absente}, objet + 7);", 25},
+            {"Scalaire({Absente}, vrai);", 21},
+            {"Scalaire({Absente}, 0, 0);", 21},
+            {"Reference({Absente});", 21},
+            {"Ambigu({Absente});", 22},
+            {"Petit({300});", 90},
+            {"Agrege({Absente, 2, 3}, 0);", 43},
+            {"Agrege({vrai, Absente}, 0);", 45},
+            {"Agrege({1, objet + 7}, 0);", 25},
+            {"Imbrique({{1, 2}, {Absente, 2, 3}});", 42},
+            {"Imbrique({{1, 2}, {1, 300}});", 90},
+            {"Union({Absente, 2});", 43},
+            {"objet.Prive({Absente});", 25},
+            {"objet.Lire({Absente}, vrai);", 21},
+            {"p->Lire({Absente}, 0);", 18},
+            {"pointeur_fonction<vide(entier32, entier32)> f = Scalaire; f({Absente, 2}, objet + 7);", 44},
+            {"pointeur_fonction<vide(entier32, entier32)> f = Scalaire; f({vrai}, objet + 7);", 45},
+            {"pointeur_fonction<vide(Point, entier32)> f = Agrege; f({Absente, 2, 3}, objet + 7);", 43},
+            {"pointeur_fonction<vide(Point, entier32)> f = Agrege; f({vrai, Absente}, objet + 7);", 45},
+            {"pointeur_fonction<vide(entier32, entier32)> f = Scalaire; f({Absente}, objet + 7);", 18},
+            {"Scalaire({convertir<Inconnue*>(0)}, objet + 7);", 25},
+            {"Petit({1 / 0});", 89},
+            {"pointeur_fonction<vide(entier32&)> f = Reference; f({Absente});", 69},
+            {"(&Scalaire)({Absente, 2}, objet + 7);", 44},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet, C* p) { " + refus[index].first + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "argument-contextuel-refuse-" + std::to_string(index);
+                try
+                {
+                    ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+        const std::vector<std::string> valides{
+            "Scalaire({}, {{7}});",
+            "Scalaire({1 / 0}, 0);",
+            "Agrege({1, {2}}, 0);",
+            "Imbrique({{1, 2}, {3, 4}});",
+            "Union({7}); Union({});",
+            "objet.Lire({1}, {{2}}); p->Lire({}, {3});",
+            "C::Lire(objet, {1}, {2});",
+            "Appeler(objet, {1}, {2});",
+            "pointeur_fonction<vide(entier32, entier32)> f = Scalaire; f({1}, {{2}});",
+            "pointeur_fonction<vide(Point, entier32)> f = Agrege; f({{1}, 2}, {});",
+            "pointeur_fonction<vide(Bloc)> f = Imbrique; f({{1, 2}, {3, 4}});",
+            "(&Scalaire)({1}, {2});",
+            "Scalaire({Identite({3})}, {Identite({4})});",
+            "pointeur_fonction<vide(Point, entier32)> f[2] = {Agrege, Agrege}; f[1]({1, 2}, {});",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet, C* p) { " + valides[index] + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "argument-contextuel-valide-" + std::to_string(index);
+                try
+                {
+                    AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+        const std::string groupeMixte =
+            "classe C { publique: vide Lire(entier32 x, entier32 y) {} }; "
+            "espace C { publique vide Lire(C& objet, entier32 x, booléen y) {} } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> groupesRefuses{
+            {groupeMixte + "publique vide G(C& objet) { objet.Lire({Absente, 2}, vrai); }", 44},
+            {groupeMixte + "publique vide G(C* objet) { objet->Lire({Absente, 2}, vrai); }", 44},
+            {"structure P { entier32 X; }; publique vide Choisir(P x) {} publique vide Choisir(entier32 x) {} "
+             "publique vide G() { Choisir({Absente}); }", 22},
+            {"structure P { entier32 X; }; publique vide Choisir(P& x) {} publique vide Choisir(P x) {} "
+             "publique vide G() { Choisir({Absente, 2}); }", 43},
+            {"espace N { structure P { entier32 X; }; alias Vue = P; publique vide Lire(Vue x) {} } "
+             "publique vide G() { N::Lire({vrai}); }", 45},
+            {"classe C {}; publique vide Lire(C x) {} publique vide G() { Lire({Absente}); }", 29},
+        };
+        for (std::size_t index = 0; index < groupesRefuses.size(); ++index)
+            for (const auto& texte : {groupesRefuses[index].first, TraduireCorpusConversions(groupesRefuses[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, groupesRefuses[index].second,
+                    "groupe-contextuel-refuse-" + std::to_string(index));
+        const std::vector<std::string> groupesValides{
+            groupeMixte + "publique vide G(C& objet) { objet.Lire({3}, vrai); }",
+            groupeMixte + "publique vide G(C* objet) { objet->Lire({3}, vrai); }",
+            "espace N { structure P { entier32 X; }; alias Vue = P; publique vide Lire(Vue x) {} } "
+            "publique vide G() { N::Lire({{3}}); }",
+            "structure P { entier32 X; }; publique vide Lire(P x, entier32 y) {} "
+            "structure Rappels { pointeur_fonction<vide(P, entier32)> Champ; }; "
+            "publique vide G() { Rappels r = {Lire}; r.Champ({{3}}, {4}); }",
+        };
+        for (std::size_t index = 0; index < groupesValides.size(); ++index)
+            for (const auto& texte : {groupesValides[index], TraduireCorpusConversions(groupesValides[index])})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "groupe-contextuel-valide-" + std::to_string(index));
+    }
+
+    /**
+     * <résumé>Compare la priorité des calculs et plages des conversions constantes.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesConversionsConstantesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "structure Point { entier32 X; }; "
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "publique vide Lire(naturel8 x, entier32 y) {} "
+            "publique vide Scalaire(entier32 x, entier32 y) {} "
+            "publique vide Agrege(Point x, entier32 y) {} ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"convertir<naturel8>(256); objet + 7;", 98},
+            {"objet + 7; convertir<naturel8>(256);", 25},
+            {"convertir<entier32>(1 / 0); objet + 7;", 89},
+            {"objet + 7; convertir<entier32>(1 / 0);", 25},
+            {"convertir<naturel8>(256) + (objet + 7);", 98},
+            {"(objet + 7) + convertir<naturel8>(256);", 25},
+            {"convertir<entier32>(convertir<naturel8>(256)); objet + 7;", 98},
+            {"convertir<naturel8>(convertir<entier32>(1 / 0)); objet + 7;", 89},
+            {"Lire(convertir<naturel8>(256), objet + 7);", 98},
+            {"Scalaire(vrai, convertir<naturel8>(256));", 21},
+            {"Lire(convertir<naturel8>(256));", 21},
+            {"Absente(convertir<naturel8>(256));", 18},
+            {"pointeur_fonction<vide(naturel8, entier32)> f = Lire; "
+             "f(convertir<naturel8>(256), objet + 7);", 98},
+            {"(&Lire)(convertir<naturel8>(256), objet + 7);", 98},
+            {"Agrege({convertir<naturel8>(256)}, objet + 7);", 25},
+            {"pointeur_fonction<vide(Point, entier32)> f = Agrege; "
+             "f({convertir<naturel8>(256)}, objet + 7);", 98},
+            {"convertir<Inconnue*>(objet + 7); convertir<naturel8>(256);", 99},
+            {"convertir<Point>(convertir<naturel8>(256));", 94},
+            {"convertir<naturel8>(objet + 7); convertir<naturel8>(256);", 25},
+            {"naturel8 valeur = convertir<naturel8>(256); objet + 7;", 98},
+            {"si (convertir<booléen>(1 / 0)) { objet + 7; }", 89},
+            {"tantque (convertir<booléen>(1 / 0)) { objet + 7; }", 89},
+            {"{ naturel8 i = convertir<naturel8>(256); } objet + 7;", 98},
+            {"1 = objet + 7; convertir<naturel8>(256);", 70},
+            {"Absente; convertir<naturel8>(256);", 18},
+            {"convertir<naturel8>(-1); objet + 7;", 98},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet) { " + refus[index].first + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "priorite-conversion-constante-refuse-" + std::to_string(index);
+                try
+                {
+                    ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+        const std::vector<std::pair<std::string, std::uint32_t>> declarationsRefusees{
+            {declarations + "publique naturel8 G() { retourner convertir<naturel8>(256); } "
+             "publique vide H(C& objet) { objet + 7; }", 98},
+            {declarations + "publique vide G(C& objet) { objet + 7; } "
+             "publique naturel8 H() { retourner convertir<naturel8>(256); }", 25},
+            {declarations + "naturel8 Valeur = convertir<naturel8>(256); "
+             "publique vide G(C& objet) { objet + 7; }", 98},
+            {declarations + "classe S { naturel8 X = convertir<naturel8>(256); "
+             "publique: constructeur() {} }; "
+             "publique vide G(C& objet) { objet + 7; }", 98},
+            {declarations + "énumération E { X = convertir<naturel8>(256) }; "
+             "publique vide G(C& objet) { objet + 7; }", 98},
+            {declarations + "énumération E { X = convertir<entier32>(1 / 0) }; "
+             "publique vide G(C& objet) { objet + 7; }", 89},
+        };
+        for (std::size_t index = 0; index < declarationsRefusees.size(); ++index)
+            for (const auto& texte : {declarationsRefusees[index].first,
+                                     TraduireCorpusConversions(declarationsRefusees[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, declarationsRefusees[index].second,
+                    "priorite-conversion-declaration-refuse-" + std::to_string(index));
+        const std::vector<std::string> valides{
+            "Lire(convertir<naturel8>(255), 0);",
+            "Lire(convertir<naturel8>(0), 0);",
+            "convertir<entier8>(-128); convertir<entier8>(127);",
+            "convertir<booléen>(300);",
+            "convertir<naturel8>(faux && (1 / 0));",
+            "convertir<naturel8>(vrai || (1 / 0));",
+            "convertir<naturel8>(convertir<entier32>(255));",
+            "pointeur_fonction<vide(naturel8, entier32)> f = Lire; f(convertir<naturel8>(255), 0);",
+            "Agrege({convertir<naturel8>(255)}, 0);",
+            "pointeur_fonction<vide(Point, entier32)> f = Agrege; f({convertir<naturel8>(255)}, 0);",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet) { " + valides[index] + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "priorite-conversion-constante-valide-" + std::to_string(index));
+        }
+        const std::vector<std::string> declarationsValides{
+            "publique naturel8 G(entier32 valeur) { retourner convertir<naturel8>(valeur); }",
+            "énumération E { X = convertir<naturel8>(255) }; "
+            "naturel8 Valeur = convertir<naturel8>(E::X); publique vide G() {}",
+        };
+        for (std::size_t index = 0; index < declarationsValides.size(); ++index)
+            for (const auto& texte : {declarationsValides[index], TraduireCorpusConversions(declarationsValides[index])})
+                AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "conversion-declaration-valide-" + std::to_string(index));
+    }
+
+    /**
      * <résumé>Vérifie de vraies collisions d'empreintes de liaison, sans modifier le bootstrap ni l'AST public.</résumé>
      * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
      * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
@@ -5512,6 +6277,12 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         TesterAppelsGroupesMixtesSemantiques(syntaxe, semantique);
         TesterOperateursGroupesMixtesSemantiques(syntaxe, semantique);
         TesterPrioritesGroupesInvalidesSemantiques(syntaxe, semantique);
+        TesterPrioritesInstructionsSemantiques(syntaxe, semantique);
+        TesterPrioritesExpressionsSemantiques(syntaxe, semantique);
+        TesterPrioritesAppelsSemantiques(syntaxe, semantique);
+        TesterAbandonsCandidatsAppelsSemantiques(syntaxe, semantique);
+        TesterArgumentsContextuelsAppelsSemantiques(syntaxe, semantique);
+        TesterPrioritesConversionsConstantesSemantiques(syntaxe, semantique);
         TesterRemplacementsVirtuelsSemantiques(syntaxe, semantique);
 
         const std::string francais =

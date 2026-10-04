@@ -531,4 +531,16 @@ cmp "$repertoire_separation/ApplicationProjet-premiere.GsE" \
 cmp "$repertoire_separation/ApplicationProjet-premiere.map" \
     "$repertoire_separation/ApplicationProjet.map"
 
+"$compilateur" \
+    Exemples/TypesParFichier/Point.HGsPP \
+    Exemples/TypesParFichier/Etat.HGsPP \
+    Exemples/TypesParFichier/Principal.GsPP \
+    --format gse \
+    --point-entree GalacticShrine::GsPP::Exemples::TypesParFichier::Principal \
+    --version-application "$version_gspp" \
+    -o "$repertoire_test/TypesParFichier.GsE"
+"$verificateur" "$repertoire_test/TypesParFichier.GsE" | grep -q "GsE valide"
+"$chargeur" "$repertoire_test/TypesParFichier.GsE" --executer \
+    | grep -q "Code de retour : 42"
+
 echo "Tests d’intégration Gs++ réussis."

@@ -323,7 +323,7 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **1 493 corpus négatifs** dans les sources de développement (**619** dans
+  avec **1 573 corpus négatifs** dans les sources de développement (**619** dans
   l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
@@ -381,6 +381,9 @@ principale.
 - calcul et contrôle de plage des conversions constantes lors de leur visite,
   avant les erreurs suivantes, avec arité et abandon de candidats prioritaires,
   agrégats contextuels et courts-circuits comparés au bootstrap ;
+- initialiseurs locaux avec contrôle de la forme et de la capacité avant
+  leurs éléments, feuilles analysées dans l'ordre et refus avant l'instruction
+  suivante ; références, callbacks et plages numériques couverts dans la matrice ;
 - émission auto-hébergée des données globales et relocalisations de fonctions,
   avec comparaison des octets, alignements, cibles et limites des tampons.
 

@@ -345,11 +345,14 @@ elle ne clôt pas le frontend 0.27.
   puis priorité du calcul et du contrôle de plage des conversions constantes
   lors de leur visite, avec arguments, agrégats contextuels, déclarations et
   courts-circuits dans la matrice du 4 octobre 2026 ;
+  puis initialiseurs locaux contextuels, avec forme et capacité avant leurs
+  éléments, feuilles dans l'ordre source et refus avant l'instruction suivante,
+  références, callbacks et plages numériques dans le périmètre testé ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
   familles sémantiques, notamment les contextes des constructions et les
   interactions de priorité entre passes non encore testées, dont les
-  initialiseurs de déclarations et les combinaisons de conversions non encore
-  couvertes ;
+  initialiseurs de globales et champs par défaut, les constructions et les
+  combinaisons de conversions non encore couvertes ;
   raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
@@ -359,7 +362,7 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 
 Le passage au jalon 0.28 n'est pas encore validé. Les prochaines tranches
 portent sur les interactions sémantiques restantes, notamment les initialiseurs
-de déclarations et les constructions, puis sur
+de globales, les champs par défaut et les constructions, puis sur
 la consolidation de la conformité et des
 benchmarks du frontend 0.27. Le nombre de corpus réussis n'est ni un pourcentage
 d'achèvement ni un déclencheur automatique de changement de version.

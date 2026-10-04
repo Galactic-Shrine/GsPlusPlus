@@ -3593,6 +3593,32 @@ espace Donnees {
             for (const auto& texte : {conversionsValides[index], TraduireCorpusConversions(conversionsValides[index])})
                 ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
                     "emission-conversion-constante-valide-" + std::to_string(index));
+        const std::string declarationsInitialiseursLocaux =
+            "entier32 A = 42; structure Point { entier32 X; entier32 Y; }; "
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; ";
+        for (const auto& [corps, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"entier32 x = {Absente, 2};", 44},
+                 {"entier32 x[1] = {Absente, 2};", 42},
+                 {"Point p = {vrai, objet + 7};", 45},
+                 {"naturel8 x = {300}; objet + 7;", 90},
+                 {"objet + 7; entier32 x = {Absente, 2};", 25},
+                 {"C copie = {Absente};", 29}})
+        {
+            const auto texte = declarationsInitialiseursLocaux + "publique vide G(C& objet) { " + corps + " }";
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::vector<std::string> initialiseursLocauxValides{
+            "structure Point { entier32 X; entier32 Y; }; entier32 Globale = 42; "
+            "publique vide G() { Point p = {{1}, {2}}; naturel8 x = {255}; }",
+            "publique entier32 Lire() { retourner 42; } pointeur_fonction<entier32()> Rappel = Lire; "
+            "publique vide G() { pointeur_fonction<entier32()> f = {Lire}; entier32 x = f(); }",
+        };
+        for (std::size_t index = 0; index < initialiseursLocauxValides.size(); ++index)
+            for (const auto& texte : {initialiseursLocauxValides[index],
+                                     TraduireCorpusConversions(initialiseursLocauxValides[index])})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
+                    "emission-initialiseur-local-valide-" + std::to_string(index));
         // Chaque objet tient sur 32 bits, mais leur zone commune dépasse la limite.
         verifierRefus("octet A[2147483647]; octet B[2147483647]; octet C[2]; publique vide F() {}", 58, false);
         verifierRefus("byte A[2147483647] = {}; byte B[2147483647] = {}; byte C[2] = {}; public void F() {}", 58, false);
@@ -5636,6 +5662,115 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
     }
 
     /**
+     * <résumé>Compare la forme et les feuilles des initialiseurs locaux dans l'ordre source.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesInitialiseursLocauxSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "structure Point { entier32 X; entier32 Y; }; "
+            "structure Bloc { Point P; naturel8 Octets[2]; }; "
+            "union Choix { entier32 X; entier64 Y; }; "
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "publique entier32 Identite(entier32 x) { retourner x; } "
+            "publique entier32 Lire() { retourner 42; } publique vide SansRetour() {} ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"entier32 x = {Absente, 2};", 44},
+            {"entier32 x = {objet + 7, 2};", 44},
+            {"entier32 x[1] = {Absente, 2};", 42},
+            {"entier32 x[1] = Absente;", 46},
+            {"Point p = {Absente, 2, 3};", 43},
+            {"Point p = {vrai, Absente};", 45},
+            {"Point p = {Absente, vrai};", 18},
+            {"Point p = {objet + 7, vrai};", 25},
+            {"Point p = {vrai, objet + 7};", 45},
+            {"Choix c = {Absente, 2};", 43},
+            {"Bloc b = {{1, 2}, {Absente, 2, 3}};", 42},
+            {"Bloc b = {{1, 2}, {1, 300}}; objet + 7;", 90},
+            {"naturel8 x = {300}; objet + 7;", 90},
+            {"naturel8 x = 300; objet + 7;", 90},
+            {"objet + 7; naturel8 x = 300;", 25},
+            {"entier32 x = vrai; objet + 7;", 45},
+            {"entier32 x = 1 / 0; objet + 7;", 25},
+            {"naturel8 x = 1 / 0; objet + 7;", 89},
+            {"entier32* x = {vrai, Absente};", 44},
+            {"entier32& x = {Absente};", 69},
+            {"entier32& x = vrai; objet + 7;", 69},
+            {"pointeur_fonction<entier32()> f = {Absente, vrai};", 44},
+            {"pointeur_fonction<entier32()> f = {SansRetour}; objet + 7;", 45},
+            {"C copie = {Absente};", 29},
+            {"C copies[1] = {Absente};", 29},
+            {"C copie = Absente;", 29},
+            {"C& copie = {Absente};", 69},
+            {"tantque (vrai) { entier32 x = {Absente, 2}; } objet + 7;", 44},
+            {"{ { Point p = {vrai, Absente}; } } objet + 7;", 45},
+            {"objet + 7; entier32 x = {Absente, 2};", 25},
+            {"entier32 x = vrai; entier32 y = {Absente, 2};", 45},
+            {"convertir<naturel8>(256); entier32 x = {Absente, 2};", 98},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G(C& objet) { " + refus[index].first + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "priorite-initialiseur-local-refuse-" + std::to_string(index);
+                try
+                {
+                    ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+        const std::vector<std::pair<std::string, std::uint32_t>> fonctionsRefusees{
+            {declarations + "publique vide G() { entier32 x = {Absente, 2}; } "
+             "publique vide H(C& objet) { objet + 7; }", 44},
+            {declarations + "publique vide G(C& objet) { objet + 7; } "
+             "publique vide H() { entier32 x = {Absente, 2}; }", 25},
+        };
+        for (std::size_t index = 0; index < fonctionsRefusees.size(); ++index)
+            for (const auto& texte : {fonctionsRefusees[index].first,
+                                     TraduireCorpusConversions(fonctionsRefusees[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, fonctionsRefusees[index].second,
+                    "priorite-initialiseur-fonction-refuse-" + std::to_string(index));
+        const std::vector<std::string> valides{
+            "entier32 x = {}; entier32 y = {{{7}}};",
+            "Point p = {{1}, {2}}; Point copie = p;",
+            "Point points[2] = {{1, 2}, {3, 4}};",
+            "Bloc b = {{1, 2}, {3, 4}};",
+            "Choix c = {7}; Choix videChoix = {};",
+            "naturel8 x = 255; entier8 y = -128;",
+            "naturel8 x = {convertir<naturel8>(255)};",
+            "entier32 x = Identite({7}); Point p = {Identite({1}), Identite({2})};",
+            "pointeur_fonction<entier32()> f = {Lire}; entier32 x = f();",
+            "entier32 x = 7; entier32& r = x; constante entier32& c = r;",
+            "C x; C& r = x; C* p = &x; C* pointeurs[2] = {p, &r};",
+            "naturel8 x = {1 + 2}; booléen b = {vrai}; entier32 valeurs[2][2] = {{1, 2}, {3, 4}};",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + "publique vide G() { " + valides[index] + " }";
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "initialiseur-local-contextuel-valide-" + std::to_string(index);
+                try
+                {
+                    AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+    }
+
+    /**
      * <résumé>Vérifie de vraies collisions d'empreintes de liaison, sans modifier le bootstrap ni l'AST public.</résumé>
      * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
      * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
@@ -6283,6 +6418,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         TesterAbandonsCandidatsAppelsSemantiques(syntaxe, semantique);
         TesterArgumentsContextuelsAppelsSemantiques(syntaxe, semantique);
         TesterPrioritesConversionsConstantesSemantiques(syntaxe, semantique);
+        TesterPrioritesInitialiseursLocauxSemantiques(syntaxe, semantique);
         TesterRemplacementsVirtuelsSemantiques(syntaxe, semantique);
 
         const std::string francais =

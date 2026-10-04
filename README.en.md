@@ -313,7 +313,7 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **1,493 negative corpora** in development sources (**619** in the published
+  with **1,573 negative corpora** in development sources (**619** in the published
   alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
@@ -369,6 +369,9 @@ All normative documentation is maintained in Markdown as its primary source.
 - evaluate and range-check constant casts when visited, before later errors,
   preserving prior arity and candidate-abandonment checks; compare contextual
   aggregates and short-circuit behavior against the bootstrap;
+- local initializers with shape and capacity checks before their elements,
+  leaves analyzed in order and rejection before the next statement; references,
+  callbacks and numeric ranges covered within the differential matrix;
 - self-hosted global data and function relocation emission, comparing bytes,
   alignments, targets, and caller-buffer bounds against the bootstrap.
 

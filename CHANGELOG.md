@@ -10,6 +10,52 @@
 
 # Journal des modifications
 
+## Priorité des initialiseurs locaux — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- validation contextuelle des déclarations locales avec `=`, avant l’instruction
+  suivante : refus des initialisations de classes par `=`, contrôle de la forme
+  et de la capacité agrégées, puis résolution et typage des feuilles dans l’ordre ;
+- régression reproduite puis corrigée : `entier32 x = {Absente, 2};` signalait
+  le nom absent 18 au lieu du refus scalaire 44 à la racine de l’agrégat ;
+- réutilisation du validateur d’initialiseurs et de son indicateur privé de
+  résolution contextuelle, sans nouvelle allocation ni changement de contrat ;
+  repli sur le parcours existant si la destination ne peut pas être décrite ;
+- 68 nouveaux refus sémantiques français/anglais et 24 corpus sémantiques valides,
+  12 refus d’émission sans écriture partielle et quatre corpus d’émission valides ;
+  total différentiel : **1 573 refus**, code, ligne, colonne et AST intact vérifiés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  410 191 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- bootstrap C++, diagnostics publics 0–119, formats 1.0 et ABI 1 inchangés ;
+  priorités des globales, champs par défaut et constructions encore à consolider ;
+  aucun frontend 0.27 complet ni backend auto-hébergé de fonctions annoncé ;
+- alpha.10 inchangée ; tranches de développement distinctes des paquets alpha.10
+  publiés, sans nouveau tag, paquet ou release.
+
+### English
+
+- contextually validate local declarations using `=` before the next statement:
+  reject class initialization through `=`, check aggregate shape and capacity,
+  then resolve and type-check leaves in source order;
+- reproduce and fix `int32 x = {Missing, 2};`, which reported unknown name 18
+  instead of scalar aggregate rejection 44 at the aggregate root;
+- reuse the initializer validator and its private contextual-resolution flag,
+  without added allocation or contract changes; fall back to the existing
+  traversal when the destination cannot be described;
+- 68 new French/English semantic rejections and 24 valid semantic corpora,
+  12 emission rejections without partial writes and four valid emission corpora;
+  differential total **1,573 rejections**, checking code, line, column and intact AST;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 410,191-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- C++ bootstrap, public diagnostics 0–119, formats 1.0 and ABI 1 unchanged;
+  global, default-field and construction priorities still need consolidation;
+  no complete 0.27 frontend or self-hosted function backend claimed;
+- alpha.10 unchanged; development tranches remain separate from published
+  alpha.10 packages, with no new tag, package or release.
+
 ## Priorité des conversions constantes et types par fichier — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
 
 ### Français

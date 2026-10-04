@@ -4176,7 +4176,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         constante NoeudDeclaration* expression =
             &etat->Requete->Noeuds[indexExpression];
 
-        /** <résumé>Le contexte d'appel contrôle la forme agrégée avant de résoudre chaque feuille.</résumé> **/
+        /** <résumé>Le contexte typé contrôle la forme agrégée avant de résoudre chaque feuille.</résumé> **/
         si ((destination->Reserve & 1) != 0 && expression->Genre != 32) {
 
             naturel64 finExpression = indexExpression + 1;
@@ -9347,6 +9347,34 @@ espace GalacticShrine::GsPP::Autohebergement {
     }
 
     /**
+     * <résumé>Valide un initialiseur local avant l'instruction suivante et résout ses feuilles selon leur type.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST et types canoniques privés.
+     * @Paramètre(naturel64: indexVariable) Déclaration locale possédant un initialiseur avec '='.
+     * @Paramètre(naturel64: finVariable) Borne exclusive de la déclaration et de son initialiseur.
+     * @Retourner(ErreurAnalyseSemantique) Premier refus de déclaration, forme ou feuille.
+     **/
+    ErreurAnalyseSemantique ValiderInitialiseurLocalContextuelSemantique(
+        EtatAnalyseSemantique* etat, naturel64 indexVariable, naturel64 finVariable) {
+
+        naturel64 expression = TrouverEnfantDirectSemantique(etat, indexVariable, 0);
+        si (expression >= etat->Requete->NombreNoeuds)
+            retourner SignalerErreurSemantique(etat, ErreurAnalyseSemantique::AstInvalide, indexVariable, 45);
+        DestinationInitialiseurSemantique destination;
+        si (!InitialiserDestinationInitialiseurSemantique(etat, indexVariable, &destination))
+            retourner ResoudreExpressionsSemantiques(etat, indexVariable, finVariable);
+        si (!EstTypeReferenceSemantique(etat, destination.HachageElement)
+            && EstDestinationClasseSemantique(etat, &destination))
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::InitialiseurClasseInterdit, indexVariable, 0);
+        si (destination.NombreDimensions != 0 && etat->Requete->Noeuds[expression].Genre != 32)
+            retourner SignalerErreurSemantique(
+                etat, ErreurAnalyseSemantique::InitialiseurTableauNonAgrege,
+                indexVariable, destination.NombreDimensions);
+        destination.Reserve = 1;
+        retourner ValiderInitialiseurDestinationSemantique(etat, expression, &destination);
+    }
+
+    /**
      * <résumé>Résout les instructions et conditions d'un corps dans l'ordre source.</résumé>
      * @Paramètre(EtatAnalyseSemantique*: etat) AST préordonné et résolutions privées.
      * @Paramètre(naturel64: debut) Première déclaration du sous-arbre à parcourir.
@@ -9368,7 +9396,10 @@ espace GalacticShrine::GsPP::Autohebergement {
                 naturel64 finUnite = index + 1;
                 tantque (finUnite < fin && etat->Requete->Noeuds[finUnite].Parent >= index)
                     finUnite = finUnite + 1;
-                ErreurAnalyseSemantique erreur = ResoudreExpressionsSemantiques(etat, index, finUnite);
+                ErreurAnalyseSemantique erreur = ErreurAnalyseSemantique::Reussite;
+                si (genre == 19 && (etat->Requete->Noeuds[index].Drapeaux & 4) != 0)
+                    erreur = ValiderInitialiseurLocalContextuelSemantique(etat, index, finUnite);
+                sinon erreur = ResoudreExpressionsSemantiques(etat, index, finUnite);
                 si (erreur != ErreurAnalyseSemantique::Reussite) retourner erreur;
                 index = finUnite;
             }

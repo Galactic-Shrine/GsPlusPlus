@@ -5,14 +5,15 @@ des expressions couvertes, alias racines, déclarations d'héritage, remplacemen
 virtuels, doublons de surcharges, signatures non liées, collisions de symboles
 de liaison, appels et opérateurs de groupes mixtes, priorités indépendantes,
 entre instructions, dans les expressions, appels, abandons de candidats et
-arguments agrégés contextuels et conversions constantes lors de leur visite couverts,
+arguments agrégés contextuels, conversions constantes lors de leur visite et
+initialiseurs locaux contextuels couverts,
 émission des globales
 VALIDÉS dans le périmètre testé — 4 octobre 2026.**
 
 Les sources actuelles annoncent `0.27.0-alpha.10`.
 La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 regroupe les résultats de la publication, avec 619 refus différentiels.
-Le développement après alpha.10, décrit plus bas, en vérifie 1 493 ; ces tranches
+Le développement après alpha.10, décrit plus bas, en vérifie 1 573 ; ces tranches
 ne sont pas incluses dans les paquets alpha.10 publiés. Les sections de jalons ci-dessous conservent
 leurs versions, empreintes et limites au moment de chaque validation ; les
 mentions de `VERSION` resté à alpha.9 décrivent ces étapes historiques. Les
@@ -2469,6 +2470,69 @@ historiques. `VERSION` reste à `0.27.0-alpha.10` ; ces tranches de développeme
 ne font pas partie des paquets alpha.10 publiés. Aucun nouveau tag, paquet ou
 release n’est créé ; le jalon 0.28 n’est pas ouvert.
 
+## Priorité des initialiseurs locaux — développement après alpha.10
+
+**VALIDÉ dans le périmètre différentiel testé — 4 octobre 2026.**
+
+### Régression et résolution contextuelle
+
+`entier32 x = {Absente, 2};` signalait **18** au nom absent, alors que le
+bootstrap refuse d’abord les deux éléments d’un agrégat scalaire avec **44**
+à la racine de l’initialiseur. Le nouveau corpus reproduit cette divergence
+avant la correction, code, ligne et colonne compris.
+
+`ResoudreInstructionsSemantiques` traite désormais les variables locales
+initialisées avec `=` par `ValiderInitialiseurLocalContextuelSemantique`,
+avant l’instruction suivante. Le type de destination est déjà canonique.
+Le contrôle refuse les initialisations de classes par `=` à la déclaration,
+et les tableaux initialisés autrement que par un agrégat. Le validateur
+existant vérifie ensuite les capacités et formes imbriquées avant les feuilles,
+puis résout et type chaque feuille dans l’ordre source avec son type attendu.
+Le même indicateur **privé** de résolution contextuelle que pour les arguments
+d’appels est réutilisé ; aucune nouvelle allocation de parcours n’est ajoutée.
+Sans description de destination, le parcours d’expressions existant reste utilisé.
+
+Références vers agrégats temporaires, liaisons incompatibles, signatures de
+callbacks, classes et tableaux de classes, structures, unions et tableaux
+imbriqués sont couverts. Les adaptations numériques contrôlent aussi les
+bornes et les erreurs de calcul avant la déclaration ou instruction suivante.
+Les cas inverses restent dans la matrice : une erreur d’expression antérieure
+garde sa priorité. Une expression numérique déjà du type attendu ne devient
+pas automatiquement un calcul constant obligatoire ; ce comportement reste
+celui du bootstrap, notamment pour `entier32 x = 1 / 0;` local.
+
+### Preuves locales
+
+La matrice ajoute **68 refus sémantiques français/anglais**, **24 corpus
+sémantiques valides**, **12 refus d’émission** sans écriture partielle et
+**quatre corpus d’émission valides** : **80 nouveaux refus**, soit **1 573**.
+Code, ligne, colonne, AST intact et capacités sont contrôlés. Les corpus
+d’émission valides comparent les octets et relocalisations des globales au
+bootstrap ; ils ne valident pas un backend auto-hébergé de fonctions.
+
+Validation complète : **CTest Windows 5/5**, **GNU/Linux 6/6**, solution
+`GsPlusPlus.slnx` et `VisualStudio/Validation.vcxproj` par **MSBuild natif**,
+conformité **20/20** sur les trois constructions. Les commandes de la section
+de validation héritage ont été rejouées. Les trois `Frontend.GsE` sont identiques :
+**410 191 octets**, **trois segments**, **huit sections**, **75 exports**, **deux
+imports**, SHA-256
+`b3ee802d086c9b3eb15c47d32fb62f6128f62a37428a381cbb3a3240f031308f`.
+Le vérificateur les accepte comme GsE 1.0. Bootstrap C++, contrats publics,
+liste des diagnostics 0–119, formats 1.0 et ABI 1 restent inchangés.
+
+### Limites et version
+
+Cette tranche concerne les initialiseurs **locaux avec `=`**. Les priorités
+des globales, champs par défaut, listes de constructeurs et autres contextes
+des constructions/opérateurs restent à consolider ; leurs passes ne sont pas
+fusionnées ici. Les qualifications et combinaisons absentes de la matrice,
+la conformité du frontend complet et les benchmarks restent en cours.
+
+Les mentions de contrôles locaux encore différés dans les sections précédentes
+sont historiques. `VERSION` reste à `0.27.0-alpha.10` ; les tranches de
+développement ne font pas partie des archives alpha.10 publiées, et aucun
+nouveau tag, paquet ou release n’est créé. Le jalon 0.28 n’est pas ouvert.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
@@ -2476,7 +2540,8 @@ release n’est créé ; le jalon 0.28 n’est pas ouvert.
 - compléter les autres familles sémantiques encore prises en charge par le
   bootstrap, notamment les contextes des constructions et opérateurs et les
   interactions de priorité entre passes non encore testées, dont les contrôles
-  différés d'initialiseurs de déclarations et les combinaisons de conversions
+  différés d'initialiseurs de globales, de champs par défaut et de constructions,
+  et les combinaisons de conversions
   non encore couvertes ; le
   raccordement des données globales aux écrivains d’objets
   auto-hébergés appartient au jalon backend ;

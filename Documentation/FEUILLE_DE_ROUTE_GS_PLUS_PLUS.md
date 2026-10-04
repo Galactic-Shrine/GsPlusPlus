@@ -296,6 +296,9 @@ Les prochains jalons sont donc réservés à Gs++ :
    puis calcul et contrôle de plage des conversions constantes au moment de leur
    visite, avec priorité des appels, agrégats contextuels et courts-circuits dans
    la matrice différentielle du 4 octobre 2026 ;
+   puis initialiseurs locaux contextuels, forme et capacité avant les feuilles,
+   validation des éléments dans l'ordre et refus avant l'instruction suivante,
+   avec références, callbacks, classes et plages numériques dans le périmètre testé ;
    contextes des constructions et autres priorités entre passes à compléter ;
    matrice des qualifications et autres familles sémantiques encore à compléter, raccordement aux
    écrivains d’objets auto-hébergés dans le jalon backend ;

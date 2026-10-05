@@ -78,6 +78,81 @@ une structure `Point`, une énumération `Etat` et une source qui les utilise.
 son point d’entrée retourne **42**. Cette preuve concerne l’orchestration du
 bootstrap, pas une orchestration de projets par le frontend auto-hébergé.
 
+### Inclusion textuelle et utilisation d'espaces de noms
+
+**VALIDÉ dans le bootstrap `gsppc`, développement local après alpha.10.**
+Les archives alpha.10 déjà publiées ne contiennent pas cet ajout.
+Le fonctionnement distingue l'inclusion d'un fichier de la recherche des noms :
+
+```cpp
+#inclure "Types/Point.HGsPP"
+// Alias anglais : #include "Types/Point.HGsPP"
+
+espace GalacticShrine::GsPP::Application {
+
+    utilisant espace GalacticShrine::GsPP::Types;
+    // Alias anglais : using namespace GalacticShrine::GsPP::Types;
+}
+```
+
+- `#inclure` / `#include` insère les jetons du fichier à l'endroit de la
+  directive. Un chemin relatif est résolu depuis le dossier du fichier
+  contenant cette directive, y compris dans une inclusion imbriquée.
+- Les chemins sont des chaînes UTF-8 entre guillemets ; utiliser `/` comme
+  séparateur portable. Les chemins absolus sont également acceptés.
+  Les extensions Gs# et obsolètes sont refusées.
+- Une directive commence une ligne, éventuellement précédée d'espaces ou de
+  commentaires, et ne peut contenir de jetons supplémentaires après son
+  argument. Les commentaires de fin de ligne sont acceptés.
+- `#pragma once` empêche de relire le même fichier pendant la préparation de
+  cette unité. Il n'existe pas de déduplication implicite. Les cycles sans
+  cette protection sont diagnostiqués et la profondeur d'inclusion est bornée
+  à 128 fichiers actifs.
+- Les positions des types, fonctions et diagnostics conservent le fichier
+  inclus, sa ligne et sa colonne. Une interface `.HGsPP` incluse conserve la
+  sémantique des prototypes d'interface ; sa définition peut être fournie par
+  une source ou une bibliothèque.
+- `utilisant espace N;` / `using namespace N;`, **sans `#`**, permet de
+  rechercher les noms de `N` sans recopier leur préfixe. Il n'inclut aucun
+  fichier et ne lie aucune bibliothèque. L'espace doit être déclaré avant
+  la directive dans cette unité, ou fourni par une autre unité d'interface.
+- Cette première implémentation accepte ces utilisations au niveau global et
+  dans un espace de noms. Elles agissent après leur déclaration, dans cet
+  espace et ses descendants, sans se propager aux autres unités.
+- Types, alias applicatifs, valeurs d'énumération, globales et fonctions peuvent
+  être recherchés. Les surcharges importées sont regroupées avant de choisir
+  une fonction. Les imports transitifs et cycliques sont parcourus sans boucle.
+  Une ambiguïté sur un nom utilisé est une erreur ; des imports inutilisés ne
+  déclenchent pas à eux seuls un diagnostic. Les noms explicitement qualifiés
+  restent disponibles pour lever l'ambiguïté.
+- Une variable locale masque les noms importés. Pour les noms d'espaces, les
+  déclarations du niveau le plus proche priment sur les niveaux externes ;
+  les utilisations participent au niveau de l'ancêtre commun de leurs espaces.
+
+Les projets XML restent responsables des sources compilées, bibliothèques,
+sorties et options. Pour une interface donnée, choisir sa fourniture par XML
+ou son inclusion textuelle : ne pas ajouter aussi une entrée `<Interface>`
+pour un type déjà inclus, sous peine de redéclaration. `#pragma once` est
+local à chaque unité préparée, pas à l'ensemble des entrées XML.
+
+**VALIDÉ dans le périmètre testé du frontend auto-hébergé :** le classificateur,
+le lexeur, l'analyseur de déclarations et la résolution sémantique de
+`Frontend.GsE` reconnaissent les utilisations d'espaces. Les tests différentiels
+couvrent types, alias, énumérations, globales, surcharges et opérateurs libres,
+imports transitifs et cycles, masquage, portée et ambiguïtés.
+La lecture et l'expansion des fichiers sont effectuées par le bootstrap hôte.
+Cette tranche ne prend pas en charge les utilisations dans un bloc de
+fonction, `using Type = ...`, `using N::Nom`, les macros, `#define`, les
+conditions `#if` / `#ifndef`, les chemins `<...>` ni les répertoires `-I`.
+Elle n'est donc pas une implémentation complète du préprocesseur ou de la
+recherche des noms C++.
+
+L'exemple [Directives](../Exemples/Directives/Application.GsPj) ne déclare
+aucune interface dans son XML : les sources française et anglaise incluent
+leurs types et retournent **42**. La matrice de régression couvre aussi les
+chemins UTF-8, inclusions répétées, prototypes, cycles, ambiguïtés et positions
+des diagnostics dans les fichiers inclus.
+
 ## Types fondamentaux
 
 Le contrat candidat 1.0 comprend :

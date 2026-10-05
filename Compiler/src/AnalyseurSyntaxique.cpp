@@ -18,7 +18,9 @@ namespace GsPP
 
     PositionSource AnalyseurSyntaxique::Position(const Jeton& jeton) const
     {
-        return {_Fichier, jeton.Ligne, jeton.Colonne};
+        return {jeton.Fichier.empty() ? _Fichier : jeton.Fichier,
+            jeton.Ligne, jeton.Colonne, _Fichier,
+            static_cast<std::size_t>(&jeton - _Jetons.data()) + 1};
     }
 
     const Jeton& AnalyseurSyntaxique::Courant() const { return _Jetons.at(_Position); }
@@ -44,7 +46,7 @@ namespace GsPP
         const char* en)
     {
         if (!Est(genre))
-            throw ErreurCompilation(fr, en, Courant().Ligne, Courant().Colonne, _Fichier);
+            throw ErreurCompilation(fr, en, Courant().Ligne, Courant().Colonne, Position(Courant()).Fichier);
         ++_Position;
         return Precedent();
     }
@@ -63,7 +65,7 @@ namespace GsPP
             return;
         }
         throw ErreurCompilation(
-            fr, en, Courant().Ligne, Courant().Colonne, _Fichier);
+            fr, en, Courant().Ligne, Courant().Colonne, Position(Courant()).Fichier);
     }
 
     Programme AnalyseurSyntaxique::Analyser()
@@ -95,6 +97,17 @@ namespace GsPP
                 programme.Enumerations.push_back(AnalyserEnumeration(espaceCourant));
             else if (Est(GenreJeton::Alias))
                 programme.Aliases.push_back(AnalyserAlias(espaceCourant));
+            else if (Est(GenreJeton::Utilisant))
+            {
+                const auto position = Position(Courant());
+                ++_Position;
+                Exiger(GenreJeton::Espace, "'espace' attendu après 'utilisant'",
+                    "expected 'namespace' after 'using'");
+                const auto cible = AnalyserNomQualifie();
+                Exiger(GenreJeton::PointVirgule, "';' attendu après l'utilisation d'espace",
+                    "expected ';' after using namespace");
+                programme.Utilisations.push_back({cible, espaceCourant, position});
+            }
             else
                 AnalyserFonctionOuGlobale(programme, espaceCourant);
         }
@@ -138,7 +151,7 @@ namespace GsPP
             throw ErreurCompilation(
                 "opérateur surchargeable attendu",
                 "expected overloadable operator",
-                Courant().Ligne, Courant().Colonne, _Fichier);
+                Courant().Ligne, Courant().Colonne, Position(Courant()).Fichier);
         return "operator" + Precedent().Texte;
     }
 
@@ -146,8 +159,14 @@ namespace GsPP
         Programme& programme,
         const std::string& espaceParent)
     {
+        const auto position = Position(Courant());
         const std::string nom = AnalyserNomQualifie();
         const std::string complet = espaceParent.empty() ? nom : espaceParent + "::" + nom;
+        for (std::size_t fin = complet.find("::");; fin = complet.find("::", fin + 2))
+        {
+            programme.EspacesNoms.push_back({complet.substr(0, fin), position});
+            if (fin == std::string::npos) break;
+        }
         Exiger(GenreJeton::AccoladeOuvrante, "'{' attendue", "expected '{'");
         AnalyserDeclarations(programme, complet);
         Exiger(GenreJeton::AccoladeFermante, "'}' attendue", "expected '}'");
@@ -213,7 +232,7 @@ namespace GsPP
                 "expected type",
                 Courant().Ligne,
                 Courant().Colonne,
-                _Fichier);
+                Position(Courant()).Fichier);
         }
         while (Accepter(GenreJeton::Etoile)) ++type.NiveauPointeur;
         if (Accepter(GenreJeton::Esperluette)) type.EstReference = true;
@@ -242,7 +261,7 @@ namespace GsPP
                     "invalid array size",
                     taille.Ligne,
                     taille.Colonne,
-                    _Fichier);
+                    Position(taille).Fichier);
             Exiger(GenreJeton::CrochetFermant, "']' attendu", "expected ']'");
             type.DimensionsTableau.push_back(static_cast<std::uint32_t>(valeur));
         }
@@ -558,8 +577,9 @@ namespace GsPP
         variable.Espace = espaceCourant;
         variable.Position = position;
         variable.Type = std::move(type);
-        variable.EstPublique = _EstInterface ? false : estPublique;
-        variable.EstExterne = estExterne || _EstInterface;
+        const bool interfaceGlobale = _EstInterface || Courant().EstInterface;
+        variable.EstPublique = interfaceGlobale ? false : estPublique;
+        variable.EstExterne = estExterne || interfaceGlobale;
         if (Accepter(GenreJeton::Egal))
         {
             if (variable.EstExterne)
@@ -587,8 +607,9 @@ namespace GsPP
         fonction.NomSource = fonction.Nom;
         fonction.Espace = espaceCourant;
         fonction.Position = std::move(position);
-        fonction.EstPublique = _EstInterface ? false : estPublique;
-        fonction.EstExterne = estExterne || _EstInterface;
+        const bool interface = _EstInterface || Courant().EstInterface;
+        fonction.EstPublique = interface ? false : estPublique;
+        fonction.EstExterne = estExterne || interface;
         fonction.TypeRetour = std::move(typeRetour);
 
         Exiger(GenreJeton::ParentheseOuvrante, "'(' attendue", "expected '('");
@@ -1125,6 +1146,6 @@ namespace GsPP
         throw ErreurCompilation(
             "expression attendue",
             "expected expression",
-            Courant().Ligne, Courant().Colonne, _Fichier);
+            Courant().Ligne, Courant().Colonne, Position(Courant()).Fichier);
     }
 }

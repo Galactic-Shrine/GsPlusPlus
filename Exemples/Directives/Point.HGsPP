@@ -1,0 +1,10 @@
+#pragma once
+
+espace GalacticShrine::GsPP::Exemples::Directives {
+
+    structure Point {
+
+        entier32 X;
+        entier32 Y;
+    };
+}

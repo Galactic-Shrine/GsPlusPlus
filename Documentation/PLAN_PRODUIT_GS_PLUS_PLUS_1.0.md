@@ -348,10 +348,30 @@ elle ne clôt pas le frontend 0.27.
   puis initialiseurs locaux contextuels, avec forme et capacité avant leurs
   éléments, feuilles dans l'ordre source et refus avant l'instruction suivante,
   références, callbacks et plages numériques dans le périmètre testé ;
+  puis validation complète de chaque initialiseur global dans l'ordre source,
+  typage de toutes les feuilles avant la passe constante de cette globale,
+  contrôles structurels des champs par défaut prioritaires dans la matrice du
+  4 octobre 2026 ;
+  puis champs par défaut évalués dans chaque constructeur utilisateur, listes
+  explicites avant valeurs par défaut et corps, remplacement et délégation,
+  isolation des expressions du bootstrap et contrôle des prototypes fournis
+  à l'API sémantique, dans la matrice du 5 octobre 2026 ;
+  puis sélection et plans des constructions locales au moment de leur visite,
+  arité et préfixes d'arguments avant sélection, visibilité avant agrégats,
+  accès des constructeurs/destructeurs et positions des sous-objets, ainsi que
+  plans de corps des constructeurs avant leurs instructions, dans le périmètre
+  testé du 5 octobre 2026 ;
+  puis validation récursive des bases et champs au moment de leur initialisation,
+  avant l'expression suivante, sans étapes publiées lors du contrôle préalable ;
+  sélection commune des arguments des bases, champs et délégations, avec
+  plan final canonique et réutilisation des choix explicites, dans le périmètre
+  testé du 5 octobre 2026 ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
   familles sémantiques, notamment les contextes des constructions et les
   interactions de priorité entre passes non encore testées, dont les
-  initialiseurs de globales et champs par défaut, les constructions et les
+  combinaisons non couvertes d'initialiseurs globaux, les interactions entre
+  contrôles de déclarations locales et constructions explicites de types
+  non-classes, les contextes non couverts de bases/champs et les
   combinaisons de conversions non encore couvertes ;
   raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;
@@ -361,14 +381,34 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 [`FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md`](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md).
 
 Le passage au jalon 0.28 n'est pas encore validé. Les prochaines tranches
-portent sur les interactions sémantiques restantes, notamment les initialiseurs
-de globales, les champs par défaut et les constructions, puis sur
+portent sur les interactions sémantiques restantes, les autres combinaisons de
+constructions et l'alimentation du frontend à partir des interfaces, puis sur
 la consolidation de la conformité et des
 benchmarks du frontend 0.27. Le nombre de corpus réussis n'est ni un pourcentage
 d'achèvement ni un déclencheur automatique de changement de version.
 `VERSION` reste à `0.27.0-alpha.10` ; aucune date de sortie 0.28 n'est fixée ici.
 L'ouverture d'une `0.28.0-alpha.1` marquera le début du jalon suivant, pas
 l'achèvement du backend ni la livraison d'une `0.28.0` finale.
+
+#### Inclusions et utilisation d'espaces — ajout local du 4 octobre 2026
+
+Le bootstrap fournit maintenant `#inclure` / `#include` entre guillemets,
+les inclusions imbriquées, `#pragma once` et les positions de diagnostic du
+fichier inclus. `utilisant espace N;` / `using namespace N;` importe les noms
+au niveau global ou d'un espace de noms, après la directive : types, alias,
+énumérations, globales et groupes de fonctions. Les imports ne remplacent ni
+la sélection des sources ni l'édition de liens des projets XML.
+
+**VALIDÉ pour le bootstrap et les analyseurs auto-hébergés dans le périmètre testé.**
+Le portage du 5 octobre aligne l'AST et l'analyse sémantique auto-hébergés,
+y compris les alias, groupes de surcharges et opérateurs importés. La lecture
+et l'expansion des fichiers inclus restent confiées au bootstrap hôte.
+Les utilisations dans un bloc, les autres déclarations `using`, macros,
+conditions de préprocesseur, chemins `<...>` et options `-I` ne sont pas
+implémentés dans cette tranche. La
+[spécification](SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
+décrit le contrat actuel. Ce changement ne clôt pas 0.27 et ne constitue pas
+une nouvelle release alpha.10 ni l'ouverture de 0.28.
 
 ### Gs++ 0.28 — backend et chaîne auto-hébergés
 

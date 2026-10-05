@@ -155,6 +155,9 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (EstMot(mot, "parent") || EstMot(mot, "super"))
             retourner 75;
 
+        si (EstMot(mot, "utilisant") || EstMot(mot, "using"))
+            retourner 76;
+
         retourner 1;
     }
 }

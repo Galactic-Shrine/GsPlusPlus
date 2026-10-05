@@ -1,0 +1,10 @@
+#pragma once
+#inclure "Point.HGsPP"
+
+espace GalacticShrine::GsPP::Exemples::Directives {
+
+    énumération Etat {
+
+        Actif = 1
+    };
+}

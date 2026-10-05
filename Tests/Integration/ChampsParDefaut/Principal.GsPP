@@ -1,0 +1,42 @@
+espace GalacticShrine::GsPP::Tests::ChampsParDefaut {
+
+    publique entier32 Lire(entier32 valeur) {
+
+        retourner 11;
+    }
+
+    publique entier32 Lire(entier64 valeur) {
+
+        retourner 31;
+    }
+
+    classe Mesure {
+
+        entier32 Valeur = Lire(valeur);
+
+        publique:
+        constructeur(entier32 valeur) {
+
+        }
+
+        constructeur(entier64 valeur) {
+
+        }
+
+        entier32 LireValeur() {
+
+            retourner soi.Valeur;
+        }
+    };
+
+    /**
+     * <résumé>Vérifie que chaque constructeur conserve la surcharge de sa valeur par défaut.</résumé>
+     * @Retourner(entier32) 42 après les appels des deux surcharges distinctes.
+     **/
+    publique entier32 Principal() {
+
+        Mesure premiere(1);
+        Mesure seconde(convertir<entier64>(2));
+        retourner premiere.LireValeur() + seconde.LireValeur();
+    }
+}

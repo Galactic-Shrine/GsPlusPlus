@@ -1,0 +1,3 @@
+#inclure "SansOnce.HGsPP"
+#include "SansOnce.HGsPP"
+publique entier32 Principal() { retourner 0; }

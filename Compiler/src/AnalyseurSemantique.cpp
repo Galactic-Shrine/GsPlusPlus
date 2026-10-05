@@ -14,6 +14,89 @@ namespace GsPP
 {
     namespace
     {
+        /**
+         * <résumé>Copie la syntaxe d'un champ par défaut avant ses adaptations propres à un constructeur.</résumé>
+         * @Paramètre(const Expression&: expression) Expression source non analysée.
+         * @Retourner(std::unique_ptr<Expression>) Arbre indépendant conservant les positions de diagnostic.
+         **/
+        std::unique_ptr<Expression> CopierExpressionParDefaut(const Expression& expression)
+        {
+            switch (expression.Genre)
+            {
+                case GenreExpression::Entier:
+                {
+                    const auto& valeur = static_cast<const ExpressionEntier&>(expression);
+                    return std::make_unique<ExpressionEntier>(valeur.Valeur, valeur.Position, valeur.EstLitteralBooleen);
+                }
+                case GenreExpression::Chaine:
+                {
+                    const auto& valeur = static_cast<const ExpressionChaine&>(expression);
+                    return std::make_unique<ExpressionChaine>(valeur.Valeur, valeur.Position);
+                }
+                case GenreExpression::Variable:
+                {
+                    const auto& valeur = static_cast<const ExpressionVariable&>(expression);
+                    auto copie = std::make_unique<ExpressionVariable>(valeur.Nom, valeur.Position);
+                    copie->EstBase = valeur.EstBase;
+                    return copie;
+                }
+                case GenreExpression::Unaire:
+                {
+                    const auto& valeur = static_cast<const ExpressionUnaire&>(expression);
+                    return std::make_unique<ExpressionUnaire>(valeur.Operateur,
+                        CopierExpressionParDefaut(*valeur.Operande), valeur.Position);
+                }
+                case GenreExpression::Binaire:
+                {
+                    const auto& valeur = static_cast<const ExpressionBinaire&>(expression);
+                    return std::make_unique<ExpressionBinaire>(valeur.Operateur,
+                        CopierExpressionParDefaut(*valeur.Gauche), CopierExpressionParDefaut(*valeur.Droite), valeur.Position);
+                }
+                case GenreExpression::Affectation:
+                {
+                    const auto& valeur = static_cast<const ExpressionAffectation&>(expression);
+                    return std::make_unique<ExpressionAffectation>(
+                        CopierExpressionParDefaut(*valeur.Cible), CopierExpressionParDefaut(*valeur.Valeur), valeur.Position);
+                }
+                case GenreExpression::Appel:
+                {
+                    const auto& valeur = static_cast<const ExpressionAppel&>(expression);
+                    std::vector<std::unique_ptr<Expression>> arguments;
+                    for (const auto& argument : valeur.Arguments)
+                        arguments.push_back(CopierExpressionParDefaut(*argument));
+                    return std::make_unique<ExpressionAppel>(
+                        CopierExpressionParDefaut(*valeur.Cible), std::move(arguments), valeur.Position);
+                }
+                case GenreExpression::Membre:
+                {
+                    const auto& valeur = static_cast<const ExpressionMembre&>(expression);
+                    return std::make_unique<ExpressionMembre>(CopierExpressionParDefaut(*valeur.Objet),
+                        valeur.Membre, valeur.ViaPointeur, valeur.Position);
+                }
+                case GenreExpression::Index:
+                {
+                    const auto& valeur = static_cast<const ExpressionIndex&>(expression);
+                    return std::make_unique<ExpressionIndex>(CopierExpressionParDefaut(*valeur.Objet),
+                        CopierExpressionParDefaut(*valeur.Indice), valeur.Position);
+                }
+                case GenreExpression::Conversion:
+                {
+                    const auto& valeur = static_cast<const ExpressionConversion&>(expression);
+                    return std::make_unique<ExpressionConversion>(valeur.TypeCible,
+                        CopierExpressionParDefaut(*valeur.Valeur), valeur.Position);
+                }
+                case GenreExpression::Agregat:
+                {
+                    const auto& valeur = static_cast<const ExpressionAgregat&>(expression);
+                    std::vector<std::unique_ptr<Expression>> elements;
+                    for (const auto& element : valeur.Elements)
+                        elements.push_back(CopierExpressionParDefaut(*element));
+                    return std::make_unique<ExpressionAgregat>(std::move(elements), valeur.Position);
+                }
+            }
+            throw std::logic_error("genre d'expression par défaut inconnu");
+        }
+
         std::uint32_t Aligner(std::uint32_t valeur, std::uint32_t alignement)
         {
             return (valeur + alignement - 1) & ~(alignement - 1);
@@ -250,6 +333,121 @@ namespace GsPP
         return 1;
     }
 
+    /**
+     * <résumé>Recherche les noms visibles et regroupe les fonctions importées avant le choix d'une surcharge.</résumé>
+     * @etc. Les utilisations agissent après leur déclaration, au plus proche ancêtre commun des espaces concernés.
+     **/
+    std::string AnalyseurSemantique::ResoudreNomImporte(
+        const std::string& nom, const std::string& espace,
+        const PositionSource& position, unsigned categorie) const
+    {
+        const auto contient = [](const std::string& parent, const std::string& enfant)
+        {
+            return parent.empty() || enfant == parent || enfant.starts_with(parent + "::");
+        };
+        const auto active = [&](const Programme::UtilisationEspace& utilisation)
+        {
+            return utilisation.Position.Unite == position.Unite
+                && utilisation.Position.Ordre < position.Ordre;
+        };
+        const auto existe = [&](const std::string& candidat)
+        {
+            return _Structures.contains(candidat) || _Enumerations.contains(candidat)
+                || _ValeursEnumerations.contains(candidat) || _Globales.contains(candidat)
+                || _Surcharges.contains(candidat) || _Aliases.contains(candidat);
+        };
+        if (nom.find("::") != std::string::npos && existe(nom)) return nom;
+        // Sans directive visible, les règles historiques de Gs++ restent inchangées.
+        if (std::none_of(_Programme->Utilisations.begin(), _Programme->Utilisations.end(),
+            [&](const auto& utilisation) { return active(utilisation) && contient(utilisation.Espace, espace); }))
+            return nom;
+
+        auto niveau = espace;
+        for (;;)
+        {
+            std::vector<std::string> candidats;
+            const auto ajouter = [&](const std::string& candidat)
+            {
+                if (existe(candidat) && std::find(candidats.begin(), candidats.end(), candidat) == candidats.end())
+                    candidats.push_back(candidat);
+            };
+            ajouter(niveau.empty() ? nom : niveau + "::" + nom);
+            std::unordered_set<std::string> visites;
+            std::function<void(const std::string&, const std::string&)> visiter;
+            visiter = [&](const std::string& cible, const std::string& declarant)
+            {
+                if (!visites.insert(cible + '@' + declarant).second) return;
+                auto commun = declarant;
+                while (!contient(commun, cible))
+                {
+                    const auto separateur = commun.rfind("::");
+                    commun = separateur == std::string::npos ? "" : commun.substr(0, separateur);
+                }
+                if (commun == niveau) ajouter(cible + "::" + nom);
+                // Une directive dans un espace importé participe également à la recherche.
+                for (const auto& transitive : _Programme->Utilisations)
+                    if (active(transitive) && transitive.Espace == cible)
+                        visiter(transitive.Cible, declarant);
+            };
+            for (const auto& utilisation : _Programme->Utilisations)
+                if (active(utilisation) && contient(utilisation.Espace, espace))
+                    visiter(utilisation.Cible, utilisation.Espace);
+
+            if (!candidats.empty())
+            {
+                const bool fonctionsSeulement = std::all_of(candidats.begin(), candidats.end(),
+                    [&](const auto& candidat) { return _Surcharges.contains(candidat); });
+                if (candidats.size() > 1 && !fonctionsSeulement)
+                    Erreur(position, "nom importé ambigu : " + nom, "ambiguous imported name: " + nom);
+                if (!fonctionsSeulement || candidats.size() == 1 || (categorie != 3 && categorie != 4))
+                    return candidats.front();
+                std::vector<Fonction*> fonctions;
+                for (const auto& candidat : candidats)
+                    for (auto* fonction : _Surcharges.at(candidat))
+                        if (std::find(fonctions.begin(), fonctions.end(), fonction) == fonctions.end())
+                            fonctions.push_back(fonction);
+                std::sort(fonctions.begin(), fonctions.end());
+                const auto groupe = "@GsUsing::" + position.Unite + ':'
+                    + std::to_string(position.Ordre) + ':' + nom;
+                _Surcharges[groupe] = std::move(fonctions);
+                return groupe;
+            }
+            if (niveau.empty()) break;
+            const auto separateur = niveau.rfind("::");
+            niveau = separateur == std::string::npos ? "" : niveau.substr(0, separateur);
+        }
+        return nom;
+    }
+
+    void AnalyseurSemantique::ValiderUtilisations()
+    {
+        for (auto& utilisation : _Programme->Utilisations)
+        {
+            const auto existe = [&](const std::string& nom)
+            {
+                return std::any_of(_Programme->EspacesNoms.begin(), _Programme->EspacesNoms.end(),
+                    [&](const auto& declaration)
+                    {
+                        return declaration.Nom == nom && (declaration.Position.Unite != utilisation.Position.Unite
+                            || declaration.Position.Ordre < utilisation.Position.Ordre);
+                    });
+            };
+            auto espace = utilisation.Espace;
+            bool trouve = false;
+            while (!espace.empty())
+            {
+                const auto relatif = espace + "::" + utilisation.Cible;
+                if (existe(relatif)) { utilisation.Cible = relatif; trouve = true; break; }
+                const auto separateur = espace.rfind("::");
+                if (separateur == std::string::npos) break;
+                espace.resize(separateur);
+            }
+            if (!trouve && !existe(utilisation.Cible))
+                Erreur(utilisation.Position, "espace utilisé introuvable : " + utilisation.Cible,
+                    "used namespace not found: " + utilisation.Cible);
+        }
+    }
+
     void AnalyseurSemantique::ResoudreType(
         TypeGs& type,
         const std::string& espace,
@@ -295,6 +493,7 @@ namespace GsPP
             return;
         }
         if (type.Genre != GenreType::Structure) return;
+        type.Nom = ResoudreNomImporte(type.Nom, espace, position, 0);
         if (const auto trouve = _Structures.find(type.Nom); trouve != _Structures.end())
         {
             type.Nom = trouve->second->NomComplet();
@@ -360,8 +559,10 @@ namespace GsPP
 
     std::string AnalyseurSemantique::QualifierNomFonction(
         const std::string& nom,
-        const Fonction& contexte) const
+        const Fonction& contexte, const PositionSource& position) const
     {
+        const auto visible = ResoudreNomImporte(nom, contexte.Espace, position, 3);
+        if (visible != nom) return visible;
         if (_Surcharges.contains(nom)) return nom;
         auto espace = contexte.Espace;
         while (!espace.empty())
@@ -767,7 +968,7 @@ namespace GsPP
         Fonction& contexte,
         const PositionSource& position)
     {
-        const auto qualifie = QualifierNomFonction(nom, contexte);
+        const auto qualifie = QualifierNomFonction(nom, contexte, position);
         const auto groupe = _Surcharges.find(qualifie);
         if (groupe == _Surcharges.end())
             Erreur(position,
@@ -1052,7 +1253,7 @@ namespace GsPP
                 "cycle d’alias détecté pour " + nomAlias,
                 "alias cycle detected for " + nomAlias);
 
-        std::vector<std::string> candidats{alias.Cible};
+        std::vector<std::string> candidats{ResoudreNomImporte(alias.Cible, alias.Espace, alias.Position, 4)};
         if (!alias.Espace.empty())
             candidats.push_back(alias.Espace + "::" + alias.Cible);
 
@@ -1441,7 +1642,7 @@ namespace GsPP
                 }
                 else
                 {
-                    std::string valeurEnum = nom;
+                    std::string valeurEnum = ResoudreNomImporte(nom, fonction.Espace, expression.Position, 1);
                     if (!_ValeursEnumerations.contains(valeurEnum) && !fonction.Espace.empty())
                     {
                         const auto locale = fonction.Espace + "::" + valeurEnum;
@@ -1456,7 +1657,7 @@ namespace GsPP
                         expression.TypeSemantique = information.Type;
                         break;
                     }
-                    std::string cible = nom;
+                    std::string cible = ResoudreNomImporte(nom, fonction.Espace, expression.Position, 2);
                     if (!_Globales.contains(cible) && !fonction.Espace.empty())
                     {
                         const auto locale = fonction.Espace + "::" + cible;
@@ -1473,7 +1674,7 @@ namespace GsPP
                         break;
                     }
 
-                    const auto cibleFonction = QualifierNomFonction(nom, fonction);
+                    const auto cibleFonction = QualifierNomFonction(nom, fonction, expression.Position);
                     if (!_Surcharges.contains(cibleFonction))
                         Erreur(
                             expression.Position,
@@ -1504,7 +1705,7 @@ namespace GsPP
                     if (nom.empty())
                     {
                         const auto libre = QualifierNomFonction(
-                            "operator" + unaire.Operateur, fonction);
+                            "operator" + unaire.Operateur, fonction, expression.Position);
                         if (_Surcharges.contains(libre)) nom = libre;
                     }
                     if (nom.empty())
@@ -1676,7 +1877,7 @@ namespace GsPP
                     if (nom.empty())
                     {
                         const auto libre = QualifierNomFonction(
-                            "operator" + binaire.Operateur, fonction);
+                            "operator" + binaire.Operateur, fonction, expression.Position);
                         if (_Surcharges.contains(libre)) nom = libre;
                     }
                     if (nom.empty())
@@ -1808,8 +2009,11 @@ namespace GsPP
                     auto& variable =
                         static_cast<ExpressionVariable&>(*appel.Cible);
                     const bool estVariableLocale = _Variables.contains(variable.Nom);
-                    const bool estGlobale = _Globales.contains(variable.Nom);
-                    const auto nom = QualifierNomFonction(variable.Nom, fonction);
+                    const auto cibleVisible = estVariableLocale ? variable.Nom
+                        : ResoudreNomImporte(variable.Nom, fonction.Espace, expression.Position, 2);
+                    const bool estGlobale = _Globales.contains(cibleVisible);
+                    const auto nom = estVariableLocale || estGlobale ? variable.Nom
+                        : QualifierNomFonction(variable.Nom, fonction, expression.Position);
                     if (!estVariableLocale && !estGlobale
                         && _Surcharges.contains(nom))
                     {
@@ -2702,10 +2906,10 @@ namespace GsPP
                     initialiseur.Type = champ.Type;
                     initialiseur.Decalage = champ.Decalage;
                     initialiseur.EstImplicite = true;
-                    initialiseur.InitialiseurParDefaut =
-                        champ.InitialiseurParDefaut.get();
+                    initialiseur.ExpressionParDefaut = CopierExpressionParDefaut(*champ.InitialiseurParDefaut);
+                    initialiseur.InitialiseurParDefaut = initialiseur.ExpressionParDefaut.get();
                     (void)AnalyserInitialiseur(
-                        *champ.InitialiseurParDefaut,
+                        *initialiseur.InitialiseurParDefaut,
                         champ.Type,
                         fonction);
                     fonction.InitialiseursChamps.push_back(
@@ -3183,6 +3387,7 @@ namespace GsPP
                     "alias déclaré plusieurs fois : " + nom,
                     "alias declared more than once: " + nom);
         }
+        ValiderUtilisations();
         for (auto& enumeration : programme.Enumerations) CalculerEnumeration(enumeration);
         for (auto& alias : programme.Aliases) ResoudreAlias(alias);
         for (auto& alias : programme.Aliases)

@@ -272,6 +272,10 @@ espace GalacticShrine::GsPP::Autohebergement {
         OverloadDeclaredMoreThanOnce = 118,
         CollisionSymboleFonction = 119,
         FunctionSymbolCollision = 119,
+        EspaceUtiliseIntrouvable = 120,
+        UsedNamespaceNotFound = 120,
+        NomImporteAmbigu = 121,
+        AmbiguousImportedName = 121,
     };
 
     /**

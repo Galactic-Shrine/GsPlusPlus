@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GsProjet Version="1.0" Nom="Directives" Type="executable"
+    PointEntree="GalacticShrine::GsPP::Exemples::ApplicationDirectives::Principal">
+    <Source Chemin="Principal.GsPP" />
+    <Construction RepertoireObjets="../../Construction/Exemples/Directives/Objets"
+        Sortie="../../Construction/Exemples/Directives/Directives.GsE" />
+</GsProjet>

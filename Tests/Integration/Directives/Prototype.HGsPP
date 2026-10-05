@@ -1,0 +1,3 @@
+espace Calculs {
+    publique entier32 Calculer(entier32 valeur);
+}

@@ -1,0 +1,6 @@
+#inclure "Prototype.HGsPP"
+espace Calculs {
+    publique entier32 Calculer(entier32 valeur) { retourner valeur; }
+}
+utilisant espace Calculs;
+publique entier32 Principal() { retourner Calculer(42); }

@@ -543,4 +543,40 @@ cmp "$repertoire_separation/ApplicationProjet-premiere.map" \
 "$chargeur" "$repertoire_test/TypesParFichier.GsE" --executer \
     | grep -q "Code de retour : 42"
 
+for source in Principal.GsPP Principal.en.GsPP
+do
+    "$compilateur" "$racine_source/Exemples/Directives/$source" --format gse \
+        --point-entree GalacticShrine::GsPP::Exemples::ApplicationDirectives::Principal \
+        --version-application "$version_gspp" \
+        -o "$repertoire_test/Directives-$source.GsE"
+    "$verificateur" "$repertoire_test/Directives-$source.GsE" | grep -q "GsE valide"
+    "$chargeur" "$repertoire_test/Directives-$source.GsE" --executer \
+        | grep -q "Code de retour : 42"
+done
+
+for langue in français anglais
+do
+    if "$compilateur" "$racine_source/Tests/Integration/Directives/Syntaxe.GsPP" \
+        --langue-diagnostics "$langue" -o "$repertoire_test/Syntaxe.obj" \
+        2>"$repertoire_test/Directives-$langue.txt"
+    then
+        echo "Une erreur dans une interface incluse aurait dû être refusée." >&2
+        exit 1
+    fi
+    grep -q "Syntaxe.HGsPP:1:28" "$repertoire_test/Directives-$langue.txt"
+done
+grep -q "nom de champ attendu" "$repertoire_test/Directives-français.txt"
+grep -q "expected field name" "$repertoire_test/Directives-anglais.txt"
+
+for source in Principal.GsPP Principal.en.GsPP
+do
+    "$compilateur" "$racine_source/Tests/Integration/ChampsParDefaut/$source" --format gse \
+        --point-entree GalacticShrine::GsPP::Tests::ChampsParDefaut::Principal \
+        --version-application "$version_gspp" \
+        -o "$repertoire_test/ChampsParDefaut-$source.GsE"
+    "$verificateur" "$repertoire_test/ChampsParDefaut-$source.GsE" | grep -q "GsE valide"
+    "$chargeur" "$repertoire_test/ChampsParDefaut-$source.GsE" --executer \
+        | grep -q "Code de retour : 42"
+done
+
 echo "Tests d’intégration Gs++ réussis."

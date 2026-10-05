@@ -1824,6 +1824,21 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner AjouterNoeudDeclaration(etat, noeud);
     }
 
+    booléen AnalyserUtilisationDeclaration(
+        EtatAnalyseDeclarations* etat, ContexteEspaceDeclaration* contexte) {
+
+        JetonLexe position = *JetonCourantDeclaration(etat);
+        etat->Position = etat->Position + 1;
+        si (!ExigerJetonDeclaration(etat, 4, ErreurAnalyseDeclarations::EspaceAttendu)) retourner faux;
+        NomQualifieDeclaration cible;
+        si (!AnalyserNomQualifieDeclaration(etat, &cible)) retourner faux;
+        si (!ExigerJetonDeclaration(etat, 40, ErreurAnalyseDeclarations::PointVirguleAttendu)) retourner faux;
+        NoeudDeclaration noeud = {
+            36, position.Ligne, position.Colonne, 0, 0,
+            cible.Debut, cible.Taille, cible.Hachage, contexte->Hachage, 0};
+        retourner AjouterNoeudDeclaration(etat, noeud);
+    }
+
     booléen AnalyserEnumerationDeclaration(
         EtatAnalyseDeclarations* etat,
         ContexteEspaceDeclaration* contexte) {
@@ -2154,6 +2169,9 @@ espace GalacticShrine::GsPP::Autohebergement {
             sinon si (EstJetonDeclaration(etat, 7)) {
                 si (!AnalyserEnumerationDeclaration(etat, contexte))
                     retourner faux;
+            }
+            sinon si (EstJetonDeclaration(etat, 76)) {
+                si (!AnalyserUtilisationDeclaration(etat, contexte)) retourner faux;
             }
             sinon si (EstJetonDeclaration(etat, 8)) {
                 si (!AnalyserAliasDeclaration(

@@ -14,6 +14,8 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <functional>
 
 namespace GsPP
 {
@@ -64,6 +66,12 @@ namespace GsPP
                 destination.Aliases.end(),
                 std::make_move_iterator(source.Aliases.begin()),
                 std::make_move_iterator(source.Aliases.end()));
+            destination.Utilisations.insert(destination.Utilisations.end(),
+                std::make_move_iterator(source.Utilisations.begin()),
+                std::make_move_iterator(source.Utilisations.end()));
+            destination.EspacesNoms.insert(destination.EspacesNoms.end(),
+                std::make_move_iterator(source.EspacesNoms.begin()),
+                std::make_move_iterator(source.EspacesNoms.end()));
         }
 
         bool PrototypesCompatibles(const Fonction& gauche, const Fonction& droite)
@@ -235,10 +243,9 @@ namespace GsPP
                 throw std::runtime_error(
                     "une interface Gs++ doit utiliser .HGs++, .HGsPP ou "
                     ".HeaderGsPlusPlus : " + unite.Chemin.string());
-            const auto texte = LireFichier(unite.Chemin);
             const auto nomDiagnostic = unite.NomDiagnostic.empty()
                 ? unite.Chemin.string() : unite.NomDiagnostic;
-            auto jetons = Lexeur(texte, nomDiagnostic).Analyser();
+            auto jetons = PreparerJetonsSource(unite.Chemin, nomDiagnostic);
             if (sortieJetons)
             {
                 *sortieJetons << "== " << nomDiagnostic << " ==\n";
@@ -258,5 +265,92 @@ namespace GsPP
         NormaliserDeclarations(programme);
         AnalyseurSemantique().Analyser(programme);
         return programme;
+    }
+
+    /**
+     * <résumé>Insère les jetons des fichiers inclus, sans perdre leur fichier ni leur position.</résumé>
+     * @etc. Les protections once sont propres à une unité ; aucune inclusion n'est dédupliquée implicitement.
+     **/
+    std::vector<Jeton> PreparerJetonsSource(
+        const std::filesystem::path& chemin, const std::string& nomDiagnostic)
+    {
+        std::unordered_set<std::string> uneFois;
+        std::unordered_set<std::string> actifs;
+        std::vector<Jeton> resultat;
+        Jeton finPrincipale{GenreJeton::Fin, "", 1, 1};
+        const auto identifier = [](const std::filesystem::path& fichier)
+        {
+            const auto utf8 = std::filesystem::weakly_canonical(fichier).generic_u8string();
+            std::string cle(utf8.begin(), utf8.end());
+#if defined(_WIN32)
+            std::transform(cle.begin(), cle.end(), cle.begin(), [](unsigned char valeur)
+            {
+                return valeur >= 'A' && valeur <= 'Z' ? static_cast<char>(valeur + ('a' - 'A'))
+                    : static_cast<char>(valeur);
+            });
+#endif
+            return cle;
+        };
+        std::function<void(const std::filesystem::path&, const std::string&)> inclure;
+        inclure = [&](const std::filesystem::path& fichier, const std::string& diagnostic)
+        {
+            const auto canonique = identifier(fichier);
+            if (uneFois.contains(canonique)) return;
+            if (actifs.size() >= 128 || !actifs.insert(canonique).second)
+                throw ErreurCompilation("cycle ou profondeur excessive d'inclusion : " + fichier.string(),
+                    "include cycle or excessive depth: " + fichier.string(), 1, 1, diagnostic);
+            auto jetons = Lexeur(LireFichier(fichier), diagnostic).Analyser();
+            if (fichier == chemin) { finPrincipale = jetons.back(); finPrincipale.Fichier = diagnostic; }
+            for (std::size_t index = 0; index + 1 < jetons.size(); ++index)
+            {
+                auto& jeton = jetons[index];
+                jeton.Fichier = diagnostic;
+                jeton.EstInterface = EstExtensionInterface(fichier);
+                if (jeton.Genre != GenreJeton::DirectiveInclure
+                    && jeton.Genre != GenreJeton::DirectivePragma)
+                {
+                    resultat.push_back(std::move(jeton));
+                    continue;
+                }
+                const auto erreur = [&](const char* fr, const char* en)
+                {
+                    throw ErreurCompilation(fr, en, jeton.Ligne, jeton.Colonne, diagnostic);
+                };
+                // Comme en C++, une directive commence une ligne logique.
+                if (index != 0 && jetons[index - 1].Ligne == jeton.Ligne)
+                    erreur("une directive doit commencer une ligne", "a directive must start a line");
+                const auto& argument = jetons[++index];
+                if (argument.Genre == GenreJeton::Fin || argument.Ligne != jeton.Ligne)
+                    erreur("argument de directive attendu", "expected directive argument");
+                if (index + 1 < jetons.size() && jetons[index + 1].Genre != GenreJeton::Fin
+                    && jetons[index + 1].Ligne == jeton.Ligne)
+                    erreur("texte inattendu après la directive", "unexpected text after directive");
+                if (jeton.Genre == GenreJeton::DirectivePragma)
+                {
+                    if (argument.Genre != GenreJeton::Identifiant || argument.Texte != "once")
+                        erreur("seul '#pragma once' est pris en charge", "only '#pragma once' is supported");
+                    uneFois.insert(canonique);
+                    continue;
+                }
+                if (argument.Genre != GenreJeton::ChaineCaracteres || argument.Texte.empty()
+                    || argument.Texte.find_first_of(std::string("\0\r\n", 3)) != std::string::npos)
+                    erreur("chemin d'inclusion entre guillemets attendu", "expected quoted include path");
+                const std::u8string cheminUtf8(argument.Texte.begin(), argument.Texte.end());
+                const auto cible = fichier.parent_path() / std::filesystem::path(cheminUtf8);
+                if (!std::filesystem::is_regular_file(cible))
+                    erreur("fichier inclus introuvable", "included file not found");
+                if (EstExtensionGsSharp(cible) || EstExtensionObsolete(cible))
+                    erreur("extension d'inclusion incompatible avec Gs++", "include extension is incompatible with Gs++");
+                const auto canoniqueCible = identifier(cible);
+                if (actifs.contains(canoniqueCible) && !uneFois.contains(canoniqueCible))
+                    erreur("cycle d'inclusion détecté", "include cycle detected");
+                inclure(cible, cible.string());
+            }
+            actifs.erase(canonique);
+        };
+        const auto diagnostic = nomDiagnostic.empty() ? chemin.string() : nomDiagnostic;
+        inclure(chemin, diagnostic);
+        resultat.push_back(std::move(finPrincipale));
+        return resultat;
     }
 }

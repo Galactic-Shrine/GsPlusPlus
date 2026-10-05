@@ -93,7 +93,12 @@ namespace GsPP
         Remplacer,
 
         // Ajouté en 0.20 sans renuméroter les jetons antérieurs.
-        Parent
+        Parent,
+
+        // Ajouts 0.27 : identifiants antérieurs conservés.
+        Utilisant,
+        DirectiveInclure,
+        DirectivePragma
     };
 
     struct Jeton
@@ -102,6 +107,8 @@ namespace GsPP
         std::string Texte;
         std::size_t Ligne;
         std::size_t Colonne;
+        std::string Fichier{};
+        bool EstInterface = false;
     };
 
     [[nodiscard]] const char* NomGenreJeton(GenreJeton genre) noexcept;

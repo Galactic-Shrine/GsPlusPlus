@@ -69,6 +69,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         ExpectedClosingAngleBracket = 28,
         NombreEntierInvalide = 29,
         InvalidIntegerLiteral = 29,
+        EspaceAttendu = 30,
+        ExpectedNamespace = 30,
     };
 
     énumération GenreNoeudDeclaration {
@@ -142,6 +144,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         BaseConstructorInitializer = 34,
         InitialiseurChampConstructeur = 35,
         ConstructorFieldInitializer = 35,
+        UtilisationEspace = 36,
+        UsingNamespace = 36,
     };
 
     énumération DrapeauNoeudDeclaration {

@@ -116,6 +116,29 @@ namespace Shrine::Examples {
 The same API can be written with canonical French keywords such as `espace`,
 `publique`, `retourner`, `si`, and `sinon`.
 
+### Include files and use their names
+
+Development sources after alpha.10 also support:
+
+```cpp
+#include "Types.HGsPP"
+using namespace GalacticShrine::GsPP::Types;
+```
+
+The French forms are `#inclure "Types.HGsPP"` and
+`utilisant espace GalacticShrine::GsPP::Types;`. Including a file inserts its
+declarations; using a namespace makes names available without their prefix.
+`#pragma once` guards repeated inclusion. XML projects still select compiled
+sources and linked libraries.
+
+This addition works in the `gsppc` bootstrap and has a
+[runnable bilingual example](Exemples/Directives/Application.GsPj).
+The self-hosted analyzers also parse namespace using directives and resolve
+their names, aliases and overload sets. Included files are still expanded by
+the host bootstrap; this is not a full C++ preprocessor. The
+[current rules and limitations](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
+describe the supported forms. Published alpha.10 packages remain unchanged.
+
 ## Build pipeline
 
 ```text
@@ -313,7 +336,7 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **1,573 negative corpora** in development sources (**619** in the published
+  with **1,957 negative corpora** in development sources (**619** in the published
   alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
@@ -372,6 +395,17 @@ All normative documentation is maintained in Markdown as its primary source.
 - local initializers with shape and capacity checks before their elements,
   leaves analyzed in order and rejection before the next statement; references,
   callbacks and numeric ranges covered within the differential matrix;
+- local constructions selected and planned before the next statement, including
+  arity, candidate elimination, visibility and contextual aggregate arguments;
+  constructor and destructor checks for objects, arrays, bases and subobjects
+  compared with the bootstrap within the tested scope;
+- recursive base and field constructions checked before the next initializer,
+  without publishing extra steps; final plans retain canonical order and reuse
+  selected field constructors, including `super()` for bases without their own
+  constructor within the differential matrix;
+- fully validate each global initializer in source order, typing all its leaves
+  before its constant-value pass; structural default-field check priority
+  covered within the differential test scope;
 - self-hosted global data and function relocation emission, comparing bytes,
   alignments, targets, and caller-buffer bounds against the bootstrap.
 

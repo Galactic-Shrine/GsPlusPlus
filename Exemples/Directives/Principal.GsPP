@@ -1,0 +1,17 @@
+#inclure "Types.HGsPP"
+#include "Point.HGsPP"
+
+espace GalacticShrine::GsPP::Exemples::ApplicationDirectives {
+
+    utilisant espace GalacticShrine::GsPP::Exemples::Directives;
+
+    /**
+     * <résumé>Utilise une inclusion imbriquée et les noms importés sans leur préfixe.</résumé>
+     * @Retourner(entier32) La valeur 42.
+     **/
+    publique entier32 Principal() {
+
+        Point position = {20, 21};
+        retourner position.X + position.Y + convertir<entier32>(Etat::Actif);
+    }
+}

@@ -14,6 +14,8 @@ namespace GsPP
         std::string Fichier;
         std::size_t Ligne = 1;
         std::size_t Colonne = 1;
+        std::string Unite{};
+        std::size_t Ordre = 0;
     };
 
     enum class GenreType
@@ -576,6 +578,7 @@ namespace GsPP
         std::uint32_t Decalage = 0;
         bool EstObjetClasse = false;
         bool EstImplicite = false;
+        std::unique_ptr<Expression> ExpressionParDefaut;
         Expression* InitialiseurParDefaut = nullptr;
         std::string SymboleConstructeur;
         std::vector<bool> ArgumentsConstructeurParReference;
@@ -680,10 +683,24 @@ namespace GsPP
 
     struct Programme
     {
+        struct UtilisationEspace
+        {
+            std::string Cible;
+            std::string Espace;
+            PositionSource Position;
+        };
+
         std::vector<Structure> Structures;
         std::vector<Enumeration> Enumerations;
         std::vector<VariableGlobale> VariablesGlobales;
         std::vector<Fonction> Fonctions;
         std::vector<DeclarationAlias> Aliases;
+        std::vector<UtilisationEspace> Utilisations;
+        struct DeclarationEspace
+        {
+            std::string Nom;
+            PositionSource Position;
+        };
+        std::vector<DeclarationEspace> EspacesNoms;
     };
 }

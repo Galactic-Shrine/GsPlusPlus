@@ -122,6 +122,30 @@ espace Shrine::Exemples {
 La même API peut être écrite avec les alias anglais tels que `namespace`,
 `public`, `return`, `if` et `else`.
 
+### Inclure des fichiers et utiliser leurs noms
+
+Les sources de développement après alpha.10 permettent également :
+
+```cpp
+#inclure "Types.HGsPP"
+utilisant espace GalacticShrine::GsPP::Types;
+```
+
+Les alias anglais sont `#include "Types.HGsPP"` et
+`using namespace GalacticShrine::GsPP::Types;`. L'inclusion insère les
+déclarations ; l'utilisation permet d'écrire les noms sans leur préfixe.
+`#pragma once` protège les inclusions répétées. Le projet XML conserve la
+responsabilité de compiler les sources et de lier les bibliothèques.
+
+Cet ajout fonctionne dans le bootstrap `gsppc` et possède un
+[exemple bilingue exécutable](Exemples/Directives/Application.GsPj).
+Les analyseurs auto-hébergés reconnaissent également les utilisations d'espaces
+et résolvent leurs noms, alias et surcharges. L'expansion des fichiers inclus
+reste assurée par le bootstrap hôte ; il ne s'agit pas d'un préprocesseur C++ complet. Les
+[règles et limites actuelles](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
+précisent les formes prises en charge. Les paquets alpha.10 publiés restent
+inchangés.
+
 ## Chaîne de production
 
 ```text
@@ -323,7 +347,7 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **1 573 corpus négatifs** dans les sources de développement (**619** dans
+  avec **1 957 corpus négatifs** dans les sources de développement (**619** dans
   l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
@@ -384,6 +408,17 @@ principale.
 - initialiseurs locaux avec contrôle de la forme et de la capacité avant
   leurs éléments, feuilles analysées dans l'ordre et refus avant l'instruction
   suivante ; références, callbacks et plages numériques couverts dans la matrice ;
+- constructions locales sélectionnées et planifiées avant l'instruction suivante,
+  avec arité, abandon des candidats, visibilité et agrégats contextuels ;
+  contrôles des constructeurs et destructeurs des objets, tableaux, bases et
+  sous-objets comparés au bootstrap dans le périmètre testé ;
+- constructions récursives des bases et champs vérifiées avant l'initialiseur
+  suivant, sans publier d'étapes supplémentaires ; plan final dans l'ordre
+  canonique, choix des champs réutilisés et `parent()` sans constructeur propre
+  pris en charge dans la matrice différentielle ;
+- initialiseurs globaux contrôlés entièrement dans l'ordre source, avec typage
+  de toutes les feuilles avant leur passe constante ; priorité des contrôles
+  structurels des champs par défaut, dans le périmètre différentiel testé ;
 - émission auto-hébergée des données globales et relocalisations de fonctions,
   avec comparaison des octets, alignements, cibles et limites des tampons.
 

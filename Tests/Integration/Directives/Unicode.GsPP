@@ -1,0 +1,2 @@
+#inclure "é/Types.HGsPP"
+publique entier32 Principal() { PointUnicode p = {42}; retourner p.X; }

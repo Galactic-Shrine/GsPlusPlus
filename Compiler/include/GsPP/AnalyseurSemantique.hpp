@@ -23,6 +23,10 @@ namespace GsPP
             const std::unordered_map<std::string, Structure*>& structures);
 
     private:
+        [[nodiscard]] std::string ResoudreNomImporte(
+            const std::string& nom, const std::string& espace,
+            const PositionSource& position, unsigned categorie) const;
+        void ValiderUtilisations();
         void ResoudreType(TypeGs& type, const std::string& espace, const PositionSource& position);
         void ResoudreHeritage(Structure& structure);
         void ResoudreAlias(DeclarationAlias& alias);
@@ -46,7 +50,7 @@ namespace GsPP
             Fonction& contexte);
         [[nodiscard]] std::string QualifierNomFonction(
             const std::string& nom,
-            const Fonction& contexte) const;
+            const Fonction& contexte, const PositionSource& position) const;
         [[nodiscard]] std::string TrouverNomMethode(
             const std::string& classe,
             const std::string& nom) const;
@@ -137,7 +141,7 @@ namespace GsPP
         };
         std::unordered_map<std::string, ValeurEnumeration> _ValeursEnumerations;
         std::unordered_map<std::string, Fonction*> _Fonctions;
-        std::unordered_map<std::string, std::vector<Fonction*>> _Surcharges;
+        mutable std::unordered_map<std::string, std::vector<Fonction*>> _Surcharges;
         std::unordered_map<std::string, VariableGlobale*> _Globales;
         std::unordered_map<std::string, DeclarationAlias*> _Aliases;
         std::unordered_map<std::string, TypeGs> _Variables;

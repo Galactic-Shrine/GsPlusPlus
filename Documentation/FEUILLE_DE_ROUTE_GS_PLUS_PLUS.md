@@ -10,6 +10,58 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
+### Ajout local du 5 octobre 2026 — priorités des bases, champs et initialiseurs
+
+**VALIDÉ dans le périmètre testé.** Les constructions récursives implicites
+sont vérifiées lors de la visite de la base ou du champ, avant les expressions
+suivantes. Ces contrôles ne publient aucune étape ; le plan final conserve
+l'ordre base, table virtuelle et champs déclarés. Les constructeurs explicites
+des champs ne sont plus sélectionnés une seconde fois pour leur plan.
+Les listes de base, champ et délégation utilisent le même parcours contextuel
+des arguments que les constructions locales. `parent()` / `super()` sans
+constructeur propre réalise la construction implicite de la base.
+Les 12 corpus valides et 32 refus bilingues, plus les contrôles d'émission,
+portent le total à **1 957 refus différentiels**. Les preuves et limites figurent
+dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#priorités-des-bases-champs-et-initialiseurs--tranche-locale-du-5-octobre-2026).
+
+### Ajout local du 5 octobre 2026 — constructions locales et durée de vie
+
+**VALIDÉ dans le périmètre testé.** Le choix du constructeur et les plans de
+construction/destruction sont traités lors de la visite de chaque variable,
+avant l'instruction suivante. Les arités et préfixes incompatibles interrompent
+la visite des arguments ; les agrégats attendent sélection et visibilité.
+Les diagnostics récursifs pointent le champ concerné sans déplacer l'origine
+du plan. Les tableaux sans arguments acceptent aussi `()`. Les plans de corps
+des constructeurs sont contrôlés avant leurs instructions. Les 36 refus et
+12 corpus valides bilingues, puis les contrôles d'émission, portent le total
+à **1 881 refus différentiels**. Les preuves et limites figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#constructions-locales-et-plans-de-durée-de-vie--tranche-locale-du-5-octobre-2026).
+
+### Ajout local du 5 octobre 2026 — champs par défaut contextuels
+
+**VALIDÉ dans le périmètre testé.** Les champs par défaut sont analysés avec
+les paramètres de chaque constructeur qui les utilise, après sa liste
+d'initialisation et avant son corps. Un initialiseur explicite remplace la
+valeur par défaut ; un constructeur délégué ne la réévalue pas. Le bootstrap
+possède désormais une copie d'expression par constructeur, afin de conserver
+indépendamment ses choix de surcharges. Les contrôles des prototypes sont
+vérifiés sur l'AST fourni à l'API sémantique. Les preuves et limites figurent
+dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md).
+
+### Ajouts locaux des 4–5 octobre 2026 — inclusions et espaces utilisés
+
+**VALIDÉ dans le bootstrap et les analyseurs auto-hébergés, dans le périmètre testé.** La syntaxe
+adoptée est `#inclure "fichier"` / `#include "file"`, avec `#pragma once`,
+et `utilisant espace N;` / `using namespace N;` sans `#`. Les inclusions et
+imports de types, globales et groupes de surcharges sont testés dans `gsppc`.
+Le lexeur, l'AST et la résolution sémantique auto-hébergés sont alignés ;
+l'expansion des fichiers inclus reste réalisée par le bootstrap hôte.
+Les utilisations dans les
+blocs, macros, chemins `<...>` et répertoires `-I` ne sont pas inclus.
+Les [règles et limites](SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
+et les [preuves de cette tranche](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#inclusions-et-utilisations-despaces--tranche-locale-du-4-octobre-2026)
+ne changent ni le numéro alpha.10 ni les paquets déjà publiés.
+
 ### Gs++ 0.11 — alias applicatifs — terminé
 
 - véritables alias de fonctions et de globales ;
@@ -299,6 +351,10 @@ Les prochains jalons sont donc réservés à Gs++ :
    puis initialiseurs locaux contextuels, forme et capacité avant les feuilles,
    validation des éléments dans l'ordre et refus avant l'instruction suivante,
    avec références, callbacks, classes et plages numériques dans le périmètre testé ;
+   puis validation complète de chaque initialiseur global dans l'ordre source,
+   formes et typage de toutes les feuilles avant la passe constante de la même
+   globale, contrôles structurels des champs par défaut avant les globales et
+   fonctions dans la matrice du 4 octobre 2026 ;
    contextes des constructions et autres priorités entre passes à compléter ;
    matrice des qualifications et autres familles sémantiques encore à compléter, raccordement aux
    écrivains d’objets auto-hébergés dans le jalon backend ;

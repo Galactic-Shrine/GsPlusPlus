@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <stdexcept>
@@ -70,6 +71,50 @@ namespace
         auto programme = GsPP::AnalyseurSyntaxique(std::move(jetons), "test.GsPP").Analyser();
         GsPP::AnalyseurSemantique().Analyser(programme);
         return programme;
+    }
+
+    void TesterChampsParDefautParConstructeur()
+    {
+        const std::string francais =
+            "publique entier32 Lire(entier32 x) { retourner 11; } "
+            "publique entier32 Lire(entier64 x) { retourner 31; } "
+            "classe C { entier32 X = Lire(valeur); publique: "
+            "constructeur(entier32 valeur) {} constructeur(entier64 valeur) {} "
+            "entier32 Valeur() { retourner soi.X; } }; "
+            "publique entier32 Principal() { C a(1); C b(convertir<entier64>(2)); "
+            "retourner a.Valeur() + b.Valeur(); }";
+        const std::string anglais =
+            "public int32 Lire(int32 x) { return 11; } "
+            "public int32 Lire(int64 x) { return 31; } "
+            "class C { int32 X = Lire(valeur); public: "
+            "constructor(int32 valeur) {} constructor(int64 valeur) {} "
+            "int32 Valeur() { return this.X; } }; "
+            "public int32 Principal() { C a(1); C b(cast<int64>(2)); "
+            "return a.Valeur() + b.Valeur(); }";
+        for (const auto& source : {francais, anglais})
+        {
+            const auto programme = Analyser(source);
+            const auto* syntaxe = programme.Structures.front().Champs.front().InitialiseurParDefaut.get();
+            std::vector<const GsPP::ExpressionAppel*> copies;
+            for (const auto& fonction : programme.Fonctions)
+                if (fonction.EstConstructeur)
+                {
+                    const auto& initialiseur = fonction.InitialiseursChamps.front();
+                    Exiger(initialiseur.ExpressionParDefaut.get() == initialiseur.InitialiseurParDefaut
+                            && initialiseur.InitialiseurParDefaut != syntaxe,
+                        "le constructeur doit posséder son expression de champ par défaut");
+                    copies.push_back(static_cast<const GsPP::ExpressionAppel*>(initialiseur.InitialiseurParDefaut));
+                }
+            Exiger(copies.size() == 2 && copies[0] != copies[1]
+                    && copies[0]->NomDirect != copies[1]->NomDirect,
+                "les constructeurs doivent sélectionner indépendamment la surcharge du champ par défaut");
+            const auto& original = static_cast<const GsPP::ExpressionAppel&>(*syntaxe);
+            Exiger(original.NomDirect.empty()
+                    && static_cast<const GsPP::ExpressionVariable&>(*original.Cible).Nom == "Lire",
+                "l'analyse d'un constructeur a altéré la syntaxe du champ par défaut");
+        }
+        Exiger(Compiler(francais).Texte == Compiler(anglais).Texte,
+            "les champs par défaut contextuels produisent des codes bilingues différents");
     }
 
     void TesterAliasMotsCles()
@@ -747,6 +792,202 @@ namespace
         Exiger(machine.Symboles.size() == 1, "fonction Unicode absente");
         Exiger(machine.Symboles[0].Nom == "Shrine::Mémoire::Évaluer",
                "nom Unicode incorrect");
+    }
+
+    void TesterUtilisationEspaces()
+    {
+        const auto traduire = [](std::string source)
+        {
+            for (const auto& [fr, en] : std::vector<std::pair<std::string, std::string>>{
+                {"utilisant", "using"}, {"espace", "namespace"}, {"structure", "struct"},
+                {"énumération", "enum"}, {"publique", "public"}, {"entier32", "int32"},
+                {"entier64", "int64"}, {"booleen", "bool"}, {"retourner", "return"},
+                {"convertir", "cast"}, {"vrai", "true"}})
+            {
+                for (std::size_t debut = 0; (debut = source.find(fr, debut)) != std::string::npos; debut += en.size())
+                    source.replace(debut, fr.size(), en);
+            }
+            return source;
+        };
+        const std::vector<std::string> valides{
+            R"(espace Types {
+                structure Point { entier32 X; };
+                énumération Etat { Actif = 1 };
+                publique entier32 Valeur = 40;
+                publique entier32 Lire(Point point) { retourner point.X; }
+                alias Position = Point;
+            }
+            utilisant espace Types;
+            alias PointImporte = Position;
+            publique entier32 Principal() {
+                PointImporte point = {1};
+                retourner Lire(point) + Valeur + convertir<entier32>(Etat::Actif);
+            })",
+            R"(espace A { publique entier32 F(entier32 x) { retourner 1; } }
+            espace B { publique entier32 F(entier64 x) { retourner 2; } }
+            utilisant espace A; utilisant espace B;
+            publique entier32 Principal() { retourner F(1) + F(convertir<entier64>(2)); })",
+            R"(espace A { publique entier32 Valeur = 1; }
+            utilisant espace A;
+            espace Local { publique entier32 Valeur = 42;
+                publique entier32 Principal() { retourner Valeur; } })",
+            R"(espace A { publique entier32 F() { retourner 1; } }
+            espace B { publique entier32 F = 2; }
+            utilisant espace A; utilisant espace B;
+            publique entier32 Principal() { entier32 F = 42; retourner F; })",
+            R"(espace A { publique entier32 F() { retourner 42; } }
+            espace B { utilisant espace A; }
+            utilisant espace B;
+            publique entier32 Principal() { retourner F(); })",
+            R"(espace A { } espace B { utilisant espace A; }
+            espace A { utilisant espace B; publique entier32 F() { retourner 42; } }
+            utilisant espace B;
+            publique entier32 Principal() { retourner F(); })",
+            R"(espace A { espace Types { structure Point { entier32 X; }; }
+                utilisant espace Types;
+                publique entier32 Principal() { Point p = {42}; retourner p.X; } })",
+            R"(espace A { publique entier32 F() { retourner 1; } }
+            espace B { publique entier32 F() { retourner 42; } }
+            utilisant espace A; utilisant espace B;
+            publique entier32 Principal() { retourner B::F(); })",
+            R"(espace A { structure Point { entier32 X; }; }
+            espace B { structure Point { entier64 X; }; }
+            utilisant espace A; utilisant espace B;
+            publique entier32 Principal() { retourner 42; })",
+            R"(espace A::B { publique entier32 F() { retourner 42; } }
+            utilisant espace A;
+            publique entier32 Principal() { retourner B::F(); })",
+            R"(espace A { publique entier32 F(entier32 x) { retourner x; } }
+            utilisant espace A;
+            publique entier32 F(entier64 x) { retourner convertir<entier32>(x); }
+            publique entier32 Principal() { retourner F(42); })",
+            R"(espace A { publique entier32 F() { retourner 1; } }
+            utilisant espace A;
+            espace Local { publique entier32 F() { retourner 42; }
+                publique entier32 Principal() { retourner F(); } })"
+        };
+        for (const auto& source : valides)
+            Exiger(Compiler(source).Texte == Compiler(traduire(source)).Texte,
+                "utilisant espace et using namespace produisent des instructions différentes");
+
+        const auto machine = Compiler(valides[1]);
+        for (const std::string espace : {"A::F", "B::F"})
+            Exiger(std::any_of(machine.Relocalisations.begin(), machine.Relocalisations.end(),
+                [&](const auto& relocalisation) { return relocalisation.Symbole.starts_with(espace); }),
+                "une surcharge importée a disparu du groupe : " + espace);
+        const auto masquage = Analyser(valides[2]);
+        const auto& retour = static_cast<const GsPP::InstructionRetour&>(*masquage.Fonctions.back().Corps->Instructions.back());
+        Exiger(static_cast<const GsPP::ExpressionVariable&>(*retour.Valeur).Nom == "Local::Valeur",
+            "la globale locale ne masque plus la globale importée");
+
+        const std::vector<std::pair<std::string, std::string>> invalides{
+            {"utilisant espace Inconnu; publique entier32 Principal() { retourner 0; }", "espace utilisé introuvable"},
+            {"utilisant espace A; espace A {} publique entier32 Principal() { retourner 0; }", "espace utilisé introuvable"},
+            {"espace A { publique entier32 F() { retourner 1; } } publique entier32 Principal() { retourner F(); } utilisant espace A;", "introuvable"},
+            {"espace A { publique entier32 F() { retourner 1; } } espace Local { utilisant espace A; } publique entier32 Principal() { retourner F(); }", "introuvable"},
+            {"espace A { structure Point {}; } espace B { structure Point {}; } utilisant espace A; utilisant espace B; publique entier32 Principal() { Point p; retourner 0; }", "nom importé ambigu"},
+            {"espace A { publique entier32 X = 1; } espace B { publique entier32 X = 2; } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner X; }", "nom importé ambigu"},
+            {"espace A { publique entier32 X = 1; } utilisant espace A; publique entier32 X = 2; publique entier32 Principal() { retourner X; }", "nom importé ambigu"},
+            {"espace A { publique entier32 F() { retourner 1; } } espace B { publique entier32 F = 2; } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner F(); }", "nom importé ambigu"},
+            {"espace A { publique entier32 F(entier32 x) { retourner x; } } espace B { publique entier32 F(entier32 x) { retourner x; } } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner F(1); }", "ambigu"},
+            {"espace A {} utilisant A; publique entier32 Principal() { retourner 0; }", "espace' attendu"},
+            {"espace A {} utilisant espace A publique entier32 Principal() { retourner 0; }", "';' attendu"},
+            {"#using espace A;", "directive inconnue"},
+            {"#utilisant espace A;", "directive inconnue"}
+        };
+        for (const auto& [source, motif] : invalides)
+            for (const auto& texte : {source, traduire(source)})
+            {
+                bool refuse = false;
+                try { (void)Analyser(texte); }
+                catch (const GsPP::ErreurCompilation& erreur)
+                {
+                    refuse = std::string(erreur.what()).find(motif) != std::string::npos
+                        && erreur.Fichier() == "test.GsPP" && erreur.Ligne() == 1 && erreur.Colonne() > 0;
+                    Exiger(!erreur.Message(GsPP::LangueDiagnostic::Anglais).empty(), "diagnostic anglais absent");
+                }
+                Exiger(refuse, "utilisation invalide acceptée ou mauvais diagnostic : " + motif);
+            }
+        std::cout << "Utilisations d'espaces : 24 corpus valides et 26 rejets bilingues vérifiés.\n";
+    }
+
+    void TesterInclusionsTextuelles()
+    {
+        auto racine = std::filesystem::absolute(std::filesystem::path(__FILE__)).parent_path();
+        if (!std::filesystem::exists(racine / "Tests/Integration/Directives"))
+            racine = std::filesystem::current_path();
+        while (!std::filesystem::exists(racine / "Tests/Integration/Directives"))
+        {
+            const auto parent = racine.parent_path();
+            Exiger(parent != racine, "racine des fixtures d'inclusion introuvable");
+            racine = parent;
+        }
+        const auto fixtures = racine / "Tests/Integration/Directives";
+        for (const auto& fichier : {"Principal.GsPP", "Principal.en.GsPP"})
+        {
+            const auto chemin = racine / "Exemples/Directives" / fichier;
+            const auto jetons = GsPP::PreparerJetonsSource(chemin);
+            Exiger(jetons.back().Genre == GsPP::GenreJeton::Fin && jetons.back().Fichier == chemin.string(),
+                "le jeton de fin ne correspond plus au fichier principal");
+            auto programme = GsPP::AnalyserUnites({{chemin, false, ""}});
+            Exiger(programme.Structures.size() == 1 && programme.Enumerations.size() == 1,
+                "pragma once n'a pas protégé l'inclusion imbriquée");
+            Exiger(programme.Structures[0].Position.Fichier == (chemin.parent_path() / "Point.HGsPP").string(),
+                "l'origine de la structure incluse a été perdue");
+            (void)GsPP::GenerateurX64().Generer(programme);
+        }
+        auto prototype = GsPP::AnalyserUnites({{fixtures / "Prototype.GsPP", false, ""}});
+        Exiger(prototype.Fonctions.size() == 2 && !prototype.Fonctions[0].EstExterne,
+            "le prototype inclus n'a pas été associé à sa définition");
+        auto autoInclusion = GsPP::AnalyserUnites({{fixtures / "AutoInclusion.GsPP", false, ""}});
+        Exiger(autoInclusion.Fonctions.size() == 2 && autoInclusion.Fonctions[0].EstExterne,
+            "l'auto-inclusion avec pragma once ne termine plus ou perd le prototype");
+        const auto deuxUnites = GsPP::AnalyserUnites({
+            {racine / "Exemples/Directives/Point.HGsPP", true, "interface"},
+            {fixtures / "Prototype.GsPP", false, "implementation"}});
+        Exiger(deuxUnites.Structures.size() == 1, "régression de l'orchestration XML des interfaces");
+        auto unicode = GsPP::AnalyserUnites({{fixtures / "Unicode.GsPP", false, ""}});
+        Exiger(unicode.Structures.size() == 1, "un chemin d'inclusion UTF-8 a été perdu");
+#if defined(_WIN32)
+        auto casse = GsPP::AnalyserUnites({{fixtures / "CasseWindows.GsPP", false, ""}});
+        Exiger(casse.Structures.size() == 1, "pragma once dépend de la casse du chemin sous Windows");
+#endif
+        struct Cas { const char* Fichier; const char* Origine; const char* Motif; std::size_t Ligne; std::size_t Colonne; };
+        const std::vector<Cas> invalides{
+            {"Absent.GsPP", "Absent.GsPP", "fichier inclus introuvable", 1, 1},
+            {"CycleA.GsPP", "CycleB.HGsPP", "cycle d'inclusion", 1, 1},
+            {"Syntaxe.GsPP", "Syntaxe.HGsPP", "nom de champ", 1, 28},
+            {"Semantique.GsPP", "Semantique.HGsPP", "type de structure", 1, 19},
+            {"Lexage.GsPP", "Lexage.HGsPP", "inattendu", 1, 1},
+            {"Repete.GsPP", "SansOnce.HGsPP", "structure déclarée plusieurs fois", 1, 11},
+            {"Inline.GsPP", "Inline.GsPP", "commencer une ligne", 1, 22},
+            {"SansChemin.GsPP", "SansChemin.GsPP", "argument de directive", 1, 1},
+            {"Chevrons.GsPP", "Chevrons.GsPP", "texte inattendu", 1, 1},
+            {"PragmaInconnu.GsPP", "PragmaInconnu.GsPP", "pragma once", 1, 1},
+            {"FinDirective.GsPP", "FinDirective.GsPP", "texte inattendu", 1, 1},
+            {"CheminVide.GsPP", "CheminVide.GsPP", "chemin d'inclusion", 1, 1},
+            {"CheminNul.GsPP", "CheminNul.GsPP", "chemin d'inclusion", 1, 1},
+            {"Reserve.GsPP", "Reserve.GsPP", "extension d'inclusion incompatible", 1, 1},
+            {"Obsolete.GsPP", "Obsolete.GsPP", "extension d'inclusion incompatible", 1, 1}
+        };
+        for (const auto& cas : invalides)
+        {
+            bool refuse = false;
+            try { (void)GsPP::AnalyserUnites({{fixtures / cas.Fichier, false, ""}}); }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                refuse = std::string(erreur.what()).find(cas.Motif) != std::string::npos
+                    && erreur.Fichier() == (fixtures / cas.Origine).string()
+                    && erreur.Ligne() == cas.Ligne && erreur.Colonne() == cas.Colonne;
+                Exiger(refuse, std::string("diagnostic d'inclusion incorrect : ") + cas.Fichier
+                    + " -> " + erreur.Fichier() + ':' + std::to_string(erreur.Ligne()) + ':'
+                    + std::to_string(erreur.Colonne()) + " : " + erreur.what());
+                Exiger(!erreur.Message(GsPP::LangueDiagnostic::Anglais).empty(), "diagnostic anglais absent");
+            }
+            Exiger(refuse, std::string("inclusion invalide acceptée : ") + cas.Fichier);
+        }
+        std::cout << "Inclusions : 6 corpus valides, protection Windows de casse, "
+            << "15 rejets avec origine, ligne et colonne vérifiés.\n";
     }
 
     void TesterObjetCoff()
@@ -3247,6 +3488,8 @@ int main()
         TesterBitsEtIntrinseques();
         TesterVariablesControlesEtAppel();
         TesterEspaceUnicode();
+        TesterUtilisationEspaces();
+        TesterInclusionsTextuelles();
         TesterObjetCoff();
         TesterStructuresEtPointeurs();
         TesterValeursStructures();
@@ -3256,6 +3499,7 @@ int main()
         TesterHeritage019();
         TesterInitialisationParent020();
         TesterInitialiseursChamps021();
+        TesterChampsParDefautParConstructeur();
         TesterChampsObjetsClasses022();
         TesterTableauxObjetsClasses023();
         TesterInitialisationDureeVie025();

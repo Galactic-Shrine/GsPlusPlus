@@ -1,0 +1,3 @@
+#pragma once
+#inclure "AutoInclusion.HGsPP"
+externe entier32 Calculer(entier32 valeur);

@@ -243,7 +243,40 @@ espace GalacticShrine::GsPP::Autohebergement {
         octet valeur = AvancerLexeur(etat);
         naturel32 genre = 0;
 
-        si (valeur == 40) genre = 34;
+        si (valeur == 35) {
+            tantque (OctetCourant(etat) == 32 || OctetCourant(etat) == 9)
+                AvancerLexeur(etat);
+            naturel64 debutNom = etat->Position;
+            si (CommenceIdentifiantLexeur(OctetCourant(etat))) {
+                AvancerLexeur(etat);
+                tantque (ContinueIdentifiantLexeur(OctetCourant(etat)))
+                    AvancerLexeur(etat);
+            }
+            naturel64 tailleNom = etat->Position - debutNom;
+            GalacticShrine::GsPP::Hebergee::VueTexte nom =
+                GalacticShrine::GsPP::Hebergee::CreerVueTexte(&etat->Source[debutNom], tailleNom);
+            si (GalacticShrine::GsPP::Hebergee::VuesTexteEgales(nom,
+                    GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee("include"))
+                || GalacticShrine::GsPP::Hebergee::VuesTexteEgales(nom,
+                    GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee("inclure")))
+                genre = 77;
+            sinon si (GalacticShrine::GsPP::Hebergee::VuesTexteEgales(nom,
+                    GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee("pragma")))
+                genre = 78;
+            sinon retourner SignalerErreurLexage(
+                requete, ErreurLexage::CaractereInattendu, ligne, colonne);
+            naturel64 hachage = AjouterOctetHachage(HachageVideLexeur(), 35);
+            naturel64 index = debutNom;
+            tantque (index < etat->Position) {
+                hachage = AjouterOctetHachage(hachage, convertir<octet>(etat->Source[index]));
+                index = index + 1;
+            }
+            JetonLexe directive = {
+                genre, ligne, colonne, 0, debut, etat->Position - debut, tailleNom + 1, hachage};
+            AjouterJetonLexe(requete, directive);
+            retourner ErreurLexage::Reussite;
+        }
+        sinon si (valeur == 40) genre = 34;
         sinon si (valeur == 41) genre = 35;
         sinon si (valeur == 123) genre = 36;
         sinon si (valeur == 125) genre = 37;

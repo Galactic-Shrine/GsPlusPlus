@@ -1,0 +1,42 @@
+namespace GalacticShrine::GsPP::Tests::ChampsParDefaut {
+
+    public int32 Lire(int32 valeur) {
+
+        return 11;
+    }
+
+    public int32 Lire(int64 valeur) {
+
+        return 31;
+    }
+
+    class Mesure {
+
+        int32 Valeur = Lire(valeur);
+
+        public:
+        constructor(int32 valeur) {
+
+        }
+
+        constructor(int64 valeur) {
+
+        }
+
+        int32 LireValeur() {
+
+            return this.Valeur;
+        }
+    };
+
+    /**
+     * <summary>Checks that each constructor keeps its independently selected default initializer overload.</summary>
+     * @Return(int32) 42 after calling the two different overloads.
+     **/
+    public int32 Principal() {
+
+        Mesure premiere(1);
+        Mesure seconde(cast<int64>(2));
+        return premiere.LireValeur() + seconde.LireValeur();
+    }
+}

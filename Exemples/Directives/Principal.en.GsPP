@@ -1,0 +1,17 @@
+#include "Types.HGsPP"
+#include "./Point.HGsPP"
+
+namespace GalacticShrine::GsPP::Exemples::ApplicationDirectives {
+
+    using namespace GalacticShrine::GsPP::Exemples::Directives;
+
+    /**
+     * <summary>Uses nested includes and imported names without their namespace prefix.</summary>
+     * @Return(int32) The value 42.
+     **/
+    public int32 Principal() {
+
+        Point position = {20, 21};
+        return position.X + position.Y + cast<int32>(Etat::Actif);
+    }
+}

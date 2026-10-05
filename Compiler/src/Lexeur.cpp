@@ -12,6 +12,8 @@ namespace GsPP
         const std::unordered_map<std::string, GenreJeton> MotsCles = {
             {"espace", GenreJeton::Espace},
             {"namespace", GenreJeton::Espace},
+            {"utilisant", GenreJeton::Utilisant},
+            {"using", GenreJeton::Utilisant},
             {"classe", GenreJeton::Classe},
             {"class", GenreJeton::Classe},
             {"structure", GenreJeton::Structure},
@@ -157,6 +159,9 @@ namespace GsPP
             case GenreJeton::Virtuel: return "virtuel/virtual";
             case GenreJeton::Remplacer: return "remplacer/override";
             case GenreJeton::Parent: return "parent/super";
+            case GenreJeton::Utilisant: return "utilisant/using";
+            case GenreJeton::DirectiveInclure: return "#inclure/#include";
+            case GenreJeton::DirectivePragma: return "#pragma";
             case GenreJeton::Constructeur: return "constructeur/constructor";
             case GenreJeton::Destructeur: return "destructeur/destructor";
             case GenreJeton::Operateur: return "opérateur/operator";
@@ -422,6 +427,18 @@ namespace GsPP
 
         switch (valeur)
         {
+            case '#':
+            {
+                while (Courant() == ' ' || Courant() == '\t') Avancer();
+                const auto nom = CommenceIdentifiant(static_cast<unsigned char>(Courant()))
+                    ? LireIdentifiant().Texte : std::string{};
+                if (nom == "inclure" || nom == "include")
+                    return {GenreJeton::DirectiveInclure, "#" + nom, ligne, colonne};
+                if (nom == "pragma")
+                    return {GenreJeton::DirectivePragma, "#" + nom, ligne, colonne};
+                throw ErreurCompilation("directive inconnue : #" + nom,
+                    "unknown directive: #" + nom, ligne, colonne, _Fichier);
+            }
             case '(': return {GenreJeton::ParentheseOuvrante, "(", ligne, colonne};
             case ')': return {GenreJeton::ParentheseFermante, ")", ligne, colonne};
             case '{': return {GenreJeton::AccoladeOuvrante, "{", ligne, colonne};

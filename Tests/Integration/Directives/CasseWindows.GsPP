@@ -1,0 +1,3 @@
+#include "../../../Exemples/Directives/Point.HGsPP"
+#include "../../../Exemples/Directives/point.hgspp"
+publique entier32 Principal() { retourner 42; }

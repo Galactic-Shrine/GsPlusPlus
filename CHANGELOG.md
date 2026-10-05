@@ -10,6 +10,295 @@
 
 # Journal des modifications
 
+## Priorités des bases et champs — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- contrôles récursifs des bases et champs implicites lors de leur visite,
+  avant l'expression suivante, avec positions comparées au bootstrap ;
+- mode privé de validation seule sans étapes publiées ni capacité supplémentaire ;
+  plan final conservant l'ordre base, table virtuelle et champs déclarés ;
+- réutilisation du constructeur choisi pour chaque champ explicite, sans
+  seconde sélection de surcharge lors de la production du plan ;
+- parcours commun des arguments des constructions locales, bases, champs et
+  délégations : arité, abandon des préfixes incompatibles, sélection, visibilité,
+  puis analyse contextuelle des agrégats ;
+- correction de `parent()` sur une base sans constructeur propre, avec
+  construction implicite de ses sous-objets au lieu d'une cible inexistante ;
+- 12 corpus valides et 32 refus sémantiques bilingues, quatre émissions valides
+  et six refus d'émission bilingues ; **1 957 refus différentiels** au total,
+  AST intact et sorties d'émission préservées ;
+- CTest Windows 5/5 et GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies, conformité 20/20 par construction ; trois frontends identiques de
+  444 447 octets, chacun accepté par son vérificateur GsE ;
+- contrôles de déclarations locales, constructions de types non-classes et
+  autres contextes non couverts à consolider ; alpha.10, contrats publics,
+  formats 1.0 et ABI 1 conservés ; aucune publication effectuée.
+
+### English
+
+- validate recursive implicit base and field constructions when visited,
+  before the next expression, comparing diagnostic positions with the bootstrap;
+- private validation-only mode publishes no steps and requires no extra
+  resolution capacity; final plans retain base, vtable and declared-field order;
+- reuse the selected constructor for each explicit field rather than selecting
+  its overload again while producing the final plan;
+- share argument processing across local constructions, bases, fields and
+  delegations: arity, incompatible-prefix elimination, selection and visibility,
+  then contextual aggregate analysis;
+- fix `super()` for a base without its own constructor, building its subobjects
+  implicitly instead of producing a step with a nonexistent constructor target;
+- 12 valid and 32 rejected bilingual semantic corpora, four valid and six
+  rejected bilingual emission corpora; **1,957 differential rejections** in
+  total, preserving the caller's AST and emission buffers;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  conformance 20/20 per build; three identical 444,447-byte frontends, each
+  accepted by its GsE verifier;
+- local declaration checks, non-class construction syntax and other untested
+  contexts remain open; alpha.10, public contracts, formats 1.0 and ABI 1 retained;
+  no publication performed.
+
+## Constructions locales contextuelles — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- sélection et plans de construction/destruction lors de la visite des objets
+  locaux, avant l'instruction ou la fonction suivante ; suppression des deux
+  passes différées et de la seconde sélection du même constructeur local ;
+- filtrage d'arité et abandon des préfixes incompatibles avant les arguments
+  suivants ; agrégats analysés après sélection et contrôle de visibilité ;
+- tableaux sans arguments acceptant aussi `()`, même sans constructeur propre,
+  et positions des diagnostics récursifs distinctes de l'origine du plan ;
+- plans de corps des constructeurs contrôlés avant leurs instructions ;
+  vérification finale des cycles de délégation conservée ;
+- 12 corpus valides et 36 refus sémantiques bilingues, trois émissions valides
+  et six refus d'émission bilingues ; **1 881 refus différentiels** au total,
+  avec positions comparées, AST et sorties d'émission intacts ;
+- CTest Windows 5/5 et GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies, conformité 20/20 par construction ; trois frontends identiques
+  de 443 599 octets, chacun accepté par son vérificateur GsE ;
+- autres interactions entre plans récursifs de bases/champs et expressions
+  d'initialisation à consolider ; alpha.10, contrats publics, formats 1.0 et
+  ABI 1 conservés ; aucune publication effectuée.
+
+### English
+
+- select local constructors and create construction/destruction plans when
+  visiting their declarations, before the next statement or function; remove
+  the two deferred passes and repeated local-constructor selection;
+- filter arity and reject incompatible prefixes before subsequent arguments;
+  analyze aggregates only after selection and visibility checks;
+- allow no-argument object arrays with `()`, including classes without their
+  own constructor; separate recursive diagnostic positions from plan origins;
+- check constructor-body plans before body statements while retaining the
+  final delegation-cycle check;
+- 12 valid and 36 rejected bilingual semantic corpora, three valid and six
+  rejected bilingual emission corpora; **1,881 differential rejections** in
+  total, comparing positions and preserving the caller's AST and output buffers;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  conformance 20/20 per build; three identical 443,599-byte frontends, each
+  accepted by its GsE verifier;
+- other interactions between recursive base/field plans and initializer
+  expressions remain open; alpha.10, public contracts, formats 1.0 and ABI 1
+  retained; no publication performed.
+
+## Champs par défaut contextuels — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- analyse des valeurs de champs par défaut avec les paramètres de chaque
+  constructeur qui les utilise ; réinitialisation des cibles et conversions
+  privées entre visites, AST public préservé ;
+- listes explicites avant champs implicites puis corps, valeurs remplacées
+  ignorées, délégation sans réévaluation des champs, contrôle de la forme
+  des agrégats avant les feuilles et des champs avant leurs expressions ;
+- correction du bootstrap : copie de syntaxe possédée par chaque initialiseur
+  implicite, évitant la réutilisation de surcharges ou d'appels membres
+  transformés par l'analyse d'un autre constructeur ;
+- prototypes externes ignorés pour l'analyse et les plans de corps ; une
+  valeur par défaut exige un constructeur défini, diagnostic 39 sinon ;
+- 26 corpus valides et 28 refus sémantiques bilingues, trois corpus d'AST
+  d'interface bilingues, quatre émissions valides et quatre refus d'émission
+  bilingues ; **1 797 refus différentiels** au total ;
+- test unitaire d'isolation des expressions et programme d'intégration
+  français/anglais retournant 42 avec deux surcharges distinctes ;
+- CTest Windows 5/5 et GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies, conformité 20/20 par construction ; exécutions bilingues avec
+  retour 42 dans les trois constructions ; frontend identique de 442 015 octets ;
+- les priorités de sélection des constructions locales et les autres
+  combinaisons absentes des tests restent à consolider ; version alpha.10,
+  contrats publics auto-hébergés, formats 1.0 et ABI 1 conservés.
+
+### English
+
+- analyze default field values with the parameters of each consuming
+  constructor; reset private expression targets and conversions between
+  visits while preserving the caller's public AST;
+- process explicit initializers, implicit fields and the constructor body
+  in that order; skip replaced defaults and delegated-field reevaluation;
+- fix the bootstrap by giving each implicit initializer its own syntax copy,
+  retaining independently selected overloads and transformed member calls;
+- skip external constructor prototypes during body analysis and lifetime
+  planning; default fields still require a defined constructor, or error 39;
+- 26 valid and 28 rejected bilingual semantic corpora, three bilingual
+  interface AST corpora, four valid and four rejected bilingual emission
+  corpora; **1,797 differential rejections** in total;
+- add a syntax-isolation unit regression and French/English executable
+  regressions returning 42 from two independently chosen overloads;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  conformance 20/20 per build; both language variants execute and return 42
+  across the three builds; identical 442,015-byte frontends;
+- local-construction selection priorities and untested combinations remain
+  open; alpha.10, public self-hosted contracts, formats 1.0 and ABI 1 retained.
+
+## Utilisations d'espaces auto-hébergées — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- portage de `utilisant espace N;` / `using namespace N;` dans l'AST et
+  l'analyse sémantique de `Frontend.GsE`, au niveau global ou d'un espace ;
+- résolution des types, énumérations, globales, alias, groupes de surcharges
+  et opérateurs libres importés ; héritage, signatures et initialiseurs
+  globaux utilisent également les noms importés ;
+- imports transitifs, cycles sans récursion infinie, masquage, portée après
+  la directive et diagnostics d'espaces absents ou de noms ambigus ;
+- ajout du genre de nœud 36, de l'erreur syntaxique 30 et des erreurs
+  sémantiques 120–121, sans renuméroter les valeurs précédentes ni changer
+  la disposition de 64 octets d'un nœud ;
+- 24 corpus valides et 14 refus sémantiques, chacun en français et anglais,
+  plus trois refus syntaxiques bilingues ; quatre corpus d'émission valides
+  et trois refus d'émission bilingues ; total différentiel : **1 731 refus** ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives,
+  conformité 20/20 dans les trois constructions ; frontend identique de
+  437 535 octets, 75 exports et deux imports, vérifié comme GsE 1.0 ;
+- expansion des inclusions toujours confiée au bootstrap hôte ; aucune
+  extension aux macros, chemins système ou formes `using` non prévues ;
+- version alpha.10 inchangée ; aucune publication créée.
+
+### English
+
+- port namespace/global-scope `using namespace N;` / `utilisant espace N;`
+  to the self-hosted AST and semantic analysis in `Frontend.GsE`;
+- resolve imported types, enums, globals, aliases, overload sets and free
+  operators, including inheritance, signatures and global initializers;
+- support transitive imports, cycle termination, shadowing and source scope,
+  with missing-namespace and ambiguous-name diagnostics;
+- append AST kind 36, syntax error 30 and semantic errors 120–121; preserve
+  previous numeric values and the 64-byte AST node layout;
+- 24 valid and 14 rejected semantic corpora, three syntax rejections, four
+  valid emission corpora and three emission rejections, all in both languages;
+  the differential rejection total is now **1,731**;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  and conformance 20/20 across all three builds; identical 437,535-byte
+  frontends with 75 exports and two imports, verified as GsE 1.0;
+- included files remain expanded by the host bootstrap; no macros, system
+  include paths or additional using forms added; alpha.10 remains unchanged
+  and no new publication was created.
+
+## Inclusions et utilisations d'espaces — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- `#inclure "chemin"` / `#include "path"` dans le bootstrap : expansion des
+  jetons à l'endroit de la directive, chemins relatifs au fichier incluant,
+  UTF-8, inclusions imbriquées et diagnostics conservant leur fichier d'origine ;
+- `#pragma once` par unité, détection des cycles et profondeur bornée ;
+  redéclarations conservées sans protection, extensions Gs# et obsolètes refusées ;
+- `utilisant espace N;` / `using namespace N;`, sans `#`, au niveau global ou
+  d'un espace : types, alias, énumérations, globales, fonctions, groupes de
+  surcharges, imports transitifs, portée source et diagnostics d'ambiguïté ;
+- lexeur auto-hébergé aligné pour les jetons 76–78 ; 85 classifications,
+  trois corpus lexicaux différentiels valides et six nouveaux refus lexicaux ;
+  le portage des utilisations dans ses analyseurs reste à réaliser ;
+- 24 corpus bootstrap valides bilingues, 26 refus bilingues, six cas d'inclusion
+  valides plus un contrôle de casse Windows et 15 refus avec fichier, ligne et
+  colonne vérifiés ; exemple français/anglais et diagnostics CLI intégrés ;
+- pas de macros, chemins `<...>`, `-I`, utilisations en bloc ou déclarations
+  `using` de noms précis dans cette tranche ; les projets XML et contrats de
+  compilation séparée restent disponibles ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives,
+  conformité 20/20 sur les trois constructions ; exemples français/anglais
+  exécutés avec retour 42 sur les trois constructions ; frontend
+  identique de 412 255 octets, 75 exports et deux imports, validé comme GsE 1.0 ;
+- `VERSION` reste à alpha.10 ; aucun commit, push, tag, paquet ou release créé.
+
+### English
+
+- bootstrap `#include "path"` / `#inclure "chemin"`: insert file tokens at the
+  directive, resolve paths relative to the including file, support UTF-8 and
+  nested includes, and preserve originating files in diagnostics;
+- per-unit `#pragma once`, cycle detection and bounded depth; unguarded
+  redeclarations remain errors, Gs# and obsolete extensions are rejected;
+- namespace/global-scope `using namespace N;` / `utilisant espace N;`, without
+  `#`: types, aliases, enum values, globals, functions, merged overload sets,
+  transitive imports, source scope and ambiguity diagnostics;
+- align self-hosted lexing for tokens 76–78: 85 classifications, three valid
+  differential lexical corpora and six new lexical rejections; porting using
+  directives to the self-hosted analyzers remains pending;
+- 24 valid bilingual bootstrap corpora, 26 bilingual rejections, six valid
+  include cases plus a Windows casing check and 15 rejections checking file,
+  line and column; runnable French/English example and CLI diagnostic checks;
+- no macros, `<...>` paths, `-I`, block-scope using or individual-name using
+  declarations in this tranche; XML projects and separate compilation remain
+  available;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance across all three builds; French/English examples execute
+  and return 42 on all three builds; identical 412,255-byte frontends with
+  75 exports and two imports, verified as GsE 1.0;
+- `VERSION` stays at alpha.10; no commit, push, tag, package or release created.
+
+## Priorité des initialiseurs globaux — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
+
+### Français
+
+- validation complète de chaque globale dans l'ordre source : contraintes de
+  déclaration, forme et capacité, résolution et typage de toutes les feuilles,
+  puis passe constante de cette globale avant les suivantes et les fonctions ;
+- régression reproduite puis corrigée : `entier32 X = {Absente, 2};` signalait
+  le nom absent 18 au lieu du refus scalaire 44 à la racine de l'agrégat ;
+- maintien des deux passes internes : dans `{Lire(), vrai}`, le type incompatible
+  du second élément reste prioritaire sur le caractère non constant du premier ;
+- contrôles structurels des champs par défaut déplacés avant l'analyse des
+  globales et des fonctions, après les conflits de signatures et de liaison ;
+- expressions des champs par défaut visitées après les globales, afin qu'une
+  expression invalide de champ ne masque pas un refus de globale ;
+- 104 nouveaux refus sémantiques français/anglais et 16 corpus sémantiques valides,
+  20 refus d'émission sans écriture partielle et huit corpus d'émission valides ;
+  total différentiel : **1 697 refus**, code, ligne, colonne et AST intact vérifiés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives,
+  conformité 20/20 sur les trois constructions ; frontend identique de
+  410 431 octets, 75 exports et deux imports, accepté par le vérificateur GsE ;
+- bootstrap C++, contrats publics, diagnostics 0–119, formats 1.0 et ABI 1
+  inchangés ; l'évaluation des champs par défaut dans chaque constructeur,
+  les initialisations explicites, délégations et interfaces restent à consolider ;
+- alpha.10 inchangée ; développement distinct des paquets publiés, sans nouveau
+  tag, paquet ou release pour cette tranche locale.
+
+### English
+
+- fully validate each global in source order: declaration constraints, shape
+  and capacity, resolve and type-check all leaves, then run that global's
+  constant-value pass before later globals and function bodies;
+- reproduce and fix `int32 X = {Missing, 2};`, which reported unknown name 18
+  instead of scalar aggregate rejection 44 at the aggregate root;
+- preserve both internal passes: in `{Read(), true}`, the second element's
+  incompatible type remains prior to the first element's nonconstant value;
+- move structural default-field checks before globals and function bodies,
+  after signature and link-symbol conflicts;
+- visit default-field expressions after globals, so an invalid field expression
+  does not mask a global rejection;
+- 104 new French/English semantic rejections and 16 valid semantic corpora,
+  20 emission rejections without partial writes and eight valid emission corpora;
+  differential total **1,697 rejections**, checking code, line, column and intact AST;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  20/20 conformance on all three builds; identical 410,431-byte frontends,
+  75 exports and two imports, accepted by the GsE verifier;
+- C++ bootstrap, public contracts, diagnostics 0–119, formats 1.0 and ABI 1
+  unchanged; constructor-context default-field evaluation, explicit
+  initialization, delegation and interfaces remain to be consolidated;
+- alpha.10 unchanged; development separate from published packages, without a
+  new tag, package or release for this local tranche.
+
 ## Priorité des initialiseurs locaux — développement après Gs++ 0.27.0-alpha.10 — 2026-10-04
 
 ### Français

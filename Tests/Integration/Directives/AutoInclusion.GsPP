@@ -1,0 +1,2 @@
+#inclure "AutoInclusion.HGsPP"
+publique entier32 Principal() { retourner Calculer(42); }

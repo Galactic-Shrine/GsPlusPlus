@@ -839,7 +839,8 @@ namespace
             Enumeration,
             VariableGlobale,
             Fonction,
-            Alias
+            Alias,
+            Utilisation
         };
         struct Racine
         {
@@ -880,6 +881,9 @@ namespace
                 &alias,
                 alias.Position.Ligne,
                 alias.Position.Colonne});
+        for (const auto& utilisation : programme.Utilisations)
+            racines.push_back({GenreRacine::Utilisation, &utilisation,
+                utilisation.Position.Ligne, utilisation.Position.Colonne});
         std::stable_sort(
             racines.begin(), racines.end(),
             [](const Racine& gauche, const Racine& droite)
@@ -1297,6 +1301,14 @@ namespace
                         resultat);
                 continue;
             }
+            if (racine.Genre == GenreRacine::Utilisation)
+            {
+                const auto& utilisation = *static_cast<const GsPP::Programme::UtilisationEspace*>(racine.Declaration);
+                resultat.push_back({36, static_cast<std::uint32_t>(utilisation.Position.Ligne),
+                    static_cast<std::uint32_t>(utilisation.Position.Colonne), 0, 0, 0, 0,
+                    HacherTexte(utilisation.Cible), HacherTexte(utilisation.Espace), 0});
+                continue;
+            }
             const auto& alias = *static_cast<const GsPP::DeclarationAlias*>(
                 racine.Declaration);
             resultat.push_back({
@@ -1370,6 +1382,12 @@ namespace
         const auto brut = source.substr(
             static_cast<std::size_t>(jeton.Debut),
             static_cast<std::size_t>(jeton.TailleSource));
+        if (jeton.Genre == static_cast<std::uint32_t>(GsPP::GenreJeton::DirectiveInclure)
+            || jeton.Genre == static_cast<std::uint32_t>(GsPP::GenreJeton::DirectivePragma))
+        {
+            const auto debutNom = brut.find_first_not_of(" \t", 1);
+            return "#" + std::string(brut.substr(debutNom));
+        }
         if (jeton.Genre != static_cast<std::uint32_t>(
                 GsPP::GenreJeton::ChaineCaracteres))
             return std::string(brut);
@@ -1578,6 +1596,14 @@ namespace
             lexer, "\"chaine\\q\"", 6, "echappement-inconnu");
         ComparerErreurLexage(
             lexer, "\n  @", 7, "caractere-inattendu");
+        ComparerLexage(lexer, "#inclure \"Types.HGsPP\"\n#include \"Point.HGsPP\"\n#pragma once\n",
+            "directives-inclusion-bilingues");
+        ComparerLexage(lexer, "# \tinclude \"é/Types.HGsPP\"\n#  pragma once\nutilisant espace A; using namespace B;",
+            "directives-espaces-et-noms");
+        ComparerLexage(lexer, "\xEF\xBB\xBF#pragma once\r\n/** commentaire **/\r\n#inclure \"Point.HGsPP\" // fin\r\n",
+            "directives-bom-crlf-commentaires");
+        for (const auto& source : {"#", "#\n", "#123", "#define X", "#using namespace A;", "#utilisant espace A;"})
+            ComparerErreurLexage(lexer, source, 7, "directive-inconnue");
 
         Exiger(
             lexer(nullptr) == 8,
@@ -1720,7 +1746,7 @@ namespace
                 && (nom == "soi" || nom == "this"
                     || nom == "parent" || nom == "super"))
                 continue;
-            if (courant.Genre == 10)
+            if (courant.Genre == 10 || courant.Genre == 24 || courant.Genre == 36)
             {
                 std::string nomQualifie;
                 for (const auto& jeton : GsPP::Lexeur(std::string(nom), "nom-alias").Analyser())
@@ -3366,7 +3392,51 @@ espace Donnees {
                        "position du diagnostic perdue pendant l'émission");
             }
         };
+        for (const auto& source : std::vector<std::string>{
+            "espace N { structure P { entier32 X; }; énumération E { Actif = 42 }; publique entier32 F() { retourner 42; } } utilisant espace N; P Valeur = {42}; E Etat = E::Actif; pointeur_fonction<entier32()> Rappel = F;",
+            "espace N { publique entier32 F() { retourner 42; } } espace M { utilisant espace N; } utilisant espace M; alias Appeler = F; pointeur_fonction<entier32()> Rappels[2] = {Appeler, F};",
+            "espace N { structure P { entier32 X; entier32 Y; }; } utilisant espace N; P Valeurs[2] = {{20, 22}, {1, 2}}; publique entier32 F() { retourner Valeurs[0].X; }",
+            "espace N { externe entier32 F(); } utilisant espace N; pointeur_fonction<entier32()> Rappel = F; publique entier32 Principal() { retourner Rappel(); }"})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte, "emission-espaces-utilises");
+        for (const auto& [source, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+            {"utilisant espace Absent; entier32 X = 42; publique vide F() {}", 120},
+            {"espace A { structure P {}; } espace B { structure P {}; } utilisant espace A; utilisant espace B; entier32 X = 42; P Objet; publique vide F() {}", 121},
+            {"espace A { publique entier32 F() { retourner 1; } } espace B { publique entier32 F() { retourner 2; } } utilisant espace A; utilisant espace B; entier32 X = 42; pointeur_fonction<entier32()> Rappel = F;", 19}})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                verifierRefus(texte, code, true);
+        for (const auto& source : std::vector<std::string>{
+            "entier32 X = 42; classe C { publique: constructeur() {} destructeur() {} }; publique vide F() { C a; C b[2](); }",
+            "entier32 X = 42; structure P { entier32 X; }; classe C { publique: constructeur(P p) {} }; publique vide F() { C a({42}); }",
+            "entier32 X = 42; classe B { publique: constructeur() {} destructeur() {} }; classe D : publique B {}; publique vide F() { D a; D b[2]; }"})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte, "emission-constructions-locales");
+        for (const auto& [source, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+            {"entier32 X = 42; classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a; Absente; }", 21},
+            {"entier32 X = 42; classe C { privée: constructeur() {} }; publique vide F() { C a; Absente; }", 26},
+            {"entier32 X = 42; classe C { publique: constructeur() {} privée: destructeur() {} }; publique vide F() { C a[2]; Absente; }", 56},
+            {"entier32 X = 42; structure P { entier32 X; }; classe C { publique: constructeur(P p) {} }; publique vide F() { C a({Absente, 2}); }", 43},
+            {"entier32 X = 42; classe M { privée: constructeur() {} }; classe C { M m; }; publique vide F() { C a; Absente; }", 26},
+            {"entier32 X = 42; classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a(Absente, 1); }", 21}})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                verifierRefus(texte, code, true);
         verifierRefus("entier32 A = 42; entier32 B = 1 / 0; publique vide F() {}", 89, true);
+        for (const auto& source : std::vector<std::string>{
+            "entier32 X = 42; classe M { publique: constructeur() {} }; classe B { M m; }; classe D : publique B { publique: constructeur() : parent() {} };",
+            "entier32 X = 42; structure P { entier32 X; }; classe B { publique: constructeur(P p) {} }; classe D : publique B { publique: constructeur() : parent({42}) {} };",
+            "entier32 X = 42; classe M { publique: constructeur() {} constructeur(entier32 x) {} }; classe C { M a; M b; publique: constructeur() : b(42) {} };",
+            "entier32 X = 42; structure P { entier32 X; }; classe C { publique: constructeur() : soi({42}) {} constructeur(P p) {} };"})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte, "emission-priorites-plans-constructeurs");
+        for (const auto& [source, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+            {"entier32 X = 42; classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { entier32 Y = Absente; publique: constructeur() {} };", 26},
+            {"entier32 X = 42; classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; entier32 Y = Absente; publique: constructeur() {} };", 26},
+            {"entier32 X = 42; classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { entier32 Y = Absente; Interne i; publique: constructeur() {} };", 18},
+            {"entier32 X = 42; classe B { publique: constructeur(entier32 x) {} }; classe D : publique B { publique: constructeur() : parent(Absente, 1) {} };", 21},
+            {"entier32 X = 42; structure P { entier32 X; }; classe M { privée: constructeur(P p) {} }; classe C { M m; publique: constructeur() : m({Absente, 2}) {} };", 26},
+            {"entier32 X = 42; structure P { entier32 X; }; classe B { publique: constructeur(P p) {} }; classe D : publique B { publique: constructeur() : parent({Absente, 2}) {} };", 43}})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                verifierRefus(texte, code, true);
         verifierRefus("int32 A = 42; int32 B = 1 / 0; public void F() {}", 89, true);
         verifierRefus("externe entier32 I; entier32* P = &I; publique vide F() {}", 83, true);
         verifierRefus("extern int32 I; int32* P = &I; public void F() {}", 83, true);
@@ -3593,6 +3663,27 @@ espace Donnees {
             for (const auto& texte : {conversionsValides[index], TraduireCorpusConversions(conversionsValides[index])})
                 ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
                     "emission-conversion-constante-valide-" + std::to_string(index));
+        for (const auto& [declaration, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"classe C { entier32 X = valeur; publique: constructeur() {} };", 18},
+                 {"classe C { entier32 X = valeur; publique: constructeur(booléen valeur) {} };", 37},
+                 {"classe C { entier32 X[1] = {Absente, 2}; publique: constructeur() {} };", 42},
+                 {"classe C { entier32 X = Absente; publique: constructeur() : Manquant(Absente) {} };", 33}})
+        {
+            const auto texte = "entier32 Temoin = 42; " + declaration;
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::vector<std::string> champsContextuelsEmis{
+            "entier32 Temoin = 42; classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} };",
+            "entier32 Temoin = 42; classe C { entier32 X = Absente; publique: constructeur() : X(42) {} };",
+            "entier32 Temoin = 42; classe C { entier32 X[2] = {valeur, valeur}; publique: constructeur(entier32 valeur) {} };",
+            "entier32 Temoin = 42; publique entier32 Lire(entier32 x) { retourner 11; } publique entier32 Lire(entier64 x) { retourner 31; } classe C { entier32 X = Lire(valeur); publique: constructeur(entier32 valeur) {} constructeur(entier64 valeur) {} };",
+        };
+        for (std::size_t index = 0; index < champsContextuelsEmis.size(); ++index)
+            for (const auto& texte : {champsContextuelsEmis[index], TraduireCorpusConversions(champsContextuelsEmis[index])})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
+                    "emission-champ-contextuel-valide-" + std::to_string(index));
+
         const std::string declarationsInitialiseursLocaux =
             "entier32 A = 42; structure Point { entier32 X; entier32 Y; }; "
             "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; ";
@@ -3619,6 +3710,42 @@ espace Donnees {
                                      TraduireCorpusConversions(initialiseursLocauxValides[index])})
                 ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
                     "emission-initialiseur-local-valide-" + std::to_string(index));
+        const std::string declarationsInitialiseursGlobaux =
+            "entier32 Temoin = 42; structure Point { entier32 X; entier32 Y; }; "
+            "publique entier32 Lire() { retourner 42; } ";
+        for (const auto& [declaration, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"entier32 X = {Absente, 2};", 44},
+                 {"entier32 X[1] = {Absente, 2};", 42},
+                 {"Point P = {vrai, Absente};", 45},
+                 {"entier32 X = 1 / 0; entier32 Y = Absente;", 89},
+                 {"Point P = {1 / 0, vrai};", 45},
+                 {"Point P = {Lire(), 0};", 84},
+                 {"externe entier32 I; entier32* P = &I; entier32 Y = Absente;", 83},
+                 {"classe D { entier32 V = Absente; }; entier32 X = {Absente, 2};", 39},
+                 {"entier32 X = {Absente, 2}; classe D { entier32 V = Absente; publique: constructeur() {} };", 44},
+                 {"vide X; classe D { entier32 V = Absente; publique: constructeur() {} };", 78}})
+        {
+            const auto texte = declarationsInitialiseursGlobaux + declaration;
+            verifierRefus(texte, code, true);
+            verifierRefus(TraduireCorpusConversions(texte), code, true);
+        }
+        const std::vector<std::string> initialiseursGlobauxValides{
+            "structure Point { entier32 X; entier32 Y; }; Point Points[2] = {{{1}, {2}}, {3, 4}}; "
+            "naturel8 Octets[2][2] = {{1, 255}, {2, 3}}; publique vide G() {}",
+            "publique entier32 Lire() { retourner 42; } "
+            "structure Rappel { pointeur_fonction<entier32()> F; entier32 X; }; "
+            "Rappel R = {{Lire}, 7}; pointeur_fonction<entier32()> Fonctions[2] = {Lire, Lire};",
+            "booléen X = {faux && (1 / 0)}; booléen Y = {vrai || (1 / 0)}; "
+            "entier32 Z = {{{7}}}; publique vide G() {}",
+            "espace N { structure Point { entier32 X; entier32 Y; }; alias VuePoint = Point; "
+            "VuePoint Points[2] = {{1, 2}, {3, 4}}; } "
+            "classe D { entier32 V = 7; publique: constructeur() {} }; publique vide G() {}",
+        };
+        for (std::size_t index = 0; index < initialiseursGlobauxValides.size(); ++index)
+            for (const auto& texte : {initialiseursGlobauxValides[index],
+                                     TraduireCorpusConversions(initialiseursGlobauxValides[index])})
+                ComparerEmissionGlobales(syntaxe, semantique, emettre, texte,
+                    "emission-initialiseur-global-contextuel-valide-" + std::to_string(index));
         // Chaque objet tient sur 32 bits, mais leur zone commune dépasse la limite.
         verifierRefus("octet A[2147483647]; octet B[2147483647]; octet C[2]; publique vide F() {}", 58, false);
         verifierRefus("byte A[2147483647] = {}; byte B[2147483647] = {}; byte C[2] = {}; public void F() {}", 58, false);
@@ -3651,8 +3778,8 @@ espace Donnees {
                  {"structure", "struct"}, {"classe", "class"}, {"espace", "namespace"},
                  {"constructeur", "constructor"}, {"opérateur", "operator"},
                  {"destructeur", "destructor"}, {"virtuel", "virtual"}, {"remplacer", "override"},
-                 {"externe", "extern"},
-                 {"soi", "this"}, {"caractère", "char"}, {"octet", "byte"},
+                 {"externe", "extern"}, {"utilisant", "using"},
+                 {"soi", "this"}, {"parent", "super"}, {"caractère", "char"}, {"octet", "byte"},
                  {"publique", "public"}, {"retourner", "return"},
                  {"privée", "private"}, {"protégée", "protected"},
                  {"naturel", "uint"}, {"entier", "int"}, {"booléen", "bool"},
@@ -5771,6 +5898,120 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
     }
 
     /**
+     * <résumé>Compare les priorités des initialiseurs globaux et des contrôles structurels des champs par défaut.</résumé>
+     * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
+     * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
+     **/
+    void TesterPrioritesInitialiseursGlobauxSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "structure Point { entier32 X; entier32 Y; }; "
+            "structure Bloc { Point P; naturel8 Octets[2]; }; "
+            "structure Adresse { entier32* P; entier32 X; }; "
+            "union Choix { entier32 X; entier64 Y; }; "
+            "classe C { privée: entier32 opérateur+(entier32 x) { retourner x; } }; "
+            "publique entier32 Lire() { retourner 42; } publique vide SansRetour() {} ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"entier32 X = {Absente, 2};", 44},
+            {"entier32 X[1] = {Absente, 2};", 42},
+            {"entier32 X[1] = Absente;", 46},
+            {"Point P = {Absente, 2, 3};", 43},
+            {"Point P = {vrai, Absente};", 45},
+            {"Point P = {Absente, vrai};", 18},
+            {"Choix X = {Absente, 2};", 43},
+            {"Bloc B = {{1, 2}, {Absente, 2, 3}};", 42},
+            {"Bloc B = {{1, 2}, {1, 300}};", 90},
+            {"naturel8 X = {300};", 90},
+            {"entier32* X = {vrai, Absente};", 44},
+            {"pointeur_fonction<entier32()> X = {Absente, vrai};", 44},
+            {"pointeur_fonction<entier32()> X = {SansRetour};", 45},
+            {"C X = {Absente};", 76},
+            {"C X[1] = {Absente};", 76},
+            {"entier32& X = {Absente};", 77},
+            {"vide X = Absente;", 78},
+            {"publique externe entier32 X;", 79},
+            {"constante entier32 X;", 80},
+            {"entier32 X = Lire(); entier32 Y = {Absente, 2};", 84},
+            {"entier32 X = 1 / 0; entier32 Y = {Absente, 2};", 89},
+            {"entier32 X = {Absente, 2}; vide Y;", 44},
+            {"entier32 X = vrai; constante entier32 Y;", 45},
+            {"constante entier32 X; entier32 Y = {Absente, 2};", 80},
+            {"naturel8 X = 300; entier32 Y = Absente;", 90},
+            {"entier32 X = Absente; naturel8 Y = 300;", 18},
+            {"Point P = {Lire(), vrai};", 45},
+            {"Point P = {1 / 0, vrai};", 45},
+            {"Point P = {Lire(), 0};", 84},
+            {"Point P = {1 / 0, 0};", 89},
+            {"externe entier32 I; Adresse A = {&I, vrai};", 45},
+            {"externe entier32 I; Adresse A = {&I, 0};", 83},
+            {"Point Q; Point P = Q;", 81},
+            {"externe pointeur_fonction<entier32()> F; pointeur_fonction<entier32()> X = F;", 82},
+            {"entier32 X = {Absente, 2}; publique vide G(C& objet) { objet + 7; }", 44},
+            {"publique vide G(C& objet) { objet + 7; } entier32 X = 1 / 0;", 89},
+            {"entier32 X = Lire(); publique vide G(C& objet) { objet + 7; }", 84},
+            {"naturel8 X = convertir<naturel8>(256); entier32 Y = {Absente, 2};", 98},
+            {"entier32 X = {Absente, 2}; naturel8 Y = convertir<naturel8>(256);", 44},
+            {"entier32 X = {Absente, 2}; classe D { entier32 V = Absente; };", 39},
+            {"classe D { entier32 V = Absente; }; entier32 X = {Absente, 2};", 39},
+            {"classe D { C V = Absente; publique: constructeur() {} }; entier32 X = Absente;", 38},
+            {"entier32 X = Absente; classe D { C V[1] = {Absente}; publique: constructeur() {} };", 38},
+            {"publique vide G(C& objet) { objet + 7; } classe D { entier32 V = Absente; };", 39},
+            {"classe D { entier32 V = Absente; }; publique vide G() {} publique vide G() {}", 118},
+            {"espace N { entier32 X = {Absente, 2}; } vide Y;", 44},
+            {"alias VuePoint = Point; VuePoint P = {Absente, 2, 3}; vide Y;", 43},
+            {"entier32 X = {Absente, 2}; classe D { entier32 V = Absente; publique: constructeur() {} };", 44},
+            {"classe D { entier32 V = Absente; publique: constructeur() {} }; entier32 X = {Absente, 2};", 44},
+            {"vide X; classe D { entier32 V = Absente; publique: constructeur() {} };", 78},
+            {"entier32 X = Lire(); classe D { entier32 V = Absente; publique: constructeur() {} };", 84},
+            {"classe D { entier32 V = Absente; publique: constructeur() {} }; entier32 X = 1 / 0;", 89},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "priorite-initialiseur-global-refuse-" + std::to_string(index);
+                try
+                {
+                    ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+        const std::vector<std::string> valides{
+            "entier32 X = {}; entier32 Y = {{{7}}};",
+            "Point P = {{1}, {2}}; Point Points[2] = {{1, 2}, {3, 4}};",
+            "Bloc B = {{1, 2}, {3, 4}}; Choix X = {7}; Choix Y = {};",
+            "naturel8 X = 255; entier8 Y = -128;",
+            "pointeur_fonction<entier32()> F = {Lire};",
+            "booléen X = {faux && (1 / 0)}; booléen Y = {vrai || (1 / 0)};",
+            "espace N { alias VuePoint = Point; VuePoint P[2] = {{1, 2}, {3, 4}}; }",
+            "classe D { entier32 V = 7; publique: constructeur() {} };",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + valides[index];
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "initialiseur-global-contextuel-valide-" + std::to_string(index);
+                try
+                {
+                    AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                }
+                catch (const std::exception& erreur)
+                {
+                    throw std::runtime_error(nom + " : " + erreur.what());
+                }
+            }
+        }
+    }
+
+    /**
      * <résumé>Vérifie de vraies collisions d'empreintes de liaison, sans modifier le bootstrap ni l'AST public.</résumé>
      * @Paramètre(AnalyseurDeclarationsAutoHeberge: syntaxe) Analyseur de déclarations testé.
      * @Paramètre(AnalyseurSemantiqueAutoHeberge: semantique) Frontend auto-hébergé testé.
@@ -6326,6 +6567,441 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         }
     }
 
+    void TesterPrioritesPlansConstructeursSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::string> valides{
+            "classe M { publique: entier32 X; constructeur() {} }; classe B { M m; }; classe D : publique B { M n; entier32 X = 42; publique: constructeur() {} };",
+            "classe B {}; classe D : publique B { publique: constructeur() : parent() {} };",
+            "classe M { publique: constructeur() {} }; classe B { M m; }; classe D : publique B { publique: constructeur() : parent() {} };",
+            "classe M { publique: entier32 X; constructeur() {} }; classe Interne { M m; }; classe C { Interne i[2]; entier32 X = 42; publique: constructeur() : i() {} };",
+            "structure P { entier32 X; }; classe M { publique: constructeur(P p) {} }; classe C { M m; publique: constructeur() : m({42}) {} };",
+            "structure P { entier32 X; }; classe B { publique: constructeur(P p) {} }; classe D : publique B { publique: constructeur() : parent({42}) {} };",
+            "structure P { entier32 X; }; classe C { publique: constructeur() : soi({42}) {} constructeur(P p) {} };",
+            "classe B { publique: virtuel entier32 Lire() { retourner 1; } }; classe D : publique B { publique: constructeur() : parent() {} remplacer entier32 Lire() { retourner 42; } };",
+            "classe M { publique: entier32 X; constructeur() {} constructeur(entier32 x) {} }; classe C { M a; M b; publique: constructeur() : b(42) {} };",
+            "classe M { publique: constructeur(entier32 x) {} }; classe C { M a; alias Vue = a; publique: constructeur() : Vue(42) {} };",
+            "classe M { privée: constructeur() {} }; classe C { M* m; entier32 X = 42; publique: constructeur() {} };",
+            "classe M { protégée: constructeur() {} }; classe B : publique M {}; classe D : publique B { publique: constructeur() : parent() {} };",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+            {
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "priorite-plan-constructeur-valide-" + std::to_string(index));
+                if (index == 0 || index == 1 || index == 2 || index == 3 || index == 7 || index == 8 || index == 10)
+                {
+                    const auto nom = index <= 2 || index == 7 ? "D" : "C";
+                    const auto classe = std::find_if(resultat.Noeuds.begin(), resultat.Noeuds.end(),
+                        [&](const auto& noeud) { return noeud.Genre == 6 && noeud.HachageNom == HacherTexte(nom); });
+                    Exiger(classe != resultat.Noeuds.end(), "classe du plan contextuel introuvable");
+                    const auto indexClasse = static_cast<std::uint64_t>(classe - resultat.Noeuds.begin());
+                    const auto construction = std::find_if(resultat.Noeuds.begin(), resultat.Noeuds.end(),
+                        [&](const auto& noeud) { return noeud.Genre == 13 && noeud.Parent == indexClasse; });
+                    Exiger(construction != resultat.Noeuds.end(), "constructeur du plan contextuel introuvable");
+                    const auto indexConstruction = static_cast<std::uint64_t>(construction - resultat.Noeuds.begin());
+                    std::vector<const ResolutionSemantiqueHote*> plans;
+                    for (const auto& resolution : resultat.Resolutions)
+                        if (resolution.IndexNoeud == indexConstruction && (resolution.Drapeaux & 32768U) != 0)
+                            plans.push_back(&resolution);
+                    const auto nombreAttendu = index == 1 || index == 10 ? 0U : index == 2 ? 1U : 2U;
+                    Exiger(plans.size() == nombreAttendu,
+                        "le contrôle préalable publie des étapes, ou le plan final est incomplet : " + texte);
+                    if (index == 7)
+                        Exiger(std::all_of(plans.begin(), plans.end(),
+                                [](const auto* plan) { return (plan->Drapeaux & 262144U) != 0; }),
+                            "une base sans constructeur doit produire ses étapes de table virtuelle, pas une cible fictive");
+                    if (index == 0 || index == 3 || index == 8)
+                        Exiger(plans[0]->HachageType == 0 && plans[1]->HachageType == 4,
+                            "l'ordre canonique des bases/champs a changé");
+                    if (index == 8)
+                    {
+                        const auto parametres = [&](const auto* plan)
+                        {
+                            const auto cible = resultat.Symboles[plan->IndexSymbole].IndexNoeud;
+                            return std::count_if(resultat.Noeuds.begin(), resultat.Noeuds.end(),
+                                [&](const auto& noeud) { return noeud.Genre == 2 && noeud.Parent == cible; });
+                        };
+                        Exiger(parametres(plans[0]) == 0 && parametres(plans[1]) == 1,
+                            "le plan de champ ne réutilise pas le constructeur effectivement sélectionné");
+                    }
+                }
+            }
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { entier32 X = Absente; publique: constructeur() {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { entier32 X; publique: constructeur() : Inconnu(Absente) {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { entier32 X; publique: constructeur() : X(convertir<vide>(0)) {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { entier32 X = Absente; publique: constructeur() : parent() {} };", 26},
+            {"classe B {}; classe D : publique B { publique: constructeur() : parent(Absente) {} };", 27},
+            {"classe B { publique: constructeur(entier32 x) {} }; classe D : publique B { publique: constructeur() : parent(Absente, 1) {} };", 21},
+            {"classe B { publique: constructeur(entier32 x, entier32 y) {} }; classe D : publique B { publique: constructeur() : parent(vrai, Absente) {} };", 21},
+            {"structure P { entier32 X; }; classe B { privée: constructeur(P p) {} }; classe D : publique B { publique: constructeur() : parent({Absente, 2}) {} };", 26},
+            {"structure P { entier32 X; }; classe B { publique: constructeur(P p) {} }; classe D : publique B { publique: constructeur() : parent({Absente, 2}) {} };", 43},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; entier32 X = Absente; publique: constructeur() {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { entier32 X = Absente; Interne i; publique: constructeur() {} };", 18},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i[2]; entier32 X = Absente; publique: constructeur() {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; entier32 X; publique: constructeur() : i(), X(Absente) {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i[2]; entier32 X; publique: constructeur() : i(), X(Absente) {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; entier32 X = Absente; publique: constructeur() : i() {} };", 26},
+            {"classe M { publique: constructeur(entier32 x) {} }; classe C { M m; entier32 X; publique: constructeur() : m(Absente, 1), X(0) {} };", 21},
+            {"classe M { publique: constructeur(entier32 x, entier32 y) {} }; classe C { M m; publique: constructeur() : m(vrai, Absente) {} };", 21},
+            {"structure P { entier32 X; }; classe M { privée: constructeur(P p) {} }; classe C { M m; publique: constructeur() : m({Absente, 2}) {} };", 26},
+            {"structure P { entier32 X; }; classe M { publique: constructeur(P p) {} }; classe C { M m; publique: constructeur() : m({Absente, 2}) {} };", 43},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; constante entier32 X; publique: constructeur() {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { constante entier32 X; Interne i; publique: constructeur() {} };", 40},
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { publique: constructeur() {} }; publique vide F() { Absente; }", 26},
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; publique vide F() { Absente; } classe D : publique B { publique: constructeur() {} };", 18},
+            {"classe C { publique: constructeur() : soi(Absente, 1) {} constructeur(entier32 x) {} };", 21},
+            {"classe C { publique: constructeur() : parent(Absente) {} };", 30},
+            {"structure P { entier32 X; }; classe B { publique: constructeur(P p) {} constructeur(entier32 x) {} }; classe D : publique B { publique: constructeur() : parent({Absente}) {} };", 22},
+            {"structure P { entier32 X; }; classe M { publique: constructeur(P p) {} constructeur(entier32 x) {} }; classe C { M m; publique: constructeur() : m({Absente}) {} };", 22},
+            {"structure P { entier32 X; }; classe C { publique: constructeur(P p) : soi({Absente, 2}) {} };", 43},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; publique: constructeur() : i(Absente) {} };", 27},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; entier32 X[1] = {Absente, 2}; publique: constructeur() {} };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { entier32 X[1] = {Absente, 2}; Interne i; publique: constructeur() {} };", 42},
+            {"structure P { entier32 X; }; classe B { publique: constructeur(P p) {} }; classe D : publique B { publique: constructeur() : parent({Absente, 2}), Inconnu(0) {} };", 43},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+            for (const auto& texte : {refus[index].first, TraduireCorpusConversions(refus[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "priorite-plan-constructeur-refuse-" + std::to_string(index));
+    }
+
+    void TesterConstructionsLocalesContextuellesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::string> valides{
+            "classe C { publique: constructeur() {} destructeur() {} }; publique vide F() { C a; C b(); }",
+            "classe C { publique: constructeur(entier32 x) {} destructeur() {} }; publique vide F() { C a(42); C b[2](42); }",
+            "classe C {}; publique vide F() { C a; C b[2]; C c[2](); }",
+            "structure P { entier32 X; }; classe C { publique: constructeur(P p) {} }; publique vide F() { C a({42}); }",
+            "classe C { publique: constructeur(entier32& x) {} }; publique vide F() { entier32 x = 42; C a(x); }",
+            "classe B { publique: constructeur() {} destructeur() {} }; classe D : publique B {}; publique vide F() { D a; D b[2]; }",
+            "classe M { publique: constructeur() {} destructeur() {} }; classe C { M m; }; publique vide F() { C a; C b[2]; }",
+            "classe C { privée: constructeur() {} destructeur() {} publique: vide F() { C a; } };",
+            "classe C { publique: constructeur() {} destructeur() {} }; publique vide F(booléen choix) { si (choix) { C a; } sinon { C b; } tantque (choix) { C c; choix = faux; } }",
+            "classe C { publique: constructeur() {} constructeur(entier32 x) {} }; publique vide F() { C a(42); C b; }",
+            "classe C { publique: constructeur() {} destructeur() {} }; publique vide F() { C a[2][2]; }",
+            "classe C { publique: constructeur() {} }; alias Objet = C; publique vide F() { Objet a; }",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+            {
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "construction-locale-contextuelle-valide-" + std::to_string(index));
+                if (index == 0 || index == 1)
+                    for (std::uint64_t variable = 0; variable < resultat.Noeuds.size(); ++variable)
+                        if (resultat.Noeuds[variable].Genre == 19)
+                        {
+                            std::size_t selections = 0;
+                            std::vector<std::uint32_t> etapes;
+                            for (const auto& resolution : resultat.Resolutions)
+                                if (resolution.IndexNoeud == variable)
+                                {
+                                    if ((resolution.Drapeaux & 64) != 0
+                                        && (resolution.Drapeaux & 32768) == 0) ++selections;
+                                    if ((resolution.Drapeaux & 32768) != 0) etapes.push_back(resolution.Drapeaux);
+                                }
+                            const auto nombreElements = index == 1
+                                && resultat.Noeuds[variable].HachageNom == HacherTexte("b") ? 2U : 1U;
+                            Exiger(selections == 1 && etapes.size() == 2 * nombreElements,
+                                "la construction locale est sélectionnée ou planifiée plusieurs fois");
+                            for (std::size_t etape = 0; etape < etapes.size(); ++etape)
+                                Exiger((etapes[etape] & (etape < nombreElements ? 65536U : 131072U)) != 0,
+                                    "la destruction locale doit suivre toutes les étapes de construction");
+                        }
+            }
+
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a; Absente; }", 21},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { Absente; C a; }", 18},
+            {"classe C { privée: constructeur() {} }; publique vide F() { C a; convertir<vide>(0); }", 26},
+            {"classe C {}; publique vide F() { C a(); Absente; }", 27},
+            {"classe C { publique: constructeur() {} privée: destructeur() {} }; publique vide F() { C a; Absente; }", 56},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a; } publique vide G() { Absente; }", 21},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide G() { Absente; } publique vide F() { C a; }", 18},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { { C a; } Absente; }", 21},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { si (vrai) { C a; } sinon { Absente; } }", 21},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { tantque (faux) { C a; } Absente; }", 21},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a(Absente, 1); }", 21},
+            {"classe C { publique: constructeur(entier32 x, entier32 y) {} }; publique vide F() { C a(vrai, Absente); }", 21},
+            {"classe C { privée: constructeur(entier32 x) {} }; publique vide F() { C a(Absente); }", 18},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a(Absente); }", 18},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a(vrai); Absente; }", 21},
+            {"classe C { publique: constructeur(entier8 x) {} constructeur(entier16 x) {} }; publique vide F() { C a(1); Absente; }", 22},
+            {"classe C { publique: constructeur(entier32 x) {} }; publique vide F() { C a = Absente; }", 29},
+            {"classe C { privée: constructeur() {} }; publique vide F() { C a[2]; Absente; }", 26},
+            {"classe C { publique: constructeur() {} privée: destructeur() {} }; publique vide F() { C a[2]; Absente; }", 56},
+            {"classe B { privée: constructeur() {} }; classe D : publique B {}; publique vide F() { D a(); Absente; }", 26},
+            {"classe M { privée: constructeur() {} }; classe C { M m; }; publique vide F() { C a; Absente; }", 26},
+            {"classe M { publique: constructeur() {} privée: destructeur() {} }; classe C { M m; }; publique vide F() { C a; Absente; }", 56},
+            {"classe B { publique: constructeur() {} privée: destructeur() {} }; classe D : publique B {}; publique vide F() { D a; Absente; }", 56},
+            {"structure P { entier32 X; }; classe C { publique: constructeur(P p) {} }; publique vide F() { C a({Absente, 2}); }", 43},
+            {"structure P { entier32 X; }; classe C { privée: constructeur(P p) {} }; publique vide F() { C a({Absente, 2}); }", 26},
+            {"structure P { entier32 X; }; classe C { publique: constructeur(P p) {} constructeur(entier32 x) {} }; publique vide F() { C a({Absente}); }", 22},
+            {"classe C { publique: constructeur(entier32& x) {} }; publique vide F() { C a(42); Absente; }", 21},
+            {"classe C { publique: constructeur(entier32 x) {} }; classe D { publique: constructeur() { C a; Absente; } };", 21},
+            {"classe C {}; publique vide F() { C a(Absente); }", 27},
+            {"classe C {}; publique vide F() { C a[2](Absente); }", 27},
+            {"classe A { publique: constructeur() {} privée: destructeur() {} }; classe B { privée: constructeur() {} }; publique vide F() { A a; B b; }", 56},
+            {"classe A { publique: constructeur() {} privée: destructeur() {} }; classe B { privée: constructeur() {} }; publique vide F() { B b; A a; }", 26},
+            {"classe M { privée: constructeur() {} }; classe B { M m; }; classe D : publique B { publique: constructeur() { Absente; } };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; publique: constructeur() { Absente; } };", 26},
+            {"classe M { privée: constructeur() {} }; classe Interne { M m; }; classe C { Interne i; publique: constructeur() : i() { Absente; } };", 26},
+            {"classe C { publique: constructeur(entier32 x) {} }; alias Objet = C; publique vide F() { Objet a; Absente; }", 21},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+            for (const auto& texte : {refus[index].first, TraduireCorpusConversions(refus[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "construction-locale-contextuelle-refuse-" + std::to_string(index));
+    }
+
+    void TesterChampsParDefautContextuelsSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::string> valides{
+            "classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} };",
+            "classe C { entier32 X = Absente; publique: constructeur() : X(42) {} };",
+            "classe C { entier32 X = Absente; publique: constructeur() : soi(42) {} constructeur(entier32 valeur) : X(valeur) {} };",
+            "classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} constructeur() : X(42) {} };",
+            "classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} constructeur(entier32 valeur, entier32 autre) {} };",
+            "classe C { entier32 X = Absente; publique: constructeur() : soi(42) {} constructeur(entier32 valeur) : X(valeur) {} constructeur(entier32 valeur, entier32 autre) : X(autre) {} };",
+            "classe C { entier32 X = 1; entier32 Y = soi.X + 1; publique: constructeur() {} };",
+            "classe C { entier32 X = soi.Lire(); publique: constructeur() {} entier32 Lire() { retourner 42; } };",
+            "classe C { entier32 X = Absente; alias Vue = X; publique: constructeur() : Vue(42) {} };",
+            "classe C { entier32 X[2] = {valeur, valeur + 1}; publique: constructeur(entier32 valeur) {} };",
+            "classe C { entier32 X[2] = {Absente, 2, 3}; publique: constructeur() : X({1, 2}) {} };",
+            "structure P { entier32 X; }; classe C { P V = {valeur}; publique: constructeur(entier32 valeur) {} };",
+            "classe B { protégée: entier32 X; }; classe C : publique B { entier32 Y = parent.X; publique: constructeur() {} };",
+            "classe C { entier32 X = 1; pointeur_fonction<entier32(entier32)> F = fonction; publique: constructeur(pointeur_fonction<entier32(entier32)> fonction) {} };",
+            "classe C { naturel8 X = convertir<naturel8>(valeur); publique: constructeur(entier32 valeur) {} };",
+            "publique entier32 Lire(entier32 x) { retourner x; } publique entier32 Lire(entier64 x) { retourner 42; } classe C { entier32 X = Lire(valeur); publique: constructeur(entier32 valeur) {} constructeur(entier64 valeur) {} };",
+            "classe B {}; classe D : publique B {}; classe C { constante B* X = valeur; publique: constructeur(D* valeur) {} };",
+            "classe C { constante entier32* X = convertir<constante entier32*>(valeur); publique: constructeur(entier32* valeur) {} };",
+            "classe C { entier32 X = valeur; publique: constructeur(entier32& valeur) {} };",
+            "espace N { structure P { entier32 X; }; } utilisant espace N; classe C { P X = {valeur}; publique: constructeur(entier32 valeur) {} };",
+            "publique entier32 Lire() { retourner 42; } classe C { pointeur_fonction<entier32()> X = fonction(); publique: constructeur(pointeur_fonction<pointeur_fonction<entier32()>()> fonction) {} };",
+            "classe C { entier32 X = Absente; entier32 Y = 7; publique: constructeur() : X(42) {} };",
+            "classe C { entier32 X = valeur; entier32 Y = Absente; publique: constructeur(entier32 valeur) : Y(1) {} };",
+            "classe C { entier32 X = soi.Lire(); publique: constructeur() {} constructeur(entier32 valeur) {} entier32 Lire() { retourner 42; } };",
+            "classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} constructeur(entier32& valeur) {} };",
+            "publique entier32 Lire(entier32 x) { retourner x; } publique entier32 Lire(entier64 x) { retourner 42; } classe C { entier32 X[2] = {Lire(valeur), convertir<entier32>(valeur)}; publique: constructeur(entier32 valeur) {} constructeur(entier64 valeur) {} };",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+            {
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte,
+                    "champ-defaut-contextuel-valide-" + std::to_string(index));
+                if (index == 4 || index == 15)
+                {
+                    std::vector<std::uint64_t> constructeursParametres;
+                    std::vector<std::uint64_t> fonctionsChoisies;
+                    for (const auto& resolution : resultat.Resolutions)
+                    {
+                        const auto& reference = resultat.Noeuds[resolution.IndexNoeud];
+                        const auto& cible = resultat.Symboles[resolution.IndexSymbole];
+                        if (reference.Genre == 24 && reference.HachageNom == HacherTexte("valeur"))
+                        {
+                            Exiger(cible.Genre == 8, "le champ par défaut doit référencer un paramètre");
+                            constructeursParametres.push_back(resultat.Noeuds[cible.IndexNoeud].Parent);
+                        }
+                        if (reference.Genre == 24 && reference.HachageNom == HacherTexte("Lire") && cible.Genre == 2)
+                            fonctionsChoisies.push_back(cible.IndexNoeud);
+                    }
+                    Exiger(constructeursParametres.size() == 2
+                            && constructeursParametres[0] != constructeursParametres[1],
+                        "le champ par défaut réutilise le paramètre d'un autre constructeur");
+                    if (index == 15)
+                        Exiger(fonctionsChoisies.size() == 2 && fonctionsChoisies[0] != fonctionsChoisies[1],
+                            "les surcharges du champ par défaut ne suivent pas le type du paramètre : nombre="
+                                + std::to_string(fonctionsChoisies.size())
+                                + ", première=" + (fonctionsChoisies.empty() ? "absente" : std::to_string(fonctionsChoisies[0]))
+                                + ", dernière=" + (fonctionsChoisies.empty() ? "absente" : std::to_string(fonctionsChoisies.back())));
+                }
+            }
+
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} constructeur() {} };", 18},
+            {"classe C { entier32 X = valeur; publique: constructeur() {} constructeur(entier32 valeur) {} };", 18},
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} constructeur(booléen valeur) {} };", 37},
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32 autre) { entier32 valeur = 42; } };", 18},
+            {"classe C { entier32 X = Absente; publique: constructeur() { entier32 y = convertir<vide>(0); } };", 18},
+            {"classe C { entier32 X = Absente; publique: constructeur() : X(convertir<vide>(0)) {} };", 94},
+            {"classe C { entier32 X = Absente; publique: constructeur() : Manquant(Absente) {} };", 33},
+            {"classe C { entier32 X; publique: constructeur() : X(1), X(Absente) {} };", 34},
+            {"classe C { entier32 X; entier32 Y; publique: constructeur() : Y(1), X(Absente) {} };", 35},
+            {"classe C { entier32 X; publique: constructeur() : X(Absente, 1) {} };", 36},
+            {"classe C { entier32 X[1] = {Absente, 2}; publique: constructeur() {} };", 42},
+            {"classe C { entier32 X[1]; publique: constructeur() : X({Absente, 2}) {} };", 42},
+            {"classe C { naturel8 X = 256; publique: constructeur() {} };", 90},
+            {"classe C { entier32 X = convertir<vide>(Absente); publique: constructeur() {} };", 94},
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) {} constructeur(entier32 autre, booléen valeur) {} };", 37},
+            {"classe C { entier32 X = Absente; publique: constructeur() : soi(1) {} constructeur(entier32 valeur) {} };", 18},
+            {"classe C { entier32 X = Absente; entier32 Y; publique: constructeur() : Y(convertir<vide>(0)) {} };", 94},
+            {"classe C { entier32 X = convertir<vide>(0); entier32 Y; publique: constructeur() : Y(Absente) {} };", 18},
+            {"classe C { entier32 X = convertir<vide>(0); publique: constructeur() {} }; publique vide F() { Absente; }", 94},
+            {"publique vide F() { Absente; } classe C { entier32 X = convertir<vide>(0); publique: constructeur() {} };", 18},
+            {"classe C { entier32 X = convertir<vide>(0); publique: constructeur() : X(1) { Absente; } constructeur(entier32 valeur) {} };", 18},
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32 valeur) { Absente; } constructeur(booléen valeur) {} };", 18},
+            {"classe C { entier32 X = Absente; publique: constructeur() : soi(convertir<vide>(0)) {} constructeur(entier32 valeur) : X(valeur) {} };", 94},
+            {"classe C { entier32 X = convertir<naturel8>(256); publique: constructeur() {} };", 98},
+            {"classe C { entier32 X[1] = {convertir<vide>(0)}; publique: constructeur() {} };", 94},
+            {"structure P { entier32 X; }; classe C { P X = {Absente, 2}; publique: constructeur() {} };", 43},
+            {"classe C { pointeur_fonction<entier32()> X = fonction; publique: constructeur(pointeur_fonction<vide()> fonction) {} };", 37},
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32* valeur) {} };", 37},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+            for (const auto& texte : {refus[index].first, TraduireCorpusConversions(refus[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "champ-defaut-contextuel-refuse-" + std::to_string(index));
+
+        for (const auto& [source, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+                 {"classe C { entier32 X = valeur; publique: constructeur(entier32 valeur); constructeur(entier32 autre, entier32 valeur) {} };", 0},
+                 {"classe C { entier32 X; publique: constructeur(); };", 0},
+                 {"classe C { entier32 X = Absente; publique: constructeur(); };", 39}})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                auto jetons = GsPP::Lexeur(texte, "contexte-interface.HGsPP").Analyser();
+                bool prototype = false;
+                for (auto& jeton : jetons)
+                {
+                    if (jeton.Genre == GsPP::GenreJeton::Constructeur) prototype = true;
+                    if (prototype) jeton.EstInterface = true;
+                    if (prototype && jeton.Genre == GsPP::GenreJeton::PointVirgule) break;
+                }
+                auto programme = GsPP::AnalyseurSyntaxique(std::move(jetons), "contexte-interface.HGsPP").Analyser();
+                auto noeuds = ConstruireDeclarationsReference(programme);
+                const auto jetonsOrigine = GsPP::Lexeur(texte).Analyser();
+                for (auto& noeud : noeuds)
+                {
+                    if (noeud.Genre == 13)
+                    {
+                        if ((noeud.Drapeaux & 4) == 0) noeud.Drapeaux |= 2;
+                        noeud.DebutNom = noeuds[noeud.Parent].DebutNom;
+                        noeud.TailleNom = noeuds[noeud.Parent].TailleNom;
+                    }
+                    else if (noeud.HachageNom != 0)
+                        for (const auto& jeton : jetonsOrigine)
+                            if (jeton.Ligne == noeud.Ligne && jeton.Colonne >= noeud.Colonne
+                                && HacherTexte(jeton.Texte) == noeud.HachageNom)
+                            {
+                                noeud.DebutNom = jeton.Colonne - 1;
+                                noeud.TailleNom = jeton.Texte.size();
+                                break;
+                            }
+                }
+                const auto avant = noeuds;
+                std::uint32_t ligne = 0;
+                std::uint32_t colonne = 0;
+                try { GsPP::AnalyseurSemantique().Analyser(programme); }
+                catch (const GsPP::ErreurCompilation& erreur)
+                {
+                    ligne = static_cast<std::uint32_t>(erreur.Ligne());
+                    colonne = static_cast<std::uint32_t>(erreur.Colonne());
+                }
+                Exiger((code == 0) == (ligne == 0), "contrat bootstrap incorrect pour le prototype de constructeur");
+                RequeteAnalyseSemantiqueHote requete{
+                    texte.data(), texte.size(), noeuds.data(), noeuds.size(), nullptr, 0, nullptr, 0, {}};
+                const auto mesure = semantique(&requete);
+                if (code == 0)
+                {
+                    Exiger(mesure == 4, "le prototype de constructeur n'est pas ignoré pendant l'analyse : code="
+                        + std::to_string(mesure) + ", détail=" + std::to_string(requete.Resultat.Detail)
+                        + ", ligne=" + std::to_string(requete.Resultat.LigneErreur)
+                        + ", colonne=" + std::to_string(requete.Resultat.ColonneErreur) + ", source=" + texte);
+                    std::vector<SymboleSemantiqueHote> symboles(requete.Resultat.NombreSymboles);
+                    std::vector<ResolutionSemantiqueHote> resolutions(requete.Resultat.NombreResolutions);
+                    requete.Symboles = symboles.data();
+                    requete.CapaciteSymboles = symboles.size();
+                    requete.Resolutions = resolutions.data();
+                    requete.CapaciteResolutions = resolutions.size();
+                    Exiger(semantique(&requete) == 0, "le corpus avec prototype n'est pas analysé");
+                    for (const auto& resolution : resolutions)
+                        Exiger(!(noeuds[resolution.IndexNoeud].Genre == 13
+                                && (noeuds[resolution.IndexNoeud].Drapeaux & 2) != 0),
+                            "un prototype de constructeur ne doit pas produire un plan de corps");
+                }
+                else
+                {
+                    Exiger(mesure == code && requete.Resultat.LigneErreur == ligne
+                            && requete.Resultat.ColonneErreur == colonne,
+                        "le prototype seul ne satisfait pas l'exigence de constructeur défini");
+                    ++NombreRefusSemantiquesDifferentiels;
+                }
+                Exiger(std::memcmp(noeuds.data(), avant.data(), noeuds.size() * sizeof(noeuds[0])) == 0,
+                    "l'AST public de l'interface a été modifié");
+            }
+    }
+
+    void TesterUtilisationsEspacesSemantiques(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::string> valides{
+            "espace A { publique entier32 F() { retourner 42; } } utilisant espace A; publique entier32 Principal() { retourner F(); }",
+            "espace A { structure Point { entier32 X; }; énumération Etat { Actif = 1 }; publique entier32 X = 41; } utilisant espace A; publique entier32 Principal() { Point p = {X}; retourner p.X + convertir<entier32>(Etat::Actif); }",
+            "espace A { publique entier32 F(entier32 x) { retourner x; } } espace B { publique entier32 F(entier64 x) { retourner 2; } } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner F(1) + F(convertir<entier64>(2)); }",
+            "espace A { publique entier32 X = 1; } utilisant espace A; espace Local { publique entier32 X = 42; publique entier32 Principal() { retourner X; } }",
+            "espace A { publique entier32 F() { retourner 42; } } espace B { utilisant espace A; } utilisant espace B; publique entier32 Principal() { retourner F(); }",
+            "espace A {} espace B { utilisant espace A; } espace A { utilisant espace B; publique entier32 F() { retourner 42; } } utilisant espace B; publique entier32 Principal() { retourner F(); }",
+            "espace A::Types { structure Point { entier32 X; }; } espace A { utilisant espace Types; publique entier32 Principal() { Point p = {42}; retourner p.X; } }",
+            "espace A { structure Point { entier32 X; }; alias Position = Point; } utilisant espace A; alias P = Position; publique entier32 Principal() { P p = {42}; retourner p.X; }",
+            "espace A { publique entier32 F() { retourner 1; } } espace B { publique entier32 F() { retourner 42; } } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner B::F(); }",
+            "espace A { publique entier32 F() { retourner 1; } } espace B { publique entier32 F = 2; } utilisant espace A; utilisant espace B; publique entier32 Principal() { entier32 F = 42; retourner F; }",
+            "espace A { publique entier32 F(entier32 x) { retourner x; } } utilisant espace A; publique entier32 F(entier64 x) { retourner 2; } publique entier32 Principal() { retourner F(42); }",
+            "espace A::B { publique entier32 F() { retourner 42; } } utilisant espace A; publique entier32 Principal() { retourner B :: F(); }",
+            "structure P { entier32 X; }; espace A { publique entier32 opérateur+(P p, entier32 x) { retourner p.X + x; } } espace B { publique entier32 opérateur+(P p, entier64 x) { retourner p.X; } } utilisant espace A; utilisant espace B; publique entier32 Principal() { P p = {40}; retourner p + 2; }",
+            "structure P { entier32 X; }; espace A { publique booléen opérateur!(P p) { retourner p.X == 0; } } utilisant espace A; publique booléen Principal() { P p = {0}; retourner !p; }",
+            "espace A { publique entier32 F(entier32 x) { retourner x; } } utilisant espace A; alias Appeler = F; publique entier32 Principal() { retourner Appeler(42); }",
+            "espace A { publique entier32 F() { retourner 42; } } utilisant espace A; pointeur_fonction<entier32()> Rappel = F; publique entier32 Principal() { retourner Rappel(); }",
+            "espace A { structure P { entier32 X; }; } utilisant espace A; publique P Creer() { retourner {42}; } publique entier32 Principal() { P p = Creer(); retourner p.X; }",
+            "espace A { structure P { entier32 X; }; } utilisant espace A; publique entier32 Lire(P p) { retourner p.X; } publique entier32 Principal(pointeur_fonction<entier32(P)> rappel) { P p = {42}; retourner rappel(p); }",
+            "espace A { classe Base { publique: entier32 X; }; } utilisant espace A; classe Derivee : publique Base {}; publique entier32 Principal() { Derivee p; retourner p.X; }",
+            "espace A { structure P { entier32 X; }; } espace B { structure P { entier64 X; }; } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner 42; }",
+            "espace Original { publique entier32 F(entier32 x) { retourner x; } } espace A { alias F = Original::F; } espace B { publique entier32 F(entier64 x) { retourner 2; } } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner F(42) + F(convertir<entier64>(2)); }",
+            "espace A { publique entier32 F() { retourner 1; } } espace B { publique entier32 F = 2; } utilisant espace A; utilisant espace B; publique entier32 Principal(pointeur_fonction<entier32()> F) { retourner F(); }",
+            "espace A { publique entier32 F() { retourner 42; } } utilisant espace A; utilisant espace A; publique entier32 Principal() { retourner F(); }",
+            "espace Types { structure P { entier64 Mauvais; }; } espace A { espace Types { structure P { entier32 X; }; } utilisant espace Types; publique entier32 Principal() { P p = {42}; retourner p.X; } }"
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+            {
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, "utilisation-valide-" + std::to_string(index));
+                if (index == 2 || index == 20)
+                {
+                    std::vector<std::uint64_t> espacesChoisis;
+                    for (const auto& resolution : resultat.Resolutions)
+                        if (resultat.Noeuds[resolution.IndexNoeud].Genre == 24
+                            && resultat.Noeuds[resolution.IndexNoeud].HachageNom == HacherTexte("F"))
+                            espacesChoisis.push_back(resultat.Symboles[resolution.IndexSymbole].HachageEspace);
+                    Exiger(espacesChoisis == std::vector<std::uint64_t>{HacherTexte(index == 2 ? "A" : "Original"), HacherTexte("B")},
+                        "les appels n'ont pas sélectionné les deux espaces attendus");
+                }
+            }
+        for (const auto& [source, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+            {"utilisant espace Absent; publique entier32 F() { retourner 0; }", 120},
+            {"utilisant espace A; espace A {} publique entier32 F() { retourner 0; }", 120},
+            {"espace A { structure P {}; } espace B { structure P {}; } utilisant espace A; utilisant espace B; publique entier32 F() { P p; retourner 0; }", 121},
+            {"espace A { publique entier32 X = 1; } espace B { publique entier32 X = 2; } utilisant espace A; utilisant espace B; publique entier32 F() { retourner X; }", 121},
+            {"espace A { publique entier32 F() { retourner 1; } } espace B { publique entier32 F = 2; } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner F(); }", 121},
+            {"espace A { publique entier32 F(entier32 x) { retourner x; } } espace B { publique entier32 F(entier32 x) { retourner x; } } utilisant espace A; utilisant espace B; publique entier32 Principal() { retourner F(1); }", 22},
+            {"espace A { publique entier32 F() { retourner 1; } } publique entier32 Principal() { retourner F(); } utilisant espace A;", 18},
+            {"espace A { publique entier32 F() { retourner 1; } } espace Local { utilisant espace A; } publique entier32 Principal() { retourner F(); }", 18},
+            {"espace A { publique entier32 X = 1; } utilisant espace A; publique entier32 X = 2; publique entier32 Principal() { retourner X; }", 121},
+            {"espace A { structure P {}; } espace B { structure P {}; } utilisant espace A; utilisant espace B; alias C = P; publique vide F() {}", 121},
+            {"espace A { publique entier32 F(entier32 x) { retourner x; } } espace B { publique entier32 F(entier64 x) { retourner 2; } } utilisant espace A; utilisant espace B; alias C = F; publique vide G() {}", 112},
+            {"espace A { publique entier32 F(entier32 x) { retourner x; } } espace B { publique entier32 F(entier64 x) { retourner 2; } } utilisant espace A; utilisant espace B; publique vide G() { F; }", 19},
+            {"structure P {}; espace A { publique entier32 opérateur+(P p, entier32 x) { retourner x; } } espace B { publique entier32 opérateur+(P p, entier32 x) { retourner x; } } utilisant espace A; utilisant espace B; publique entier32 G() { P p; retourner p + 1; }", 22},
+            {"espace A { structure P {}; } espace B { structure P {}; } utilisant espace A; utilisant espace B; publique vide G() { convertir<P*>(0); }", 121}
+        })
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, code, "utilisation-invalide");
+        for (const auto& [source, code] : std::vector<std::pair<std::string, std::uint32_t>>{
+            {"espace A {} utilisant A;", 30}, {"espace A {} utilisant espace A", 11},
+            {"espace A {} utilisant espace ;", 5}})
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurDeclarations(syntaxe, texte, code, "syntaxe-utilisation-invalide");
+    }
+
     void TesterAnalyseurSemantique(
         const std::string& chemin,
         const std::string& cheminSyntaxe)
@@ -6419,6 +7095,11 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         TesterArgumentsContextuelsAppelsSemantiques(syntaxe, semantique);
         TesterPrioritesConversionsConstantesSemantiques(syntaxe, semantique);
         TesterPrioritesInitialiseursLocauxSemantiques(syntaxe, semantique);
+        TesterPrioritesInitialiseursGlobauxSemantiques(syntaxe, semantique);
+        TesterPrioritesPlansConstructeursSemantiques(syntaxe, semantique);
+        TesterConstructionsLocalesContextuellesSemantiques(syntaxe, semantique);
+        TesterChampsParDefautContextuelsSemantiques(syntaxe, semantique);
+        TesterUtilisationsEspacesSemantiques(syntaxe, semantique);
         TesterRemplacementsVirtuelsSemantiques(syntaxe, semantique);
 
         const std::string francais =
@@ -9250,7 +9931,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             std::uint32_t (GS_ABI_HOTE *)(const char*, std::uint64_t);
         const auto classifier = reinterpret_cast<Classificateur>(*adresse);
 
-        const std::array<std::string_view, 83> mots{{
+        const std::array<std::string_view, 85> mots{{
             "espace", "namespace", "structure", "struct", "union",
             "énumération", "enumeration", "enum", "alias",
             "externe", "extern", "publique", "public", "privée",
@@ -9268,7 +9949,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             "constructor", "destructeur", "destructor", "opérateur",
             "operateur", "operator", "soi", "this", "remplacer",
             "override", "parent", "super", "identifiant",
-            "publiqueX", "étoile"
+            "publiqueX", "étoile", "utilisant", "using"
         }};
         for (const auto mot : mots)
         {
@@ -9385,7 +10066,7 @@ int main(int argc, char** argv)
         TesterBibliothequeHebergee(argv[2]);
         std::cout
             << "Auto-hébergement 0.27 : "
-            << "Frontend.GsE unique, 83 classifications, lexeur différentiel, "
+            << "Frontend.GsE unique, 85 classifications, lexeur différentiel, "
             << "AST et premières résolutions sémantiques différentielles "
             << "et bibliothèque hébergée validés.\n";
         return 0;

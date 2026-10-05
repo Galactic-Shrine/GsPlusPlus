@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GsPP/Ast.hpp"
+#include "GsPP/Jeton.hpp"
 
 #include <filesystem>
 #include <iosfwd>
@@ -23,4 +24,6 @@ namespace GsPP
         const std::vector<UniteSource>& unites,
         std::ostream* sortieJetons = nullptr);
     void NormaliserDeclarations(Programme& programme);
+    [[nodiscard]] std::vector<Jeton> PreparerJetonsSource(
+        const std::filesystem::path& chemin, const std::string& nomDiagnostic = {});
 }

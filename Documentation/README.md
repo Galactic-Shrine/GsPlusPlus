@@ -9,6 +9,7 @@ consultables dans l’historique Git.
 ## Langage et produit
 
 - [Spécification candidate du langage 1.0](SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md)
+- [Inclusions et utilisation d'espaces : règles et limites](SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
 - [Conventions de code Gs++ 1.0](CONVENTIONS_CODE_GS_PLUS_PLUS_1.0.md)
 - [Profils freestanding et hébergé](PROFILS_GS_PLUS_PLUS_1.0.md)
 - [Plan produit vers Gs++ 1.0](PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md)
@@ -26,6 +27,7 @@ consultables dans l’historique Git.
 
 - [Matrice de conformité 1.0](CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
+- [Priorités des bases, champs et initialiseurs : dernier bilan local](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#priorités-des-bases-champs-et-initialiseurs--tranche-locale-du-5-octobre-2026)
 - [Protocole de benchmark](PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md)
 - [Dernière matrice : 0.27.0-alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 - [Matrice historique de publication alpha.9](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)

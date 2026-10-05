@@ -1,0 +1,2 @@
+#inclure "Semantique.HGsPP"
+publique entier32 Principal() { retourner 0; }

@@ -20,7 +20,9 @@ qualifications et conversions des références de groupes mixtes dans les constr
 opérateurs mixtes référencés, constructions et expressions imbriquées,
 opérateurs des initialiseurs agrégés, affectations et retours contextuels,
 analyse des interfaces préparées en mémoire, assemblage préparé et normalisation
-des déclarations libres, origines
+des déclarations libres et membres, groupes mixtes normalisés, analyse d'une
+unité développée avec modes mixtes et origines de jetons, raccordement de ces
+origines à l'assemblage/normalisation et à la sémantique par unité, origines
 des diagnostics et isolation des imports par unité
 et émission des globales
 VALIDÉS dans le périmètre testé — 6 octobre 2026.**
@@ -32,19 +34,17 @@ une migration du backend vers Gs++.
 Les sources actuelles annoncent `0.27.0-alpha.10`.
 La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 regroupe les résultats de la publication, avec 619 refus différentiels.
-Le développement après alpha.10, décrit plus bas, en vérifie 2 719. Le commit
-signé [`c58874b`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/c58874bc7e8f107a542700ccc185c2c05e254099)
+Le développement après alpha.10, décrit plus bas, en vérifie 2 751. Le commit
+signé [`039bd3f`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/039bd3f8887c9d8bc826e000d3b8099609d52850)
 a été poussé sur `main` le 6 octobre 2026 ; GitHub confirme sa signature valide.
-Sa [CI Windows, Linux et MSBuild natif](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37454112641)
-réussit et valide la consolidation à 2 301 refus. Cette consolidation regroupe
-les déclarations et portées locales, recherche lexicale, contextes de méthodes
-et constructeurs, callbacks et qualifications des champs adressés.
-Les tranches suivantes de références de pointeurs, cibles de tableaux et
-callbacks paramétrés, arguments référencés, structures et emplacements de
-pointeurs, références de groupes et d'opérateurs mixtes et opérateurs des
-initialiseurs agrégés, interfaces préparées en mémoire, puis assemblage préparé
-et origines des unités, normalisation des déclarations libres, restent locales
-et non commitées ; leurs 2 719 refus
+Sa [CI Windows, Linux et MSBuild natif](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37485258264)
+réussit et valide la consolidation à 2 719 refus, y compris les tranches de
+références et callbacks, groupes/opérateurs mixtes, initialiseurs agrégés,
+interfaces préparées, assemblage préparé, origines des unités et normalisation
+des déclarations libres. Les tranches suivantes de normalisation des membres
+et groupes mixtes, d'origines des inclusions préparées et de leur raccordement
+multi-unités restent locales et non commitées ; leurs 2 751 refus sémantiques,
+64 refus de normalisation préparée et 12 refus de normalisation avec inclusions
 ne sont pas revendiqués pour cette CI.
 Aucune de ces tranches n'est incluse dans les paquets alpha.10 publiés.
 Les sections de jalons ci-dessous conservent
@@ -4798,12 +4798,566 @@ Les changements restent locaux, non commités et non poussés ; ils ne sont
 inclus ni dans la CI de `c58874b` ni dans les paquets alpha.10 publiés.
 Le frontend 0.27 complet n'est pas déclaré validé.
 
+## Normalisation des membres et groupes mixtes — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes, après le commit publié
+`039bd3f` ; cette extension reste locale.** `AssemblerDeclarationsNormalisees`
+conserve sa requête de 128 octets, ses codes et ses deux exports. L'assemblage
+brut et les anciennes entrées d'analyse conservent leur comportement.
+
+### Clés, sélection et représentation de l'AST
+
+La passe des fonctions comprend maintenant les méthodes, constructeurs,
+destructeurs et opérateurs membres, dans la même famille que les fonctions
+libres. Les noms complets et types lexicaux sont comparés exactement avant
+résolution des alias. Le récepteur implicite `Classe&` est encodé une fois
+par classe et comparé au premier paramètre explicite d'une fonction libre de
+même nom complet. Constructeurs et destructeurs ont des clés distinctes ;
+les surcharges et les qualificatifs de références/pointeurs restent distincts.
+
+Les définitions compatibles remplacent les prototypes dans l'ordre de
+première déclaration des fonctions, même si la déclaration retenue change
+de catégorie membre/libre ou de classe propriétaire. La position, visibilité,
+virtualité, paramètres explicites et corps sont ceux de la déclaration choisie.
+Les incompatibilités et doubles définitions sont recherchées dans l'ordre
+des fonctions du bootstrap, avant les globales et alias, après analyse de toutes
+les unités. Le diagnostic conserve son unité, sa ligne et sa colonne locales.
+
+L'AST de sortie place d'abord les structures, unions, classes et énumérations
+avec leurs enfants non fonctionnels, dans leur ordre source. Les fonctions
+sont ensuite émises dans leur ordre logique de première déclaration, parmi
+les autres déclarations restantes. Chaque fonction garde son sous-arbre
+contigu ; tous les parents sont réindexés vers des nœuds antérieurs. Les
+consommateurs utilisent `Parent` : les méthodes ne sont pas nécessairement
+contiguës à l'en-tête de leur classe. Cela évite les parents en avant lorsqu'un
+prototype libre antérieur sélectionne une méthode d'une classe ultérieure.
+Le texte assemblé et les origines ne sont pas déplacés.
+
+Les types eux-mêmes ne sont pas fusionnés : deux déclarations compatibles
+d'une même classe gardent leurs deux en-têtes et sont encore refusées par
+la passe sémantique, comme le bootstrap. Aucun mécanisme de définition de
+méthode hors classe ni nouvelle syntaxe de langage n'est ajouté.
+
+### Preuves différentielles
+
+`TesterNormalisationDeclarationsPreparees` utilise le normaliseur C++ réel
+pour déterminer la déclaration retenue, puis compare tous les nœuds issus
+des analyses Gs++ réelles et l'ordre des fonctions au programme C++ normalisé.
+La matrice passe de 22 à **39 corpus bilingues valides**, dont prototypes
+membres répétés, constructeurs/destructeurs, opérateurs, deux directions de
+sélection membre/libre, qualifications, callbacks imbriqués, virtualité,
+surcharges distinctes et champs avant/après une méthode. Un espace avec 400
+composantes puis un nom de 256 caractères, contenant 32 classes, vérifie la
+mesure des noms complets répétés et leur encodage itératif sans récursion.
+
+Les conflits passent de 15 à **32 corpus bilingues**, soit **64 refus
+différentiels de normalisation**, comptés séparément des refus sémantiques.
+Le refus syntaxique bilingue reste testé. Les refus sémantiques passent de
+8 à **14 corpus bilingues**, contrôlant aussi l'ordre des corps mixtes,
+les classes non fusionnées et la limite d'arité avec récepteur implicite.
+Les douze nouveaux refus portent la matrice sémantique de **2 719 à 2 731**.
+
+Tailles exactes, trois capacités partielles, sentinelles, chaque échec
+d'allocation, libération des arènes, requêtes invalides et unité vide sont
+vérifiés. Les refus de normalisation et de syntaxe ne publient rien, même
+avec trois tampons assez grands ; les entrées restent intactes. L'analyse
+sémantique conserve également le texte, les nœuds et les origines normalisés.
+
+### Validation et publication
+
+- CMake/MSVC : construction `espace_travail` avec `windows-release`, puis
+  `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- GNU/Linux sous Ubuntu/WSL : construction `espace_travail` avec `linux-release`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **réussis**.
+
+Conformité **20/20 par chaîne**, **2 731 refus sémantiques** et **64 refus de
+normalisation**. Les trois `Frontend.GsE` sont identiques : **498 479 octets**,
+SHA-256 `5ED77FF0F18C78B15CBE3C0B0F93503BC105F3921FA5FDC3985AA4C4E57A7186`.
+Vérification réussie : GsE 1.0, 3 segments, 8 sections, 2 imports et 83 exports.
+Les versions générées indiquent `0.27.0-alpha.10`. Style et `git diff --check`
+réussissent ; `ConteneursDynamiques.GsPP` reste inchangé.
+
+Les structures publiques, formats 1.0, ABI 1, bootstrap/backend C++ et version
+alpha.10 ne changent pas. L'extension reste non commitée/non poussée, distincte
+de la CI du commit `039bd3f` à 2 719 refus et des paquets alpha.10 à 619 refus.
+Lecture, expansion des inclusions, `#pragma once`, origines internes aux inclusions
+et raccordement au flux autonome de compilation restent côté hôte. Le frontend
+0.27 complet n'est pas déclaré validé.
+
+## Origines des inclusions préparées — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes ; tranche locale après
+la normalisation des membres.** Le nouveau fichier
+`AutoHebergement/AnalyseurDeclarations/OriginesDeclarations.GsPP` est intégré
+à CMake et à la construction Visual Studio 2026 native. Il ne crée pas un
+nouvel exécutable : les quatre nouveaux exports appartiennent à `Frontend.GsE`.
+
+### Contrat additif et modes mixtes
+
+`AnalyserDeclarationsAvecOrigines` / `AnalyzeOriginAwareDeclarations` reçoit
+`RequeteDeclarationsAvecOrigines` de **56 octets**, qui référence la requête
+syntaxique historique de 80 octets. Une table d'`OrigineJetonDeclarations`
+de **40 octets** par entrée contient, pour chaque jeton du texte développé :
+début/taille en octets, indice du fichier d'origine, ligne/colonne locales,
+mode source/interface et champ réservé nul. Le jeton de fin est obligatoire,
+à la taille du texte et de taille nulle. Les noms de fichiers appartiennent
+au catalogue de l'hôte, pas à l'ABI de l'AST.
+
+L'analyseur contrôle bornes, indices, coordonnées, modes et champs réservés,
+puis compare le nombre et les plages exactes au lexage Gs++ réel avant de
+publier l'AST. Le mode d'une déclaration est celui de son jeton décisif, comme
+le bootstrap C++, y compris lorsqu'une signature traverse une inclusion.
+Le mode global d'interface prime sur tous les modes locaux. Une unité avec
+des inclusions développées reste **une seule unité de traduction** : une
+inclusion n'est pas une unité séparée avec des imports d'espaces isolés.
+
+Les nœuds gardent leurs positions dans le texte développé, sans agrandir
+`NoeudDeclaration`. Les refus syntaxiques exposent aussi l'indice du fichier
+et les coordonnées locales. `LocaliserOrigineDeclarationsPreparees` /
+`LocatePreparedDeclarationOrigin` traduit un début de jeton ou EOF après
+l'analyse, notamment pour les diagnostics sémantiques. Il utilise la même
+table validée et inchangée, contrôle ses bornes sans relancer le lexage,
+et n'effectue ni allocation ni lecture. Il ne traduit pas une position dans
+un espace ou à l'intérieur d'un jeton. Chaque appel remet les sorties locales
+à `NombreFichiers`, zéro, zéro avant de chercher une origine.
+
+Les anciennes entrées source/interface, structures et contrats restent
+inchangés. La nouvelle analyse conserve leur **contrat de capacité syntaxique** :
+mesure exacte et publication possible du préfixe de l'AST en cas de tampon
+partiel. Cela ne transforme pas l'analyse en assemblage transactionnel à
+trois sorties. Les erreurs d'argument, de syntaxe et d'allocation ne publient
+pas l'AST ; les entrées et sentinelles restent protégées.
+
+### Préparation réelle et preuves différentielles
+
+`TesterDeclarationsAvecOrigines` crée ses fichiers de test dans les répertoires
+de construction, puis utilise le vrai `GsPP::PreparerJetonsSource` C++ pour
+lire et développer les inclusions. Il fournit au frontend Gs++ un texte
+canonique et les origines de tous les jetons, fin comprise. Il compare l'AST
+au parseur C++ avec les mêmes modes ; les positions locales des refus sont
+comparées séparément à l'analyse C++ des jetons originaux, sans positions
+synthétiques. Pour la sémantique, le programme original passe aussi par le
+normaliseur C++ réel avant comparaison du fichier, code, ligne et colonne.
+
+La matrice comporte **20 corpus bilingues syntaxiquement valides** et
+**7 corpus bilingues refusés par la syntaxe**. Trois des vingt premiers
+produisent les **3 refus sémantiques bilingues** attendus : type inconnu,
+nom absent et modification d'un stockage constant. Les six nouveaux refus
+portent le total sémantique de **2 731 à 2 737**. Les refus syntaxiques et
+les 64 refus de normalisation de la tranche précédente ne sont pas ajoutés
+à ce total. Certains corpus vérifient uniquement l'AST, notamment avant
+fusion des prototypes/définitions ; ils ne sont pas présentés comme des
+programmes sémantiquement acceptés.
+
+Sont couverts : inclusions imbriquées, `#pragma once` répété et auto-inclusion
+protégée, absence de déduplication implicite sans protection, chemins relatifs
+et Unicode, BOM, LF/CRLF, chaînes échappées, inclusions dans les espaces/classes,
+imports directs/transitifs, méthodes/constructeurs/destructeurs/opérateurs,
+signatures réparties entre fichiers, modes source/interface et retour au
+fichier principal. Chaque jeton et EOF est localisé indépendamment. Les
+capacités exactes/partielles, sentinelles, chaque échec d'allocation, tables
+altérées, arguments invalides, source vide et UTF-8 invalide sont vérifiés,
+ainsi que l'absence de fuite, les entrées intactes et le retour aux anciennes
+entrées sans persistance du mode.
+
+### Validation et limites
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **réussis**.
+
+Conformité **20/20 par chaîne** et **2 737 refus sémantiques différentiels**.
+Les trois `Frontend.GsE` sont identiques : **505 599 octets**, SHA-256
+`71611570BFAAC74A71B8CAD4D578571F3142ED870F91739A940095CD0A92A58E`.
+Les trois vérificateurs acceptent GsE 1.0, 3 segments, 8 sections, 2 imports
+et **87 exports**, contre 83 auparavant. Les versions générées indiquent
+`0.27.0-alpha.10` ; `ConteneursDynamiques.GsPP` reste inchangé. Style et
+`git diff --check` réussissent.
+
+**Lecture, résolution des chemins, expansion des inclusions, `#pragma once`
+et détection des cycles restent réalisés par l'hôte C++.** Cette tranche
+valide le raccord syntaxique au texte développé, pas un préprocesseur Gs++
+autonome. Le contrat d'origines de jetons reste à intégrer à l'assemblage et
+à la normalisation multi-unités, puis aux diagnostics de leurs passes.
+Le bootstrap/backend C++, les formats 1.0, ABI 1 et alpha.10 ne changent pas.
+Les changements restent locaux, non commités/non poussés, distincts de la
+CI de `039bd3f` à 2 719 refus et des paquets alpha.10 à 619 refus ; aucune
+nouvelle release ni validation complète du frontend 0.27 n'est revendiquée.
+
+## Assemblage des inclusions et diagnostics originaux — 6 octobre 2026
+
+Les entrées additives avec origines raccordent maintenant le texte développé
+et ses tables de jetons à l'assemblage brut, à la normalisation et à la
+sémantique multi-unités. Les anciennes requêtes de 80/128 octets, l'AST de
+64 octets, les tables d'unités de 32 octets et la sémantique existante ne
+changent pas. Les huit nouveaux exports sont dans le même `Frontend.GsE`.
+
+### API et identité des unités/fichiers
+
+`RequeteAssemblageAvecOrigines` de **40 octets** référence la requête
+d'assemblage historique, un catalogue commun de fichiers par indices et
+une table de `TableOriginesUniteDeclarations` de **16 octets par unité**.
+Chaque entrée référence les origines de tous les jetons d'une unité développée,
+EOF compris. Le texte, mode global et rang d'unité viennent de l'ancienne
+requête ; les noms et chemins de fichiers restent au catalogue de l'hôte.
+
+- `AssemblerDeclarationsAvecOrigines` / `AssembleOriginAwareDeclarations` :
+  assemblage brut sans fusion, modes mixtes et diagnostics originaux ;
+- `AssemblerDeclarationsNormaliseesAvecOrigines` /
+  `AssembleNormalizedOriginAwareDeclarations` : même contrat, avec la
+  normalisation des déclarations libres/membres et groupes mixtes déjà décrite ;
+- `LocaliserOrigineAssemblagePrepare` / `LocatePreparedAssemblyOrigin` :
+  localisation d'un début de jeton ou EOF dans le texte synthétique d'une
+  unité, avant son rebasage dans le texte assemblé, sans allocation ;
+- `AnalyserSemantiqueUnitesAvecOrigines` / `AnalyzeOriginAwareUnitSemantics` :
+  requête de **40 octets** référençant la sémantique et le contexte d'un
+  assemblage avec origines réussi, avec les mêmes tampons de texte/AST.
+
+Un fichier inclus reste dans l'unité de traduction de son consommateur.
+Le même fichier peut être inclus dans deux unités distinctes et partager
+le même indice de fichier ; le rang d'unité reste distinct. Les imports
+d'espaces restent visibles dans leur unité, inclusions comprises, sans
+fuite vers une unité séparée. Les classes/types répétés ne sont toujours
+pas fusionnés ; leur conflit relève de la sémantique.
+
+Les plages exactes et modes sont validés par le lexage/analyse de chaque
+unité. Toutes les syntaxes passent avant les conflits de normalisation,
+puis les familles fonctions, globales et alias gardent leur ordre de priorité.
+La déclaration choisie garde son texte, ses positions synthétiques et son
+origine de jeton. Les diagnostics de syntaxe, conflits et sémantique sont
+comparés au fichier, ligne et colonne d'origine du bootstrap.
+
+### Contrats mémoire conservés
+
+L'assemblage/normalisation garde ses trois sorties transactionnelles : aucune
+publication de texte, AST ou table d'unités en cas de refus, d'allocation
+impossible ou de capacité insuffisante. La sémantique vérifie les tables, les
+plages lexicales et l'égalité du texte assemblé avec les unités, BOM retirés,
+avant sa passe. Elle ne modifie ni le contexte d'assemblage ni ses tampons.
+
+La sémantique conserve en revanche son contrat historique de préfixes de
+symboles/résolutions, y compris lorsque sa passe échoue ; ce n'est pas le
+contrat transactionnel de l'assemblage. Une incohérence détectée pendant la
+préparation des origines ne publie aucun de ces tampons. Les erreurs de
+capacité, d'argument et d'allocation ne sont pas attribuées à un fichier
+fautif : indices aux nombres d'unités/fichiers et coordonnées nulles.
+Les diagnostics synthétiques historiques restent dans `Analyse.Resultat`.
+
+### Matrice différentielle
+
+`TesterAssemblageAvecOrigines` prépare de vrais fichiers avec
+`GsPP::PreparerJetonsSource`. Le parseur C++ des jetons originaux détermine
+les diagnostics locaux ; le parseur C++ du texte développé détermine l'AST
+brut. Le normaliseur C++ réel détermine les déclarations retenues et l'ordre
+des fonctions. Les nœuds retenus, parents réindexés, tranches nominales,
+texte et tables d'unités sont vérifiés séparément.
+
+La matrice ajoute **12 corpus bilingues valides**, **6 conflits bilingues de
+normalisation** (12 refus différentiels), **3 refus syntaxiques bilingues** et
+**7 refus sémantiques bilingues**. Les quatorze nouveaux refus sémantiques
+portent le total de **2 737 à 2 751** ; conflits et syntaxe ne sont pas ajoutés
+à ce total. Sont notamment couverts : prototypes/définitions entre unités,
+globales et alias inclus répétés, méthodes/constructeurs/destructeurs/opérateurs,
+inclusions Unicode/relatives imbriquées avec `#pragma once`, signatures à
+cheval sur deux fichiers, unités vides/BOM et EOF, classes répétées,
+priorité des fonctions sur les globales et d'une syntaxe tardive sur les conflits.
+
+Chaque jeton et EOF est localisé après normalisation. Capacités exactes et
+les trois capacités partielles, sorties refusées avec tampons suffisants,
+chaque échec d'allocation des deux assemblages et de la sémantique, sentinelles,
+arguments invalides, tables altérées et texte assemblé incohérent sont vérifiés.
+Les sources, unités, tables et AST restent intacts et les arènes sont libérées.
+
+### Validation et limites
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- GNU/Linux sous Ubuntu/WSL : construction `espace_travail` avec `linux-release`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **réussis**.
+
+Conformité **20/20 par chaîne**, **2 751 refus sémantiques différentiels**,
+64 refus de normalisation préparée et 12 refus de normalisation avec inclusions.
+Les trois images construites sont identiques : **516 863 octets**, SHA-256
+`19582C4A977E90CFEE96CB6B5A2D45E0796B74E181C831DB348B15BC294475E3`.
+Les trois vérificateurs acceptent GsE 1.0, 3 segments, 8 sections,
+2 imports et **95 exports**, contre 87 auparavant.
+Les trois versions générées indiquent `0.27.0-alpha.10`. Style et
+`git diff --check` réussissent ; `ConteneursDynamiques.GsPP` reste inchangé.
+
+Lecture, résolution des chemins, expansion, `#pragma once` et détection des
+cycles restent côté hôte C++. Les tables restent celles des unités d'entrée,
+sans nouveau tampon de jetons concaténés. Ce raccordement préparé ne remplace
+pas encore le chemin de compilation de fichiers de `gsppc`. Formats 1.0,
+ABI 1 et alpha.10 sont conservés ; bootstrap/backend C++ inchangés.
+Les changements restent locaux, non commités/non poussés, distincts de la
+CI de `039bd3f` et des paquets alpha.10 publiés ; pas de nouvelle release
+ni de validation du frontend 0.27 complet.
+
+## Préparation lexicale avec origines — 6 octobre 2026
+
+La construction du texte développé et de sa table d'origines est maintenant
+réalisée par `Frontend.GsE`, et non par les deux assembleurs de texte C++ des
+tests d'inclusions. L'hôte conserve la sélection des fragments originaux après
+expansion. Le lexeur Gs++ fournit leurs plages ; les genres/hachages et positions
+sélectionnés sont comparés aux jetons originaux du bootstrap. Aucune lecture de
+fichier n'est ajoutée au frontend et le pilote habituel de `gsppc` est inchangé.
+
+### Entrée et garanties
+
+`PreparerDeclarationsAvecOrigines` / `PrepareOriginAwareDeclarations` reçoit
+une `RequetePreparationDeclarations` de **112 octets**, des fragments originaux
+de **40 octets** et publie un résultat de **48 octets**. Chaque fragment non
+final doit contenir exactement un jeton, sans BOM, séparateur périphérique ou
+commentaire résiduel ; le dernier fragment vide porte l'EOF racine. L'indice
+du fichier, les coordonnées locales et le mode source/interface sont fournis
+par l'hôte. Ils ne sont pas vérifiés contre un catalogue de fichiers par cette API.
+
+Les lexèmes sont copiés sans décodage/réencodage des chaînes ; un séparateur LF
+ou CRLF est ajouté après chaque jeton non final et le BOM de sortie est optionnel.
+Les plages d'origine excluent ces ajouts. L'EOF est exactement à la taille du
+texte préparé, avec son fichier et sa position originaux. Les directives non
+développées sont refusées. Lecture, résolution des chemins, expansion textuelle,
+`#pragma once` et cycles restent côté hôte.
+
+La passe valide **toutes les entrées avant de publier** le texte ou les origines.
+Les deux sorties sont transactionnelles : mesure exacte et absence de préfixe
+sur refus, même tardif, ou capacité insuffisante. Les diagnostics lexicaux sont
+rébasés dans le fichier original sans débordement silencieux ; les tailles et
+métadonnées sont contrôlées avant lecture, la borne cumulée avant lexage.
+Entrées, requête et sorties doivent rester stables et ne pas se recouvrir.
+La préparation n'alloue rien ; les imports d'hôte restent limités à allocation/
+libération pour les autres passes. Les anciens contrats ne changent pas.
+
+### Tests et raccordement
+
+`TesterPreparationDeclarations` vérifie **40 lexèmes** français/anglais et
+Unicode, nombres décimaux, ponctuation et chaînes échappées dans **quatre modes
+BOM/LF/CRLF**. Le texte et toutes les plages sont comparés octet par octet ;
+un nouveau lexage C++ vérifie les genres/textes et l'absence de fusion de jetons.
+Sont également couverts **21 fragments refusés**, les neuf arguments globaux
+invalides, les métadonnées de jeton/EOF, unités vides avec/sans BOM, fins non
+vides, refus tardifs avec tampons suffisants, débordements de coordonnées et
+taille cumulée, deux capacités partielles, sentinelles, appels répétés et absence
+d'allocation.
+
+`PreparerFragmentsInclus` sélectionne les plages dans les sources originales,
+puis appelle réellement le nouvel export pour la mesure et la publication.
+`TesterDeclarationsAvecOrigines` et `TesterAssemblageAvecOrigines` utilisent
+ses sorties : les matrices syntaxiques et celles d'assemblage brut, normalisation,
+diagnostics originaux et sémantique par unité restent inchangées et passent.
+Les chaînes échappées de la matrice mono-unité sont préservées. Le total reste
+**2 751 refus sémantiques différentiels** ; les refus de préparation lexicale
+ne sont pas comptabilisés comme de nouveaux refus sémantiques.
+
+### Validation locale
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- GNU/Linux Ubuntu/WSL : construction `espace_travail` avec `linux-release`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx` puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **réussis**.
+
+Conformité **20/20 par chaîne**. Les trois images sont identiques :
+**524 319 octets**, SHA-256
+`8CA3386E54530C384BC53E04BEA39C115B5A17E5AB3C120D6C2E1E3BE01DE5D2`.
+Les trois vérificateurs acceptent GsE 1.0, trois segments, huit sections,
+deux imports et **97 exports**, contre 95 au raccordement précédent.
+Les trois versions générées indiquent `0.27.0-alpha.10` ; formats 1.0 et ABI 1
+conservés. Style et `git diff --check` réussissent, `ConteneursDynamiques.GsPP`
+reste inchangé. Travail local non commité/non poussé, sans nouvelle release
+ni modification des paquets alpha.10 publiés ; distinct de la CI de `039bd3f`.
+Cette préparation validée ne signifie ni expansion auto-hébergée des inclusions,
+ni remplacement du pilote de fichiers, ni frontend 0.27 complet.
+
+## Expansion des inclusions avec origines — 6 octobre 2026
+
+`Frontend.GsE` développe désormais les inclusions textuelles en mémoire avec
+`DevelopperInclusionsDeclarations` / `ExpandDeclarationIncludes`. L'hôte lit
+les fichiers, attribue leurs identités canoniques/noms de diagnostic et résout
+les chemins ; il ne choisit plus les jetons ni les états `once`/cycles dans le
+chemin raccordé des tests. Le pilote habituel de `gsppc` reste inchangé.
+
+### Contrat et ordre des diagnostics
+
+Le contrat public est dans `ExpansionDeclarations.HGsPP` : fichier et lien de
+**32 octets**, requête additive de **128 octets** et résultat de **48 octets**.
+Les indices distinguent les noms de diagnostic, les identités partagées
+regroupent les alias pour `once` et les cycles. Les liens sont uniques, triés par
+fichier/début de directive et portent cible disponible, introuvable ou extension
+incompatible. L'hôte garantit contenus, identités, modes et cibles ; le frontend
+ne les vérifie pas contre le système de fichiers. Un lien manquant pour une
+directive valide est un argument invalide, distinct d'un lien déclaré introuvable.
+
+Le fichier entier est lexé **avant ses directives**, comme dans le bootstrap.
+Une directive commence une ligne logique, possède un argument sur cette ligne
+et aucun jeton supplémentaire. Seul `#pragma once` est pris en charge ; les
+chemins de `#inclure` / `#include` sont cités, non vides et sans NUL/CR/LF décodé.
+`once` prend effet lorsqu'il est rencontré, pas par préscan. Une identité déjà
+protégée est ignorée avant lexage/réentrée/profondeur. Sans protection, un cycle
+est signalé sur la directive appelante ; la 129e entrée active est refusée à
+1:1 du fichier cible. L'état est local à chaque appel et unité de traduction.
+
+La sélection utilise une pile itérative de **128 cadres**, un cache lexical et
+une arène. Elle appelle ensuite la préparation lexicale validée précédemment,
+avec lexèmes originaux, BOM/LF/CRLF, modes par fichier et seul EOF racine.
+Texte et origines restent **transactionnels**, y compris après un refus tardif
+ou un échec d'allocation. Capacité insuffisante : deux tailles exactes, aucun
+préfixe ; autres refus : tailles nulles. Les erreurs d'argument/capacité/
+allocation ne désignent aucun fichier fautif ; les refus de langue gardent
+fichier et coordonnées originaux. Les entrées restent intactes et l'arène
+est toujours libérée. Aucun nouvel import de fichiers n'est ajouté.
+
+### Matrice et raccordement
+
+`TesterExpansionDeclarations` compare **41 corpus déclinés en français/anglais**
+au véritable `GsPP::PreparerJetonsSource`. Sur les dossiers utilisés par les
+trois chaînes, ils donnent **15 corpus bilingues valides et 26 refus bilingues**.
+La variante de casse vérifie l'existence réelle du chemin : un répertoire
+sensible à la casse la classe en refus, pas en réussite. Le test ne suppose
+pas que tout dossier WSL est sensible à la casse ; les identités suivent la
+normalisation d'hôte du bootstrap.
+
+Sont couverts : inclusions répétées, relatives/Unicode et alias de chemin,
+`once` tardif ou immédiat, réentrée directe/mutuelle protégée, cycles directs/
+indirects, chaînes échappées, fichiers vides/BOM, limites de profondeur 128/129,
+réentrée protégée à profondeur maximale, ordre lexical avant directives,
+extensions incompatibles et refus de syntaxe des directives. Chaque diagnostic
+est comparé au fichier/ligne/colonne C++ ; le code attendu et le détail lexical
+sont vérifiés séparément. Textes et plages d'origine sont comparés à la
+sélection du bootstrap, sans réencoder les lexèmes.
+
+Capacités exactes/partielles, refus avec tampons suffisants, injection de chaque
+échec d'allocation jusqu'au succès, sentinelles, appels répétés, états non
+persistants, fichiers non visités, arguments/métadonnées/liens invalides,
+ordre/unicité des liens et lien requis absent sont vérifiés.
+
+À cette étape, `CreerCatalogueExpansion` est un adaptateur de test C++ de lecture/résolution.
+Il construit le graphe sans exécuter `#pragma once` ni sélectionner les jetons.
+`PreparerFragmentsInclus` appelle maintenant l'expansion Gs++ ; la sélection C++
+reste uniquement l'oracle. Les deux matrices existantes utilisent ses sorties
+jusqu'à la syntaxe, l'assemblage brut/normalisé et la sémantique avec origines.
+Le total reste **2 751 refus sémantiques différentiels** : les nouveaux refus
+d'expansion ne sont pas comptabilisés comme refus sémantiques.
+
+### Validation locale et reproductibilité
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- GNU/Linux Ubuntu/WSL : construction `espace_travail` avec `linux-release`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **réussis**.
+
+Conformité **20/20 par chaîne**, **2 751 refus sémantiques différentiels**.
+L'ordre du nouvel en-tête a été synchronisé entre CMake et le constructeur
+MSBuild natif ; des ordres différents donnaient des agencements d'image
+différents malgré un code fonctionnel. Les trois images finales sont identiques :
+**542 527 octets**, SHA-256
+`31D9AAFF085D707E323426287AB0A1E909739EA131B46D6D8DF2AA27342DD1D4`.
+Les trois vérificateurs acceptent GsE 1.0, trois segments, huit sections,
+deux imports et **99 exports**, contre 97 à la préparation précédente.
+Les trois versions générées indiquent `0.27.0-alpha.10`. Style et
+`git diff --check` réussissent, `ConteneursDynamiques.GsPP` reste inchangé.
+Travail local non commité/non poussé, distinct de la CI de `039bd3f` et des
+paquets alpha.10 publiés ; aucune nouvelle release.
+
+L'intégration au pilote de compilation de fichiers reste ouverte ; ni ce raccord
+de tests ni le succès de l'expansion ne prouvent un frontend 0.27 complet.
+Les identités/cibles sont des garanties de l'hôte, non une nouvelle API de
+résolution de fichiers. Version alpha.10, formats 1.0 et ABI 1 conservés,
+sans modification de `ConteneursDynamiques.GsPP` ni du bootstrap/backend C++.
+
+## Catalogue hôte réutilisable et préparation du produit — 6 octobre 2026
+
+### Raccordement implémenté
+
+`Compiler/include/GsPP/CatalogueInclusions.hpp` et
+`Compiler/src/CatalogueInclusions.cpp` remplacent l'adaptateur de test par un
+composant de `gspp_compiler`, enregistré dans CMake et la solution native
+Visual Studio 2026. Les miroirs hôtes des origines et de la requête d'expansion
+sont partagés, avec tailles et décalage du résultat vérifiés à la compilation.
+L'export reste celui du frontend Gs++ : aucun nouvel export, import ou format.
+
+`CreerCatalogueInclusions` construit un graphe itératif, sans sélection de
+jetons ni interprétation de `once`. Le catalogue possède les textes dans des
+nœuds stables, partage un instantané par identité canonique, conserve des
+indices de diagnostic distincts pour les alias et sépare chemin physique et
+nom virtuel de diagnostic. Un préfixe connu garde ses indices pour les unités
+successives. Copies interdites et déplacements explicites évitent les vues
+pendantes, même pour les chaînes courtes ; l'objet déplacé est vidé.
+
+Limites hôtes configurables : 4 096 fichiers, 100 000 liens, 16 Mio par fichier
+et 64 Mio de textes distincts par défaut. Lecture bornée par blocs, aucune
+lecture des fichiers absents ou d'extension incompatible ; les dépassements
+et échecs d'E/S abandonnent le catalogue complet. Les limites hôtes ne changent
+pas le diagnostic de profondeur de 128 fichiers actifs, appliqué par Gs++.
+
+`PreparerSourceAvecOrigines` appelle l'export Gs++ pour la mesure puis la
+publication, avec convention Microsoft x64 explicite sur GNU/Linux et option
+GNU adaptée au fichier appelant. La sortie propriétaire contient texte,
+origines et résultat ABI. Refus du frontend : sorties vides et diagnostic
+conservé. Capacités excessives ou contrat incohérent : exception hôte. Les
+deux matrices d'inclusions emploient désormais cette API jusqu'à la syntaxe,
+l'assemblage brut/normalisé et la sémantique avec origines ; le bootstrap
+continue de fournir un oracle indépendant.
+
+### Régressions ajoutées et limites de la tranche
+
+`TesterCatalogueInclusionsProduit` vérifie en français/anglais les noms
+virtuels, préfixes connus, alias et identité partagée, BOM source/UTF-8/CRLF,
+quatre modes de sortie, déplacements/auto-déplacement, refus des copies,
+instantané conservé après modification sur disque et nouveau catalogue à jour.
+Bornes exactes/dépassées, compte des identités sans doublonner les alias,
+arguments invalides, extension/absence dans l'ordre, diagnostic lexical Gs++,
+refus sans sortie et libération de l'arène sont couverts. Un graphe de
+**512 niveaux** est construit sans récursion hôte, puis refusé au niveau 129
+par le frontend. Sept contrats ABI incohérents et un échec de publication
+simulés contrôlent les refus de l'adaptateur.
+
+La découverte des chemins emploie encore le lexeur C++, et la lecture de tout
+le graphe est anticipée : un fichier finalement ignoré par `once` peut provoquer
+un échec d'E/S ou de limite hôte avant un diagnostic de langue. Cette limite
+est explicite, pas une preuve de parité complète des E/S. La lecture/résolution
+à la demande et le raccord au pilote par défaut restent ouverts. Aucun
+remplacement du backend ou du parcours habituel de `gsppc` n'est revendiqué.
+
+### Validation locale de l'adaptateur
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : construction de `GsPlusPlus.slnx`, puis
+  validation par `VisualStudio/Validation.vcxproj`, Release/x64 : **réussies**.
+
+Les trois matrices valident le raccordement du produit, **15 corpus bilingues
+d'expansion valides et 26 refus**, et **2 751 refus sémantiques différentiels**.
+Conformité **20/20 par chaîne** ; contrôles de style et cohérence des sept
+cibles CMake/Visual Studio réussis. Les trois images restent identiques et
+acceptées par leurs vérificateurs : **542 527 octets**, GsE 1.0, trois segments,
+huit sections, deux imports et **99 exports** ; SHA-256
+`31D9AAFF085D707E323426287AB0A1E909739EA131B46D6D8DF2AA27342DD1D4`.
+Les trois `VersionProduit.hpp` générés indiquent `0.27.0-alpha.10` ; formats 1.0
+et ABI 1 conservés. `git diff --check` réussit et `ConteneursDynamiques.GsPP`
+reste inchangé. Le travail reste local, non commité/non poussé, sans nouvelle
+release ; ces résultats ne mettent pas à jour la preuve CI de `039bd3f` ni les
+paquets alpha.10 publiés.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
-- étendre la normalisation aux membres et aux groupes mêlant membres et
-  fonctions libres, puis raccorder le flux mixte des inclusions et ses origines ;
+- compléter la lecture/résolution à la demande du catalogue hôte, puis intégrer
+  le chemin préparé avec origines au pilote de fichiers, sans confondre les inclusions
+  textuelles avec les unités de traduction séparées ;
 - compléter les autres familles sémantiques encore prises en charge par le
   bootstrap, notamment les contextes des constructions et opérateurs et les
   interactions de priorité entre passes non encore testées, dont les contrôles

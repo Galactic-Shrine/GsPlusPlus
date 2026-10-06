@@ -58,10 +58,14 @@ add_custom_command(
         "${GS_AUTO_SOURCE}/ClassificateurMotsCles.HGsPP"
         "${GS_LEXEUR_SOURCE}/Lexeur.HGsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/ExpansionDeclarations.HGsPP"
         "${GS_AUTO_SOURCE}/ClassificateurMotsCles.GsPP"
         "${GS_LEXEUR_SOURCE}/Lexeur.GsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.GsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/NormalisationDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/OriginesDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/PreparationDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/ExpansionDeclarations.GsPP"
         --format gsobj -o "${GS_ANALYSEUR_DECLARATIONS_OBJET}"
     DEPENDS
         gsppc
@@ -69,10 +73,14 @@ add_custom_command(
         "${GS_AUTO_SOURCE}/ClassificateurMotsCles.HGsPP"
         "${GS_LEXEUR_SOURCE}/Lexeur.HGsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/ExpansionDeclarations.HGsPP"
         "${GS_AUTO_SOURCE}/ClassificateurMotsCles.GsPP"
         "${GS_LEXEUR_SOURCE}/Lexeur.GsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.GsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/NormalisationDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/OriginesDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/PreparationDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/ExpansionDeclarations.GsPP"
     VERBATIM
 )
 
@@ -85,6 +93,7 @@ add_custom_command(
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.GsPP"
+        "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/OriginesUnites.GsPP"
         --format gsobj -o "${GS_ANALYSEUR_SEMANTIQUE_OBJET}"
     DEPENDS
         gsppc
@@ -93,6 +102,7 @@ add_custom_command(
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.HGsPP"
         "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/AnalyseurSemantique.GsPP"
+        "${GS_ANALYSEUR_SEMANTIQUE_SOURCE}/OriginesUnites.GsPP"
     VERBATIM
 )
 

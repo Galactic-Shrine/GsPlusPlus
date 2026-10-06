@@ -351,7 +351,7 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **2,719 negative corpora** in development sources (**619** in the published
+  with **2,751 negative corpora** in development sources (**619** in the published
   alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
@@ -488,14 +488,38 @@ All normative documentation is maintained in Markdown as its primary source.
   external globals, member visibility, types and signatures; twenty-two bilingual
   syntax/semantic corpora and six type/data interfaces; this API does not read
   files or expand includes;
+- self-hosted expansion of `#inclure` / `#include` and `#pragma once` over an
+  in-memory catalog: bootstrap lexical ordering, cycles, 128-active-file limit,
+  canonical aliases, mixed modes and original diagnostics; file reading and
+  path resolution remain host-side, without replacing the `gsppc` driver;
+- reusable compiler file catalog: owned snapshot, canonical aliases, diagnostic
+  names separate from physical paths, iterative traversal and configurable
+  limits; Gs++ frontend text/origin preparation with ABI contract checks;
+  graph files are still read eagerly;
+- self-hosted lexical preparation of expanded text and origins from original
+  token fragments selected by the host: preserve lexemes and escaped strings,
+  transactional outputs, exact capacities, BOM/LF/CRLF and EOF; no allocation
+  or file reading; reject unexpanded directives;
+- self-hosted analysis of an already-expanded translation unit with per-token
+  origins: mixed source/interface modes and diagnostics in the original file;
+  twenty syntactically valid bilingual corpora, seven bilingual syntax rejections
+  and three bilingual semantic rejections; input expanded by the host or the expansion API;
 - self-hosted assembly of prepared sources and interfaces: text, AST and origin
   table, with local diagnostics and namespace imports isolated per compilation unit;
   thirteen valid bilingual corpora, guarded outputs and tested allocation failures;
-  member/mixed-group normalization and include integration remain to be implemented;
-- self-hosted normalization of prepared free functions/operators, globals and
-  aliases: definitions preferred over prototypes, first-declaration order preserved,
-  exact names and types compared before alias resolution; twenty-two valid bilingual
-  corpora and thirty differential normalization rejections;
+  preserve the historical entries, separate from per-token origin-aware entries;
+- self-hosted normalization of prepared free/member functions and operators,
+  constructors, destructors, globals and aliases: implicit receivers participate
+  in keys, definitions replace prototypes in first-function-declaration order,
+  and exact names/types are compared before alias resolution; thirty-nine valid
+  bilingual corpora and sixty-four differential normalization rejections;
+  types/fields precede functions and parent indices are remapped;
+- connect prepared includes to assembly, normalization and per-unit semantics:
+  twelve valid bilingual corpora, six bilingual normalization conflicts, three
+  bilingual syntax rejections and seven bilingual semantic rejections; preserve
+  original diagnostic files and selections, isolating imports between separate
+  units but not included files; tests use Gs++ expansion, with file reading and
+  path resolution remaining host-side;
 - fully validate each global initializer in source order, typing all its leaves
   before its constant-value pass; structural default-field check priority
   covered within the differential test scope;

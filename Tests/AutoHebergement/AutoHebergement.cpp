@@ -1,5 +1,6 @@
 #include "GsPP/ChargeurGsE.hpp"
 #include "GsPP/Compilation.hpp"
+#include "GsPP/CatalogueInclusions.hpp"
 #include "GsPP/AnalyseurSemantique.hpp"
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
@@ -14,15 +15,19 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 #include <iterator>
 #include <map>
 #include <new>
+#include <numeric>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -144,6 +149,62 @@ namespace
         std::uint32_t EstInterface, Reserve;
     };
 
+    using GsPP::OrigineJetonDeclarationsHote;
+
+    struct RequeteDeclarationsAvecOriginesHote
+    {
+        RequeteAnalyseDeclarationsHote* Analyse;
+        const OrigineJetonDeclarationsHote* Origines;
+        std::uint64_t NombreOrigines, NombreFichiers, IndexFichierErreur;
+        std::uint32_t LigneLocaleErreur, ColonneLocaleErreur, EstInterface, Reserve;
+    };
+
+    struct FragmentJetonDeclarationsHote
+    {
+        const char* Source;
+        std::uint64_t Taille, IndexFichier;
+        std::uint32_t Ligne, Colonne, EstInterface, Reserve;
+    };
+
+    struct ResultatPreparationDeclarationsHote
+    {
+        std::uint32_t Erreur, DetailLexical;
+        std::uint64_t IndexJetonErreur, NombreOctetsSource, NombreOrigines, IndexFichierErreur;
+        std::uint32_t LigneErreur, ColonneErreur;
+    };
+
+    struct RequetePreparationDeclarationsHote
+    {
+        const FragmentJetonDeclarationsHote* Fragments;
+        std::uint64_t NombreFragments, NombreFichiers;
+        char* SourcePreparee;
+        std::uint64_t CapaciteSource;
+        OrigineJetonDeclarationsHote* Origines;
+        std::uint64_t CapaciteOrigines;
+        std::uint32_t MarqueUtf8, FinLigneCrlf;
+        ResultatPreparationDeclarationsHote Resultat;
+    };
+
+    static_assert(sizeof(FragmentJetonDeclarationsHote) == 40);
+    static_assert(sizeof(ResultatPreparationDeclarationsHote) == 48);
+    static_assert(sizeof(RequetePreparationDeclarationsHote) == 112);
+    static_assert(offsetof(RequetePreparationDeclarationsHote, Resultat) == 64);
+
+    using GsPP::FichierInclusionDeclarationsHote;
+    using GsPP::LienInclusionDeclarationsHote;
+    using GsPP::ResultatExpansionDeclarationsHote;
+    using GsPP::RequeteExpansionDeclarationsHote;
+
+    static_assert(sizeof(FichierInclusionDeclarationsHote) == 32);
+    static_assert(sizeof(LienInclusionDeclarationsHote) == 32);
+    static_assert(sizeof(ResultatExpansionDeclarationsHote) == 48);
+    static_assert(sizeof(RequeteExpansionDeclarationsHote) == 128);
+    static_assert(offsetof(RequeteExpansionDeclarationsHote, Resultat) == 80);
+
+    static_assert(sizeof(OrigineJetonDeclarationsHote) == 40);
+    static_assert(sizeof(RequeteDeclarationsAvecOriginesHote) == 56);
+    static_assert(offsetof(RequeteDeclarationsAvecOriginesHote, EstInterface) == 48);
+
     struct OrigineUniteDeclarationsHote
     {
         std::uint64_t DebutOctets, TailleOctets;
@@ -175,6 +236,23 @@ namespace
     static_assert(sizeof(ResultatAssemblageDeclarationsHote) == 64);
     static_assert(sizeof(RequeteAssemblageDeclarationsHote) == 128);
     static_assert(offsetof(RequeteAssemblageDeclarationsHote, Resultat) == 64);
+
+    struct TableOriginesUniteDeclarationsHote
+    {
+        const OrigineJetonDeclarationsHote* Jetons;
+        std::uint64_t NombreJetons;
+    };
+
+    struct RequeteAssemblageAvecOriginesHote
+    {
+        RequeteAssemblageDeclarationsHote* Assemblage;
+        const TableOriginesUniteDeclarationsHote* Tables;
+        std::uint64_t NombreFichiers, IndexFichierErreur;
+        std::uint32_t LigneLocaleErreur, ColonneLocaleErreur;
+    };
+
+    static_assert(sizeof(TableOriginesUniteDeclarationsHote) == 16);
+    static_assert(sizeof(RequeteAssemblageAvecOriginesHote) == 40);
 
     struct SymboleSemantiqueHote
     {
@@ -1679,6 +1757,27 @@ namespace
 
     using AnalyseurDeclarationsAutoHeberge =
         std::uint32_t (GS_ABI_HOTE *)(RequeteAnalyseDeclarationsHote*);
+
+    using AnalyseurDeclarationsOriginesAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequeteDeclarationsAvecOriginesHote*);
+    using LocaliseurDeclarationsAutoHeberge =
+        bool (GS_ABI_HOTE *)(RequeteDeclarationsAvecOriginesHote*, std::uint32_t, std::uint32_t);
+    using PreparateurDeclarationsAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequetePreparationDeclarationsHote*);
+    using ExpanseurDeclarationsAutoHeberge = GsPP::ExpanseurInclusionsHote;
+
+    struct RequeteSemantiqueUnitesAvecOriginesHote
+    {
+        RequeteAnalyseSemantiqueHote* Analyse;
+        const RequeteAssemblageAvecOriginesHote* Declarations;
+        std::uint64_t IndexUniteErreur, IndexFichierErreur;
+        std::uint32_t LigneLocaleErreur, ColonneLocaleErreur;
+    };
+
+    static_assert(sizeof(RequeteSemantiqueUnitesAvecOriginesHote) == 40);
+    using AssembleurOriginesAutoHeberge = std::uint32_t (GS_ABI_HOTE *)(RequeteAssemblageAvecOriginesHote*);
+    using LocaliseurAssemblageAutoHeberge = bool (GS_ABI_HOTE *)(RequeteAssemblageAvecOriginesHote*, std::uint64_t, std::uint32_t, std::uint32_t);
+    using SemantiqueOriginesAutoHeberge = std::uint32_t (GS_ABI_HOTE *)(RequeteSemantiqueUnitesAvecOriginesHote*);
 
     std::vector<NoeudDeclarationHote> ComparerDeclarations(
         AnalyseurDeclarationsAutoHeberge analyseur,
@@ -10662,6 +10761,32 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             {{{"structure P { entier32 X; }; entier32 opérateur+(P p, entier32 x);", true}, {"publique entier32 opérateur+(P p, entier32 x) { retourner p.X + x; }", false}}},
             {{{"\xEF\xBB\xBF\r\nespace Démo { entier32 Créer(); } // fin", true}, {"\xEF\xBB\xBF\r\nespace Démo { publique entier32 Créer() { retourner 42; } }", false}}},
             {{{"classe C { publique: entier32 Lire() { retourner 42; } }; externe entier32 F(C& c);", false}, {"publique entier32 F(C& c) { retourner c.Lire(); }", false}}},
+            {{{"classe C { publique: entier32 Lire(); entier32 Lire(); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"classe C { publique: constructeur(); constructeur(); destructeur(); destructeur(); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"classe C { publique: entier32 opérateur+(entier32 x); entier32 opérateur+(entier32 x); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"espace C { entier32 Lire(C& c); }", true}, {"classe C { publique: entier32 Lire() { retourner 42; } }; publique entier32 Principal() { C c; retourner c.Lire(); }", false}}},
+            {{{"classe C { publique: entier32 Lire() { retourner 42; } };", false}, {"espace C { entier32 Lire(C& c); }", true}, {"publique entier32 Principal() { C c; retourner c.Lire(); }", false}}},
+            {{{"classe C { publique: entier32 Lire(); };", true}, {"espace C { publique entier32 Lire(C& c) { retourner 42; } } publique entier32 Principal() { C c; retourner C::Lire(c); }", false}}},
+            {{{"espace C { publique entier32 Lire(C& c) { retourner 42; } }", false}, {"classe C { publique: entier32 Lire(); };", true}, {"publique entier32 Principal() { C c; retourner C::Lire(c); }", false}}},
+            {{{"espace C { entier32 opérateur+(C& c, entier32 x); }", true}, {"classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } }; publique entier32 Principal() { C c; retourner c + 42; }", false}}},
+            {{{"espace N::C { entier32 Lire(N :: C& c); }", true}, {"espace N { classe C { publique: entier32 Lire() { retourner 42; } }; } publique entier32 Principal() { N::C c; retourner c.Lire(); }", false}}},
+            {{{"classe C { publique: volatile constante entier32* Lire(); constante volatile entier32* Lire(); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"classe C { publique: vide Lire(pointeur_fonction<pointeur_fonction<entier32()>()> x); vide Lire(pointeur_fonction< pointeur_fonction< int32() > () > y); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"classe C { publique: constructeur(entier32 x); constructeur(entier64 x); entier32 Lire(entier32 x); entier32 Lire(entier64 x); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"espace C { vide Lire(C& c, entier32& x); }", true}, {"classe C { publique: vide Lire(entier32& x) { x = 42; } entier32 Valeur = 1; constructeur() {} }; publique entier32 Principal() { C c; entier32 x = 0; c.Lire(x); retourner x; }", false}}},
+            {{{"classe C { publique: entier32 Avant = 1; entier32 Lire() { retourner soi.Avant + soi.Apres; } entier32 Apres = 41; constructeur() {} };", false}, {"publique entier32 Principal() { C c; retourner c.Lire(); }", false}}},
+            {{{"classe C { publique: virtuel entier32 Lire(); entier32 Lire(); };", true}, {"publique entier32 Principal() { retourner 42; }", false}}},
+            {{{"espace C { vide Lire(constante C& c); vide Lire(C* c); }", true}, {"classe C { publique: vide Lire() {} }; publique entier32 Principal() { retourner 42; }", false}}},
+            []
+            {
+                std::string declarations = "espace ";
+                for (int index = 0; index < 400; ++index) declarations += "A :: ";
+                declarations += std::string(256, 'N') + " {";
+                for (int index = 0; index < 32; ++index)
+                    declarations += " classe C" + std::to_string(index) + " { publique: vide F(); vide F(); };";
+                declarations += " }";
+                return Corpus{{{std::move(declarations), true}, {"publique entier32 Principal() { retourner 42; }", false}}};
+            }(),
         };
         const std::vector<Corpus> refus{
             {{{"entier32 Lire();", true}, {"publique entier64 Lire() { retourner 42; }", false}}, 6},
@@ -10682,6 +10807,24 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             {{{"publique entier32 F() { retourner 1; } publique entier32 G() { retourner 2; }", false}, {"publique entier32 G() { retourner 3; } publique entier32 F() { retourner 4; }", false}}, 7},
             // Une unité syntaxiquement invalide est refusée avant la normalisation du programme.
             {{{"entier32 Lire();", true}, {"publique entier64 Lire() { retourner 1; }", false}, {"structure P { entier32 X;", true}}, 4},
+            {{{"classe C { publique: entier32 Lire(); entier64 Lire(); };", true}}, 6},
+            {{{"classe C { publique: entier32 Lire() { retourner 1; } entier32 Lire() { retourner 2; } };", false}}, 7},
+            {{{"classe C { publique: constructeur() {} constructeur() {} };", false}}, 7},
+            {{{"classe C { publique: destructeur() {} destructeur() {} };", false}}, 7},
+            {{{"classe C { publique: entier32 opérateur+(entier32 x); entier64 opérateur+(entier32 x); };", true}}, 6},
+            {{{"classe C { publique: entier32 opérateur+(entier32 x) { retourner x; } entier32 opérateur+(entier32 x) { retourner x; } };", false}}, 7},
+            {{{"espace C { entier32 Lire(C& c); }", true}, {"classe C { publique: entier64 Lire() { retourner 42; } };", false}}, 6},
+            {{{"classe C { publique: entier32 Lire(); };", true}, {"espace C { publique entier64 Lire(C& c) { retourner 42; } }", false}}, 6},
+            {{{"espace C { publique entier32 Lire(C& c) { retourner 1; } }", false}, {"classe C { publique: entier32 Lire() { retourner 2; } };", false}}, 7},
+            {{{"classe C { publique: entier32 Lire() { retourner 1; } };", false}, {"espace C { publique entier32 Lire(C& c) { retourner 2; } }", false}}, 7},
+            {{{"classe C { publique: entier32 Lire(); };", true}, {"classe C { publique: entier64 Lire(); };", true}}, 6},
+            {{{"classe C { publique: constructeur() {} };", false}, {"classe C { publique: constructeur() {} };", false}}, 7},
+            {{{"classe C { publique: destructeur() {} };", false}, {"classe C { publique: destructeur() {} };", false}}, 7},
+            {{{"espace C { entier32 opérateur+(C& c, entier32 x); }", true}, {"classe C { publique: entier64 opérateur+(entier32 x) { retourner x; } };", false}}, 6},
+            // Les conflits membres participent à la même passe que les fonctions libres, avant globales et alias.
+            {{{"entier32 X; alias A = Absent; classe C { publique: entier32 Lire(); };", true}, {"entier64 X; alias A = Autre; espace C { publique entier64 Lire(C& c) { retourner 42; } }", false}}, 6},
+            {{{"classe C { publique: entier32 F(); entier32 G(); }; entier32 H();", true}, {"publique entier64 H() { retourner 0; } espace C { publique entier64 G(C& c) { retourner 0; } publique entier64 F(C& c) { retourner 0; } }", false}}, 6},
+            {{{"entier32 H(); classe C { publique: entier32 F(); entier32 G(); };", true}, {"espace C { publique entier64 G(C& c) { retourner 0; } publique entier64 F(C& c) { retourner 0; } } publique entier64 H() { retourner 0; }", false}}, 6},
         };
         const std::vector<Corpus> refusSemantiques{
             {{{"entier32 F(); entier32 G();", true}, {"publique entier32 G() { retourner AbsentG; } publique entier32 F() { retourner AbsentF; }", false}}, 0, 18},
@@ -10694,6 +10837,12 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
               {"publique vide F(pointeur_fonction<vide(" + NomCollisionCallbackA + "*)> p) {} publique vide F(pointeur_fonction<vide(" + NomCollisionCallbackB + "*)> p) {}", false}}, 0, 119},
             {{{"Inconnu F();", true}, {"publique Inconnu F() { retourner {}; }", false}}, 0, 100},
             {{{"espace N { structure P {}; } utilisant espace N; vide F();", true}, {"publique vide F() { P p; }", false}}, 0, 100},
+            {{{"espace C { entier32 F(C& c); } entier32 G();", true}, {"publique entier32 G() { retourner AbsentG; } classe C { publique: entier32 F() { retourner AbsentF; } };", false}}, 0, 18},
+            {{{"vide G(); classe C { publique: vide F(); };", true}, {"espace C { publique vide F(C& c) { vide x; } } publique vide G() { constante entier32 y; }", false}}, 0, 125},
+            {{{"classe C { publique: vide F(); }; vide G();", true}, {"publique vide G() { constante entier32 y; } espace C { publique vide F(C& c) { vide x; } }", false}}, 0, 123},
+            {{{"classe C { publique: entier32 F(); };", true}, {"classe C { publique: entier32 F() { retourner 42; } };", false}}, 0, 6},
+            {{{"classe C { publique: constructeur(); };", true}, {"classe C { publique: constructeur() {} };", false}}, 0, 6},
+            {{{"classe C { publique: vide F(entier32 a, entier32 b, entier32 c, entier32 d); };", true}, {"publique vide G() {}", false}}, 0, 106},
         };
         std::size_t nombreRefusNormalisation = 0;
         auto cleFonction = [](const GsPP::Fonction& fonction)
@@ -10731,7 +10880,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                     for (auto& jeton : jetons) jeton.Ligne += premiereLigne - 1;
                     auto partie = GsPP::AnalyseurSyntaxique(std::move(jetons), fichier, corpus.Unites[index].second).Analyser();
                     for (const auto& fonction : partie.Fonctions)
-                        if (!fonction.EstMethode) cles[{static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne)}] = cleFonction(fonction);
+                        cles[{static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne)}] = cleFonction(fonction);
                     for (const auto& globale : partie.VariablesGlobales)
                         cles[{static_cast<std::uint32_t>(globale.Position.Ligne), static_cast<std::uint32_t>(globale.Position.Colonne)}] = "G:" + globale.NomComplet();
                     for (const auto& alias : partie.Aliases)
@@ -10794,46 +10943,93 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                     && std::get<0>(*diagnostic) == "unite-" + std::to_string(index),
                     "diagnostic de normalisation différent du bootstrap : attendu=" + std::to_string(corpus.ErreurNormalisation)
                     + ", obtenu=" + std::to_string(mesure) + ", bootstrap=" + messageBootstrap);
+                // Un refus ne doit rien publier même si les trois tampons suffisent pour l'AST brut.
+                std::size_t borneNoeuds = 1 + unites.size();
+                for (const auto& texte : textes) borneNoeuds += texte.size();
+                std::vector<char> texteRefuse(borneNoeuds, 'Z');
+                std::vector<NoeudDeclarationHote> noeudsRefuses(borneNoeuds, gardeNoeud);
+                std::vector<OrigineUniteDeclarationsHote> originesRefusees(unites.size(), gardeOrigine);
+                requete.SourceAssemblee = texteRefuse.data(); requete.CapaciteSource = texteRefuse.size();
+                requete.Noeuds = noeudsRefuses.data(); requete.CapaciteNoeuds = noeudsRefuses.size();
+                requete.Origines = originesRefusees.data(); requete.CapaciteOrigines = originesRefusees.size();
+                Exiger(normaliser(&requete) == mesure && requete.Resultat.IndexUniteErreur == index
+                    && requete.Resultat.LigneErreur == ligne && requete.Resultat.ColonneErreur == std::get<2>(*diagnostic),
+                    "diagnostic normalisé dépendant des capacités de sortie");
+                Exiger(std::all_of(texteRefuse.begin(), texteRefuse.end(), [](char c) { return c == 'Z'; }), "texte publié malgré le refus de normalisation");
+                for (const auto& noeud : noeudsRefuses) Exiger(std::memcmp(&noeud, &gardeNoeud, sizeof(noeud)) == 0, "AST publié malgré le refus de normalisation");
+                for (const auto& origine : originesRefusees) Exiger(std::memcmp(&origine, &gardeOrigine, sizeof(origine)) == 0, "origine publiée malgré le refus de normalisation");
+                Exiger(textes == textesAvant && std::memcmp(unites.data(), unitesAvant.data(), unites.size() * sizeof(unites[0])) == 0, "entrées modifiées malgré le refus de normalisation");
                 if (mesure != 4) ++nombreRefusNormalisation;
                 return;
             }
             Exiger(!diagnostic && mesure == 1, "normalisation valide refusée : " + std::to_string(mesure) + " " + messageBootstrap);
             std::map<std::string, Position> selections;
             for (const auto& fonction : programme.Fonctions)
-                if (!fonction.EstMethode) selections[cleFonction(fonction)] = {static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne)};
+                selections[cleFonction(fonction)] = {static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne)};
             for (const auto& globale : programme.VariablesGlobales)
                 selections["G:" + globale.NomComplet()] = {static_cast<std::uint32_t>(globale.Position.Ligne), static_cast<std::uint32_t>(globale.Position.Colonne)};
             for (const auto& alias : programme.Aliases)
                 selections["A:" + alias.NomComplet()] = {static_cast<std::uint32_t>(alias.Position.Ligne), static_cast<std::uint32_t>(alias.Position.Colonne)};
             std::map<Position, std::size_t> racines;
             std::vector<std::size_t> fins(bruts.size(), bruts.size());
-            std::size_t precedent = 0;
+            std::vector<std::size_t> ascendants{0};
             for (std::size_t index = 1; index < bruts.size(); ++index)
-                if (bruts[index].Parent == 0)
-                {
-                    fins[precedent] = index; precedent = index;
-                    racines[{bruts[index].Ligne, bruts[index].Colonne}] = index;
-                }
-            std::vector<NoeudDeclarationHote> attendus{bruts.front()};
-            std::vector<std::string> dejaVus;
-            for (std::size_t index = 1; index < bruts.size(); index = fins[index])
             {
+                while (ascendants.back() != bruts[index].Parent)
+                {
+                    fins[ascendants.back()] = index;
+                    ascendants.pop_back();
+                }
+                ascendants.push_back(index);
+                racines[{bruts[index].Ligne, bruts[index].Colonne}] = index;
+            }
+            auto estFonction = [](const NoeudDeclarationHote& noeud) { return noeud.Genre == 1 || (noeud.Genre >= 12 && noeud.Genre <= 15); };
+            auto estType = [](const NoeudDeclarationHote& noeud) { return noeud.Parent == 0 && noeud.Genre >= 4 && noeud.Genre <= 8; };
+            std::vector<std::size_t> plan{0};
+            // Les conteneurs gardent leur ordre source ; seules leurs fonctions sont déplacées.
+            for (std::size_t index = 1; index < bruts.size(); index = fins[index])
+                if (estType(bruts[index]))
+                    for (std::size_t enfant = index; enfant < fins[index];)
+                    {
+                        if (estFonction(bruts[enfant])) enfant = fins[enfant];
+                        else plan.push_back(enfant++);
+                    }
+            std::vector<std::string> dejaVus;
+            for (std::size_t index = 1; index < bruts.size();)
+            {
+                if (!estFonction(bruts[index]) && (bruts[index].Parent != 0 || estType(bruts[index]))) { ++index; continue; }
                 const Position position{bruts[index].Ligne, bruts[index].Colonne};
                 auto choisi = index;
                 if (const auto cle = cles.find(position); cle != cles.end())
                 {
-                    if (std::find(dejaVus.begin(), dejaVus.end(), cle->second) != dejaVus.end()) continue;
+                    if (std::find(dejaVus.begin(), dejaVus.end(), cle->second) != dejaVus.end()) { index = fins[index]; continue; }
                     dejaVus.push_back(cle->second);
                     choisi = racines.at(selections.at(cle->second));
                 }
-                const auto destination = attendus.size();
-                for (std::size_t n = choisi; n < fins[choisi]; ++n)
-                {
-                    auto noeud = bruts[n];
-                    if (noeud.Parent != 0) noeud.Parent = noeud.Parent - choisi + destination;
-                    attendus.push_back(noeud);
-                }
+                for (std::size_t n = choisi; n < fins[choisi]; ++n) plan.push_back(n);
+                index = fins[index];
             }
+            std::vector<std::size_t> destinations(bruts.size(), bruts.size());
+            for (std::size_t index = 0; index < plan.size(); ++index)
+            {
+                Exiger(destinations[plan[index]] == bruts.size(), "nœud attendu normalisé dupliqué");
+                destinations[plan[index]] = index;
+            }
+            std::vector<NoeudDeclarationHote> attendus;
+            for (const auto index : plan)
+            {
+                auto noeud = bruts[index];
+                if (noeud.Parent != 0) noeud.Parent = destinations[noeud.Parent];
+                Exiger(attendus.empty() || noeud.Parent < attendus.size(), "parent attendu normalisé absent ou en avant");
+                attendus.push_back(noeud);
+            }
+            std::vector<Position> ordreFonctions;
+            for (const auto& noeud : attendus)
+                if (estFonction(noeud)) ordreFonctions.emplace_back(noeud.Ligne, noeud.Colonne);
+            std::vector<Position> ordreBootstrap;
+            for (const auto& fonction : programme.Fonctions)
+                ordreBootstrap.emplace_back(static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne));
+            Exiger(ordreFonctions == ordreBootstrap, "ordre des fonctions normalisées différent du bootstrap");
             Exiger(requete.Resultat.NombreNoeuds == attendus.size() && requete.Resultat.NombreOctetsSource == texteBrut.size()
                 && requete.Resultat.NombreOrigines == origines.size(), "capacités normalisées différentes du bootstrap");
             std::vector<char> texteSortie(texteBrut.size() + 1, 'Z');
@@ -10879,7 +11075,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                 diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())};
                 messageBootstrap = erreur.what();
             }
-            Exiger(diagnostic.has_value() == (corpus.ErreurSemantique != 0), "contrat sémantique après normalisation incorrect : " + messageBootstrap);
+            Exiger(diagnostic.has_value() == (corpus.ErreurSemantique != 0), "contrat sémantique après normalisation incorrect : " + messageBootstrap + ", première unité=" + textes.front());
             RequeteAnalyseSemantiqueHote analyse{texteSortie.data(), texteBrut.size(), noeuds.data(), attendus.size(), nullptr, 0, nullptr, 0, {}};
             RequeteAnalyseSemantiqueUnitesHote analyseUnites{&analyse, originesSortie.data(), origines.size(), 0, 0, 0};
             const auto code = semantique(&analyseUnites);
@@ -10938,6 +11134,1243 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         std::cout << "Normalisation préparée : " << valides.size() << " corpus bilingues valides, " << nombreRefusNormalisation
                   << " refus différentiels de normalisation, 1 refus syntaxique bilingue et " << refusSemantiques.size()
                   << " refus sémantiques bilingues ; sélections, origines et sorties transactionnelles vérifiées.\n";
+    }
+
+    /** <résumé>Valide la préparation Gs++ sans allocation et sans publication partielle.</résumé> **/
+    void TesterPreparationDeclarations(PreparateurDeclarationsAutoHeberge preparer)
+    {
+        const auto allocationsAvant = NombreAllocations;
+        const std::vector<std::string> lexemes{
+            "publique", "public", "entier32", "int32", "État", "123_456", "789", "42",
+            "\"é\\n\\r\\t\\0\\\"\\\\\"", "\"ligne\\n suivante\"", "\"\"", "::", "->", ">>", "<<", ">=", "!=",
+            "&&", "||", "{", "}", "(", ")", "[", "]", ";", ",", ".", "+", "-", "*", "/", "%", "~", "^", "|", "&", "=", "!", ":"};
+        OrigineJetonDeclarationsHote garde; std::memset(&garde, 0xA5, sizeof(garde));
+        for (bool bom : {false, true}) for (bool crlf : {false, true})
+        {
+            std::vector<FragmentJetonDeclarationsHote> fragments;
+            std::string attendu = bom ? "\xEF\xBB\xBF" : "";
+            std::vector<OrigineJetonDeclarationsHote> attendues;
+            for (std::size_t index = 0; index < lexemes.size(); ++index)
+            {
+                fragments.push_back({lexemes[index].data(), lexemes[index].size(), index % 3,
+                    static_cast<std::uint32_t>(10 + index), 7, static_cast<std::uint32_t>(index % 2), 0});
+                attendues.push_back({attendu.size(), lexemes[index].size(), index % 3,
+                    static_cast<std::uint32_t>(10 + index), 7, static_cast<std::uint32_t>(index % 2), 0});
+                attendu += lexemes[index]; attendu += crlf ? "\r\n" : "\n";
+            }
+            fragments.push_back({nullptr, 0, 2, 99, 17, 1, 0});
+            attendues.push_back({attendu.size(), 0, 2, 99, 17, 1, 0});
+            const auto fragmentsAvant = fragments;
+            std::vector<char> texte(attendu.size() + 1, '#');
+            std::vector<OrigineJetonDeclarationsHote> origines(attendues.size() + 1, garde);
+            RequetePreparationDeclarationsHote requete{fragments.data(), fragments.size(), 3, texte.data(), 0,
+                origines.data(), 0, bom ? 1U : 0U, crlf ? 1U : 0U, {}};
+            auto verifierMesure = [&]()
+            {
+                Exiger(requete.Resultat.Erreur == 1 && requete.Resultat.DetailLexical == 0
+                    && requete.Resultat.NombreOctetsSource == attendu.size() && requete.Resultat.NombreOrigines == attendues.size()
+                    && requete.Resultat.IndexJetonErreur == fragments.size() && requete.Resultat.IndexFichierErreur == 3
+                    && requete.Resultat.LigneErreur == 0 && requete.Resultat.ColonneErreur == 0, "mesure de préparation incorrecte");
+                Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; })
+                    && std::all_of(origines.begin(), origines.end(), [&](const auto& origine) { return std::memcmp(&origine, &garde, sizeof(garde)) == 0; }),
+                    "préparation partiellement publiée pendant mesure");
+            };
+            const auto mesure = preparer(&requete);
+            Exiger(mesure == 1, "mesure de préparation refusée : code=" + std::to_string(mesure)
+                + ", fragment=" + std::to_string(requete.Resultat.IndexJetonErreur)); verifierMesure();
+            requete.CapaciteSource = attendu.size(); requete.CapaciteOrigines = attendues.size() - 1;
+            Exiger(preparer(&requete) == 1, "table partielle de préparation acceptée"); verifierMesure();
+            requete.CapaciteOrigines = attendues.size(); --requete.CapaciteSource;
+            Exiger(preparer(&requete) == 1, "texte partiel de préparation accepté"); verifierMesure();
+            ++requete.CapaciteSource;
+            Exiger(preparer(&requete) == 0 && requete.Resultat.Erreur == 0, "préparation complète refusée");
+            Exiger(std::string(texte.data(), attendu.size()) == attendu && texte.back() == '#'
+                && std::memcmp(origines.data(), attendues.data(), attendues.size() * sizeof(garde)) == 0
+                && std::memcmp(&origines.back(), &garde, sizeof(garde)) == 0, "lexèmes, origines ou sentinelles de préparation altérés");
+            auto jetons = GsPP::Lexeur(attendu, "preparation").Analyser();
+            Exiger(jetons.size() == fragments.size(), "préparation fusionnant deux jetons");
+            for (std::size_t index = 0; index < lexemes.size(); ++index)
+            {
+                const auto reference = GsPP::Lexeur(lexemes[index], "fragment").Analyser();
+                Exiger(reference.size() == 2 && jetons[index].Genre == reference[0].Genre && jetons[index].Texte == reference[0].Texte,
+                    "genre ou texte de fragment changé");
+            }
+            Exiger(std::memcmp(fragments.data(), fragmentsAvant.data(), fragments.size() * sizeof(fragments.front())) == 0,
+                "descripteurs d'entrée modifiés pendant préparation");
+            Exiger(preparer(&requete) == 0 && std::string(texte.data(), attendu.size()) == attendu, "préparation non répétable");
+        }
+        Exiger(preparer(nullptr) == 2, "requête de préparation nulle acceptée");
+        const std::string valide = "État";
+        std::array<FragmentJetonDeclarationsHote, 2> fragments{{{valide.data(), valide.size(), 1, 5, 9, 1, 0}, {nullptr, 0, 0, 7, 4, 0, 0}}};
+        std::array<char, 64> texte; texte.fill('#');
+        std::array<OrigineJetonDeclarationsHote, 4> origines; origines.fill(garde);
+        auto creer = [&]() { return RequetePreparationDeclarationsHote{fragments.data(), fragments.size(), 2,
+            texte.data(), texte.size(), origines.data(), origines.size(), 1, 1, {}}; };
+        auto verifierRefus = [&](auto& requete, std::uint32_t erreur)
+        {
+            Exiger(preparer(&requete) == erreur && requete.Resultat.Erreur == erreur
+                && requete.Resultat.NombreOctetsSource == 0 && requete.Resultat.NombreOrigines == 0, "refus de préparation incorrect");
+            Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; })
+                && std::all_of(origines.begin(), origines.end(), [&](const auto& origine) { return std::memcmp(&origine, &garde, sizeof(garde)) == 0; }),
+                "tampon publié avant refus de préparation");
+        };
+        for (int champ = 0; champ < 9; ++champ)
+        {
+            auto requete = creer();
+            if (champ == 0) requete.Fragments = nullptr;
+            if (champ == 1) requete.NombreFragments = 0;
+            if (champ == 2) requete.NombreFragments = 100'000'001;
+            if (champ == 3) requete.NombreFichiers = 0;
+            if (champ == 4) requete.NombreFichiers = 1'000'001;
+            if (champ == 5) requete.SourcePreparee = nullptr;
+            if (champ == 6) requete.Origines = nullptr;
+            if (champ == 7) requete.MarqueUtf8 = 2;
+            if (champ == 8) requete.FinLigneCrlf = 2;
+            verifierRefus(requete, 2);
+            Exiger(requete.Resultat.IndexJetonErreur == requete.NombreFragments
+                && requete.Resultat.IndexFichierErreur == requete.NombreFichiers && requete.Resultat.LigneErreur == 0,
+                "argument global de préparation attribué à un jeton");
+        }
+        const auto fragmentsValides = fragments;
+        for (std::size_t index : {0U, 1U}) for (int champ = 0; champ < 7; ++champ)
+        {
+            fragments = fragmentsValides;
+            if (champ == 0) { fragments[index].Source = nullptr; fragments[index].Taille = 1; }
+            if (champ == 1) fragments[index].IndexFichier = 2;
+            if (champ == 2) fragments[index].Ligne = 0;
+            if (champ == 3) fragments[index].Colonne = 0;
+            if (champ == 4) fragments[index].EstInterface = 2;
+            if (champ == 5) fragments[index].Reserve = 1;
+            if (champ == 6) { fragments[index].Source = valide.data(); fragments[index].Taille = UINT64_MAX; }
+            auto requete = creer(); verifierRefus(requete, champ == 6 ? 6U : 2U);
+            Exiger(requete.Resultat.IndexJetonErreur == index, "mauvais index de fragment invalide");
+        }
+        struct Refus { std::string Source; std::uint32_t Erreur, Lexicale; };
+        const std::vector<Refus> refus{
+            {"", 4, 0}, {" nom", 4, 0}, {"nom ", 4, 0}, {"/* commentaire */", 4, 0}, {"nom// fin", 4, 0},
+            {"nom/* fin */", 4, 0}, {"nom autre", 4, 0}, {"nom autre fin", 4, 0}, {"\xEF\xBB\xBFnom", 4, 0},
+            {"#inclure", 5, 0}, {"#include", 5, 0}, {"# \tinclude", 5, 0}, {"#pragma", 5, 0},
+            {"\xC3", 3, 2}, {"/*", 3, 3}, {"\"x", 3, 4}, {"\"x\\", 3, 5}, {"\"\\q\"", 3, 6}, {"@", 3, 7},
+            {"nom\n@", 3, 7}, {"nom autre @", 3, 7}};
+        for (const auto& refusFragment : refus)
+        {
+            fragments = fragmentsValides;
+            fragments[0].Source = refusFragment.Source.data(); fragments[0].Taille = refusFragment.Source.size();
+            auto requete = creer(); verifierRefus(requete, refusFragment.Erreur);
+            Exiger(requete.Resultat.IndexJetonErreur == 0 && requete.Resultat.IndexFichierErreur == 1
+                && requete.Resultat.DetailLexical == refusFragment.Lexicale, "détail de refus de fragment incorrect");
+            if (refusFragment.Lexicale)
+            {
+                try { (void)GsPP::Lexeur(refusFragment.Source, "fragment").Analyser(); Exiger(false, "fragment refusé lexicalement seulement par Gs++"); }
+                catch (const GsPP::ErreurCompilation& erreur)
+                {
+                    Exiger(requete.Resultat.LigneErreur == 5 + erreur.Ligne() - 1
+                        && requete.Resultat.ColonneErreur == (erreur.Ligne() == 1 ? 9 + erreur.Colonne() - 1 : erreur.Colonne()),
+                        "coordonnées lexicales de préparation différentes du bootstrap");
+                }
+            }
+        }
+        fragments = fragmentsValides; fragments[1].Source = valide.data(); fragments[1].Taille = valide.size();
+        auto finInvalide = creer(); verifierRefus(finInvalide, 4);
+        Exiger(finInvalide.Resultat.IndexJetonErreur == 1, "fin non vide située au mauvais index");
+        const std::string plusieursJetons = "un deux";
+        std::array<FragmentJetonDeclarationsHote, 3> refusTardif{{fragmentsValides[0],
+            {plusieursJetons.data(), plusieursJetons.size(), 0, 15, 3, 0, 0}, fragmentsValides[1]}};
+        auto requeteTardive = creer(); requeteTardive.Fragments = refusTardif.data(); requeteTardive.NombreFragments = 3;
+        verifierRefus(requeteTardive, 4);
+        Exiger(requeteTardive.Resultat.IndexJetonErreur == 1 && requeteTardive.Resultat.IndexFichierErreur == 0
+            && requeteTardive.Resultat.LigneErreur == 15 && requeteTardive.Resultat.ColonneErreur == 3,
+            "refus tardif de fragment situé dans le mauvais fichier");
+        // La borne cumulée est contrôlée avant de lire le fragment excessif.
+        refusTardif[1].Source = valide.data(); refusTardif[1].Taille = 1'000'000'000;
+        verifierRefus(requeteTardive, 6);
+        Exiger(requeteTardive.Resultat.IndexJetonErreur == 1, "dépassement cumulé non situé");
+        fragments = fragmentsValides;
+        const std::string horsPlage = "nom\n@";
+        fragments[0].Source = horsPlage.data(); fragments[0].Taille = horsPlage.size(); fragments[0].Ligne = UINT32_MAX;
+        auto positionInvalide = creer(); verifierRefus(positionInvalide, 2);
+        fragments = fragmentsValides;
+        const std::string colonneHorsPlage = "\"\\q\"";
+        fragments[0].Source = colonneHorsPlage.data(); fragments[0].Taille = colonneHorsPlage.size(); fragments[0].Colonne = UINT32_MAX;
+        positionInvalide = creer(); verifierRefus(positionInvalide, 2);
+        FragmentJetonDeclarationsHote fin{nullptr, 0, 0, 7, 9, 0, 0};
+        for (bool bom : {false, true})
+        {
+            OrigineJetonDeclarationsHote origineVide = garde;
+            std::array<char, 4> vide; vide.fill('#');
+            RequetePreparationDeclarationsHote requete{&fin, 1, 1, bom ? vide.data() : nullptr, bom ? 3U : 0U,
+                &origineVide, 1, bom ? 1U : 0U, 0, {}};
+            Exiger(preparer(&requete) == 0 && requete.Resultat.NombreOctetsSource == (bom ? 3U : 0U)
+                && requete.Resultat.NombreOrigines == 1 && origineVide.DebutOctets == (bom ? 3U : 0U)
+                && origineVide.TailleOctets == 0 && origineVide.IndexFichier == 0 && origineVide.Ligne == 7
+                && origineVide.Colonne == 9 && vide.back() == '#', "unité vide préparée incorrecte");
+            if (bom) Exiger(std::string(vide.data(), 3) == "\xEF\xBB\xBF", "BOM de préparation incorrect");
+        }
+        Exiger(NombreAllocations == allocationsAvant && AllocationsActives.empty() && !LiberationInvalide,
+            "allocation ou fuite pendant préparation lexicale");
+        std::cout << "Préparation avec origines : 40 lexèmes, 4 modes BOM/LF/CRLF, 21 fragments refusés ; capacités, EOF, diagnostics et sorties transactionnelles vérifiés sans allocation.\n";
+    }
+
+    /** <résumé>Sélectionne les fragments originaux ; la construction du texte et des origines appartient à Gs++.</résumé> **/
+    std::pair<std::string, std::vector<OrigineJetonDeclarationsHote>> PreparerFragmentsInclusReference(
+        PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer, const std::vector<GsPP::Jeton>& originaux,
+        std::vector<std::string>& fichiers, bool bom, bool crlf)
+    {
+        std::map<std::string, std::pair<std::string, std::vector<JetonLexeHote>>> contenus;
+        std::vector<FragmentJetonDeclarationsHote> fragments;
+        for (const auto& jeton : originaux)
+        {
+            auto fichier = std::find(fichiers.begin(), fichiers.end(), jeton.Fichier);
+            if (fichier == fichiers.end()) { fichiers.push_back(jeton.Fichier); fichier = fichiers.end() - 1; }
+            auto [contenu, nouveau] = contenus.try_emplace(jeton.Fichier);
+            auto& [texte, jetons] = contenu->second;
+            if (nouveau)
+            {
+                const auto octets = LireFichier(jeton.Fichier);
+                texte.assign(octets.begin(), octets.end());
+                RequeteLexageHote lexage{texte.data(), texte.size(), nullptr, 0, {}};
+                Exiger(lexer(&lexage) == 1, "fichier original refusé par le lexeur Gs++");
+                jetons.resize(lexage.Resultat.NombreJetons); lexage.Jetons = jetons.data(); lexage.Capacite = jetons.size();
+                Exiger(lexer(&lexage) == 0, "fragments originaux introuvables");
+            }
+            const auto original = std::find_if(jetons.begin(), jetons.end(), [&](const auto& token)
+            { return token.Ligne == jeton.Ligne && token.Colonne == jeton.Colonne; });
+            Exiger(original != jetons.end() && original->Genre == static_cast<std::uint32_t>(jeton.Genre)
+                && original->HachageTexte == HacherTexte(jeton.Texte), "sélection de fragment différente du bootstrap");
+            fragments.push_back({original->TailleSource ? texte.data() + original->Debut : nullptr, original->TailleSource,
+                static_cast<std::uint64_t>(fichier - fichiers.begin()), static_cast<std::uint32_t>(jeton.Ligne),
+                static_cast<std::uint32_t>(jeton.Colonne), jeton.EstInterface ? 1U : 0U, 0});
+        }
+        const auto allocationsAvant = NombreAllocations;
+        RequetePreparationDeclarationsHote requete{fragments.data(), fragments.size(), fichiers.size(), nullptr, 0,
+            nullptr, 0, bom ? 1U : 0U, crlf ? 1U : 0U, {}};
+        Exiger(preparer(&requete) == 1 && requete.Resultat.NombreOrigines == originaux.size(), "mesure des fragments inclus échouée");
+        std::string texte(requete.Resultat.NombreOctetsSource, '\0');
+        std::vector<OrigineJetonDeclarationsHote> origines(originaux.size());
+        requete.SourcePreparee = texte.data(); requete.CapaciteSource = texte.size();
+        requete.Origines = origines.data(); requete.CapaciteOrigines = origines.size();
+        Exiger(preparer(&requete) == 0 && NombreAllocations == allocationsAvant, "préparation des fragments inclus échouée ou allouante");
+        return {std::move(texte), std::move(origines)};
+    }
+
+    /** <résumé>Conserve les indices de l'oracle, mais emploie le catalogue propriétaire du produit.</résumé> **/
+    GsPP::CatalogueInclusions CreerCatalogueExpansion(const std::filesystem::path& racine, std::vector<std::string>& noms)
+    {
+        std::vector<GsPP::UniteSource> connus;
+        for (const auto& nom : noms) connus.push_back({std::filesystem::path(nom), false, nom});
+        auto catalogue = GsPP::CreerCatalogueInclusions({racine, false, {}}, connus);
+        noms = catalogue.NomsFichiers();
+        return catalogue;
+    }
+
+    std::uint32_t ScenarioContratExpansionProduit = 0;
+    std::uint32_t AppelsContratExpansionProduit = 0;
+
+    std::uint32_t GS_ABI_HOTE SimulerContratExpansionProduit(RequeteExpansionDeclarationsHote* requete)
+    {
+        const bool publication = AppelsContratExpansionProduit++ != 0;
+        requete->Resultat = {1, 0, requete->NombreFichiers, 0, 0, 1, 1, 0};
+        if (ScenarioContratExpansionProduit == 0) { requete->Resultat.Erreur = 0; return 0; }
+        if (ScenarioContratExpansionProduit == 1) return 4; // code et résultat divergents.
+        if (ScenarioContratExpansionProduit == 2) requete->Resultat.NombreOctetsSource = 1'000'000'001;
+        if (ScenarioContratExpansionProduit == 3) { requete->Resultat.Erreur = 15; return 15; }
+        if (ScenarioContratExpansionProduit == 4) requete->Resultat.LigneErreur = 1;
+        if (publication)
+        {
+            if (ScenarioContratExpansionProduit == 5) return 1; // capacité suffisante ignorée.
+            if (ScenarioContratExpansionProduit == 6)
+            {
+                requete->Resultat.Erreur = 0; requete->Resultat.NombreOrigines = 0; return 0;
+            }
+            if (ScenarioContratExpansionProduit == 7)
+            {
+                requete->SourcePreparee[0] = '#';
+                requete->Resultat = {3, 0, requete->NombreFichiers, 0, 0, 0, 0, 0}; return 3;
+            }
+        }
+        return 1;
+    }
+
+    void TesterCatalogueInclusionsProduit(ExpanseurDeclarationsAutoHeberge developper, const std::filesystem::path& repertoire)
+    {
+        static_assert(!std::is_copy_constructible_v<GsPP::CatalogueInclusions>);
+        static_assert(!std::is_copy_assignable_v<GsPP::CatalogueInclusions>);
+        static_assert(std::is_nothrow_move_constructible_v<GsPP::CatalogueInclusions>);
+        static_assert(std::is_nothrow_move_assignable_v<GsPP::CatalogueInclusions>);
+        std::filesystem::create_directories(repertoire);
+        const auto ecrire = [&](const std::string& nom, const std::string& texte)
+        {
+            std::ofstream flux(repertoire / nom, std::ios::binary);
+            flux.write(texte.data(), static_cast<std::streamsize>(texte.size()));
+            Exiger(static_cast<bool>(flux), "fixture du catalogue produit non écrite");
+        };
+        auto refuser = [&](const auto& action, const std::string& cas)
+        {
+            bool refuse = false;
+            try { action(); }
+            catch (const std::invalid_argument&) { refuse = true; }
+            catch (const std::length_error&) { refuse = true; }
+            Exiger(refuse, "argument/limite accepté par le catalogue : " + cas);
+        };
+        for (bool anglais : {false, true})
+        {
+            const auto type = anglais ? "int32" : "entier32";
+            const std::string nomRoot = anglais ? "virtuel/Root-en.GsPP" : "virtuel/Root-fr.GsPP";
+            const auto root = repertoire / "Root.GsPP";
+            const auto interface = repertoire / "A.HGsPP";
+            const auto connu = repertoire / "Connu.HGsPP";
+            const std::string inclusion = anglais ? "#include" : "#inclure";
+            ecrire("Root.GsPP", "\xEF\xBB\xBF/** éà UTF-8 **/\r\n" + inclusion + " \"A.HGsPP\"\r\n"
+                + inclusion + " \"./A.HGsPP\"\r\n" + type + " F() { " + (anglais ? "return" : "retourner") + " 0; }");
+            ecrire("A.HGsPP", "#pragma once\n" + std::string(type) + " F();");
+            ecrire("Connu.HGsPP", ""); // chaîne courte : sa vue doit aussi survivre aux déplacements.
+            const GsPP::UniteSource racine{root, false, nomRoot};
+            const std::vector<GsPP::UniteSource> connus{{connu, false, "virtuel/Connu.HGsPP"}};
+            auto catalogue = GsPP::CreerCatalogueInclusions(racine, connus);
+            Exiger(catalogue.IndexRacine() == 1 && catalogue.NomsFichiers().front() == connus.front().NomDiagnostic
+                && catalogue.NomsFichiers()[1] == nomRoot && catalogue.Fichiers().size() == 4 && catalogue.Liens().size() == 2,
+                "préfixe connu, nom virtuel ou alias du catalogue perdu");
+            Exiger(catalogue.Fichiers()[2].Identite == catalogue.Fichiers()[3].Identite
+                && catalogue.Fichiers()[2].Source == catalogue.Fichiers()[3].Source
+                && catalogue.Fichiers()[2].EstInterface == 1, "alias non rattaché au même instantané physique");
+            const auto vues = catalogue.Fichiers();
+            auto deplace = std::move(catalogue);
+            Exiger(catalogue.Fichiers().empty() && catalogue.NomsFichiers().empty() && catalogue.IndexRacine() == UINT64_MAX,
+                "catalogue déplacé encore utilisable");
+            refuser([&]() { (void)GsPP::PreparerSourceAvecOrigines(catalogue, developper); }, "catalogue déplacé");
+            catalogue = GsPP::CreerCatalogueInclusions(racine);
+            catalogue = std::move(deplace); // libère les anciens textes de la destination, conserve les nouvelles vues.
+            catalogue = std::move(catalogue);
+            Exiger(deplace.Fichiers().empty() && std::memcmp(vues.data(), catalogue.Fichiers().data(), vues.size() * sizeof(vues.front())) == 0,
+                "déplacement/auto-déplacement du catalogue a invalidé les vues");
+            auto oracle = GsPP::PreparerJetonsSource(root, nomRoot);
+            const auto verifier = [&](const GsPP::SourcePrepareeAvecOrigines& preparee)
+            {
+                const auto jetons = GsPP::Lexeur(preparee.Source).Analyser();
+                Exiger(preparee.Resultat.Erreur == 0 && preparee.Origines.size() == oracle.size() && jetons.size() == oracle.size(),
+                    "préparation du produit différente du bootstrap");
+                for (std::size_t i = 0; i < oracle.size(); ++i)
+                {
+                    const auto& origine = preparee.Origines[i];
+                    Exiger(jetons[i].Genre == oracle[i].Genre && jetons[i].Texte == oracle[i].Texte
+                        && catalogue.NomsFichiers().at(origine.IndexFichier) == oracle[i].Fichier
+                        && origine.Ligne == oracle[i].Ligne && origine.Colonne == oracle[i].Colonne
+                        && origine.EstInterface == (oracle[i].EstInterface ? 1U : 0U),
+                        "nom virtuel, provenance d'alias ou jeton perdu dans le raccordement produit");
+                }
+            };
+            for (bool bom : {false, true}) for (bool crlf : {false, true})
+                verifier(GsPP::PreparerSourceAvecOrigines(catalogue, developper, bom, crlf));
+            ecrire("A.HGsPP", "#pragma once\n" + std::string(type) + " Modification();");
+            verifier(GsPP::PreparerSourceAvecOrigines(catalogue, developper));
+            const auto nouveau = GsPP::CreerCatalogueInclusions(racine, connus);
+            Exiger(GsPP::PreparerSourceAvecOrigines(nouveau, developper).Source.find("Modification") != std::string::npos,
+                "nouveau catalogue ne reflétant pas le disque");
+            refuser([&]() { (void)GsPP::PreparerSourceAvecOrigines(catalogue, nullptr); }, "export nul");
+            const auto preparee = GsPP::PreparerSourceAvecOrigines(catalogue, developper);
+            refuser([&]() { (void)GsPP::PreparerSourceAvecOrigines(catalogue, developper, false, false, preparee.Source.size() - 1); }, "sortie texte");
+            refuser([&]() { (void)GsPP::PreparerSourceAvecOrigines(catalogue, developper, false, false, preparee.Source.size(), preparee.Origines.size() - 1); }, "sortie origines");
+            auto verifierLimite = [&](GsPP::LimitesCatalogueInclusions limites, const std::string& cas)
+            { refuser([&]() { (void)GsPP::CreerCatalogueInclusions(racine, connus, limites); }, cas); };
+            verifierLimite({3, 100, 4096, 4096}, "nombre de fichiers");
+            verifierLimite({4, 1, 4096, 4096}, "nombre de liens");
+            verifierLimite({4, 2, 1, 4096}, "taille individuelle");
+            verifierLimite({4, 2, 4096, 1}, "taille cumulée");
+            verifierLimite({0, 2, 4096, 4096}, "borne nulle de fichiers");
+            verifierLimite({1'000'001, 2, 4096, 4096}, "borne ABI de fichiers");
+            verifierLimite({4, 100'000'001, 4096, 4096}, "borne ABI de liens");
+            verifierLimite({4, 2, 1'000'000'001, 4096}, "borne ABI de taille");
+            refuser([&]() { (void)GsPP::CreerCatalogueInclusions({{}, false, {}}); }, "chemin vide");
+            refuser([&]() { (void)GsPP::CreerCatalogueInclusions(racine, {connus[0], connus[0]}); }, "préfixe dupliqué");
+            refuser([&]() { (void)GsPP::CreerCatalogueInclusions(racine, {{interface, false, nomRoot}}); }, "nom partagé entre deux chemins");
+            // Les bornes de taille comptent une identité une fois, pas chaque alias ou chaque inclusion.
+            std::uint64_t octets = 0;
+            std::set<std::uint64_t> identites;
+            for (const auto& fichier : nouveau.Fichiers())
+                if (identites.insert(fichier.Identite).second) octets += fichier.Taille;
+            Exiger(GsPP::CreerCatalogueInclusions(racine, connus, {4, 2, octets, octets}).Fichiers().size() == 4,
+                "borne exacte d'instantané refusée ou alias compté deux fois");
+            ecrire("Root.GsPP", inclusion + " \"Manquant.HGsPP\"");
+            const auto manquant = GsPP::CreerCatalogueInclusions(racine);
+            const auto refus = GsPP::PreparerSourceAvecOrigines(manquant, developper);
+            Exiger(refus.Resultat.Erreur == 10 && refus.Source.empty() && refus.Origines.empty()
+                && refus.Resultat.IndexFichierErreur == manquant.IndexRacine() && refus.Resultat.LigneErreur == 1,
+                "diagnostic du frontend publié comme préparation réussie");
+            ecrire("Invalide.HGsPP", "\xC3");
+            ecrire("Root.GsPP", inclusion + " \"Invalide.HGsPP\"");
+            const auto lexical = GsPP::CreerCatalogueInclusions(racine);
+            const auto erreurLexicale = GsPP::PreparerSourceAvecOrigines(lexical, developper);
+            Exiger(erreurLexicale.Resultat.Erreur == 4 && erreurLexicale.Resultat.IndexFichierErreur == 1,
+                "découverte des chemins C++ a intercepté le diagnostic lexical Gs++");
+            ecrire("Root.GsPP", inclusion + " \"Absent.Gs#\"");
+            auto absent = GsPP::CreerCatalogueInclusions(racine);
+            Exiger(absent.Liens()[0].Etat == 1 && absent.Liens()[0].IndexCible == absent.Fichiers().size(), "absence/extension dans le mauvais ordre");
+            ecrire("Present.Gs#", "\xC3");
+            ecrire("Root.GsPP", inclusion + " \"Present.Gs#\"");
+            auto incompatible = GsPP::CreerCatalogueInclusions(racine);
+            Exiger(incompatible.Fichiers().size() == 1 && incompatible.Liens()[0].Etat == 2
+                && GsPP::PreparerSourceAvecOrigines(incompatible, developper).Resultat.Erreur == 11, "extension incompatible lue/analysée");
+        }
+        // Le catalogue peut décrire plus de 128 niveaux : le frontend reste seul responsable du refus de profondeur.
+        for (std::size_t i = 0; i < 512; ++i)
+            ecrire("Profond" + std::to_string(i) + ".HGsPP", i + 1 < 512
+                ? "#include \"Profond" + std::to_string(i + 1) + ".HGsPP\"" : "int32 F();");
+        const GsPP::UniteSource profond{repertoire / "Profond0.HGsPP", false, "virtuel/profond"};
+        const auto graphe = GsPP::CreerCatalogueInclusions(profond);
+        Exiger(graphe.Fichiers().size() == 512 && graphe.Liens().size() == 511, "parcours du catalogue récursif ou profondeur sémantique appliquée par l'hôte");
+        const auto profondeur = GsPP::PreparerSourceAvecOrigines(graphe, developper);
+        Exiger(profondeur.Resultat.Erreur == 13 && profondeur.Resultat.IndexFichierErreur == 128
+            && profondeur.Resultat.LigneErreur == 1 && profondeur.Source.empty(), "diagnostic de profondeur du frontend perdu");
+        refuser([&]() { (void)GsPP::CreerCatalogueInclusions(profond, {}, {511, 511, 4096, 1024 * 1024}); }, "graphe profond borné");
+        for (ScenarioContratExpansionProduit = 0; ScenarioContratExpansionProduit < 7; ++ScenarioContratExpansionProduit)
+        {
+            AppelsContratExpansionProduit = 0;
+            bool refuse = false;
+            try { (void)GsPP::PreparerSourceAvecOrigines(graphe, SimulerContratExpansionProduit); }
+            catch (const std::runtime_error&) { refuse = true; }
+            catch (const std::length_error&) { refuse = true; }
+            Exiger(refuse, "contrat ABI incohérent publié par le raccordement produit : " + std::to_string(ScenarioContratExpansionProduit));
+        }
+        AppelsContratExpansionProduit = 0;
+        const auto allocation = GsPP::PreparerSourceAvecOrigines(graphe, SimulerContratExpansionProduit);
+        Exiger(allocation.Resultat.Erreur == 3 && allocation.Source.empty() && allocation.Origines.empty(),
+            "sortie partielle conservée sur échec de publication du frontend");
+        Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+            "fuite d'arène dans le raccordement produit");
+        std::cout << "Catalogue produit : propriété/déplacements, instantané/alias, diagnostics FR/EN, bornes et graphe itératif 512 niveaux validés.\n";
+    }
+
+    /** <résumé>Raccorde l'expansion Gs++ aux matrices existantes et garde la sélection C++ comme oracle indépendant.</résumé> **/
+    std::pair<std::string, std::vector<OrigineJetonDeclarationsHote>> PreparerFragmentsInclus(
+        PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer, const std::vector<GsPP::Jeton>& originaux,
+        std::vector<std::string>& fichiers, bool bom, bool crlf, ExpanseurDeclarationsAutoHeberge developper)
+    {
+        auto reference = PreparerFragmentsInclusReference(preparer, lexer, originaux, fichiers, bom, crlf);
+        auto catalogue = CreerCatalogueExpansion(std::filesystem::path(originaux.back().Fichier), fichiers);
+        auto preparee = GsPP::PreparerSourceAvecOrigines(catalogue, developper, bom, crlf);
+        Exiger(preparee.Resultat.Erreur == 0 && preparee.Source == reference.first && preparee.Origines.size() == reference.second.size()
+            && std::memcmp(preparee.Origines.data(), reference.second.data(), preparee.Origines.size() * sizeof(preparee.Origines.front())) == 0,
+            "texte ou origines développés différents de la sélection du bootstrap");
+        Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite de l'expansion raccordée");
+        return {std::move(preparee.Source), std::move(preparee.Origines)};
+    }
+
+    /** <résumé>Compare l'expansion en mémoire aux inclusions réelles du bootstrap, diagnostics et garanties mémoire compris.</résumé> **/
+    void TesterExpansionDeclarations(ExpanseurDeclarationsAutoHeberge developper,
+        PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer, const std::filesystem::path& repertoire)
+    {
+        struct Corpus { std::map<std::string, std::string> Fichiers; std::uint32_t Erreur = 0, Lexicale = 0; bool VerifierCasse = false; };
+        std::vector<Corpus> corpus{
+            {{{"Root.GsPP", "publique entier32 F() { retourner 42; }"}}},
+            {{{"Root.GsPP", "#inclure \"A.HGsPP\"\n#include \"A.HGsPP\"\npublique vide F() {}"}, {"A.HGsPP", "#pragma once\nstructure P {};"}}},
+            {{{"Root.GsPP", "#include \"é/A.HGsPP\""}, {"é/A.HGsPP", "\xEF\xBB\xBF#pragma once\r\n#inclure \"../B.HGsPP\""}, {"B.HGsPP", "énumération E { X = 42 };"}}},
+            {{{"Root.GsPP", "espace N {\n#inclure \"A.HGsPP\"\n}"}, {"A.HGsPP", "structure P {};"}}},
+            {{{"Root.GsPP", "#include \"A.HGsPP\"\n#include \"A.HGsPP\""}, {"A.HGsPP", "structure P {};\n#pragma once"}}},
+            {{{"Root.GsPP", "#pragma once\n#include \"Root.GsPP\"\npublique vide F() {}"}}},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "#pragma once\n#include \"B.HGsPP\"\nstructure P {};"}, {"B.HGsPP", "#pragma once\n#include \"A.HGsPP\"\nénumération E { X = 42 };"}}},
+            {{{"Root.GsPP", "\xEF\xBB\xBF\r\n/** vide **/"}}},
+            {{{"Root.GsPP", "#include \"Types.txt\""}, {"Types.txt", "structure P {};"}}},
+            {{{"Root.GsPP", "#include \"A.HGsPP\"\n#include \"inc/../A.HGsPP\""}, {"A.HGsPP", "entier32 F();"}, {"inc/Vide.HGsPP", ""}}},
+            {{{"Root.GsPP", "#include \"Chaine.GsPP\""}, {"Chaine.GsPP", "publique constante caractère* Texte = \"é\\n\\t\\0\\\"\\\\\";"}}},
+            {{{"Root.GsPP", "#pragma once\n#inclure \"Root.GsPP\"\n#inclure \"Vide.HGsPP\""}, {"Vide.HGsPP", "\xEF\xBB\xBF#pragma once"}}},
+            {{{"Root.GsPP", "vide F(); #include \"A.HGsPP\""}, {"A.HGsPP", ""}}, 5},
+            {{{"Root.GsPP", "#include"}}, 6},
+            {{{"Root.GsPP", "#inclure\n\"A.HGsPP\""}, {"A.HGsPP", ""}}, 6},
+            {{{"Root.GsPP", "#include \"A.HGsPP\" autre"}, {"A.HGsPP", ""}}, 7},
+            {{{"Root.GsPP", "#pragma inconnu"}}, 8},
+            {{{"Root.GsPP", "#pragma"}}, 6},
+            {{{"Root.GsPP", "#pragma once autre"}}, 7},
+            {{{"Root.GsPP", "#pragma \"once\""}}, 8},
+            {{{"Root.GsPP", "#include Nom"}}, 9},
+            {{{"Root.GsPP", "#include <Nom>"}}, 7},
+            {{{"Root.GsPP", "#include \"\""}}, 9},
+            {{{"Root.GsPP", "#include \"Nom\\n\""}}, 9},
+            {{{"Root.GsPP", "#include \"Nom\\r\""}}, 9},
+            {{{"Root.GsPP", "#include \"Nom\\0\""}}, 9},
+            {{{"Root.GsPP", "#include \"Absent.HGsPP\""}}, 10},
+            {{{"Root.GsPP", "#include \"A.GsO\""}, {"A.GsO", ""}}, 11},
+            {{{"Root.GsPP", "#include \"A.GsS\""}, {"A.GsS", ""}}, 11},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "#include \"Root.GsPP\""}}, 12},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "#include \"A.HGsPP\"\n#pragma once"}}, 12},
+            {{{"Root.GsPP", "#include \"Absent.HGsPP\"\n@"}}, 4, 7},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "@"}}, 4, 7},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "/*"}}, 4, 3},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "\xC3"}}, 4, 2},
+            {{{"Root.GsPP", "#include \"A.HGsPP\""}, {"A.HGsPP", "#pragma once\n@"}}, 4, 7},
+            {{{"Root.GsPP", "#utilisant N;"}}, 4, 7},
+        };
+        const auto debutCorpusProfondeur = corpus.size();
+        for (std::size_t profondeur : {128U, 129U})
+        {
+            Corpus profond;
+            for (std::size_t i = 0; i < profondeur; ++i)
+            {
+                const auto nom = i == 0 ? "Root.GsPP" : "D" + std::to_string(i) + ".HGsPP";
+                profond.Fichiers[nom] = i + 1 < profondeur ? "#include \"D" + std::to_string(i + 1) + ".HGsPP\"" : "entier32 Fin();";
+            }
+            profond.Erreur = profondeur == 129 ? 13U : 0U; corpus.push_back(std::move(profond));
+        }
+        Corpus onceProfond = corpus[debutCorpusProfondeur];
+        onceProfond.Fichiers["Root.GsPP"] = "#pragma once\n" + onceProfond.Fichiers["Root.GsPP"];
+        onceProfond.Fichiers["D127.HGsPP"] = "#include \"Root.GsPP\"\nentier32 Fin();";
+        corpus.push_back(std::move(onceProfond));
+        Corpus casse{{{"Root.GsPP", "#include \"A.HGsPP\"\n#include \"a.hgspp\""}, {"A.HGsPP", "#pragma once\nentier32 F();"}}, 0, 0, true};
+        corpus.push_back(std::move(casse));
+        OrigineJetonDeclarationsHote garde; std::memset(&garde, 0xA5, sizeof(garde));
+        std::size_t nombreValides = 0, nombreRefus = 0;
+        for (std::size_t numero = 0; numero < corpus.size(); ++numero) for (bool anglais : {false, true})
+        {
+            const auto& cas = corpus[numero];
+            const auto dossier = std::filesystem::absolute(repertoire / (std::to_string(numero) + (anglais ? "-en" : "-fr")));
+            for (const auto& [nom, contenu] : cas.Fichiers)
+            {
+                const auto chemin = dossier / std::filesystem::path(std::u8string(nom.begin(), nom.end()));
+                std::filesystem::create_directories(chemin.parent_path());
+                std::ofstream sortie(chemin, std::ios::binary);
+                auto source = anglais ? TraduireCorpusConversions(contenu) : contenu;
+                if (anglais) for (std::size_t p = 0; (p = source.find("#inclure", p)) != std::string::npos; p += 8) source.replace(p, 8, "#include");
+                sortie.write(source.data(), static_cast<std::streamsize>(source.size())); Exiger(static_cast<bool>(sortie), "fixture d'expansion non écrite");
+            }
+            const auto root = dossier / "Root.GsPP";
+            // WSL peut utiliser un répertoire NTFS insensible à la casse : tester le système de fichiers, pas seulement l'OS.
+            const auto erreurAttendue = cas.VerifierCasse && !std::filesystem::is_regular_file(dossier / "a.hgspp") ? 10U : cas.Erreur;
+            std::vector<GsPP::Jeton> oracle;
+            std::optional<std::tuple<std::string, std::uint32_t, std::uint32_t>> diagnostic;
+            try { oracle = GsPP::PreparerJetonsSource(root); }
+            catch (const GsPP::ErreurCompilation& erreur) { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; }
+            Exiger(diagnostic.has_value() == (erreurAttendue != 0), "classement bootstrap incorrect dans la matrice d'expansion : " + std::to_string(numero));
+            std::vector<std::string> noms;
+            auto catalogue = CreerCatalogueExpansion(root, noms);
+            const auto fichiersAvant = catalogue.Fichiers(); const auto liensAvant = catalogue.Liens();
+            std::vector<std::string> contenusAvant;
+            for (const auto& f : catalogue.Fichiers()) contenusAvant.emplace_back(f.Source, f.Taille);
+            const bool bom = numero % 2 == 0, crlf = numero % 3 == 0;
+            RequeteExpansionDeclarationsHote requete{catalogue.Fichiers().data(), catalogue.Fichiers().size(), catalogue.Liens().data(), catalogue.Liens().size(),
+                catalogue.IndexRacine(), nullptr, 0, nullptr, 0, bom ? 1U : 0U, crlf ? 1U : 0U, {}};
+            std::vector<char> texte(16, '#'); std::vector<OrigineJetonDeclarationsHote> origines(4, garde);
+            requete.SourcePreparee = texte.data(); requete.Origines = origines.data();
+            auto verifierGardes = [&]()
+            {
+                Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; })
+                    && std::all_of(origines.begin(), origines.end(), [&](const auto& origine) { return std::memcmp(&origine, &garde, sizeof(garde)) == 0; }),
+                    "expansion partiellement publiée sur refus/mesure");
+                Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite pendant expansion");
+            };
+            const auto mesure = developper(&requete);
+            Exiger(mesure == (erreurAttendue ? erreurAttendue : 1U), "code d'expansion incorrect : corpus=" + std::to_string(numero) + ", code=" + std::to_string(mesure));
+            verifierGardes();
+            if (diagnostic)
+            {
+                Exiger(requete.Resultat.IndexFichierErreur < noms.size() && noms[requete.Resultat.IndexFichierErreur] == std::get<0>(*diagnostic)
+                    && requete.Resultat.LigneErreur == std::get<1>(*diagnostic) && requete.Resultat.ColonneErreur == std::get<2>(*diagnostic)
+                    && requete.Resultat.DetailLexical == cas.Lexicale && requete.Resultat.NombreOctetsSource == 0 && requete.Resultat.NombreOrigines == 0,
+                    "diagnostic original d'expansion différent du bootstrap : " + std::to_string(numero));
+                texte.assign(4096, '#'); origines.assign(4096, garde);
+                requete.SourcePreparee = texte.data(); requete.CapaciteSource = texte.size();
+                requete.Origines = origines.data(); requete.CapaciteOrigines = origines.size();
+                Exiger(developper(&requete) == erreurAttendue, "refus d'expansion perdu avec tampons suffisants"); verifierGardes();
+                if (!anglais) ++nombreRefus;
+            }
+            else
+            {
+                auto reference = PreparerFragmentsInclusReference(preparer, lexer, oracle, noms, bom, crlf);
+                Exiger(requete.Resultat.NombreOctetsSource == reference.first.size() && requete.Resultat.NombreOrigines == reference.second.size()
+                    && requete.Resultat.IndexFichierErreur == noms.size() && requete.Resultat.LigneErreur == 0 && requete.Resultat.ColonneErreur == 0,
+                    "capacités exactes d'expansion incorrectes");
+                texte.assign(reference.first.size() + 1, '#'); origines.assign(reference.second.size() + 1, garde);
+                requete.SourcePreparee = texte.data(); requete.CapaciteSource = reference.first.size();
+                requete.Origines = origines.data(); requete.CapaciteOrigines = reference.second.size() - 1;
+                Exiger(developper(&requete) == 1, "origines partielles d'expansion acceptées"); verifierGardes();
+                ++requete.CapaciteOrigines;
+                if (requete.CapaciteSource)
+                { --requete.CapaciteSource; Exiger(developper(&requete) == 1, "texte partiel d'expansion accepté"); verifierGardes(); ++requete.CapaciteSource; }
+                bool succes = false;
+                for (std::uint64_t budget = 0; budget < 256; ++budget)
+                {
+                    texte.assign(texte.size(), '#'); origines.assign(origines.size(), garde);
+                    LimiteAllocationsAssemblage = NombreAllocations + budget;
+                    const auto code = developper(&requete); LimiteAllocationsAssemblage.reset();
+                    if (code == 0) { succes = true; break; }
+                    Exiger(code == 3 && requete.Resultat.NombreOctetsSource == 0 && requete.Resultat.NombreOrigines == 0
+                        && requete.Resultat.IndexFichierErreur == noms.size() && requete.Resultat.LigneErreur == 0,
+                        "échec d'allocation d'expansion mal propagé"); verifierGardes();
+                }
+                Exiger(succes && std::string(texte.data(), reference.first.size()) == reference.first && texte.back() == '#'
+                    && std::memcmp(origines.data(), reference.second.data(), reference.second.size() * sizeof(garde)) == 0
+                    && std::memcmp(&origines.back(), &garde, sizeof(garde)) == 0, "publication d'expansion différente du bootstrap");
+                Exiger(developper(&requete) == 0, "état once/cycle persistant entre deux appels");
+                if (!anglais) ++nombreValides;
+            }
+            for (std::size_t i = 0; i < contenusAvant.size(); ++i)
+                Exiger(std::string(catalogue.Fichiers()[i].Source, catalogue.Fichiers()[i].Taille) == contenusAvant[i], "texte du catalogue modifié");
+            Exiger(std::memcmp(catalogue.Fichiers().data(), fichiersAvant.data(), fichiersAvant.size() * sizeof(fichiersAvant.front())) == 0
+                && (liensAvant.empty() || std::memcmp(catalogue.Liens().data(), liensAvant.data(), liensAvant.size() * sizeof(liensAvant.front())) == 0),
+                "catalogue ou liens d'expansion modifiés");
+        }
+        Exiger(developper(nullptr) == 2, "requête d'expansion nulle acceptée");
+        const std::string source = "#include \"A.HGsPP\"";
+        const std::string enfant = "entier32 F();";
+        const std::string nonVisite = "\xC3";
+        std::array<FichierInclusionDeclarationsHote, 3> fichiers{{{source.data(), source.size(), 0, 0, 0},
+            {enfant.data(), enfant.size(), 1, 1, 0}, {nonVisite.data(), nonVisite.size(), 2, 0, 0}}};
+        std::array<LienInclusionDeclarationsHote, 2> liens{{{0, 0, 1, 0, 0}, {0, 1, 1, 0, 0}}};
+        std::array<char, 128> texte; texte.fill('#'); std::array<OrigineJetonDeclarationsHote, 32> origines; origines.fill(garde);
+        auto creer = [&]() { return RequeteExpansionDeclarationsHote{fichiers.data(), fichiers.size(), liens.data(), 1, 0,
+            texte.data(), texte.size(), origines.data(), origines.size(), 0, 0, {}}; };
+        auto original = creer(); Exiger(developper(&original) == 0, "fichier non visité analysé lexicalement");
+        texte.fill('#'); origines.fill(garde);
+        auto verifierArgument = [&](auto& requete)
+        {
+            Exiger(developper(&requete) == 2 && requete.Resultat.Erreur == 2 && requete.Resultat.NombreOctetsSource == 0 && requete.Resultat.NombreOrigines == 0
+                && requete.Resultat.IndexFichierErreur == requete.NombreFichiers && requete.Resultat.LigneErreur == 0, "argument d'expansion invalide accepté ou situé");
+            Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; }) && std::all_of(origines.begin(), origines.end(),
+                [&](const auto& o) { return std::memcmp(&o, &garde, sizeof(garde)) == 0; }) && AllocationsActives.empty(), "sortie/arène publiée sur argument d'expansion invalide");
+        };
+        for (int champ = 0; champ < 10; ++champ)
+        {
+            auto requete = creer();
+            if (champ == 0) requete.Fichiers = nullptr;
+            if (champ == 1) requete.NombreFichiers = 0;
+            if (champ == 2) requete.NombreFichiers = 1'000'001;
+            if (champ == 3) requete.IndexRacine = 3;
+            if (champ == 4) requete.Liens = nullptr;
+            if (champ == 5) requete.NombreLiens = 100'000'001;
+            if (champ == 6) requete.SourcePreparee = nullptr;
+            if (champ == 7) requete.Origines = nullptr;
+            if (champ == 8) requete.MarqueUtf8 = 2;
+            if (champ == 9) requete.FinLigneCrlf = 2;
+            verifierArgument(requete);
+        }
+        const auto fichiersValides = fichiers; const auto liensValides = liens;
+        for (int champ = 0; champ < 5; ++champ)
+        {
+            fichiers = fichiersValides;
+            if (champ == 0) fichiers[0].Source = nullptr;
+            if (champ == 1) fichiers[0].Taille = UINT64_MAX;
+            if (champ == 2) fichiers[0].Identite = 3;
+            if (champ == 3) fichiers[0].EstInterface = 2;
+            if (champ == 4) fichiers[0].Reserve = 1;
+            auto requete = creer(); verifierArgument(requete);
+        }
+        fichiers = fichiersValides;
+        for (int champ = 0; champ < 9; ++champ)
+        {
+            liens = liensValides; auto requete = creer();
+            if (champ == 0) liens[0].IndexFichier = 3;
+            if (champ == 1) liens[0].DebutDirective = source.size();
+            if (champ == 2) liens[0].IndexCible = 3;
+            if (champ == 3) liens[0].Etat = 3;
+            if (champ == 4) liens[0].Reserve = 1;
+            if (champ == 5) { liens[0].Etat = 1; liens[0].IndexCible = 0; }
+            if (champ == 6) { requete.NombreLiens = 2; liens[1] = liens[0]; }
+            if (champ == 7) { requete.NombreLiens = 2; std::swap(liens[0], liens[1]); }
+            if (champ == 8) requete.NombreLiens = 0;
+            verifierArgument(requete);
+        }
+        fichiers = fichiersValides; liens = liensValides;
+        // Identités communes : la cible alias ne doit pas être relue après once, même si son catalogue lexical serait invalide.
+        const std::string gardeOnce = "#pragma once\n#include \"A.HGsPP\"";
+        fichiers[0] = {gardeOnce.data(), gardeOnce.size(), 0, 0, 0}; fichiers[1].Identite = 0;
+        fichiers[1].Source = nonVisite.data(); fichiers[1].Taille = nonVisite.size(); liens[0].DebutDirective = gardeOnce.find("#include");
+        auto once = creer(); Exiger(developper(&once) == 0 && once.Resultat.NombreOrigines == 1, "once appliqué après le lexage d'un alias protégé");
+        fichiers[0] = {source.data(), source.size(), 0, 0, 0}; liens[0].DebutDirective = 0;
+        texte.fill('#'); origines.fill(garde); auto cycle = creer();
+        Exiger(developper(&cycle) == 12 && cycle.Resultat.IndexFichierErreur == 0 && cycle.Resultat.LigneErreur == 1,
+            "identité commune ignorée pour un cycle avant lexage cible");
+        Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite finale d'expansion");
+        std::cout << "Expansion avec origines : " << nombreValides << " corpus bilingues valides et " << nombreRefus
+                  << " refus bilingues ; once/alias, cycles, profondeur, diagnostics, capacités et allocations vérifiés.\n";
+    }
+
+    /** <résumé>Relie les inclusions réelles du bootstrap à l'analyseur Gs++ via une table par jeton.</résumé> **/
+    void TesterDeclarationsAvecOrigines(
+        AnalyseurDeclarationsOriginesAutoHeberge analyser, LocaliseurDeclarationsAutoHeberge localiser,
+        AnalyseurDeclarationsAutoHeberge historique, AnalyseurSemantiqueAutoHeberge semantique,
+        const std::filesystem::path& repertoire, PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer,
+        ExpanseurDeclarationsAutoHeberge developper)
+    {
+        struct Corpus
+        {
+            std::map<std::string, std::string> Fichiers;
+            std::uint32_t ErreurSyntaxique = 0;
+            std::optional<std::uint32_t> ErreurSemantique{};
+            bool InterfaceGlobale = false;
+        };
+        const std::vector<Corpus> corpus{
+            {{{"Principal.GsPP", "#inclure \"Types.HGsPP\"\npublique entier32 Principal() { P p = {42}; retourner p.X; }"}, {"Types.HGsPP", "#pragma once\nstructure P { entier32 X; };"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Types.HGsPP\"\n#include \"Types.HGsPP\"\npublique entier32 Principal() { retourner 42; }"}, {"Types.HGsPP", "#pragma once\nstructure P {};"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"A.HGsPP\"\npublique entier32 Principal() { retourner convertir<entier32>(E::X); }"}, {"A.HGsPP", "#pragma once\n#include \"B.HGsPP\"\nstructure P {};"}, {"B.HGsPP", "#pragma once\nénumération E { X = 42 };"}}, 0, 0},
+            {{{"Principal.GsPP", "espace N {\n#inclure \"Types.HGsPP\"\npublique entier32 F() { P p = {42}; retourner p.X; } }"}, {"Types.HGsPP", "structure P { entier32 X; };"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Prototype.HGsPP\"\npublique entier32 F(entier32 x) { retourner x; }"}, {"Prototype.HGsPP", "publique entier32 F(entier32 valeur); entier32 Globale;"}}},
+            {{{"Principal.GsPP", "classe C { publique:\n#inclure \"Membres.HGsPP\"\n}; publique entier32 Principal() { retourner 42; }"}, {"Membres.HGsPP", "constructeur(); destructeur(); virtuel entier32 Lire(); entier32 opérateur+(entier32 x);"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Noms.HGsPP\"\npublique entier32 Principal() { P p = {42}; retourner p.X; }"}, {"Noms.HGsPP", "espace N { structure P { entier32 X; }; } utilisant espace N;"}}, 0, 0},
+            {{{"Principal.GsPP", "#include \"inc/A.HGsPP\"\npublique entier32 Principal() { retourner 42; }"}, {"inc/A.HGsPP", "#pragma once\n#inclure \"../Types.HGsPP\""}, {"Types.HGsPP", "structure P {};"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"é/Types.HGsPP\"\npublique entier32 Principal() { État p = {42}; retourner p.Valeur; }"}, {"é/Types.HGsPP", "\xEF\xBB\xBF\r\nstructure État { entier32 Valeur; };"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Auto.HGsPP\"\npublique entier32 Principal() { retourner 42; }"}, {"Auto.HGsPP", "#pragma once\n#inclure \"Auto.HGsPP\"\nentier32 F();"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Source.GsPP\"\n#include \"Source.GsPP\"\npublique entier32 Principal() { retourner 42; }"}, {"Source.GsPP", "publique entier32 F() { retourner 1; }"}}},
+            // Le mode est lu au jeton décisif, pas à celui qui commence la déclaration.
+            {{{"Principal.GsPP", "entier32 F\n#inclure \"Signature.HGsPP\"\nentier32 X\n#include \"Fin.HGsPP\"\npublique entier32 Principal() { retourner 42; }"}, {"Signature.HGsPP", "();"}, {"Fin.HGsPP", ";"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Nom.HGsPP\"\n() { retourner 42; }"}, {"Nom.HGsPP", "publique entier32 F"}}, 0, 0},
+            {{{"Principal.GsPP", "classe C { publique: entier32 Lire\n#inclure \"Signature.HGsPP\"\n}; publique entier32 Principal() { retourner 42; }"}, {"Signature.HGsPP", "();"}}, 0, 0},
+            {{{"Principal.GsPP", "\xEF\xBB\xBF\r\n#inclure \"Types.HGsPP\"\r\npublique entier32 Principal() { retourner 42; }"}, {"Types.HGsPP", "structure P {};"}}, 0, 0},
+            {{{"Principal.GsPP", "#inclure \"Prototype.GsPP\""}, {"Prototype.GsPP", "entier32 F();"}}, 0, {}, true},
+            {{{"Principal.GsPP", "#inclure \"Chaine.GsPP\"\npublique entier32 Principal() { retourner 42; }"}, {"Chaine.GsPP", "publique constante caractère* Texte = \"é\\n\\t\\\"\\\\\";"}}},
+            {{{"Principal.GsPP", "#inclure \"A.HGsPP\""}, {"A.HGsPP", "#inclure \"B.HGsPP\""}, {"B.HGsPP", "structure P { entier32 ; };"}}, 5},
+            {{{"Principal.GsPP", "#inclure \"Invalide.HGsPP\""}, {"Invalide.HGsPP", "entier32 F() { retourner 0; }"}}, 11},
+            {{{"Principal.GsPP", "#inclure \"Invalide.HGsPP\""}, {"Invalide.HGsPP", "entier32 X = 42;"}}, 15},
+            {{{"Principal.GsPP", "classe C { publique:\n#inclure \"Invalide.HGsPP\"\n};"}, {"Invalide.HGsPP", "constructeur() : soi() {}"}}, 15},
+            {{{"Principal.GsPP", "#inclure \"Debut.GsPP\"\n"}, {"Debut.GsPP", "espace N {"}}, 10},
+            {{{"Principal.GsPP", "#inclure \"Source.GsPP\""}, {"Source.GsPP", "publique entier32 F() { retourner 42; }"}}, 11, {}, true},
+            {{{"Principal.GsPP", "classe C { publique: entier32 F\n#inclure \"Ouverture.HGsPP\"\n) {} };"}, {"Ouverture.HGsPP", "("}}, 11},
+            {{{"Principal.GsPP", "#inclure \"Invalide.HGsPP\"\npublique entier32 Principal() { retourner 0; }"}, {"Invalide.HGsPP", "structure P { Inconnu X; };"}}, 0, 100},
+            {{{"Principal.GsPP", "#inclure \"Invalide.GsPP\"\npublique entier32 Principal() { retourner 0; }"}, {"Invalide.GsPP", "publique entier32 F() { retourner Absent; }"}}, 0, 18},
+            {{{"Principal.GsPP", "#inclure \"Invalide.GsPP\"\npublique entier32 Principal() { retourner 0; }"}, {"Invalide.GsPP", "publique vide F() { constante entier32 x; }"}}, 0, 125},
+        };
+        std::size_t nombreValides = 0, nombreSyntaxiques = 0, nombreSemantiques = 0;
+        for (std::size_t numero = 0; numero < corpus.size(); ++numero) for (bool anglais : {false, true})
+        {
+            const auto& cas = corpus[numero];
+            const auto dossier = std::filesystem::absolute(repertoire / (std::to_string(numero) + (anglais ? "-en" : "-fr")));
+            for (const auto& [nom, contenu] : cas.Fichiers)
+            {
+                const auto fichier = dossier / std::filesystem::path(std::u8string(nom.begin(), nom.end()));
+                std::filesystem::create_directories(fichier.parent_path());
+                std::ofstream sortie(fichier, std::ios::binary);
+                const auto texte = anglais ? TraduireCorpusConversions(contenu) : contenu;
+                sortie.write(texte.data(), static_cast<std::streamsize>(texte.size()));
+                Exiger(static_cast<bool>(sortie), "fixture développée non écrite");
+            }
+            const auto principal = dossier / "Principal.GsPP";
+            const auto originaux = GsPP::PreparerJetonsSource(principal);
+            std::vector<std::string> fichiers;
+            auto [texteDeveloppe, origines] = PreparerFragmentsInclus(preparer, lexer, originaux, fichiers, numero % 2 == 0, numero % 3 == 0, developper);
+            const auto texteAvant = texteDeveloppe;
+            const auto originesAvant = origines;
+            auto jetons = GsPP::Lexeur(texteDeveloppe, principal.string()).Analyser();
+            Exiger(jetons.size() == originaux.size(), "développement changeant le nombre de jetons");
+            for (std::size_t index = 0; index < jetons.size(); ++index)
+            {
+                Exiger(jetons[index].Genre == originaux[index].Genre && jetons[index].Texte == originaux[index].Texte, "jeton développé différent de l'inclusion réelle");
+                jetons[index].Fichier = originaux[index].Fichier;
+                jetons[index].EstInterface = originaux[index].EstInterface;
+            }
+            NoeudDeclarationHote garde; std::memset(&garde, 0xA5, sizeof(garde));
+            auto noeudGarde = garde;
+            RequeteAnalyseDeclarationsHote analyse{texteDeveloppe.data(), texteDeveloppe.size(), &noeudGarde, 0, {}};
+            RequeteDeclarationsAvecOriginesHote requete{&analyse, origines.data(), origines.size(), fichiers.size(), 0, 0, 0, cas.InterfaceGlobale ? 1U : 0U, 0};
+            std::optional<GsPP::Programme> reference;
+            std::optional<std::tuple<std::string, std::uint32_t, std::uint32_t>> diagnostic;
+            try { (void)GsPP::AnalyseurSyntaxique(originaux, principal.string(), cas.InterfaceGlobale).Analyser(); }
+            catch (const GsPP::ErreurCompilation& erreur) { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; }
+            if (!diagnostic) reference = GsPP::AnalyseurSyntaxique(jetons, principal.string(), cas.InterfaceGlobale).Analyser();
+            const auto code = analyser(&requete);
+            Exiger(std::memcmp(&noeudGarde, &garde, sizeof(garde)) == 0, "AST publié pendant mesure ou refus syntaxique développé");
+            auto verifierDiagnostic = [&]()
+            {
+                Exiger(diagnostic && requete.IndexFichierErreur < fichiers.size()
+                    && fichiers[requete.IndexFichierErreur] == std::get<0>(*diagnostic)
+                    && requete.LigneLocaleErreur == std::get<1>(*diagnostic) && requete.ColonneLocaleErreur == std::get<2>(*diagnostic),
+                    "origine de diagnostic développé différente du bootstrap");
+            };
+            if (cas.ErreurSyntaxique != 0)
+            {
+                Exiger(code == cas.ErreurSyntaxique, "diagnostic syntaxique développé incorrect : " + std::to_string(numero) + ", code=" + std::to_string(code));
+                verifierDiagnostic(); ++nombreSyntaxiques;
+            }
+            else
+            {
+                Exiger(reference && code == 1 && analyse.Resultat.NombreNoeuds != 0 && requete.IndexFichierErreur == fichiers.size(), "mesure de l'AST développé incorrecte : " + std::to_string(numero));
+                const auto attendus = ConstruireDeclarationsReference(*reference);
+                Exiger(attendus.size() == analyse.Resultat.NombreNoeuds, "taille AST développé différente");
+                std::vector<NoeudDeclarationHote> noeuds(attendus.size() + 1, garde);
+                analyse.Noeuds = noeuds.data(); analyse.Capacite = attendus.size();
+                Exiger(analyser(&requete) == 0, "analyse développée impossible");
+                Exiger(std::memcmp(&noeuds.back(), &garde, sizeof(garde)) == 0, "sortie AST développée non bornée");
+                for (std::size_t index = 0; index < attendus.size(); ++index)
+                    Exiger(MemeStructureDeclaration(noeuds[index], attendus[index]) && noeuds[index].Ligne == attendus[index].Ligne
+                        && noeuds[index].Colonne == attendus[index].Colonne, "AST développé différent au rang " + std::to_string(index) + ", corpus=" + std::to_string(numero));
+                const auto complet = noeuds;
+                --analyse.Capacite;
+                std::fill(noeuds.begin(), noeuds.end(), garde);
+                Exiger(analyser(&requete) == 1 && analyse.Resultat.CapaciteRequise == attendus.size()
+                    && std::memcmp(noeuds.data(), complet.data(), analyse.Capacite * sizeof(garde)) == 0
+                    && std::memcmp(&noeuds[analyse.Capacite], &garde, sizeof(garde)) == 0, "préfixe AST développé incorrect");
+                ++analyse.Capacite;
+                bool succes = false;
+                for (std::uint64_t budget = 0; budget < 96; ++budget)
+                {
+                    std::fill(noeuds.begin(), noeuds.end(), garde);
+                    LimiteAllocationsAssemblage = NombreAllocations + budget;
+                    const auto allocation = analyser(&requete);
+                    LimiteAllocationsAssemblage.reset();
+                    Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite d'arène du texte développé");
+                    if (allocation == 0) { succes = true; break; }
+                    Exiger(allocation == 4, "allocation du texte développé non propagée");
+                    for (const auto& noeud : noeuds) Exiger(std::memcmp(&noeud, &garde, sizeof(garde)) == 0, "sortie développée partielle après refus d'allocation");
+                }
+                Exiger(succes, "analyse développée sans succès après injection");
+                for (std::size_t index = 0; index < jetons.size(); ++index)
+                    Exiger(localiser(&requete, static_cast<std::uint32_t>(jetons[index].Ligne), static_cast<std::uint32_t>(jetons[index].Colonne))
+                        && requete.IndexFichierErreur == origines[index].IndexFichier && requete.LigneLocaleErreur == origines[index].Ligne
+                        && requete.ColonneLocaleErreur == origines[index].Colonne, "origine de jeton ou EOF perdue");
+                if (cas.ErreurSemantique)
+                {
+                    auto programmeOriginal = GsPP::AnalyseurSyntaxique(originaux, principal.string(), cas.InterfaceGlobale).Analyser();
+                    GsPP::NormaliserDeclarations(programmeOriginal);
+                    try { GsPP::AnalyseurSemantique().Analyser(programmeOriginal); }
+                    catch (const GsPP::ErreurCompilation& erreur)
+                    {
+                        diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())};
+                    }
+                    Exiger(diagnostic.has_value() == (*cas.ErreurSemantique != 0), "contrat sémantique du corpus développé incorrect");
+                    RequeteAnalyseSemantiqueHote sem{texteDeveloppe.data(), texteDeveloppe.size(), noeuds.data(), attendus.size(), nullptr, 0, nullptr, 0, {}};
+                    const auto resultat = semantique(&sem);
+                    if (diagnostic)
+                    {
+                        Exiger(resultat == *cas.ErreurSemantique && localiser(&requete, sem.Resultat.LigneErreur, sem.Resultat.ColonneErreur), "diagnostic Gs++ synthétique développé incorrect");
+                        verifierDiagnostic(); ++NombreRefusSemantiquesDifferentiels; ++nombreSemantiques;
+                    }
+                    else
+                    {
+                        Exiger(resultat == 4, "AST développé sémantiquement valide refusé : " + std::to_string(resultat));
+                        std::vector<SymboleSemantiqueHote> symboles(sem.Resultat.NombreSymboles);
+                        std::vector<ResolutionSemantiqueHote> resolutions(sem.Resultat.NombreResolutions);
+                        sem.Symboles = symboles.data(); sem.CapaciteSymboles = symboles.size();
+                        sem.Resolutions = resolutions.data(); sem.CapaciteResolutions = resolutions.size();
+                        Exiger(semantique(&sem) == 0, "publication de la sémantique du texte développé impossible");
+                    }
+                    Exiger(std::memcmp(noeuds.data(), complet.data(), complet.size() * sizeof(garde)) == 0, "AST développé modifié par sémantique");
+                }
+                ++nombreValides;
+                // Tables invalides : contrôles de bornes, puis correspondance exacte avec les lexèmes.
+                for (int champ = 0; champ < 13; ++champ)
+                {
+                    auto fausses = origines;
+                    auto invalide = requete;
+                    invalide.Origines = fausses.data();
+                    if (champ == 0) fausses[0].IndexFichier = fichiers.size();
+                    if (champ == 1) fausses[0].Ligne = 0;
+                    if (champ == 2) fausses[0].Colonne = 0;
+                    if (champ == 3) fausses[0].EstInterface = 2;
+                    if (champ == 4) fausses[0].Reserve = 1;
+                    if (champ == 5) ++fausses[0].DebutOctets;
+                    if (champ == 6) ++fausses[0].TailleOctets;
+                    if (champ == 7) fausses.back().DebutOctets = UINT64_MAX;
+                    if (champ == 8) invalide.NombreOrigines = 0;
+                    if (champ == 9) --invalide.NombreOrigines;
+                    if (champ == 10) invalide.EstInterface = 2;
+                    if (champ == 11) invalide.Reserve = 1;
+                    if (champ == 12) invalide.Origines = nullptr;
+                    const auto sortieAvant = noeuds;
+                    Exiger(analyser(&invalide) == 3 && invalide.IndexFichierErreur == fichiers.size()
+                        && invalide.LigneLocaleErreur == 0 && invalide.ColonneLocaleErreur == 0
+                        && std::memcmp(noeuds.data(), sortieAvant.data(), noeuds.size() * sizeof(garde)) == 0, "table d'origines invalide acceptée ou sortie modifiée");
+                }
+                Exiger(!localiser(&requete, 0, 1) && !localiser(&requete, UINT32_MAX, 1)
+                    && requete.IndexFichierErreur == fichiers.size() && requete.LigneLocaleErreur == 0 && requete.ColonneLocaleErreur == 0, "position synthétique invalide localisée");
+            }
+            Exiger(texteDeveloppe == texteAvant && std::memcmp(origines.data(), originesAvant.data(), origines.size() * sizeof(origines[0])) == 0, "texte développé ou table d'origines modifiés");
+            Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "analyse avec origines avec fuite");
+        }
+        Exiger(analyser(nullptr) == 3 && !localiser(nullptr, 1, 1), "requête avec origines nulle acceptée");
+        RequeteDeclarationsAvecOriginesHote vide{};
+        Exiger(analyser(&vide) == 3 && !localiser(&vide, 1, 1), "requête avec origines incomplète acceptée");
+        const OrigineJetonDeclarationsHote fin{0, 0, 0, 7, 9, 1, 0};
+        NoeudDeclarationHote racine{};
+        RequeteAnalyseDeclarationsHote analyseVide{nullptr, 0, &racine, 1, {}};
+        vide = {&analyseVide, &fin, 1, 1, 0, 0, 0, 0, 0};
+        Exiger(analyser(&vide) == 0 && racine.Genre == 0 && localiser(&vide, 1, 1)
+            && vide.IndexFichierErreur == 0 && vide.LigneLocaleErreur == 7 && vide.ColonneLocaleErreur == 9, "unité développée vide ou EOF incorrect");
+        for (int champ = 0; champ < 5; ++champ)
+        {
+            auto invalide = vide;
+            if (champ == 0) invalide.Analyse = nullptr;
+            if (champ == 1) invalide.NombreFichiers = 0;
+            if (champ == 2) invalide.NombreFichiers = 1'000'001;
+            if (champ == 3) invalide.NombreOrigines = 100'000'001;
+            if (champ == 4) { analyseVide.Noeuds = nullptr; analyseVide.Capacite = 1; }
+            Exiger(analyser(&invalide) == 3, "requête avec origines hors limites acceptée");
+        }
+        const std::string mauvaisUtf8 = "\xFF";
+        const OrigineJetonDeclarationsHote originesUtf8[]{{0, 1, 0, 17, 3, 1, 0}, {1, 0, 0, 17, 4, 0, 0}};
+        RequeteAnalyseDeclarationsHote analyseUtf8{mauvaisUtf8.data(), 1, &racine, 1, {}};
+        vide = {&analyseUtf8, originesUtf8, 2, 1, 0, 0, 0, 0, 0};
+        Exiger(analyser(&vide) == 2 && analyseUtf8.Resultat.Detail == 2 && vide.IndexFichierErreur == 0
+            && vide.LigneLocaleErreur == 17 && vide.ColonneLocaleErreur == 3, "origine d'erreur lexicale développée perdue");
+        (void)ComparerDeclarations(historique, "publique entier32 Principal() { retourner 42; }", "mode-historique-apres-origines");
+        std::cout << "Origines des inclusions préparées : " << nombreValides / 2 << " corpus bilingues syntaxiquement valides, "
+                  << nombreSyntaxiques / 2 << " refus syntaxiques et " << nombreSemantiques / 2
+                  << " refus sémantiques bilingues ; modes mixtes, chaque jeton/EOF, capacités et allocations vérifiés.\n";
+    }
+
+    /**
+     * <résumé>Vérifie l'assemblage et la normalisation de vraies inclusions, puis leurs diagnostics originaux.</résumé>
+     **/
+    void TesterAssemblageAvecOrigines(
+        AssembleurOriginesAutoHeberge assembler, AssembleurOriginesAutoHeberge normaliser,
+        LocaliseurAssemblageAutoHeberge localiser, SemantiqueOriginesAutoHeberge semantique,
+        const std::filesystem::path& repertoire, PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer,
+        ExpanseurDeclarationsAutoHeberge developper)
+    {
+        struct Corpus
+        {
+            std::map<std::string, std::string> Fichiers;
+            std::vector<std::pair<std::string, bool>> Unites;
+            std::uint32_t ErreurAssemblage = 0, ErreurSemantique = 0;
+        };
+        const std::vector<Corpus> corpus{
+            {{{"A.GsPP", "#inclure \"F.HGsPP\"\npublique entier32 F(entier32 x) { retourner x; } publique entier32 Principal() { retourner F(42); }"}, {"F.HGsPP", "entier32 F(entier32 valeur);"}}, {{"A.GsPP", false}}},
+            {{{"A.GsPP", "#include \"F.HGsPP\""}, {"F.HGsPP", "#pragma once\nentier32 F();"}, {"B.GsPP", "publique entier32 F() { retourner 42; } publique entier32 Principal() { retourner F(); }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}},
+            {{{"A.GsPP", "#inclure \"G.HGsPP\""}, {"G.HGsPP", "entier32 G;"}, {"B.GsPP", "publique entier32 G = 42; publique entier32 Principal() { retourner G; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}},
+            {{{"A.GsPP", "structure P { entier32 X; };\n#inclure \"V.HGsPP\""}, {"V.HGsPP", "#pragma once\nalias V = P;"}, {"B.GsPP", "#inclure \"V.HGsPP\"\npublique entier32 Principal() { V p = {42}; retourner p.X; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}},
+            {{{"A.GsPP", "classe C { publique:\n#inclure \"M.HGsPP\"\nentier32 Lire() { retourner 42; } }; publique entier32 Principal() { C c; retourner c.Lire(); }"}, {"M.HGsPP", "entier32 Lire(); entier32 Lire();"}}, {{"A.GsPP", false}}},
+            {{{"A.GsPP", "#include \"é/inc.HGsPP\"\n#include \"é/inc.HGsPP\"\npublique entier32 Principal() { P p = {42}; retourner p.X; }"}, {"é/inc.HGsPP", "\xEF\xBB\xBF#pragma once\r\n#inclure \"../P.HGsPP\""}, {"P.HGsPP", "#pragma once\nstructure P { entier32 X; };"}}, {{"A.GsPP", false}}},
+            {{{"A.GsPP", "#inclure \"N.HGsPP\"\npublique entier32 Principal() { P p = {42}; retourner p.X; }"}, {"N.HGsPP", "espace N { structure P { entier32 X; }; } utilisant espace N;"}}, {{"A.GsPP", false}}},
+            {{{"A.GsPP", "#inclure \"N.HGsPP\"\npublique entier32 F() { P p = {1}; retourner p.X; }"}, {"N.HGsPP", "espace N { structure P { entier32 X; }; } utilisant espace N;"}, {"B.GsPP", "publique entier32 Principal() { N::P p = {42}; retourner p.X; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}},
+            {{{"A.GsPP", "entier32 F\n#inclure \"Fin.HGsPP\"\npublique entier32 F() { retourner 42; }"}, {"Fin.HGsPP", "();"}}, {{"A.GsPP", false}}},
+            {{{"Vide.HGsPP", ""}, {"Bom.GsPP", "\xEF\xBB\xBF"}, {"A.GsPP", "publique entier32 F() { retourner 42; }"}}, {{"Vide.HGsPP", true}, {"Bom.GsPP", false}, {"A.GsPP", false}}},
+            {{{"A.HGsPP", "#inclure \"M.HGsPP\""}, {"M.HGsPP", "entier32 F();"}, {"B.GsPP", "publique entier32 F() { retourner 42; }"}}, {{"A.HGsPP", true}, {"B.GsPP", false}}},
+            {{{"A.GsPP", "classe C { publique:\n#inclure \"M.HGsPP\"\nconstructeur() {} destructeur() {} entier32 opérateur+(entier32 x) { retourner x; } }; publique entier32 Principal() { C c; retourner c + 42; }"}, {"M.HGsPP", "constructeur(); destructeur(); entier32 opérateur+(entier32 x);"}}, {{"A.GsPP", false}}},
+            // Les conflits désignent le fichier où la déclaration fautive a été écrite.
+            {{{"A.GsPP", "#inclure \"F.HGsPP\""}, {"F.HGsPP", "entier32 F();"}, {"B.GsPP", "#inclure \"Def.GsPP\""}, {"Def.GsPP", "publique entier64 F() { retourner 42; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 6},
+            {{{"A.GsPP", "#inclure \"Un.GsPP\"\n#inclure \"Deux.GsPP\""}, {"Un.GsPP", "publique entier32 F() { retourner 1; }"}, {"Deux.GsPP", "publique entier32 F() { retourner 2; }"}}, {{"A.GsPP", false}}, 7},
+            {{{"A.GsPP", "#inclure \"G.HGsPP\""}, {"G.HGsPP", "entier32 G;"}, {"B.GsPP", "#inclure \"G.GsPP\"\npublique vide F() {}"}, {"G.GsPP", "publique entier64 G = 42;"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 8},
+            {{{"A.GsPP", "#inclure \"Un.GsPP\"\n#inclure \"Deux.GsPP\"\npublique vide F() {}"}, {"Un.GsPP", "publique entier32 G = 1;"}, {"Deux.GsPP", "publique entier32 G = 2;"}}, {{"A.GsPP", false}}, 9},
+            {{{"A.GsPP", "#inclure \"Un.HGsPP\"\n#inclure \"Deux.HGsPP\"\npublique vide F() {}"}, {"Un.HGsPP", "alias V = P;"}, {"Deux.HGsPP", "alias V = Q;"}}, {{"A.GsPP", false}}, 10},
+            {{{"A.GsPP", "#inclure \"Mauvais.GsPP\""}, {"Mauvais.GsPP", "publique entier32 G = 1; publique entier32 G = 2; publique entier32 F() { retourner 1; } publique entier64 F() { retourner 2; }"}}, {{"A.GsPP", false}}, 6},
+            // Toutes les syntaxes sont analysées avant les conflits de normalisation.
+            {{{"A.GsPP", "#inclure \"M.HGsPP\""}, {"M.HGsPP", "publique entier32 F() { retourner 42; }"}}, {{"A.GsPP", false}}, 4},
+            {{{"A.GsPP", "espace N {\n#inclure \"P.HGsPP\""}, {"P.HGsPP", "structure P {};"}}, {{"A.GsPP", false}}, 4},
+            {{{"A.GsPP", "publique entier32 F() { retourner 1; } publique entier64 F() { retourner 2; }"}, {"B.GsPP", "#inclure \"M.HGsPP\""}, {"M.HGsPP", "entier32 Lire() { retourner 42; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 4},
+            {{{"A.GsPP", "#inclure \"M.HGsPP\"\npublique vide F() {}"}, {"M.HGsPP", "Inconnu Lire();"}}, {{"A.GsPP", false}}, 0, 100},
+            {{{"A.GsPP", "#inclure \"M.HGsPP\"\npublique vide F() {}"}, {"M.HGsPP", "vide G;"}}, {{"A.GsPP", false}}, 0, 78},
+            {{{"A.GsPP", "#inclure \"M.HGsPP\"\npublique vide F() {}"}, {"M.HGsPP", "alias V = Inconnu;"}}, {{"A.GsPP", false}}, 0, 110},
+            {{{"A.GsPP", "#inclure \"F.HGsPP\""}, {"F.HGsPP", "entier32 F();"}, {"B.GsPP", "#inclure \"Def.GsPP\""}, {"Def.GsPP", "publique entier32 F() { retourner Absente; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 0, 18},
+            {{{"A.GsPP", "#inclure \"N.HGsPP\"\npublique entier32 F() { retourner 1; }"}, {"N.HGsPP", "espace N { structure P {}; } utilisant espace N;"}, {"B.GsPP", "publique vide Principal() { P p; }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 0, 100},
+            {{{"A.GsPP", "#inclure \"P.HGsPP\""}, {"P.HGsPP", "#pragma once\nclasse P {};"}, {"B.GsPP", "#inclure \"P.HGsPP\"\npublique vide F() {}"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 0, 6},
+            {{{"A.GsPP", "#inclure \"N.HGsPP\""}, {"N.HGsPP", "espace N { entier32 Lire(); } utilisant espace N;"}, {"B.GsPP", "publique entier32 Principal() { retourner Lire(); }"}}, {{"A.GsPP", false}, {"B.GsPP", false}}, 0, 18},
+        };
+        using Position = std::pair<std::uint32_t, std::uint32_t>;
+        std::size_t valides = 0, conflits = 0, syntaxes = 0, semantiques = 0;
+        for (std::size_t numero = 0; numero < corpus.size(); ++numero)
+        for (bool anglais : {false, true})
+        {
+            const auto& cas = corpus[numero];
+            const auto dossier = repertoire / (std::to_string(numero) + (anglais ? "-en" : "-fr"));
+            for (const auto& [nom, texte] : cas.Fichiers)
+            {
+                const auto chemin = dossier / std::filesystem::path(std::u8string(nom.begin(), nom.end()));
+                std::filesystem::create_directories(chemin.parent_path());
+                std::ofstream sortie(chemin, std::ios::binary);
+                const auto contenu = anglais ? TraduireCorpusConversions(texte) : texte;
+                sortie.write(contenu.data(), static_cast<std::streamsize>(contenu.size()));
+                Exiger(static_cast<bool>(sortie), "fixture d'assemblage avec origines non écrite");
+            }
+            std::vector<std::string> fichiers, textes;
+            std::vector<std::vector<OrigineJetonDeclarationsHote>> tablesJetons;
+            std::vector<std::vector<GsPP::Jeton>> originaux, synthetiques;
+            for (const auto& [nom, interface] : cas.Unites)
+            {
+                const auto principal = dossier / nom;
+                auto jetons = GsPP::PreparerJetonsSource(principal);
+                auto [texte, table] = PreparerFragmentsInclus(preparer, lexer, jetons, fichiers, numero % 2 == 0, numero % 3 == 0, developper);
+                auto nouveaux = GsPP::Lexeur(texte, principal.string()).Analyser();
+                Exiger(nouveaux.size() == jetons.size(), "nombre de jetons d'assemblage développé différent");
+                for (std::size_t index = 0; index < jetons.size(); ++index)
+                {
+                    Exiger(nouveaux[index].Genre == jetons[index].Genre && nouveaux[index].Texte == jetons[index].Texte, "lexème développé altéré");
+                    nouveaux[index].EstInterface = jetons[index].EstInterface;
+                    nouveaux[index].Fichier = jetons[index].Fichier;
+                }
+                textes.push_back(std::move(texte)); tablesJetons.push_back(std::move(table));
+                originaux.push_back(std::move(jetons)); synthetiques.push_back(std::move(nouveaux));
+            }
+            std::vector<UniteDeclarationsPrepareeHote> unites;
+            std::vector<TableOriginesUniteDeclarationsHote> tables;
+            for (std::size_t index = 0; index < textes.size(); ++index)
+            {
+                unites.push_back({textes[index].data(), textes[index].size(), cas.Unites[index].second ? 1U : 0U, 0});
+                tables.push_back({tablesJetons[index].data(), tablesJetons[index].size()});
+            }
+            const auto textesAvant = textes; const auto tablesAvant = tablesJetons; const auto unitesAvant = unites;
+            auto ajouter = [](auto& destination, auto& partie)
+            { destination.insert(destination.end(), std::make_move_iterator(partie.begin()), std::make_move_iterator(partie.end())); };
+            auto fusionner = [&](GsPP::Programme& programme, GsPP::Programme& partie)
+            {
+                ajouter(programme.Structures, partie.Structures); ajouter(programme.Enumerations, partie.Enumerations);
+                ajouter(programme.VariablesGlobales, partie.VariablesGlobales); ajouter(programme.Fonctions, partie.Fonctions);
+                ajouter(programme.Aliases, partie.Aliases); ajouter(programme.Utilisations, partie.Utilisations); ajouter(programme.EspacesNoms, partie.EspacesNoms);
+            };
+            GsPP::Programme programmeOriginal, programmeSynthetique;
+            std::vector<NoeudDeclarationHote> bruts;
+            std::vector<OrigineUniteDeclarationsHote> originesAttendues;
+            std::string texteAttendu;
+            std::optional<std::tuple<std::string, std::uint32_t, std::uint32_t>> diagnostic;
+            std::size_t uniteDiagnostic = unites.size();
+            std::string messageOracle;
+            for (std::size_t index = 0; index < unites.size(); ++index)
+            {
+                const auto principal = (dossier / cas.Unites[index].first).string();
+                try
+                {
+                    auto partie = GsPP::AnalyseurSyntaxique(originaux[index], principal, cas.Unites[index].second).Analyser();
+                    fusionner(programmeOriginal, partie);
+                }
+                catch (const GsPP::ErreurCompilation& erreur)
+                { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; messageOracle = erreur.what(); uniteDiagnostic = index; break; }
+                auto partie = GsPP::AnalyseurSyntaxique(synthetiques[index], principal, cas.Unites[index].second).Analyser();
+                auto noeuds = ConstruireDeclarationsReference(partie);
+                auto jetonsRebases = synthetiques[index];
+                const auto premiereLigne = 1U + static_cast<std::uint32_t>(std::count(texteAttendu.begin(), texteAttendu.end(), '\n'));
+                for (auto& jeton : jetonsRebases) jeton.Ligne += premiereLigne - 1;
+                auto partieRebasee = GsPP::AnalyseurSyntaxique(jetonsRebases, principal, cas.Unites[index].second).Analyser();
+                fusionner(programmeSynthetique, partieRebasee);
+                const auto bom = textes[index].starts_with("\xEF\xBB\xBF") ? 3U : 0U;
+                originesAttendues.push_back({texteAttendu.size(), textes[index].size() - bom, premiereLigne,
+                    1U + static_cast<std::uint32_t>(std::count(textes[index].begin(), textes[index].end(), '\n')), bom, 0});
+                if (bruts.empty()) bruts.push_back(noeuds.front());
+                const auto base = bruts.size() - 1;
+                for (std::size_t n = 1; n < noeuds.size(); ++n)
+                {
+                    auto noeud = noeuds[n];
+                    if (noeud.Parent != 0) noeud.Parent += base;
+                    noeud.Ligne += premiereLigne - 1;
+                    if (noeud.TailleNom != 0) noeud.DebutNom = noeud.DebutNom - bom + texteAttendu.size();
+                    bruts.push_back(noeud);
+                }
+                texteAttendu += textes[index].substr(bom) + '\n';
+            }
+            if (!diagnostic)
+            {
+                try { GsPP::NormaliserDeclarations(programmeOriginal); GsPP::NormaliserDeclarations(programmeSynthetique); }
+                catch (const GsPP::ErreurCompilation& erreur)
+                { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; messageOracle = erreur.what(); }
+            }
+            const bool syntaxeInvalide = cas.ErreurAssemblage == 4;
+            Exiger(diagnostic.has_value() == (cas.ErreurAssemblage != 0), "oracle de normalisation/inclusion inattendu : " + std::to_string(numero) + ", " + messageOracle);
+            auto verifierOrigine = [&](std::uint64_t fichier, std::uint32_t ligne, std::uint32_t colonne)
+            {
+                Exiger(diagnostic && fichier < fichiers.size() && fichiers[fichier] == std::get<0>(*diagnostic)
+                    && ligne == std::get<1>(*diagnostic) && colonne == std::get<2>(*diagnostic), "diagnostic assemblé dans le mauvais fichier/ligne/colonne : " + std::to_string(numero));
+            };
+            NoeudDeclarationHote garde; OrigineUniteDeclarationsHote gardeOrigine;
+            std::memset(&garde, 0xA5, sizeof(garde)); std::memset(&gardeOrigine, 0xA5, sizeof(gardeOrigine));
+            // Tampons volontairement assez grands, y compris lors des refus.
+            const auto borne = 1U + unites.size() + std::accumulate(textes.begin(), textes.end(), std::size_t{0}, [](auto somme, const auto& texte) { return somme + texte.size(); });
+            std::vector<char> texteSortie(borne, 'Z');
+            std::vector<NoeudDeclarationHote> noeudsSortie(borne, garde);
+            std::vector<OrigineUniteDeclarationsHote> originesSortie(unites.size() + 1, gardeOrigine);
+            RequeteAssemblageDeclarationsHote assemblage{unites.data(), unites.size(), texteSortie.data(), texteSortie.size(), noeudsSortie.data(), noeudsSortie.size(), originesSortie.data(), unites.size(), {}};
+            RequeteAssemblageAvecOriginesHote requete{&assemblage, tables.data(), fichiers.size(), 0, 0, 0};
+            auto resetSorties = [&]() { std::fill(texteSortie.begin(), texteSortie.end(), 'Z'); std::fill(noeudsSortie.begin(), noeudsSortie.end(), garde); std::fill(originesSortie.begin(), originesSortie.end(), gardeOrigine); };
+            auto sortiesIntactes = [&]()
+            {
+                Exiger(std::all_of(texteSortie.begin(), texteSortie.end(), [](char c) { return c == 'Z'; }), "texte développé publié pendant refus");
+                for (const auto& noeud : noeudsSortie) Exiger(std::memcmp(&noeud, &garde, sizeof(garde)) == 0, "AST développé partiel");
+                for (const auto& origine : originesSortie) Exiger(std::memcmp(&origine, &gardeOrigine, sizeof(gardeOrigine)) == 0, "origines d'unités partielles");
+            };
+            const auto brut = assembler(&requete);
+            if (syntaxeInvalide)
+            {
+                Exiger(brut == 4 && assemblage.Resultat.IndexUniteErreur == uniteDiagnostic, "refus syntaxique brut développé incorrect"); verifierOrigine(requete.IndexFichierErreur, requete.LigneLocaleErreur, requete.ColonneLocaleErreur); sortiesIntactes();
+            }
+            else
+            {
+                Exiger(brut == 0 && assemblage.Resultat.NombreNoeuds == bruts.size(), "assemblage brut développé incorrect, corpus=" + std::to_string(numero) + ", code=" + std::to_string(brut) + ", nœuds=" + std::to_string(assemblage.Resultat.NombreNoeuds) + ", attendus=" + std::to_string(bruts.size()));
+                for (std::size_t index = 0; index < bruts.size(); ++index)
+                    Exiger(MemeStructureDeclaration(noeudsSortie[index], bruts[index]) && noeudsSortie[index].Ligne == bruts[index].Ligne && noeudsSortie[index].Colonne == bruts[index].Colonne, "AST brut avec origines différent du bootstrap");
+                bruts.assign(noeudsSortie.begin(), noeudsSortie.begin() + static_cast<std::ptrdiff_t>(assemblage.Resultat.NombreNoeuds));
+            }
+            resetSorties();
+            const auto resultat = normaliser(&requete);
+            if (cas.ErreurAssemblage != 0)
+            {
+                Exiger(resultat == cas.ErreurAssemblage && assemblage.Resultat.IndexUniteErreur == unites.size() - 1, "conflit normalisé développé incorrect : " + std::to_string(numero) + ", code=" + std::to_string(resultat));
+                verifierOrigine(requete.IndexFichierErreur, requete.LigneLocaleErreur, requete.ColonneLocaleErreur); sortiesIntactes();
+                if (syntaxeInvalide) ++syntaxes; else ++conflits;
+            }
+            else
+            {
+                Exiger(resultat == 0 && texteAttendu == std::string(texteSortie.data(), assemblage.Resultat.NombreOctetsSource)
+                    && std::memcmp(originesSortie.data(), originesAttendues.data(), unites.size() * sizeof(gardeOrigine)) == 0, "texte ou origines normalisés différents");
+                const auto complet = noeudsSortie; const auto nombreNoeuds = assemblage.Resultat.NombreNoeuds;
+                auto estFonction = [](const auto& n) { return n.Genre == 1 || (n.Genre >= 12 && n.Genre <= 15); };
+                std::vector<Position> fonctions, fonctionsAttendues;
+                std::set<Position> selections;
+                for (const auto& f : programmeSynthetique.Fonctions) { const Position p{static_cast<std::uint32_t>(f.Position.Ligne), static_cast<std::uint32_t>(f.Position.Colonne)}; fonctionsAttendues.push_back(p); selections.insert(p); }
+                for (const auto& g : programmeSynthetique.VariablesGlobales) selections.emplace(static_cast<std::uint32_t>(g.Position.Ligne), static_cast<std::uint32_t>(g.Position.Colonne));
+                for (const auto& a : programmeSynthetique.Aliases) selections.emplace(static_cast<std::uint32_t>(a.Position.Ligne), static_cast<std::uint32_t>(a.Position.Colonne));
+                std::vector<std::size_t> fins(bruts.size(), bruts.size()), pile, retenus;
+                for (std::size_t index = 1; index < bruts.size(); ++index)
+                {
+                    while (!pile.empty() && pile.back() != bruts[index].Parent) { fins[pile.back()] = index; pile.pop_back(); }
+                    pile.push_back(index);
+                }
+                for (std::size_t index = 0; index < bruts.size();)
+                {
+                    const auto& n = bruts[index];
+                    const bool selection = estFonction(n) || (n.Parent == 0 && (n.Genre == 3 || n.Genre == 10));
+                    if (selection && !selections.contains({n.Ligne, n.Colonne})) index = fins[index];
+                    else retenus.push_back(index++);
+                }
+                Exiger(nombreNoeuds == retenus.size(), "nombre de nœuds normalisés sélectionnés incorrect");
+                std::vector<std::size_t> rangs(nombreNoeuds, bruts.size());
+                auto pasParent = [](auto a, auto b) { a.Parent = 0; b.Parent = 0; return std::memcmp(&a, &b, sizeof(a)) == 0; };
+                for (std::size_t index = 0; index < nombreNoeuds; ++index)
+                {
+                    const auto& n = complet[index];
+                    const auto trouve = std::find_if(retenus.begin(), retenus.end(), [&](auto rang) { return pasParent(n, bruts[rang]); });
+                    Exiger(trouve != retenus.end(), "nœud normalisé non choisi par le bootstrap"); rangs[index] = *trouve; retenus.erase(trouve);
+                    Exiger(index == 0 || n.Parent < index, "parent normalisé en avant");
+                    if (estFonction(n)) fonctions.emplace_back(n.Ligne, n.Colonne);
+                }
+                for (std::size_t index = 1; index < nombreNoeuds; ++index)
+                    Exiger(bruts[rangs[index]].Parent == rangs[complet[index].Parent], "propriétaire normalisé incorrect");
+                Exiger(fonctions == fonctionsAttendues, "ordre des fonctions incluses normalisées différent du bootstrap");
+                for (std::size_t unite = 0; unite < unites.size(); ++unite)
+                for (std::size_t index = 0; index < synthetiques[unite].size(); ++index)
+                    Exiger(localiser(&requete, unite, static_cast<std::uint32_t>(synthetiques[unite][index].Ligne), static_cast<std::uint32_t>(synthetiques[unite][index].Colonne))
+                        && requete.IndexFichierErreur == tablesJetons[unite][index].IndexFichier && requete.LigneLocaleErreur == tablesJetons[unite][index].Ligne && requete.ColonneLocaleErreur == tablesJetons[unite][index].Colonne, "origine d'un jeton après fusion perdue");
+                for (auto operation : {assembler, normaliser})
+                {
+                    assemblage.CapaciteSource = 0; assemblage.CapaciteNoeuds = 0; assemblage.CapaciteOrigines = 0; resetSorties();
+                    Exiger(operation(&requete) == 1, "mesure avec origines incorrecte"); sortiesIntactes();
+                    const auto tailles = assemblage.Resultat;
+                    for (int manque = 0; manque < 3; ++manque)
+                    {
+                        assemblage.CapaciteSource = tailles.NombreOctetsSource - (manque == 0);
+                        assemblage.CapaciteNoeuds = tailles.NombreNoeuds - (manque == 1);
+                        assemblage.CapaciteOrigines = tailles.NombreOrigines - (manque == 2);
+                        Exiger(operation(&requete) == 1, "capacité partielle développée acceptée"); sortiesIntactes();
+                    }
+                    assemblage.CapaciteSource = tailles.NombreOctetsSource; assemblage.CapaciteNoeuds = tailles.NombreNoeuds; assemblage.CapaciteOrigines = tailles.NombreOrigines;
+                    bool succes = false;
+                    for (std::uint64_t budget = 0; budget < 256; ++budget)
+                    {
+                        resetSorties(); LimiteAllocationsAssemblage = NombreAllocations + budget;
+                        const auto code = operation(&requete); LimiteAllocationsAssemblage.reset();
+                        Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite d'assemblage inclus");
+                        if (code == 0) { succes = true; break; }
+                        Exiger(code == 3, "échec d'allocation inclus non propagé"); sortiesIntactes();
+                    }
+                    Exiger(succes, "assemblage inclus sans succès après injection");
+                }
+                assemblage.CapaciteSource = texteSortie.size(); assemblage.CapaciteNoeuds = noeudsSortie.size(); assemblage.CapaciteOrigines = unites.size();
+                Exiger(normaliser(&requete) == 0, "restauration normalisée impossible");
+                if (cas.ErreurSemantique != 0)
+                {
+                    try { GsPP::AnalyseurSemantique().Analyser(programmeOriginal); }
+                    catch (const GsPP::ErreurCompilation& erreur)
+                    { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; }
+                    Exiger(diagnostic.has_value(), "sémantique incluse non refusée par le bootstrap");
+                }
+                else GsPP::AnalyseurSemantique().Analyser(programmeOriginal);
+                RequeteAnalyseSemantiqueHote analyse{texteSortie.data(), assemblage.Resultat.NombreOctetsSource, noeudsSortie.data(), assemblage.Resultat.NombreNoeuds, nullptr, 0, nullptr, 0, {}};
+                RequeteSemantiqueUnitesAvecOriginesHote sem{&analyse, &requete, 0, 0, 0, 0};
+                const auto requeteAvant = requete; const auto resultatAssemblageAvant = assemblage.Resultat;
+                const auto code = semantique(&sem);
+                if (cas.ErreurSemantique != 0)
+                {
+                    Exiger(code == cas.ErreurSemantique && sem.IndexUniteErreur == unites.size() - 1, "sémantique incluse incorrecte : " + std::to_string(numero) + ", code=" + std::to_string(code)); verifierOrigine(sem.IndexFichierErreur, sem.LigneLocaleErreur, sem.ColonneLocaleErreur); ++NombreRefusSemantiquesDifferentiels; ++semantiques;
+                }
+                else
+                {
+                    Exiger(code == 4, "mesure sémantique avec origines incorrecte : " + std::to_string(numero) + ", code=" + std::to_string(code));
+                    std::vector<SymboleSemantiqueHote> symboles(analyse.Resultat.NombreSymboles + 1);
+                    std::vector<ResolutionSemantiqueHote> resolutions(analyse.Resultat.NombreResolutions + 1);
+                    std::memset(symboles.data(), 0xA5, symboles.size() * sizeof(symboles[0])); std::memset(resolutions.data(), 0xA5, resolutions.size() * sizeof(resolutions[0]));
+                    const auto symbolesAvant = symboles; const auto resolutionsAvant = resolutions;
+                    analyse.Symboles = symboles.data(); analyse.CapaciteSymboles = symboles.size() - 1; analyse.Resolutions = resolutions.data(); analyse.CapaciteResolutions = resolutions.size() - 1;
+                    bool succes = false;
+                    for (std::uint64_t budget = 0; budget < 256; ++budget)
+                    {
+                        symboles = symbolesAvant; resolutions = resolutionsAvant;
+                        LimiteAllocationsAssemblage = NombreAllocations + budget; const auto allocation = semantique(&sem); LimiteAllocationsAssemblage.reset();
+                        if (allocation == 0) { succes = true; break; }
+                        // La sémantique historique peut publier des préfixes ; seule la préparation des origines est sans publication.
+                        Exiger(allocation == 3 && std::memcmp(&symboles.back(), &symbolesAvant.back(), sizeof(symboles[0])) == 0 && std::memcmp(&resolutions.back(), &resolutionsAvant.back(), sizeof(resolutions[0])) == 0,
+                            "échec d'allocation ou bornes sémantiques incorrects, corpus=" + std::to_string(numero) + ", budget=" + std::to_string(budget) + ", code=" + std::to_string(allocation));
+                    }
+                    Exiger(succes && sem.IndexUniteErreur == unites.size() && sem.IndexFichierErreur == fichiers.size(), "publication sémantique incluse incorrecte");
+                    Exiger(std::memcmp(&symboles.back(), &symbolesAvant.back(), sizeof(symboles[0])) == 0 && std::memcmp(&resolutions.back(), &resolutionsAvant.back(), sizeof(resolutions[0])) == 0, "sentinelle sémantique incluse écrasée");
+                    analyse.CapaciteSymboles = 0;
+                    Exiger(semantique(&sem) == 4 && sem.IndexFichierErreur == fichiers.size() && sem.LigneLocaleErreur == 0, "capacité de symboles incluse incorrecte");
+                    analyse.CapaciteSymboles = symboles.size() - 1;
+                    if (analyse.CapaciteResolutions != 0)
+                    {
+                        const auto capacite = analyse.CapaciteResolutions; analyse.CapaciteResolutions = 0;
+                        Exiger(semantique(&sem) == 5 && sem.IndexFichierErreur == fichiers.size(), "capacité de résolutions incluse incorrecte");
+                        analyse.CapaciteResolutions = capacite;
+                    }
+                    for (int champ = 0; champ < 9; ++champ)
+                    {
+                        auto analyseInvalide = analyse; auto declarationInvalide = requete; auto assemblageInvalide = assemblage;
+                        auto semInvalide = sem; semInvalide.Analyse = &analyseInvalide; semInvalide.Declarations = &declarationInvalide; declarationInvalide.Assemblage = &assemblageInvalide;
+                        if (champ == 0) semInvalide.Analyse = nullptr;
+                        if (champ == 1) semInvalide.Declarations = nullptr;
+                        if (champ == 2) declarationInvalide.Tables = nullptr;
+                        if (champ == 3) declarationInvalide.NombreFichiers = 0;
+                        if (champ == 4) assemblageInvalide.Resultat.Erreur = 1;
+                        if (champ == 5) ++analyseInvalide.TailleSource;
+                        if (champ == 6) --analyseInvalide.NombreNoeuds;
+                        if (champ == 7) assemblageInvalide.Origines = nullptr;
+                        if (champ == 8) assemblageInvalide.Unites = nullptr;
+                        symboles = symbolesAvant; resolutions = resolutionsAvant;
+                        Exiger(semantique(&semInvalide) == 1 && std::memcmp(symboles.data(), symbolesAvant.data(), symboles.size() * sizeof(symboles[0])) == 0 && std::memcmp(resolutions.data(), resolutionsAvant.data(), resolutions.size() * sizeof(resolutions[0])) == 0, "requête sémantique incohérente acceptée ou publiée");
+                    }
+                    const auto octetInitial = texteSortie[0]; texteSortie[0] = '@';
+                    symboles = symbolesAvant; resolutions = resolutionsAvant;
+                    Exiger(semantique(&sem) == 1 && std::memcmp(symboles.data(), symbolesAvant.data(), symboles.size() * sizeof(symboles[0])) == 0, "texte assemblé altéré accepté");
+                    texteSortie[0] = octetInitial;
+                    // Une plage plausible mais différente du lexage doit être refusée avant les sorties sémantiques.
+                    const auto ancienDebut = tablesJetons[0][0].DebutOctets; ++tablesJetons[0][0].DebutOctets;
+                    symboles = symbolesAvant; resolutions = resolutionsAvant;
+                    Exiger(semantique(&sem) == 1 && sem.IndexFichierErreur == fichiers.size() && sem.LigneLocaleErreur == 0 && std::memcmp(symboles.data(), symbolesAvant.data(), symboles.size() * sizeof(symboles[0])) == 0, "table altérée acceptée par la sémantique");
+                    tablesJetons[0][0].DebutOctets = ancienDebut;
+                    ++valides;
+                }
+                Exiger(std::memcmp(&requete, &requeteAvant, sizeof(requete)) == 0 && std::memcmp(&assemblage.Resultat, &resultatAssemblageAvant, sizeof(resultatAssemblageAvant)) == 0 && std::memcmp(noeudsSortie.data(), complet.data(), nombreNoeuds * sizeof(garde)) == 0, "assemblage modifié par sémantique");
+                // Tables invalides : pas de tampon publié même avec de grandes capacités.
+                const auto ancienFichier = tablesJetons[0][0].IndexFichier; tablesJetons[0][0].IndexFichier = fichiers.size();
+                resetSorties();
+                for (auto operation : {assembler, normaliser}) { Exiger(operation(&requete) == 2 && requete.IndexFichierErreur == fichiers.size(), "table invalide acceptée à l'assemblage"); sortiesIntactes(); }
+                tablesJetons[0][0].IndexFichier = ancienFichier;
+            }
+            Exiger(textes == textesAvant && std::memcmp(unites.data(), unitesAvant.data(), unites.size() * sizeof(unites[0])) == 0, "unités développées modifiées");
+            for (std::size_t index = 0; index < tablesJetons.size(); ++index) Exiger(std::memcmp(tablesJetons[index].data(), tablesAvant[index].data(), tablesJetons[index].size() * sizeof(tablesJetons[index][0])) == 0, "table d'inclusion modifiée");
+            Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite de la chaîne avec origines");
+        }
+        Exiger(assembler(nullptr) == 2 && normaliser(nullptr) == 2 && !localiser(nullptr, 0, 1, 1) && semantique(nullptr) == 1, "requête d'origines nulle acceptée");
+        RequeteAssemblageAvecOriginesHote vide{}; RequeteSemantiqueUnitesAvecOriginesHote semVide{};
+        Exiger(assembler(&vide) == 2 && normaliser(&vide) == 2 && !localiser(&vide, 0, 1, 1) && semantique(&semVide) == 1, "requête d'origines incomplète acceptée");
+        const OrigineJetonDeclarationsHote finVide{0, 0, 0, 7, 9, 0, 0};
+        const TableOriginesUniteDeclarationsHote tableVide{&finVide, 1};
+        UniteDeclarationsPrepareeHote uniteVide{nullptr, 0, 0, 0};
+        char texteVide{}; NoeudDeclarationHote racineVide{}; OrigineUniteDeclarationsHote origineVide{};
+        RequeteAssemblageDeclarationsHote assemblageVide{&uniteVide, 1, &texteVide, 1, &racineVide, 1, &origineVide, 1, {}};
+        vide = {&assemblageVide, &tableVide, 1, 0, 0, 0};
+        for (auto operation : {assembler, normaliser})
+        {
+            Exiger(operation(&vide) == 0 && texteVide == '\n' && racineVide.Genre == 0 && localiser(&vide, 0, 1, 1) && vide.LigneLocaleErreur == 7 && vide.ColonneLocaleErreur == 9, "assemblage vide avec origine EOF incorrect");
+            Exiger(!localiser(&vide, 1, 1, 1) && !localiser(&vide, 0, 0, 1) && vide.IndexFichierErreur == 1 && vide.LigneLocaleErreur == 0, "origine inexistante localisée");
+            for (int champ = 0; champ < 10; ++champ)
+            {
+                auto requeteInvalide = vide; auto assemblageInvalide = assemblageVide; requeteInvalide.Assemblage = &assemblageInvalide;
+                if (champ == 0) requeteInvalide.Assemblage = nullptr;
+                if (champ == 1) requeteInvalide.Tables = nullptr;
+                if (champ == 2) requeteInvalide.NombreFichiers = 0;
+                if (champ == 3) requeteInvalide.NombreFichiers = 1'000'001;
+                if (champ == 4) assemblageInvalide.Unites = nullptr;
+                if (champ == 5) assemblageInvalide.NombreUnites = 0;
+                if (champ == 6) assemblageInvalide.NombreUnites = 1'000'001;
+                if (champ == 7) assemblageInvalide.SourceAssemblee = nullptr;
+                if (champ == 8) assemblageInvalide.Noeuds = nullptr;
+                if (champ == 9) assemblageInvalide.Origines = nullptr;
+                const auto racineAvant = racineVide; const auto origineAvant = origineVide;
+                Exiger(operation(&requeteInvalide) == (champ == 6 ? 5U : 2U) && std::memcmp(&racineVide, &racineAvant, sizeof(racineVide)) == 0 && std::memcmp(&origineVide, &origineAvant, sizeof(origineVide)) == 0 && texteVide == '\n', "requête d'assemblage avec origines invalide acceptée ou publiée");
+            }
+        }
+        std::cout << "Assemblage avec inclusions : " << valides / 2 << " corpus bilingues valides, " << conflits / 2 << " conflits de normalisation, " << syntaxes / 2 << " refus syntaxiques et " << semantiques / 2 << " refus sémantiques bilingues ; origines, sélections, isolation, capacités et allocations vérifiées.\n";
     }
 
     void TesterUtilisationsEspacesSemantiques(
@@ -11080,6 +12513,30 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         const auto semantique =
             reinterpret_cast<AnalyseurSemantiqueAutoHeberge>(*adresse);
         TesterInterfacesEnMemoire(syntaxe, interface, semantique);
+        const auto exportPreparation = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::PreparerDeclarationsAvecOrigines");
+        const auto aliasPreparation = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::PrepareOriginAwareDeclarations");
+        const auto exportLexeur = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::AnalyserSource");
+        Exiger(exportPreparation && exportPreparation == aliasPreparation && exportLexeur, "exports de préparation/lexage absents ou différents");
+        const auto preparer = reinterpret_cast<PreparateurDeclarationsAutoHeberge>(*exportPreparation);
+        const auto lexerOrigines = reinterpret_cast<LexeurAutoHeberge>(*exportLexeur);
+        TesterPreparationDeclarations(preparer);
+        const auto exportExpansion = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::DevelopperInclusionsDeclarations");
+        const auto aliasExpansion = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::ExpandDeclarationIncludes");
+        Exiger(exportExpansion && exportExpansion == aliasExpansion, "exports d'expansion français/anglais absents ou différents");
+        const auto developper = reinterpret_cast<ExpanseurDeclarationsAutoHeberge>(*exportExpansion);
+        TesterCatalogueInclusionsProduit(developper,
+            std::filesystem::absolute(std::filesystem::path(cheminSyntaxe).parent_path() / "TestsCatalogueProduit"));
+        TesterExpansionDeclarations(developper, preparer, lexerOrigines,
+            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsExpansionInclusions");
+        const auto exportOrigines = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsAvecOrigines");
+        const auto aliasOrigines = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::AnalyzeOriginAwareDeclarations");
+        const auto exportLocalisation = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::LocaliserOrigineDeclarationsPreparees");
+        const auto aliasLocalisation = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::LocatePreparedDeclarationOrigin");
+        Exiger(exportOrigines && exportOrigines == aliasOrigines && exportLocalisation && exportLocalisation == aliasLocalisation,
+            "exports d'origines françaises/anglaises absents ou différents");
+        TesterDeclarationsAvecOrigines(reinterpret_cast<AnalyseurDeclarationsOriginesAutoHeberge>(*exportOrigines),
+            reinterpret_cast<LocaliseurDeclarationsAutoHeberge>(*exportLocalisation), syntaxe, semantique,
+            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsSourcesPreparees", preparer, lexerOrigines, developper);
         const auto exportAssemblage = imageSyntaxe.ChercherExport(
             "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsPreparees");
         const auto aliasAssemblage = imageSyntaxe.ChercherExport(
@@ -11100,6 +12557,19 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             "GalacticShrine::GsPP::Autohebergement::AssembleNormalizedDeclarations");
         Exiger(exportNormalisation.has_value() && exportNormalisation == aliasNormalisation,
             "exports français et anglais de la normalisation absents ou différents");
+        auto exportOriginesRequis = [](const auto& imageOrigines, const char* francais, const char* anglais)
+        {
+            const auto f = imageOrigines.ChercherExport(std::string("GalacticShrine::GsPP::Autohebergement::") + francais);
+            const auto a = imageOrigines.ChercherExport(std::string("GalacticShrine::GsPP::Autohebergement::") + anglais);
+            Exiger(f && f == a, std::string("exports d'origines absents ou différents : ") + francais);
+            return *f;
+        };
+        TesterAssemblageAvecOrigines(
+            reinterpret_cast<AssembleurOriginesAutoHeberge>(exportOriginesRequis(imageSyntaxe, "AssemblerDeclarationsAvecOrigines", "AssembleOriginAwareDeclarations")),
+            reinterpret_cast<AssembleurOriginesAutoHeberge>(exportOriginesRequis(imageSyntaxe, "AssemblerDeclarationsNormaliseesAvecOrigines", "AssembleNormalizedOriginAwareDeclarations")),
+            reinterpret_cast<LocaliseurAssemblageAutoHeberge>(exportOriginesRequis(imageSyntaxe, "LocaliserOrigineAssemblagePrepare", "LocatePreparedAssemblyOrigin")),
+            reinterpret_cast<SemantiqueOriginesAutoHeberge>(exportOriginesRequis(image, "AnalyserSemantiqueUnitesAvecOrigines", "AnalyzeOriginAwareUnitSemantics")),
+            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsAssemblageInclusions", preparer, lexerOrigines, developper);
         TesterNormalisationDeclarationsPreparees(reinterpret_cast<AssembleurDeclarationsAutoHeberge>(*exportNormalisation), syntaxe, interface,
             reinterpret_cast<AnalyseurSemantiqueUnitesAutoHeberge>(*exportSemantiqueUnites));
         const auto adresseEmission = image.ChercherExport(

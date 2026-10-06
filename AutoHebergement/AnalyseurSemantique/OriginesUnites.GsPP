@@ -1,0 +1,99 @@
+/**
+ * <résumé>Relie la sémantique des unités assemblées aux fichiers originaux des inclusions.</résumé>
+ * Le texte, l'AST et les tables proviennent d'un assemblage réussi et restent inchangés.
+ **/
+espace GalacticShrine::GsPP::Autohebergement {
+    NoeudDeclaration* NulNoeudsOriginesSemantiques;
+
+    ErreurAnalyseSemantique ValiderEntreesOriginesSemantiques(RequeteSemantiqueUnitesAvecOrigines* requete) {
+        constante RequeteAssemblageAvecOrigines* declarations = requete->Declarations;
+        RequeteAssemblageDeclarations* assemblage = declarations->Assemblage;
+        si (!assemblage || !assemblage->Unites || !assemblage->Origines || !declarations->Tables
+            || !assemblage->SourceAssemblee || !assemblage->Noeuds
+            || assemblage->NombreUnites == 0 || assemblage->NombreUnites > 1_000_000
+            || declarations->NombreFichiers == 0 || declarations->NombreFichiers > 1_000_000
+            || assemblage->Resultat.Erreur != ErreurAssemblageDeclarations::Reussite
+            || assemblage->Resultat.NombreOrigines != assemblage->NombreUnites
+            || assemblage->CapaciteOrigines < assemblage->NombreUnites
+            || assemblage->Resultat.NombreNoeuds == 0
+            || assemblage->CapaciteNoeuds < assemblage->Resultat.NombreNoeuds
+            || assemblage->CapaciteSource < assemblage->Resultat.NombreOctetsSource
+            || assemblage->Resultat.NombreOctetsSource > 1_000_000_000
+            || requete->Analyse->Source != convertir<constante caractère*>(assemblage->SourceAssemblee)
+            || requete->Analyse->TailleSource != assemblage->Resultat.NombreOctetsSource
+            || requete->Analyse->Noeuds != convertir<constante NoeudDeclaration*>(assemblage->Noeuds)
+            || requete->Analyse->NombreNoeuds != assemblage->Resultat.NombreNoeuds)
+            retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        naturel64 indexValidation = 0;
+        tantque (indexValidation < assemblage->NombreUnites) {
+            constante UniteDeclarationsPreparee* unite = &assemblage->Unites[indexValidation];
+            OrigineUniteDeclarations* origine = &assemblage->Origines[indexValidation];
+            si ((!unite->Source && unite->Taille != 0) || unite->Taille > 999_999_999
+                || unite->EstInterface > 1 || unite->Reserve != 0
+                || origine->DebutOctets >= requete->Analyse->TailleSource
+                || origine->TailleOctets >= requete->Analyse->TailleSource - origine->DebutOctets)
+                retourner ErreurAnalyseSemantique::ArgumentInvalide;
+            naturel64 bom = 0;
+            si (unite->Taille >= 3 && convertir<octet>(unite->Source[0]) == 239
+                && convertir<octet>(unite->Source[1]) == 187 && convertir<octet>(unite->Source[2]) == 191) bom = 3;
+            si (convertir<naturel64>(origine->OctetsBom) != bom || origine->TailleOctets != unite->Taille - bom)
+                retourner ErreurAnalyseSemantique::ArgumentInvalide;
+            naturel64 octetValidation = 0;
+            tantque (octetValidation < origine->TailleOctets) {
+                si (requete->Analyse->Source[origine->DebutOctets + octetValidation] != unite->Source[bom + octetValidation])
+                    retourner ErreurAnalyseSemantique::ArgumentInvalide;
+                octetValidation = octetValidation + 1;
+            }
+            RequeteAnalyseDeclarations analyse = {unite->Source, unite->Taille, NulNoeudsOriginesSemantiques, 0, {}};
+            constante TableOriginesUniteDeclarations* table = &declarations->Tables[indexValidation];
+            RequeteDeclarationsAvecOrigines jetons = {
+                &analyse, table->Jetons, table->NombreJetons, declarations->NombreFichiers, 0, 0, 0, unite->EstInterface, 0};
+            ErreurAnalyseDeclarations erreur = AnalyserDeclarationsAvecOrigines(&jetons);
+            si (erreur == ErreurAnalyseDeclarations::AllocationImpossible) retourner ErreurAnalyseSemantique::AllocationImpossible;
+            si (erreur != ErreurAnalyseDeclarations::CapaciteInsuffisante) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+            indexValidation = indexValidation + 1;
+        }
+        retourner ErreurAnalyseSemantique::Reussite;
+    }
+
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecOrigines(RequeteSemantiqueUnitesAvecOrigines* requete) {
+        si (!requete) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        requete->IndexUniteErreur = 0;
+        requete->IndexFichierErreur = 0;
+        requete->LigneLocaleErreur = 0;
+        requete->ColonneLocaleErreur = 0;
+        si (requete->Declarations) {
+            requete->IndexFichierErreur = requete->Declarations->NombreFichiers;
+            si (requete->Declarations->Assemblage)
+                requete->IndexUniteErreur = requete->Declarations->Assemblage->NombreUnites;
+        }
+        si (!requete->Analyse) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        requete->Analyse->Resultat = {};
+        requete->Analyse->Resultat.Erreur = ErreurAnalyseSemantique::ArgumentInvalide;
+        si (!requete->Declarations) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        ErreurAnalyseSemantique erreur = ValiderEntreesOriginesSemantiques(requete);
+        si (erreur != ErreurAnalyseSemantique::Reussite) {
+            requete->Analyse->Resultat.Erreur = erreur;
+            retourner erreur;
+        }
+        RequeteAssemblageDeclarations* assemblage = requete->Declarations->Assemblage;
+        RequeteAnalyseSemantiqueUnites unites = {
+            requete->Analyse, convertir<constante OrigineUniteDeclarations*>(assemblage->Origines),
+            assemblage->NombreUnites, assemblage->NombreUnites, 0, 0};
+        erreur = AnalyserSemantiqueUnites(&unites);
+        si (erreur == ErreurAnalyseSemantique::CapaciteSymbolesInsuffisante
+            || erreur == ErreurAnalyseSemantique::CapaciteResolutionsInsuffisante
+            || erreur == ErreurAnalyseSemantique::AllocationImpossible
+            || erreur == ErreurAnalyseSemantique::ArgumentInvalide) retourner erreur;
+        requete->IndexUniteErreur = unites.IndexUniteErreur;
+        si (unites.LigneLocaleErreur != 0 && unites.IndexUniteErreur < assemblage->NombreUnites) {
+            RequeteAssemblageAvecOrigines localisation = *requete->Declarations;
+            LocaliserOrigineAssemblagePrepare(&localisation, unites.IndexUniteErreur,
+                unites.LigneLocaleErreur, unites.ColonneLocaleErreur);
+            requete->IndexFichierErreur = localisation.IndexFichierErreur;
+            requete->LigneLocaleErreur = localisation.LigneLocaleErreur;
+            requete->ColonneLocaleErreur = localisation.ColonneLocaleErreur;
+        }
+        retourner erreur;
+    }
+}

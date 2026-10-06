@@ -10,6 +10,296 @@
 
 # Journal des modifications
 
+## Catalogue de fichiers du produit — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- extraire la lecture/résolution des tests vers `CatalogueInclusions` dans
+  `gspp_compiler`, avec miroirs ABI partagés, noms de diagnostic indépendants
+  des chemins et préfixe commun conservant les indices ; instantané par
+  identité canonique, copies interdites et déplacements sûrs ;
+- remplacer la récursion hôte par un graphe itératif borné : par défaut
+  4 096 fichiers, 100 000 liens, 16 Mio par fichier, 64 Mio de textes distincts ;
+  conserver les diagnostics de profondeur, cycles et `once` côté Gs++ ;
+- ajouter `PreparerSourceAvecOrigines`, mesure/publication par l'export Gs++,
+  contrôle du contrat et sorties possédées, vides sur refus ; raccorder les
+  matrices de syntaxe/assemblage/sémantique avec origines à cette API ;
+- vérifier les noms virtuels, alias, instantanés après modification sur disque,
+  déplacements, capacités, diagnostics FR/EN, limites et graphe de 512 niveaux ;
+  sept contrats ABI incohérents et échec de publication simulés refusés ;
+- CTest Windows 5/5, GNU/Linux 6/6, validation native VS 2026 et conformité
+  20/20 par chaîne ; total sémantique inchangé à 2 751, images identiques
+  de 542 527 octets, 99 exports et deux imports ; alpha.10, formats 1.0 et ABI 1
+  conservés ; pas de commit/push/release ;
+- documenter la limite de lecture anticipée et de découverte des chemins par
+  le lexeur C++ ; lecture à la demande et intégration au pilote par défaut
+  encore ouvertes, sans revendication de frontend 0.27 complet.
+
+### English
+
+- move file reading/path resolution from tests into `gspp_compiler`'s
+  `CatalogueInclusions`, with shared ABI mirrors, independent physical paths
+  and diagnostic names, stable common-prefix indices, owned canonical snapshots,
+  deleted copies and safe moves;
+- use bounded iterative host traversal: default 4,096 files, 100,000 links,
+  16 MiB per file and 64 MiB of distinct source text; Gs++ remains responsible
+  for depth, cycles and once guards;
+- add `PreparerSourceAvecOrigines`, measure/publish through the Gs++ export,
+  checked ABI contracts and owned outputs cleared on rejection; use this API
+  in origin-aware syntax/assembly/semantic matrices;
+- test virtual names, aliases, snapshot stability after disk changes, moves,
+  capacities, bilingual diagnostics, bounds and a 512-level graph; reject
+  seven inconsistent ABI contracts and discard a simulated failed publication;
+- Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 validation and 20/20
+  conformance per toolchain; unchanged 2,751 semantic rejections, identical
+  542,527-byte images, 99 exports and two imports; keep alpha.10, formats 1.0
+  and ABI 1; no commit, push or release;
+- explicitly retain eager graph reading and C++ path discovery as limitations;
+  on-demand I/O and default-driver integration remain open, without claiming
+  a complete 0.27 frontend.
+
+## Expansion des inclusions avec origines — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `DevelopperInclusionsDeclarations` / `ExpandDeclarationIncludes` :
+  catalogue et liens de 32 octets, requête additive de 128 octets, résultat de
+  48 octets, contrats dans `ExpansionDeclarations.HGsPP` ; lecture et chemins
+  côté hôte, directives, sélection, `once`, cycles et profondeur côté Gs++ ;
+- conserver l'ordre du bootstrap : lexage complet avant directives, `once`
+  au point de rencontre, alias par identité canonique, cycles sur la directive,
+  maximum de 128 fichiers actifs ; préparer ensuite lexèmes et origines avec
+  sorties transactionnelles et arène libérée, sans nouvel import d'hôte ;
+- raccorder les deux matrices d'inclusions à l'expansion Gs++, la sélection C++
+  servant d'oracle ; 41 corpus français/anglais, 15 valides et 26 refus bilingues
+  sur les dossiers testés, diagnostics originaux, capacités, sentinelles, chaque
+  échec d'allocation, états réinitialisés et catalogue/liens invalides vérifiés ;
+- adapter le test de casse au système de fichiers réel, notamment NTFS sous WSL,
+  et synchroniser l'ordre des en-têtes/sources CMake et MSBuild natif pour obtenir
+  les mêmes images ; CTest Windows 5/5, GNU/Linux 6/6 et validation native réussis ;
+- conformité 20/20 par chaîne, total sémantique inchangé à 2 751 ; trois images
+  identiques et vérifiées de 542 527 octets, 99 exports et deux imports ; alpha.10,
+  formats 1.0 et ABI 1 conservés ; pilote `gsppc` et bootstrap/backend inchangés ;
+  travail local non commité/non poussé, sans nouvelle release ni frontend complet.
+
+### English
+
+- add `DevelopperInclusionsDeclarations` / `ExpandDeclarationIncludes`: 32-byte
+  catalog entries and links, additive 128-byte request, 48-byte result, contracts
+  in `ExpansionDeclarations.HGsPP`; host file reading/path resolution, Gs++
+  directives, token selection, once guards, cycle and depth handling;
+- preserve bootstrap ordering: full-file lexing before directives, once guards
+  at their point of encounter, canonical alias identities, cycles at the calling
+  directive and 128 active files; prepare lexemes/origins transactionally and
+  free the arena on every exit, with no additional host imports;
+- route both inclusion matrices through Gs++ expansion, retaining C++ selection
+  only as the oracle; 41 French/English corpora, 15 valid and 26 rejected bilingual
+  cases on the tested directories; verify original diagnostics, capacities,
+  sentinels, every allocation failure, reset states and invalid catalogs/links;
+- make the case test depend on the actual filesystem, including NTFS under WSL,
+  and align CMake/native MSBuild input order for identical images; Windows CTest
+  5/5, GNU/Linux 6/6 and native validation pass;
+- conformance 20/20 per toolchain, semantic total unchanged at 2,751; three
+  identical verified 542,527-byte images, 99 exports and two imports; retain
+  alpha.10, formats 1.0 and ABI 1, the `gsppc` driver and C++ bootstrap/backend;
+  local uncommitted/unpushed work, no release or complete-frontend claim.
+
+## Préparation lexicale avec origines — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `PreparerDeclarationsAvecOrigines` / `PrepareOriginAwareDeclarations`
+  dans `Frontend.GsE` : fragments originaux de 40 octets, requête additive de
+  112 octets, résultat de 48 octets ; lexage avant publication, copie sans
+  réencodage des lexèmes/chaînes, BOM optionnel, séparateurs LF/CRLF et EOF ;
+- conserver les deux sorties transactionnelles, les capacités exactes et les
+  diagnostics lexicaux dans le fichier original ; refuser fragments multiples,
+  commentaires/séparateurs périphériques, directives non développées, métadonnées
+  invalides et tailles excessives, sans allocation ni nouveau service d'hôte ;
+- remplacer les deux assembleurs de texte C++ des tests d'inclusions par cette
+  préparation Gs++ : syntaxe, assemblage/normalisation et sémantique avec origines
+  utilisent maintenant ses sorties ; la sélection des fragments, lecture,
+  résolution des chemins, `#pragma once` et cycles restent côté hôte ;
+- vérifier 40 lexèmes dans quatre modes BOM/LF/CRLF et 21 fragments refusés,
+  ainsi que les arguments, fins vides, refus tardifs, dépassements, capacités,
+  coordonnées lexicales et sentinelles ; total sémantique inchangé à 2 751 ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis,
+  conformité 20/20 par chaîne ; trois images identiques et vérifiées de
+  524 319 octets, 97 exports et deux imports ; alpha.10, formats 1.0 et ABI 1
+  conservés ; anciens contrats et pilote `gsppc` inchangés ; tranche locale
+  non commitée/non poussée, sans release ni revendication d'auto-hébergement complet.
+
+### English
+
+- add `PreparerDeclarationsAvecOrigines` / `PrepareOriginAwareDeclarations` to
+  `Frontend.GsE`: 40-byte original fragments, additive 112-byte request and
+  48-byte result; validate lexically before publishing, copy lexemes and strings
+  without re-encoding, support optional BOM, LF/CRLF separators and EOF;
+- preserve transactional text/origin outputs, exact capacities and original-file
+  lexical diagnostics; reject multiple-token fragments, surrounding comments or
+  separators, unexpanded directives, invalid metadata and excessive sizes,
+  without allocation or additional host services;
+- replace both C++ text builders in the inclusion tests with this Gs++ preparation;
+  origin-aware syntax, assembly/normalization and semantics consume its outputs;
+  fragment selection, file reading, path resolution, once guards and cycles stay host-side;
+- test 40 lexemes in four BOM/LF/CRLF modes, 21 rejected fragments, invalid
+  arguments, empty EOFs, late rejections, overflows, exact/partial capacities,
+  lexical coordinates and sentinels; semantic rejection total remains 2,751;
+- Windows CTest 5/5, GNU/Linux 6/6, native solution and MSBuild validation pass,
+  conformance 20/20 per toolchain; three identical verified 524,319-byte images,
+  97 exports and two imports; retain alpha.10, formats 1.0 and ABI 1, old contracts
+  and the `gsppc` driver; local uncommitted/unpushed work, no release or complete
+  self-hosting claim.
+
+## Assemblage des inclusions et diagnostics originaux — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter les entrées d'assemblage brut/normalisé avec origines de jetons,
+  leur localiseur et la sémantique par unité avec diagnostics originaux ;
+  deux requêtes additives de 40 octets et une table de 16 octets par unité,
+  huit nouveaux exports français/anglais ; anciens contrats conservés ;
+- garder les inclusions dans leur unité de traduction et l'isolation des
+  imports entre unités séparées ; valider modes mixtes et plages exactes,
+  conserver le fichier de la déclaration choisie ou fautive ; contrôler le
+  texte assemblé et les tables avant la sémantique sans modifier l'assemblage ;
+- conserver les trois sorties transactionnelles des assemblages et les
+  préfixes historiques de symboles/résolutions de la sémantique ; ne pas
+  attribuer les erreurs de capacité, d'argument ou d'allocation à un fichier fautif ;
+- 12 corpus bilingues valides, six conflits bilingues de normalisation
+  (12 refus différentiels), trois refus syntaxiques et sept refus sémantiques
+  bilingues ; total sémantique de 2 737 à 2 751 ; sélections et diagnostics
+  comparés au bootstrap réel, capacités, sentinelles, allocations, tables
+  et textes altérés vérifiés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+  conformité 20/20 par chaîne ; trois images identiques de 516 863 octets,
+  vérifiées, avec 95 exports et deux imports ; formats 1.0, ABI 1 et alpha.10 conservés ;
+- lecture/expansion côté hôte, chemin de compilation de fichiers de `gsppc`
+  non remplacé ; bootstrap/backend C++ inchangés, extension locale non
+  commitée/non poussée, sans release et distincte de la CI de `039bd3f`.
+
+### English
+
+- add origin-aware raw/normalized assembly entries, their locator and per-unit
+  semantics with original diagnostic files; two additive 40-byte requests and
+  a 16-byte table per unit, eight new French/English exports; preserve existing contracts;
+- keep includes within their translation unit and isolate imports between
+  separate units; validate mixed modes and exact token ranges, retaining the
+  chosen or offending declaration's file; check assembled text and origin tables
+  before semantics without modifying the assembly context;
+- preserve transactional three-buffer assembly outputs and historical semantic
+  symbol/resolution prefixes; do not attribute capacity, argument or allocation
+  errors to an offending source file;
+- 12 valid bilingual corpora, six bilingual normalization conflicts
+  (12 differential rejections), three bilingual syntax rejections and seven
+  bilingual semantic rejections; semantic total increased from 2,737 to 2,751;
+  compare selections and diagnostics with the real bootstrap and verify
+  capacities, sentinels, allocation failures and altered tables/text;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation passed;
+  conformance 20/20 per toolchain; three identical verified 516,863-byte images,
+  95 exports and two imports; retain formats 1.0, ABI 1 and alpha.10;
+- reading/expansion remain host-side and the `gsppc` file-compilation path is
+  not replaced; C++ bootstrap/backend unchanged; local uncommitted changes,
+  no release, separate from the CI of `039bd3f`.
+
+## Origines des inclusions préparées — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `AnalyserDeclarationsAvecOrigines` / `AnalyzeOriginAwareDeclarations`
+  pour une unité déjà développée par l'hôte : un enregistrement de 40 octets par
+  jeton, fin comprise, et une requête additive de 56 octets ; les plages doivent
+  correspondre exactement au lexage réel avant toute publication de l'AST ;
+- appliquer les modes source/interface au jeton décisif de chaque déclaration,
+  avec priorité au mode global d'interface, comme le bootstrap C++ ; conserver
+  les positions synthétiques de l'AST et restituer l'origine des refus syntaxiques ;
+- ajouter `LocaliserOrigineDeclarationsPreparees` / `LocatePreparedDeclarationOrigin`
+  pour les débuts de jetons et la fin du texte, notamment après la sémantique ;
+  table validée et inchangée, sans lecture de fichier ni allocation ;
+- tester de vrais fichiers inclus préparés par l'hôte : inclusions imbriquées,
+  chemins relatifs/Unicode, BOM, `#pragma once`, signatures à cheval sur deux
+  fichiers, modes mixtes et retour au fichier principal ; vingt corpus bilingues
+  syntaxiquement valides, sept refus syntaxiques et trois refus sémantiques
+  bilingues ; total sémantique de 2 731 à 2 737 ; chaque jeton/EOF, capacités,
+  sentinelles, allocations et tables invalides vérifiés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+  conformité 20/20 par chaîne ; trois images identiques de 505 599 octets,
+  vérifiées, 87 exports et deux imports ; anciens contrats, formats 1.0,
+  ABI 1 et alpha.10 conservés ;
+- lecture/expansion toujours côté hôte ; raccordement des origines de jetons
+  à l'assemblage/normalisation multi-unités encore ouvert ; changements locaux,
+  non commités/non poussés, sans release et distincts de la CI de `039bd3f`.
+
+### English
+
+- add `AnalyserDeclarationsAvecOrigines` / `AnalyzeOriginAwareDeclarations`
+  for a host-expanded translation unit: one 40-byte record per token, including
+  EOF, and an additive 56-byte request; byte ranges must exactly match actual
+  lexing before any AST is published;
+- select source/interface mode at each declaration's decisive token, with a
+  global interface override, matching the C++ bootstrap; preserve synthetic
+  AST positions and return original-file coordinates for syntax rejections;
+- add `LocaliserOrigineDeclarationsPreparees` / `LocatePreparedDeclarationOrigin`
+  for token starts and EOF, including semantic diagnostics; use a validated,
+  unchanged table without file reading or allocation;
+- test real include files prepared by the host: nested includes, relative/Unicode
+  paths, BOM, `#pragma once`, signatures spanning files, mixed modes and return
+  to the main file; twenty syntactically valid bilingual corpora, seven bilingual
+  syntax rejections and three bilingual semantic rejections; semantic total
+  increased from 2,731 to 2,737; verify every token/EOF, capacities, sentinels,
+  allocation failures and invalid tables;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation passed;
+  conformance 20/20 per toolchain; three identical verified 505,599-byte images,
+  87 exports and two imports; preserve existing contracts, formats 1.0,
+  ABI 1 and alpha.10;
+- file reading/expansion remain host-side; connecting per-token origins to
+  multi-unit assembly/normalization is still pending; changes remain local and
+  uncommitted, with no release, separate from the CI of `039bd3f`.
+
+## Normalisation des membres et groupes mixtes — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- étendre la normalisation préparée aux méthodes, constructeurs, destructeurs
+  et opérateurs membres, dans la même passe que les fonctions libres ; comparer
+  exactement le récepteur implicite `Classe&` aux paramètres explicites des groupes mixtes ;
+- préférer la définition dans l'ordre de première déclaration des fonctions,
+  même en changeant de propriétaire ; placer les types/champs avant les fonctions
+  et réindexer les parents sans modifier les positions, le texte ou les origines ;
+- conserver l'assemblage brut et les contrats publics ; les types/classes répétés
+  ne sont pas fusionnés et restent soumis à la passe sémantique ;
+- matrice de normalisation : 39 corpus bilingues valides, 32 conflits bilingues
+  (64 refus différentiels), un refus syntaxique bilingue et 14 refus sémantiques
+  bilingues ; total sémantique de 2 719 à 2 731 ; ordre comparé au normaliseur
+  C++ réel, sorties intactes même avec capacités suffisantes et échecs d'allocation testés ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+  conformité 20/20 par chaîne ; trois images identiques de 498 479 octets,
+  vérifiées, 83 exports et deux imports inchangés ;
+- publier séparément le commit signé et vérifié `039bd3f`, validé par les trois
+  jobs GitHub Actions à 2 719 refus ; cette nouvelle extension reste locale,
+  non commitée/non poussée, sans nouvelle release ; alpha.10, formats 1.0 et ABI 1 conservés.
+
+### English
+
+- extend prepared normalization to methods, constructors, destructors and member
+  operators, sharing the free-function pass; compare the exact implicit `Class&`
+  receiver with explicit parameters in mixed groups;
+- prefer definitions in first-function-declaration order, even across owners;
+  emit types/fields before functions and remap parents without changing source
+  positions, text or unit origins;
+- preserve raw assembly and public layouts; repeated types/classes are not merged
+  and remain subject to semantic validation;
+- normalization matrix: 39 valid bilingual corpora, 32 bilingual conflicts
+  (64 differential rejections), one bilingual syntax rejection and 14 bilingual
+  semantic rejections; semantic total increased from 2,719 to 2,731; compare order
+  against the real C++ normalizer and test sufficient guarded buffers and allocation failures;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation passed;
+  conformance 20/20 per toolchain; three identical verified 498,479-byte images,
+  83 exports and unchanged two imports;
+- separately publish signed and verified commit `039bd3f`, passing all three GitHub
+  Actions jobs at 2,719 rejections; this new extension remains local and uncommitted,
+  with no new release; retain alpha.10, formats 1.0 and ABI 1.
+
 ## Normalisation préparée des déclarations libres — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
 
 ### Français

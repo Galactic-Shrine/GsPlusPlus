@@ -26,11 +26,16 @@ foreach ($stage in @('ClassificateurMotsCles', 'Lexeur', 'AnalyseurDeclarations'
     $sources += Join-Path $root "AutoHebergement/$stage/$stage.GsPP"
     if ($stage -eq 'AnalyseurDeclarations') {
         $sources += Join-Path $root 'AutoHebergement/AnalyseurDeclarations/NormalisationDeclarations.GsPP'
+        $sources += Join-Path $root 'AutoHebergement/AnalyseurDeclarations/OriginesDeclarations.GsPP'
+        $sources += Join-Path $root 'AutoHebergement/AnalyseurDeclarations/PreparationDeclarations.GsPP'
+        $headers += Join-Path $root 'AutoHebergement/AnalyseurDeclarations/ExpansionDeclarations.HGsPP'
+        $sources += Join-Path $root 'AutoHebergement/AnalyseurDeclarations/ExpansionDeclarations.GsPP'
     }
     Invoke-Compiler ($headers + $sources + @('--format', 'gsobj', '-o', "$auto/$stage.GsObj"))
 }
 $semantic = Join-Path $root 'AutoHebergement/AnalyseurSemantique/AnalyseurSemantique'
 Invoke-Compiler @($hosted, $headers[2], $headers[3], "$semantic.HGsPP", "$semantic.GsPP",
+    (Join-Path $root 'AutoHebergement/AnalyseurSemantique/OriginesUnites.GsPP'),
     '--format', 'gsobj', '-o', "$auto/AnalyseurSemantique.GsObj")
 Invoke-Compiler @("$auto/AnalyseurDeclarations.GsObj", "$auto/AnalyseurSemantique.GsObj",
     $library, '--format', 'gse', '--point-entree',

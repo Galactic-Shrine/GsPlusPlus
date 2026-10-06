@@ -362,7 +362,7 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **2 719 corpus négatifs** dans les sources de développement (**619** dans
+  avec **2 751 corpus négatifs** dans les sources de développement (**619** dans
   l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
@@ -502,14 +502,38 @@ principale.
   externes implicites, visibilité des membres, types et signatures ; vingt-deux
   corpus bilingues syntaxiques/sémantiques et six interfaces de types/données ;
   cette API ne lit pas les fichiers et ne développe pas les inclusions ;
+- expansion auto-hébergée de `#inclure` / `#include` et `#pragma once` sur un
+  catalogue en mémoire : ordre lexical du bootstrap, cycles, limite de 128 fichiers
+  actifs, alias canoniques, modes mixtes et diagnostics originaux ; lecture et
+  résolution des chemins restent côté hôte, sans remplacement du pilote `gsppc` ;
+- catalogue de fichiers réutilisable dans le compilateur : instantané propriétaire,
+  alias canoniques, noms de diagnostic distincts des chemins, parcours itératif
+  et limites configurables ; préparation du texte et des origines par le frontend
+  Gs++, avec contrôle du contrat ABI ; lecture du graphe encore anticipée ;
+- préparation lexicale auto-hébergée du texte développé et des origines, à partir
+  des fragments originaux sélectionnés par l'hôte : lexèmes et chaînes échappées
+  conservés, sorties transactionnelles, capacités exactes, BOM/LF/CRLF et EOF ;
+  aucune allocation ni lecture de fichier ; directives non développées refusées ;
+- analyse auto-hébergée d'une unité déjà développée avec les origines de chaque
+  jeton : modes source/interface mixtes et diagnostics dans le fichier d'origine ;
+  vingt corpus bilingues syntaxiquement valides, sept refus syntaxiques et trois
+  refus sémantiques bilingues ; texte développé par l'hôte ou par l'API d'expansion ;
 - assemblage auto-hébergé de sources et interfaces préparées : texte, AST et
   table d'origines, avec diagnostics locaux et imports d'espaces isolés par unité ;
   treize corpus bilingues valides, sorties protégées et échecs d'allocation testés ;
-  la normalisation des membres/groupes mixtes et le raccordement des inclusions restent à faire ;
-- normalisation auto-hébergée des fonctions/opérateurs libres, globales et alias
-  préparés : définitions préférées aux prototypes, ordre des premières déclarations
-  conservé, noms et types exacts comparés avant résolution des alias ; vingt-deux
-  corpus bilingues valides et trente refus de normalisation différentiels ;
+  anciennes entrées conservées, distinctes des entrées avec origines de jetons ;
+- normalisation auto-hébergée des fonctions/opérateurs libres et membres,
+  constructeurs, destructeurs, globales et alias préparés : récepteurs implicites
+  inclus dans les clés, définitions préférées aux prototypes, ordre des premières
+  déclarations des fonctions conservé, noms/types exacts avant résolution des alias ;
+  trente-neuf corpus bilingues valides et soixante-quatre refus de normalisation
+  différentiels ; types/champs placés avant les fonctions et parents réindexés ;
+- raccordement des inclusions préparées à l'assemblage, à la normalisation et
+  à la sémantique par unité : douze corpus bilingues valides, six conflits de
+  normalisation, trois refus syntaxiques et sept refus sémantiques bilingues ;
+  fichiers originaux des diagnostics et sélections conservés, imports isolés
+  entre unités séparées mais pas entre fichiers inclus ; les tests utilisent
+  l'expansion Gs++, lecture et résolution des chemins côté hôte ;
 - initialiseurs globaux contrôlés entièrement dans l'ordre source, avec typage
   de toutes les feuilles avant leur passe constante ; priorité des contrôles
   structurels des champs par défaut, dans le périmètre différentiel testé ;

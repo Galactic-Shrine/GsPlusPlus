@@ -429,8 +429,10 @@ Cette entrée ne lit aucun fichier, ne traite pas `#inclure` / `#include` ou
 `#pragma once`, n'assemble pas les unités et ne normalise pas les prototypes
 contre leurs définitions. Les positions retournées sont celles du texte fourni,
 sans identité de fichier dans l'AST compact. L'assemblage préparé est décrit
-ci-dessous ; sa normalisation et les origines internes aux inclusions restent
-à raccorder. L'analyse
+ci-dessous, avec sa normalisation préparée. Une entrée additive décrite ensuite
+analyse les origines des jetons d'une unité développée ; les entrées d'assemblage
+avec origines décrites ensuite raccordent cette table à la normalisation et
+à la sémantique par unité. L'analyse
 sémantique complète actuelle garde notamment l'exigence d'au moins une fonction.
 
 ### Assemblage auto-hébergé de plusieurs unités préparées
@@ -451,28 +453,276 @@ séparée n'est pas une inclusion textuelle dans son consommateur.
 
 L'assemblage brut n'effectue **pas la normalisation** des prototypes,
 globales et alias répétés. Un prototype et sa définition sont tous deux
-conservés dans l'AST assemblé. L'expansion des inclusions et leur origine
-interne restent côté hôte ; cette API préparée ne lit aucun fichier.
+conservés dans l'AST assemblé. Cette API historique attend des textes déjà
+développés, ne lit aucun fichier et ne reçoit pas de table
+d'origines de jetons. Les entrées additives décrites ci-dessous la prennent en charge.
 Voir le [contrat du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-préparé-et-origines-des-unités--6-octobre-2026).
 
-### Normalisation préparée des déclarations libres
+### Normalisation préparée des déclarations
 
 `AssemblerDeclarationsNormalisees` / `AssembleNormalizedDeclarations` est une
 entrée additive utilisant la même requête d'assemblage. Elle normalise les
-fonctions/opérateurs libres, globales et alias racines après analyse de toutes
+fonctions/opérateurs libres et membres, constructeurs, destructeurs, globales
+et alias racines après analyse de toutes
 les unités, avec les règles du bootstrap dans ce périmètre. Les noms et types
 sont comparés exactement avant résolution des alias ; une définition compatible
-remplace les prototypes à la place de la première déclaration. Les doubles
+remplace les prototypes dans l'ordre de première déclaration des fonctions. Les doubles
 définitions et incompatibilités sont refusées : fonctions, puis globales, puis
 alias. Les positions restent celles de la déclaration choisie ou fautive.
 
 Les besoins de capacité de l'AST sont ceux de la sortie normalisée. Aucun
 des trois tampons n'est publié en cas d'erreur ou de capacité insuffisante.
-L'assemblage brut conserve son comportement sans fusion. Les membres de
-classes ne sont pas encore normalisés ; types et énumérations restent
-distincts. Cette entrée ne remplace pas encore la normalisation générale
-du bootstrap et ne développe pas les inclusions.
-Voir le [contrat de normalisation](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#normalisation-préparée-des-déclarations-libres--6-octobre-2026).
+L'assemblage brut conserve son comportement sans fusion. La clé d'une méthode
+inclut son récepteur implicite `Classe&`, comparable au premier paramètre d'une
+fonction libre de même nom complet. Les noms de constructeurs et destructeurs
+sont distincts des noms des méthodes ordinaires. Les types et énumérations
+restent distincts : les classes répétées ne sont pas fusionnées, même si leurs
+fonctions sont compatibles ; leur conflit relève ensuite de la sémantique.
+
+L'AST normalisé place d'abord les types et leurs enfants non fonctionnels,
+dans leur ordre source, puis les déclarations restantes et les fonctions dans
+leur ordre de première apparition. Les sous-arbres des fonctions restent
+contigus ; les membres d'une classe ne sont pas nécessairement contigus à son
+en-tête. Les consommateurs doivent utiliser `Parent`, réindexé vers un nœud
+antérieur, et non déduire le propriétaire d'une fonction de sa position physique.
+Les positions et tranches de noms restent celles de la déclaration retenue.
+Cette entrée préparée ne développe pas les inclusions et ne remplace pas
+encore le flux de compilation de fichiers de `gsppc`.
+Voir le [contrat de normalisation étendu](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#normalisation-des-membres-et-groupes-mixtes--6-octobre-2026).
+
+### Expansion en mémoire des inclusions textuelles
+
+`DevelopperInclusionsDeclarations` / `ExpandDeclarationIncludes` reçoit une
+`RequeteExpansionDeclarations` de **128 octets** : catalogue de
+`FichierInclusionDeclarations` de **32 octets**, liens de
+`LienInclusionDeclarations` de **32 octets**, indice racine, deux tampons de
+sortie, capacités et options BOM/CRLF. Son résultat de **48 octets** expose le
+code, détail lexical, fichier/ligne/colonne, nombres exacts d'octets/origines et
+mémoire d'arène. Les contrats sont déclarés dans `ExpansionDeclarations.HGsPP`.
+
+L'hôte lit les fichiers et résout les chemins. Chaque entrée du catalogue
+porte source, taille, identité canonique, mode source/interface et réserve
+nulle. Les identités, entre zéro et `NombreFichiers-1`, regroupent les alias
+pour `once` et les cycles ; les indices distincts conservent leurs noms de
+diagnostic. L'hôte garantit les identités, contenus, modes et cibles : le
+frontend ne les vérifie pas contre le système de fichiers. Les liens sont
+uniques et triés par `(IndexFichier, DebutDirective)`. Leur état est disponible
+0, introuvable 1 ou extension incompatible 2 ; les deux derniers états portent
+`IndexCible=NombreFichiers`. Une directive valide sans lien est un argument
+invalide, pas un fichier réputé absent. Les liens ne remplacent pas le contrôle
+lexical et grammatical des directives.
+
+Le frontend applique les mêmes règles que le bootstrap : lexage **du fichier
+entier avant ses directives**, directive au début d'une ligne logique, un seul
+argument sur cette ligne et aucun jeton supplémentaire. `#inclure` / `#include`
+exigent un chemin entre guillemets non vide, sans NUL/CR/LF décodé ; seul
+`#pragma once` est accepté. `once` prend effet au point où il est rencontré,
+avant les inclusions suivantes, et n'est pas préscanné. Une identité protégée
+est ignorée avant toute réentrée, contrôle de profondeur ou lexage cible ; sinon
+un cycle est signalé sur la directive appelante. La limite est **128 fichiers
+actifs** ; une 129e entrée est refusée en position 1:1 du fichier cible. Les
+fichiers non visités ne sont pas lexés. Les états `once`/actifs sont propres à
+l'appel et ne persistent ni entre unités ni entre appels de mesure/publication.
+
+L'expansion sélectionne les fragments originaux et appelle la préparation
+lexicale ci-dessous : lexèmes conservés, séparateurs LF/CRLF, BOM optionnel,
+origines locales, modes par fichier et un seul EOF, celui de la racine.
+L'EOF conserve le mode zéro du bootstrap ; le mode global d'une unité
+d'interface reste celui de sa requête d'analyse/assemblage.
+
+Le texte et les origines sont **transactionnels**. Aucun préfixe n'est publié
+sur refus, échec d'allocation ou capacité insuffisante ; cette dernière expose
+les deux tailles exactes après expansion. Les erreurs d'argument, capacité ou
+allocation n'incriminent aucun fichier : indice `NombreFichiers` et positions
+nulles. Les refus lexicaux/de directives exposent leurs coordonnées originales.
+Sur les autres refus, les deux nombres de sortie sont nuls ; la mémoire d'arène
+reste une mesure du travail effectué. L'arène est libérée sur chaque sortie.
+Entrées, requête et tampons doivent être indépendants, valides et stables.
+
+Les codes sont succès 0, capacité 1, argument 2, allocation 3, lexage 4,
+directive hors début de ligne 5, argument attendu 6, texte après directive 7,
+pragma non pris en charge 8, chemin attendu 9, fichier introuvable 10,
+extension incompatible 11, cycle 12, profondeur 13 et taille excessive 14.
+Le catalogue est borné à un million de fichiers, les liens et jetons de sortie
+à cent millions ; chaque source et le texte développé sont bornés à un milliard
+d'octets. La sélection utilise une pile itérative et une arène, sans lecture
+de fichier ni nouvel import d'hôte. L'entrée ne remplace pas encore le pilote
+de compilation de fichiers de `gsppc`.
+
+### Adaptateur hôte du catalogue de fichiers
+
+Le bootstrap expose `GsPP::CreerCatalogueInclusions` dans
+`Compiler/include/GsPP/CatalogueInclusions.hpp`. Son résultat propriétaire
+`CatalogueInclusions` garde les textes, vues ABI, liens triés et noms de
+diagnostic. Il n'est pas copiable ; ses déplacements conservent les pointeurs
+vers les textes et vident l'objet déplacé. Les lectures utilisent des chemins
+physiques `UniteSource::Chemin`, indépendants de `NomDiagnostic`. Le préfixe
+`fichiersConnus` conserve ses indices ; les noms dupliqués dans ce préfixe et
+un même nom de diagnostic associé à deux chemins distincts sont refusés.
+
+Le graphe est parcouru itérativement, sans exécuter `once` ni sélectionner les
+jetons. Chaque identité canonique est lue une fois ; les alias exposent le même
+instantané, mais des indices et noms distincts. La normalisation d'identité
+est celle du bootstrap : `weakly_canonical`, UTF-8 générique et réduction ASCII
+de casse sur Windows. Il ne s'agit pas d'une nouvelle détection des identités
+physiques par numéro de fichier. Les modes source/interface suivent les
+extensions des fichiers ; le mode global d'analyse d'une unité reste séparé.
+
+Les limites hôtes par défaut sont **4 096 fichiers**, **100 000 liens**,
+**16 Mio par fichier** et **64 Mio de textes distincts**. Elles sont
+configurables dans les bornes ABI et ne remplacent pas le contrôle de profondeur
+de 128 fichiers actifs par le frontend. Les limites concernent le catalogue,
+pas un budget global de mémoire du processus. Les erreurs de lecture ou de
+limite lèvent une exception hôte, sans publier un catalogue partiel.
+
+`PreparerSourceAvecOrigines` reçoit le catalogue et l'export d'expansion chargé,
+avec la convention Microsoft x64 explicite sous GNU/Linux. Il mesure les
+capacités, les contrôle, alloue le texte et les origines, puis appelle le même
+export pour publier. `SourcePrepareeAvecOrigines` possède les deux sorties et
+le résultat ABI. Sur refus du frontend elles sont vides, et le diagnostic est
+conservé ; une incohérence de code/capacité/contrat lève une exception hôte.
+Les bornes de sortie par défaut sont 64 Mio de texte et un million d'origines.
+L'image contenant l'export doit rester chargée pendant les deux appels.
+
+**Limite actuelle :** le lexeur C++ découvre les chemins candidats, et tout
+le graphe accessible est lu avant l'expansion Gs++, y compris des fichiers que
+`once` ou un refus de directive pourraient ensuite rendre inutiles. Un échec
+d'E/S anticipé peut donc précéder un diagnostic de langue du parcours effectif.
+Les erreurs lexicales des fichiers restent dans leurs textes pour être
+diagnostiquées par le frontend. Cette entrée réutilisable, utilisée par les
+matrices de syntaxe/assemblage/sémantique avec origines, ne remplace pas le
+parcours par défaut de `gsppc`. Une résolution/lecture à la demande et le raccord
+complet au pilote restent à implémenter avant cette bascule.
+
+### Préparation lexicale du texte développé et des origines
+
+`PreparerDeclarationsAvecOrigines` / `PrepareOriginAwareDeclarations` reçoit
+une `RequetePreparationDeclarations` de **112 octets** : une liste de
+`FragmentJetonDeclarations` de **40 octets**, un nombre de fichiers du catalogue
+hôte, deux tampons de sortie (texte et `OrigineJetonDeclarations`), leurs
+capacités et deux options 0/1 (`MarqueUtf8`, `FinLigneCrlf`). Le résultat de
+**48 octets** expose l'erreur, son détail lexical éventuel, les capacités exactes
+en octets/origines et l'indice du fragment/fichier avec ses coordonnées locales.
+Les contrats antérieurs ne changent pas.
+
+Chaque fragment non final référence les octets d'un seul jeton original, sans
+BOM, commentaire ni séparateur périphérique, avec l'indice du fichier, la ligne,
+la colonne et le mode source/interface. Le dernier fragment est vide et décrit
+l'EOF de l'unité racine. La préparation copie les lexèmes sans décoder/réencoder
+les chaînes, puis ajoute LF ou CRLF après chaque jeton non final. Le BOM de sortie
+est optionnel ; les plages d'origine n'incluent ni BOM ni séparateurs. L'EOF est
+localisé exactement à la taille du texte, y compris pour une unité vide.
+
+Tous les fragments sont validés lexicalement **avant toute publication**.
+Les deux sorties sont transactionnelles : aucun préfixe n'est publié en cas
+d'argument invalide, fragment mal formé, erreur lexicale, directive non développée,
+taille excessive ou capacité insuffisante. L'appel de mesure valide aussi les
+entrées ; sur capacité insuffisante, les deux nombres de sortie sont exacts,
+les indices d'erreur valent les nombres de fragments/fichiers et les coordonnées
+sont nulles. Un refus d'entrée annule ces deux nombres et identifie le fragment
+fautif lorsque disponible. Les coordonnées lexicales sont rébasées dans le fichier
+original sans troncature ; un dépassement de `naturel32` est refusé comme argument.
+
+Les erreurs sont `Reussite=0`, `CapaciteInsuffisante=1`, `ArgumentInvalide=2`,
+`ErreurLexicale=3`, `FragmentInvalide=4`, `DirectiveNonDeveloppee=5` et
+`TailleExcessive=6`. Le nombre de fragments est compris entre 1 et 100 millions,
+celui des fichiers entre 1 et 1 million ; le texte préparé ne dépasse pas
+1 milliard d'octets. Les métadonnées et tailles sont contrôlées avant l'accès
+au fragment ; la borne cumulée avant son lexage. Entrées, sorties et requête
+doivent être des zones distinctes, valides et stables pendant l'appel.
+
+Cette préparation n'alloue rien et n'utilise aucun service de fichier. Les
+directives restantes `#inclure` / `#include` et `#pragma` sont refusées.
+La sélection peut être fournie par l'hôte ou par l'entrée d'expansion ci-dessus ;
+lecture et résolution des chemins restent côté hôte. Les indices et coordonnées ne sont pas
+vérifiés contre un catalogue de fichiers par cette API. Les tests raccordent
+cette préparation aux analyses avec origines et à l'assemblage/normalisation/
+sémantique multi-unités ; le pilote de compilation de fichiers de `gsppc`
+n'est pas encore remplacé.
+
+### Analyse d'une unité développée avec origines de jetons
+
+`AnalyserDeclarationsAvecOrigines` / `AnalyzeOriginAwareDeclarations` reçoit
+une requête additive de 56 octets, référençant la requête syntaxique existante
+de 80 octets et une table de `OrigineJetonDeclarations` de 40 octets par jeton.
+Le texte est déjà développé, par l'hôte ou par l'entrée d'expansion. Chaque enregistrement indique sa plage
+en octets dans ce texte, l'indice du fichier d'origine, sa ligne/colonne locales
+et son mode source/interface. La table contient exactement tous les jetons,
+y compris la fin de texte de taille nulle. Les plages sont comparées au lexage
+réel avant publication de l'AST ; les indices, coordonnées, bornes, modes et
+champs réservés sont contrôlés. Le catalogue des noms de fichiers reste à l'hôte.
+
+Le mode dépend du jeton décisif de la déclaration, comme le bootstrap, même
+lorsqu'une signature traverse une inclusion ; le mode global d'interface prime
+sur les modes locaux. Une inclusion textuelle reste dans la même unité de
+traduction que son consommateur, notamment pour les imports d'espaces.
+L'AST garde ses positions dans le texte développé ; les refus syntaxiques
+exposent en plus l'indice du fichier et les coordonnées locales.
+
+`LocaliserOrigineDeclarationsPreparees` / `LocatePreparedDeclarationOrigin`
+traduit une position synthétique de début de jeton, fin comprise, en position
+locale, notamment après une analyse sémantique. Il exige la même table validée
+et inchangée ; il contrôle ses bornes mais ne relance pas le lexage. Une position
+dans un espace ou à l'intérieur d'un jeton n'est pas traduite. Chaque appel
+réinitialise les résultats locaux ; sans origine, l'indice vaut `NombreFichiers`
+et la ligne/colonne valent zéro. La localisation n'alloue rien.
+
+Le contrat de capacité est celui de l'analyse syntaxique historique : mesure
+exacte et préfixe d'AST possible si le tampon est partiel. Ce n'est pas le contrat
+transactionnel à trois sorties de l'assemblage/normalisation. Lecture et résolution
+des chemins restent côté hôte ; l'entrée d'expansion ci-dessus traite les directives,
+`#pragma once` et cycles avant cette analyse.
+Cette entrée ne normalise pas les déclarations ; les entrées d'assemblage
+avec origines ci-dessous utilisent le même contrat de jetons pour chaque unité.
+Voir les [preuves différentielles](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#origines-des-inclusions-préparées--6-octobre-2026).
+
+### Assemblage, normalisation et sémantique avec origines d'inclusions
+
+`AssemblerDeclarationsAvecOrigines` / `AssembleOriginAwareDeclarations` et
+`AssemblerDeclarationsNormaliseesAvecOrigines` /
+`AssembleNormalizedOriginAwareDeclarations` reçoivent
+`RequeteAssemblageAvecOrigines` de 40 octets. Elle référence la requête
+d'assemblage historique de 128 octets, un catalogue commun de fichiers par
+indices et une table de `TableOriginesUniteDeclarations` de 16 octets par unité.
+Chaque table référence les origines de tous les jetons de cette unité développée,
+EOF compris. Les sources, modes globaux et nombre d'unités restent ceux de la
+requête historique. Les anciens contrats ne changent pas.
+
+L'assemblage brut ne fusionne rien. La normalisation applique les règles
+déjà décrites, y compris membres et groupes mixtes. Tous les textes sont
+analysés avant la recherche des conflits de normalisation ; les modes locaux
+et les plages exactes sont validés. Les trois tampons historiques restent
+transactionnels : aucun texte, AST ou table d'unités partiel en cas de refus,
+d'allocation impossible ou de capacité insuffisante. Les diagnostics historiques
+gardent leur rang d'unité et leurs positions locales synthétiques ; la requête
+additive expose en plus l'indice du fichier original et ses coordonnées.
+
+`LocaliserOrigineAssemblagePrepare` / `LocatePreparedAssemblyOrigin` traduit
+un début de jeton ou EOF d'une unité, avant rebasage dans le texte assemblé.
+Les tables validées et entrées doivent rester inchangées. Il n'alloue rien et
+ne relit aucun fichier. Une même inclusion peut apparaître dans plusieurs
+unités avec le même indice de fichier : unité de traduction et fichier
+d'origine sont deux identités distinctes.
+
+`AnalyserSemantiqueUnitesAvecOrigines` / `AnalyzeOriginAwareUnitSemantics`
+reçoit `RequeteSemantiqueUnitesAvecOrigines` de 40 octets, référençant une
+requête sémantique et le contexte d'un assemblage avec origines réussi.
+La requête sémantique doit utiliser les mêmes tampons de texte et AST, avec
+leurs tailles publiées. Le frontend vérifie les tables, les plages lexicales
+et l'égalité du texte assemblé avec les unités, BOM retirés, avant d'appeler
+la sémantique par unité. Les imports restent isolés entre unités séparées,
+pas entre fichiers inclus dans une même unité. Le diagnostic expose le rang
+d'unité et le fichier original, sans modifier le contexte d'assemblage.
+
+La sémantique conserve son contrat historique de préfixes de symboles/résolutions,
+distinct de l'assemblage transactionnel. Une incohérence détectée pendant la
+validation des origines ne publie aucun de ces tampons. Les erreurs de capacité,
+d'argument ou d'allocation ne sont pas attribuées à un fichier fautif : les
+indices valent leurs nombres d'unités/fichiers et les coordonnées sont nulles.
+Les tables de jetons restent celles des unités d'entrée ; aucun nouveau tampon
+de jetons concaténés n'est imposé. Lecture et chemins restent côté hôte et ces
+entrées ne remplacent pas encore le flux de compilation de fichiers de `gsppc`.
+Voir le [bilan du raccordement](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-des-inclusions-et-diagnostics-originaux--6-octobre-2026).
 
 ## Profils d’exécution
 

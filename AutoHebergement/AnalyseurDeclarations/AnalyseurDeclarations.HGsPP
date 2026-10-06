@@ -219,6 +219,122 @@ espace GalacticShrine::GsPP::Autohebergement {
         ResultatAnalyseDeclarations Resultat;
     };
 
+    /** <résumé>Origine d'un jeton du texte développé, y compris le jeton de fin.</résumé> **/
+    structure OrigineJetonDeclarations {
+        naturel64 DebutOctets;
+        naturel64 TailleOctets;
+        naturel64 IndexFichier;
+        naturel32 Ligne;
+        naturel32 Colonne;
+        naturel32 EstInterface;
+        naturel32 Reserve;
+    };
+
+    /** <résumé>Fragment lexical original sélectionné après expansion des inclusions.</résumé> **/
+    structure FragmentJetonDeclarations {
+        constante caractère* Source;
+        naturel64 Taille;
+        naturel64 IndexFichier;
+        naturel32 Ligne;
+        naturel32 Colonne;
+        naturel32 EstInterface;
+        naturel32 Reserve;
+    };
+
+    énumération ErreurPreparationDeclarations {
+        Reussite = 0,
+        Success = 0,
+        CapaciteInsuffisante = 1,
+        InsufficientCapacity = 1,
+        ArgumentInvalide = 2,
+        InvalidArgument = 2,
+        ErreurLexicale = 3,
+        LexicalError = 3,
+        FragmentInvalide = 4,
+        InvalidFragment = 4,
+        DirectiveNonDeveloppee = 5,
+        UnexpandedDirective = 5,
+        TailleExcessive = 6,
+        ExcessiveSize = 6,
+    };
+
+    structure ResultatPreparationDeclarations {
+        ErreurPreparationDeclarations Erreur;
+        naturel32 DetailLexical;
+        naturel64 IndexJetonErreur;
+        naturel64 NombreOctetsSource;
+        naturel64 NombreOrigines;
+        naturel64 IndexFichierErreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+    };
+
+    structure RequetePreparationDeclarations {
+        constante FragmentJetonDeclarations* Fragments;
+        naturel64 NombreFragments;
+        naturel64 NombreFichiers;
+        caractère* SourcePreparee;
+        naturel64 CapaciteSource;
+        OrigineJetonDeclarations* Origines;
+        naturel64 CapaciteOrigines;
+        naturel32 MarqueUtf8;
+        naturel32 FinLigneCrlf;
+        ResultatPreparationDeclarations Resultat;
+    };
+
+    /**
+     * <résumé>Produit le texte lexical développé et sa table d'origines, sans lecture ni allocation.</résumé>
+     * @Paramètre(RequetePreparationDeclarations*: requete) Fragments originaux dans l'ordre d'expansion, fin vide comprise.
+     * @Retourner(ErreurPreparationDeclarations) Capacités exactes ou refus situé au fragment fautif.
+     * @etc. Chaque fragment non final contient exactement un jeton sans BOM, commentaire ou séparateur périphérique.
+     * @etc. Les lexèmes, notamment les chaînes échappées, sont copiés sans réencodage, séparés par LF ou CRLF.
+     * @etc. Les deux sorties sont transactionnelles. Entrées et sorties doivent être des zones distinctes et stables.
+     * @etc. Lecture et chemins restent côté hôte ; cette entrée ne développe pas les directives restantes et les refuse.
+     **/
+    publique ErreurPreparationDeclarations PreparerDeclarationsAvecOrigines(RequetePreparationDeclarations* requete);
+
+    alias DeclarationTokenFragment = FragmentJetonDeclarations;
+    alias DeclarationPreparationResult = ResultatPreparationDeclarations;
+    alias DeclarationPreparationRequest = RequetePreparationDeclarations;
+    alias PrepareOriginAwareDeclarations = PreparerDeclarationsAvecOrigines;
+
+    structure RequeteDeclarationsAvecOrigines {
+        RequeteAnalyseDeclarations* Analyse;
+        constante OrigineJetonDeclarations* Origines;
+        naturel64 NombreOrigines;
+        naturel64 NombreFichiers;
+        naturel64 IndexFichierErreur;
+        naturel32 LigneLocaleErreur;
+        naturel32 ColonneLocaleErreur;
+        naturel32 EstInterface;
+        naturel32 Reserve;
+    };
+
+    /**
+     * <résumé>Analyse le texte développé d'une unité avec le mode et l'origine de chaque jeton.</résumé>
+     * @Paramètre(RequeteDeclarationsAvecOrigines*: requete) Texte préparé par l'hôte et table exacte des jetons, fin comprise.
+     * @Retourner(ErreurAnalyseDeclarations) Capacité exacte, diagnostic synthétique et origine locale si disponible.
+     * @etc. Les inclusions sont déjà développées ; aucune lecture de fichier ni fusion des déclarations.
+     * @etc. Le mode global d'interface prime sur les modes locaux ; l'AST garde ses positions synthétiques.
+     * @etc. Le contrat de capacité reste celui de l'analyse syntaxique, avec préfixe en cas de capacité partielle.
+     **/
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsAvecOrigines(RequeteDeclarationsAvecOrigines* requete);
+
+    /**
+     * <résumé>Retrouve l'origine d'une position synthétique de début de jeton, sans relancer l'analyse.</résumé>
+     * @Paramètre(RequeteDeclarationsAvecOrigines*: requete) Source et origines, résultats locaux réinitialisés à chaque appel.
+     * @Paramètre(naturel32: ligne) Ligne synthétique du jeton, fin comprise.
+     * @Paramètre(naturel32: colonne) Colonne synthétique du jeton.
+     * @Retourner(booléen) Origine retrouvée ; sinon IndexFichierErreur vaut NombreFichiers et les coordonnées sont nulles.
+     **/
+    publique booléen LocaliserOrigineDeclarationsPreparees(
+        RequeteDeclarationsAvecOrigines* requete, naturel32 ligne, naturel32 colonne);
+
+    alias DeclarationTokenOrigin = OrigineJetonDeclarations;
+    alias OriginAwareDeclarationRequest = RequeteDeclarationsAvecOrigines;
+    alias AnalyzeOriginAwareDeclarations = AnalyserDeclarationsAvecOrigines;
+    alias LocatePreparedDeclarationOrigin = LocaliserOrigineDeclarationsPreparees;
+
     énumération ErreurAssemblageDeclarations {
         Reussite = 0,
         Success = 0,
@@ -304,17 +420,64 @@ espace GalacticShrine::GsPP::Autohebergement {
     alias AssemblePreparedDeclarations = AssemblerDeclarationsPreparees;
 
     /**
-     * <résumé>Assemble puis normalise les fonctions libres, globales et alias racines préparés.</résumé>
+     * <résumé>Assemble puis normalise les fonctions libres et membres, globales et alias racines préparés.</résumé>
      * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités et trois tampons distincts ne recouvrant pas les entrées.
      * @Retourner(ErreurAssemblageDeclarations) Diagnostic local ou tailles exactes après normalisation.
      * @etc. Types comparés avant résolution des alias ; fonctions, puis globales, puis alias.
-     * @etc. Définitions préférées aux prototypes à la place de leur première déclaration.
-     * @etc. Membres de classes et types non fusionnés ; aucune sortie partielle ni lecture de fichier.
+     * @etc. Définitions préférées aux prototypes dans l'ordre de première déclaration des fonctions.
+     * @etc. Récepteur implicite inclus dans les clés ; types et champs placés avant les fonctions.
+     * @etc. Types non fusionnés ; parents réindexés ; aucune sortie partielle ni lecture de fichier.
      **/
     publique ErreurAssemblageDeclarations AssemblerDeclarationsNormalisees(
         RequeteAssemblageDeclarations* requete);
 
     alias AssembleNormalizedDeclarations = AssemblerDeclarationsNormalisees;
+
+    structure TableOriginesUniteDeclarations {
+        constante OrigineJetonDeclarations* Jetons;
+        naturel64 NombreJetons;
+    };
+
+    structure RequeteAssemblageAvecOrigines {
+        RequeteAssemblageDeclarations* Assemblage;
+        constante TableOriginesUniteDeclarations* Tables;
+        naturel64 NombreFichiers;
+        naturel64 IndexFichierErreur;
+        naturel32 LigneLocaleErreur;
+        naturel32 ColonneLocaleErreur;
+    };
+
+    /**
+     * <résumé>Assemble des unités développées avec leurs modes et origines de jetons.</résumé>
+     * @Paramètre(RequeteAssemblageAvecOrigines*: requete) Une table par unité, catalogue de fichiers commun et trois tampons historiques.
+     * @Retourner(ErreurAssemblageDeclarations) Résultat transactionnel et diagnostic dans le fichier original si disponible.
+     * @etc. Aucun accès aux fichiers ; unités incluses textuellement non séparées ; entrées inchangées.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsAvecOrigines(RequeteAssemblageAvecOrigines* requete);
+
+    /**
+     * <résumé>Normalise les unités développées et conserve le fichier original des conflits.</résumé>
+     * @Paramètre(RequeteAssemblageAvecOrigines*: requete) Même contrat transactionnel que l'assemblage avec origines.
+     * @Retourner(ErreurAssemblageDeclarations) Sélection normalisée ou conflit original, sans sortie partielle.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesAvecOrigines(RequeteAssemblageAvecOrigines* requete);
+
+    /**
+     * <résumé>Traduit une position locale synthétique d'une unité en origine de fichier.</résumé>
+     * @Paramètre(RequeteAssemblageAvecOrigines*: requete) Tables validées et inchangées ; résultats locaux réinitialisés.
+     * @Paramètre(naturel64: indexUnite) Rang de l'unité de traduction, pas du fichier inclus.
+     * @Paramètre(naturel32: ligne) Ligne du texte développé de l'unité, avant rebasage d'assemblage.
+     * @Paramètre(naturel32: colonne) Colonne de début de jeton ou fin de texte.
+     * @Retourner(booléen) Origine retrouvée sans allocation, sinon indice NombreFichiers et coordonnées nulles.
+     **/
+    publique booléen LocaliserOrigineAssemblagePrepare(
+        RequeteAssemblageAvecOrigines* requete, naturel64 indexUnite, naturel32 ligne, naturel32 colonne);
+
+    alias DeclarationUnitTokenOrigins = TableOriginesUniteDeclarations;
+    alias OriginAwareAssemblyRequest = RequeteAssemblageAvecOrigines;
+    alias AssembleOriginAwareDeclarations = AssemblerDeclarationsAvecOrigines;
+    alias AssembleNormalizedOriginAwareDeclarations = AssemblerDeclarationsNormaliseesAvecOrigines;
+    alias LocatePreparedAssemblyOrigin = LocaliserOrigineAssemblagePrepare;
 
     publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
         RequeteAnalyseDeclarations* requete);

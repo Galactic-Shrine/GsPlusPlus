@@ -10,6 +10,140 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
+Le commit signé [`039bd3f`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/039bd3f8887c9d8bc826e000d3b8099609d52850)
+publie les tranches jusqu'à la normalisation des déclarations libres, à 2 719
+refus sémantiques. Sa signature est vérifiée et sa
+[CI à trois chaînes](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37485258264)
+réussit. Les mentions locales des jalons historiques décrivent leur état au
+moment de validation ; aucune nouvelle release ni mise à jour des paquets
+alpha.10 n'est réalisée.
+
+### Ajout local du 6 octobre 2026 — catalogue de fichiers du produit
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** La lecture/résolution
+est extraite des tests vers `CatalogueInclusions` dans `gspp_compiler` :
+instantané propriétaire, alias canoniques, noms virtuels séparés des chemins,
+indices communs, copies interdites, déplacements sûrs, parcours itératif et
+bornes configurables. `PreparerSourceAvecOrigines` appelle l'export Gs++ pour
+mesurer puis publier texte et origines ; les matrices existantes emploient
+cette API du produit jusqu'à la sémantique avec origines. Durée de vie,
+instantané après modification du disque, limites, contrats ABI et graphe
+de 512 niveaux testés. CTest Windows 5/5, GNU/Linux 6/6, validation native VS
+2026 réussis ; conformité 20/20 par chaîne, total sémantique 2 751 inchangé.
+Trois images identiques vérifiées de 542 527 octets, 99 exports et deux imports.
+Lecture du graphe encore anticipée et découverte des chemins par le lexeur
+C++ : la lecture à la demande et l'intégration au pilote par défaut restent
+ouvertes. Alpha.10, formats 1.0, ABI 1 et parcours habituel de `gsppc` inchangés.
+Travail local non commité/non poussé, sans nouvelle release ni frontend complet.
+Voir le [bilan de raccordement](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#catalogue-hôte-réutilisable-et-préparation-du-produit--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — expansion des inclusions avec origines
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Le frontend développe
+`#inclure` / `#include` et `#pragma once` sur le catalogue lu/résolu par l'hôte :
+identités canoniques, diagnostics distincts des alias, lexage complet avant les
+directives, protection once au point de rencontre, cycles et profondeur 128/129.
+Contrats dédiés de 32/32/128/48 octets, deux exports français/anglais, pile
+itérative et arène libérée ; texte et origines transactionnels, sans nouvel
+import d'hôte. Les deux matrices d'inclusions utilisent maintenant cette
+expansion ; la sélection C++ reste l'oracle. 41 corpus français/anglais,
+15 valides et 26 refus bilingues sur les dossiers testés ; variante de casse
+adaptée au système de fichiers réel. Diagnostics, capacités, sentinelles,
+allocations, états réinitialisés et catalogue/liens invalides vérifiés.
+CTest Windows 5/5, GNU/Linux 6/6 et validation native VS 2026 réussis ;
+conformité 20/20 par chaîne ; total **2 751 refus sémantiques** inchangé.
+Ordre des entrées CMake/natif synchronisé ; trois images identiques et
+vérifiées de 542 527 octets, 99 exports et deux imports. Alpha.10, formats 1.0
+et ABI 1 conservés. Lecture et résolution restent côté hôte ; intégrer ce
+catalogue et ce chemin préparé au pilote de compilation de fichiers de `gsppc`
+reste ouvert. Travail local non commité/non poussé, sans release ni validation
+d'un frontend 0.27 complet.
+Voir le [bilan d'expansion](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#expansion-des-inclusions-avec-origines--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — préparation lexicale avec origines
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Le frontend construit
+désormais le texte développé et les origines à partir des fragments originaux
+sélectionnés par l'hôte. `PreparerDeclarationsAvecOrigines` et son alias anglais
+utilisent une requête additive de 112 octets, des fragments de 40 octets et un
+résultat de 48 octets. Les lexèmes/chaînes sont conservés sans réencodage, avec
+BOM optionnel, LF/CRLF et EOF. Lexage avant publication, capacités exactes,
+deux sorties transactionnelles, diagnostics lexicaux originaux, refus des
+directives restantes et absence d'allocation vérifiés. Les deux matrices
+d'inclusions utilisent maintenant cette préparation ; 40 lexèmes, quatre modes
+et 21 fragments refusés, arguments, refus tardifs et dépassements testés.
+Total inchangé : **2 751 refus sémantiques différentiels**.
+CTest Windows 5/5, GNU/Linux 6/6 et validation native VS 2026 réussis ;
+conformité 20/20 par chaîne ; trois images identiques et vérifiées de
+524 319 octets, 97 exports et deux imports. Formats 1.0, ABI 1 et alpha.10
+conservés. Lecture, résolution des chemins, expansion des inclusions, once et
+cycles restent côté hôte ; le pilote de compilation de fichiers de `gsppc`
+n'est pas remplacé. Travail local non commité/non poussé, sans nouvelle release.
+Voir le [bilan de préparation](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#préparation-lexicale-avec-origines--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — assemblage des inclusions et diagnostics originaux
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Les nouvelles entrées
+raccordent les origines des jetons aux assemblages brut/normalisé et à la
+sémantique par unité : modes mixtes, déclaration retenue et diagnostics dans
+le fichier original. Les inclusions restent dans leur unité ; les imports
+ne fuient pas vers une unité séparée. Les contrats existants sont conservés,
+avec deux requêtes additives de 40 octets et une table de 16 octets par unité.
+Douze corpus bilingues valides, six conflits bilingues de normalisation
+(12 refus), trois refus syntaxiques et sept refus sémantiques bilingues passent ;
+total **2 751 refus sémantiques**, distinct des refus de syntaxe/normalisation.
+Capacités, sorties transactionnelles des assemblages, contrats sémantiques
+historiques, échecs d'allocation et tables/textes altérés vérifiés.
+CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+conformité 20/20 par chaîne ; trois images identiques de 516 863 octets,
+vérifiées, 95 exports et deux imports. Formats 1.0, ABI 1 et alpha.10 conservés.
+Lecture/expansion restent côté hôte et le chemin de compilation de fichiers
+de `gsppc` n'est pas encore remplacé. Tranche locale non commitée/non poussée,
+distincte de la CI de `039bd3f` et des paquets publiés ; aucun frontend 0.27
+complet ni nouvelle release revendiqués.
+Voir le [bilan du raccordement](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-des-inclusions-et-diagnostics-originaux--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — origines des inclusions préparées
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Une nouvelle entrée
+analyse une unité déjà développée par l'hôte avec une origine pour chaque jeton,
+fin comprise : modes source/interface au jeton décisif, priorité du mode global
+d'interface et restitution des diagnostics dans leur fichier d'origine. L'AST
+garde ses positions synthétiques ; un export de localisation permet également
+de traduire les diagnostics sémantiques. Les nouveaux contrats de 40/56 octets
+ne modifient pas les anciens. Vingt corpus bilingues syntaxiquement valides,
+sept refus syntaxiques et trois refus sémantiques bilingues passent, avec
+vraies inclusions, chemins relatifs/Unicode, `#pragma once`, modes mixtes,
+chaque jeton/EOF, capacités et échecs d'allocation. Total : **2 737 refus
+sémantiques**, distinct des refus syntaxiques et de normalisation.
+CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+conformité 20/20 par chaîne ; trois images identiques de 505 599 octets,
+vérifiées, avec 87 exports et deux imports. Formats 1.0, ABI 1 et alpha.10 conservés.
+Lecture et expansion restent côté hôte ; le raccordement de ces origines à
+l'assemblage/normalisation multi-unités reste ouvert. Tranche locale non
+commitée/non poussée, distincte de la CI de `039bd3f` et des paquets publiés ;
+aucune compilation autonome de fichiers ni clôture du frontend 0.27 revendiquée.
+Voir le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#origines-des-inclusions-préparées--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — normalisation des membres et groupes mixtes
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** L'entrée préparée
+normalise maintenant méthodes, constructeurs, destructeurs et opérateurs membres
+avec les fonctions libres, en tenant compte du récepteur implicite `Classe&`.
+Les définitions sont préférées dans l'ordre de première déclaration des fonctions ;
+types/champs sont placés avant celles-ci et les parents réindexés sans déplacement
+du texte ni des origines. Types/classes répétés non fusionnés, assemblage brut
+et contrats publics conservés. Matrice : 39 corpus bilingues valides, 64 refus
+de normalisation, un refus syntaxique et 14 refus sémantiques bilingues,
+soit **2 731 refus sémantiques**. CTest Windows 5/5, GNU/Linux 6/6,
+solution et validation MSBuild natives réussis ; conformité 20/20 par chaîne ;
+trois images identiques de 498 479 octets, vérifiées, avec 83 exports.
+Formats 1.0, ABI 1 et alpha.10 conservés. Tranche locale non commitée/non poussée,
+distincte de la CI de `039bd3f` à 2 719 refus et des paquets publiés.
+Le flux d'inclusions et ses origines internes restent à raccorder ; aucune
+compilation autonome de fichiers ni validation du frontend 0.27 complet n'est revendiquée.
+Voir le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#normalisation-des-membres-et-groupes-mixtes--6-octobre-2026).
+
 ### Ajout local du 6 octobre 2026 — normalisation préparée des déclarations libres
 
 **VALIDÉ dans le périmètre testé sur les trois chaînes.** Une entrée additive

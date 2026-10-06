@@ -1,0 +1,161 @@
+/**
+ * <résumé>Raccord syntaxique du texte développé par l'hôte et de ses origines d'inclusion.</résumé>
+ * Une unité développée reste une seule unité de traduction ; les fichiers sont identifiés par indices.
+ **/
+espace GalacticShrine::GsPP::Autohebergement {
+    booléen ValiderTableOriginesDeclarations(RequeteDeclarationsAvecOrigines* requete) {
+        si (!requete || !requete->Analyse || !requete->Origines
+            || requete->NombreOrigines == 0 || requete->NombreOrigines > 100_000_000
+            || requete->NombreFichiers == 0 || requete->NombreFichiers > 1_000_000
+            || requete->EstInterface > 1 || requete->Reserve != 0) retourner faux;
+        RequeteAnalyseDeclarations* analyse = requete->Analyse;
+        si ((!analyse->Source && analyse->Taille != 0) || analyse->Taille > 1_000_000_000) retourner faux;
+        naturel64 indexValidation = 0;
+        naturel64 prochainOctet = 0;
+        tantque (indexValidation < requete->NombreOrigines) {
+            constante OrigineJetonDeclarations* origineValidee = &requete->Origines[indexValidation];
+            booléen fin = indexValidation + 1 == requete->NombreOrigines;
+            si (origineValidee->IndexFichier >= requete->NombreFichiers
+                || origineValidee->Ligne == 0 || origineValidee->Colonne == 0
+                || origineValidee->EstInterface > 1 || origineValidee->Reserve != 0
+                || origineValidee->DebutOctets < prochainOctet || origineValidee->DebutOctets > analyse->Taille
+                || origineValidee->TailleOctets > analyse->Taille - origineValidee->DebutOctets)
+                retourner faux;
+            si (fin && (origineValidee->DebutOctets != analyse->Taille || origineValidee->TailleOctets != 0)) retourner faux;
+            si (!fin && origineValidee->TailleOctets == 0) retourner faux;
+            prochainOctet = origineValidee->DebutOctets + origineValidee->TailleOctets;
+            indexValidation = indexValidation + 1;
+        }
+        retourner vrai;
+    }
+
+    publique booléen LocaliserOrigineDeclarationsPreparees(
+        RequeteDeclarationsAvecOrigines* requete, naturel32 ligne, naturel32 colonne) {
+        si (!requete) retourner faux;
+        requete->IndexFichierErreur = requete->NombreFichiers;
+        requete->LigneLocaleErreur = 0;
+        requete->ColonneLocaleErreur = 0;
+        si (ligne == 0 || colonne == 0 || !ValiderTableOriginesDeclarations(requete)) retourner faux;
+        naturel64 position = 0;
+        si (requete->Analyse->Taille >= 3
+            && convertir<octet>(requete->Analyse->Source[0]) == 239
+            && convertir<octet>(requete->Analyse->Source[1]) == 187
+            && convertir<octet>(requete->Analyse->Source[2]) == 191) position = 3;
+        naturel32 ligneCourante = 1;
+        naturel32 colonneCourante = 1;
+        tantque (position < requete->Analyse->Taille
+            && (ligneCourante < ligne || (ligneCourante == ligne && colonneCourante < colonne))) {
+            si (requete->Analyse->Source[position] == 10) {
+                ligneCourante = ligneCourante + 1;
+                colonneCourante = 1;
+            }
+            sinon colonneCourante = colonneCourante + 1;
+            position = position + 1;
+        }
+        si (ligneCourante != ligne || colonneCourante != colonne) retourner faux;
+        naturel64 gauche = 0;
+        naturel64 droite = requete->NombreOrigines;
+        tantque (gauche < droite) {
+            naturel64 milieu = gauche + (droite - gauche) / 2;
+            si (requete->Origines[milieu].DebutOctets < position) gauche = milieu + 1;
+            sinon droite = milieu;
+        }
+        si (gauche >= requete->NombreOrigines || requete->Origines[gauche].DebutOctets != position) retourner faux;
+        requete->IndexFichierErreur = requete->Origines[gauche].IndexFichier;
+        requete->LigneLocaleErreur = requete->Origines[gauche].Ligne;
+        requete->ColonneLocaleErreur = requete->Origines[gauche].Colonne;
+        retourner vrai;
+    }
+
+    /**
+     * <résumé>Valide les origines avant d'utiliser les modes source/interface dans la passe syntaxique.</résumé>
+     * @Paramètre(RequeteDeclarationsAvecOrigines*: requete) Texte développé, table des jetons et résultats d'origine.
+     * @Retourner(ErreurAnalyseDeclarations) Diagnostic syntaxique ou capacité selon le contrat historique.
+     **/
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsAvecOrigines(RequeteDeclarationsAvecOrigines* requete) {
+        si (!requete) retourner ErreurAnalyseDeclarations::ArgumentInvalide;
+        requete->IndexFichierErreur = requete->NombreFichiers;
+        requete->LigneLocaleErreur = 0;
+        requete->ColonneLocaleErreur = 0;
+        si (requete->Analyse) InitialiserResultatDeclarations(&requete->Analyse->Resultat);
+        si (!ValiderTableOriginesDeclarations(requete)) {
+            si (requete->Analyse) requete->Analyse->Resultat.Erreur = ErreurAnalyseDeclarations::ArgumentInvalide;
+            retourner ErreurAnalyseDeclarations::ArgumentInvalide;
+        }
+        ErreurAnalyseDeclarations erreur = AnalyserDeclarationsMode(
+            requete->Analyse, requete->EstInterface != 0, requete->Origines, requete->NombreOrigines);
+        si (erreur != ErreurAnalyseDeclarations::Reussite
+            && erreur != ErreurAnalyseDeclarations::CapaciteInsuffisante
+            && erreur != ErreurAnalyseDeclarations::ArgumentInvalide
+            && erreur != ErreurAnalyseDeclarations::AllocationImpossible)
+            LocaliserOrigineDeclarationsPreparees(
+                requete, requete->Analyse->Resultat.LigneErreur, requete->Analyse->Resultat.ColonneErreur);
+        retourner erreur;
+    }
+
+    ErreurAnalyseDeclarations AnalyserUniteAssemblageAvecOrigines(
+        RequeteAnalyseDeclarations* analyse, constante UniteDeclarationsPreparee* unite,
+        constante TableOriginesUniteDeclarations* table, naturel64 nombreFichiers) {
+        si (!table) retourner AnalyserDeclarationsMode(analyse, unite->EstInterface != 0, NulOriginesJetonsDeclarations, 0);
+        RequeteDeclarationsAvecOrigines origine = {
+            analyse, table->Jetons, table->NombreJetons, nombreFichiers, nombreFichiers, 0, 0, unite->EstInterface, 0};
+        retourner AnalyserDeclarationsAvecOrigines(&origine);
+    }
+
+    publique booléen LocaliserOrigineAssemblagePrepare(
+        RequeteAssemblageAvecOrigines* requete, naturel64 indexUnite, naturel32 ligne, naturel32 colonne) {
+        si (!requete) retourner faux;
+        requete->IndexFichierErreur = requete->NombreFichiers;
+        requete->LigneLocaleErreur = 0;
+        requete->ColonneLocaleErreur = 0;
+        si (!requete->Assemblage || !requete->Assemblage->Unites || !requete->Tables
+            || requete->Assemblage->NombreUnites > 1_000_000
+            || indexUnite >= requete->Assemblage->NombreUnites) retourner faux;
+        constante UniteDeclarationsPreparee* unite = &requete->Assemblage->Unites[indexUnite];
+        constante TableOriginesUniteDeclarations* table = &requete->Tables[indexUnite];
+        RequeteAnalyseDeclarations analyse = {unite->Source, unite->Taille, NulNoeudsDeclarations, 0, {}};
+        RequeteDeclarationsAvecOrigines origine = {
+            &analyse, table->Jetons, table->NombreJetons, requete->NombreFichiers, 0, 0, 0, unite->EstInterface, unite->Reserve};
+        booléen trouvee = LocaliserOrigineDeclarationsPreparees(&origine, ligne, colonne);
+        requete->IndexFichierErreur = origine.IndexFichierErreur;
+        requete->LigneLocaleErreur = origine.LigneLocaleErreur;
+        requete->ColonneLocaleErreur = origine.ColonneLocaleErreur;
+        retourner trouvee;
+    }
+
+    ErreurAssemblageDeclarations AssemblerOriginesDeclarationsInterne(
+        RequeteAssemblageAvecOrigines* requete, booléen normaliser) {
+        si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
+        requete->IndexFichierErreur = requete->NombreFichiers;
+        requete->LigneLocaleErreur = 0;
+        requete->ColonneLocaleErreur = 0;
+        si (requete->Assemblage) {
+            requete->Assemblage->Resultat = {};
+            requete->Assemblage->Resultat.IndexUniteErreur = requete->Assemblage->NombreUnites;
+        }
+        si (!requete->Assemblage || !requete->Tables
+            || requete->NombreFichiers == 0 || requete->NombreFichiers > 1_000_000) {
+            si (requete->Assemblage) requete->Assemblage->Resultat.Erreur = ErreurAssemblageDeclarations::ArgumentInvalide;
+            retourner ErreurAssemblageDeclarations::ArgumentInvalide;
+        }
+        ErreurAssemblageDeclarations erreur = ErreurAssemblageDeclarations::Reussite;
+        si (normaliser) erreur = AssemblerDeclarationsNormaliseesInterne(
+            requete->Assemblage, requete->Tables, requete->NombreFichiers);
+        sinon erreur = AssemblerDeclarationsPrepareesInterne(
+            requete->Assemblage, requete->Tables, requete->NombreFichiers);
+        si (requete->Assemblage->Resultat.LigneErreur != 0
+            && (erreur == ErreurAssemblageDeclarations::ErreurDeclaration
+                || (convertir<naturel32>(erreur) >= 6 && convertir<naturel32>(erreur) <= 10)))
+            LocaliserOrigineAssemblagePrepare(requete, requete->Assemblage->Resultat.IndexUniteErreur,
+                requete->Assemblage->Resultat.LigneErreur, requete->Assemblage->Resultat.ColonneErreur);
+        retourner erreur;
+    }
+
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsAvecOrigines(RequeteAssemblageAvecOrigines* requete) {
+        retourner AssemblerOriginesDeclarationsInterne(requete, faux);
+    }
+
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesAvecOrigines(RequeteAssemblageAvecOrigines* requete) {
+        retourner AssemblerOriginesDeclarationsInterne(requete, vrai);
+    }
+}

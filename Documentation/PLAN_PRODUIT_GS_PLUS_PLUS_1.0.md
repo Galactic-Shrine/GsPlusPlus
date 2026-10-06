@@ -559,6 +559,82 @@ elle ne clôt pas le frontend 0.27.
   GNU/Linux 6/6, solution et validation MSBuild natives réussis ; conformité 20/20
   par chaîne ; trois images identiques de 490 623 octets, vérifiées, avec 83 exports ;
   membres/groupes mixtes et flux d'inclusions restent ouverts ;
+  puis normalisation des membres et groupes mixtes : méthodes, constructeurs,
+  destructeurs et opérateurs membres participent à la passe des fonctions,
+  avec récepteur implicite `Classe&` et clés exactes ; définitions préférées
+  dans l'ordre de première déclaration des fonctions, types/champs avant celles-ci
+  et parents réindexés ; classes/types non fusionnés, assemblage brut et contrats
+  publics conservés ; 39 corpus bilingues valides, 64 refus de normalisation,
+  un refus syntaxique et 14 refus sémantiques bilingues, 2 731 refus sémantiques ;
+  CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+  conformité 20/20 par chaîne ; trois images identiques de 498 479 octets, vérifiées,
+  avec 83 exports ; cette extension reste locale, distincte du commit signé/vérifié
+  `039bd3f` publié et de sa CI à trois chaînes réussie à 2 719 refus ;
+  formats 1.0, ABI 1, alpha.10 et bootstrap/backend C++ inchangés ;
+  puis origines des inclusions préparées : entrée additive de 56 octets et
+  table de 40 octets par jeton, fin comprise, pour le texte développé par l'hôte ;
+  modes source/interface au jeton décisif, priorité du mode global d'interface,
+  plages comparées au lexage réel et diagnostics locaux sans modifier l'AST ;
+  localisation additive des débuts de jetons/EOF, notamment après la sémantique ;
+  vingt corpus bilingues syntaxiquement valides, sept refus syntaxiques et trois
+  refus sémantiques bilingues portent le total à 2 737 ; vraies inclusions,
+  chemins relatifs/Unicode, `#pragma once`, modes mixtes, capacités, allocations
+  et origines altérées vérifiés ; CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives réussis, conformité 20/20 par chaîne ; trois images
+  identiques de 505 599 octets, vérifiées, avec 87 exports et deux imports ;
+  anciens contrats, formats 1.0, ABI 1, alpha.10 et bootstrap/backend C++ conservés ;
+  lecture/expansion côté hôte, raccordement à l'assemblage/normalisation multi-unités
+  encore ouvert ; tranche locale non commitée/non poussée, distincte de la CI publiée ;
+  puis raccordement des inclusions préparées : entrées d'assemblage brut et
+  normalisé avec origines de jetons et sémantique par unité avec fichier original ;
+  requêtes additives de 40 octets, table de 16 octets par unité, anciens contrats
+  conservés ; imports isolés entre unités séparées, pas entre fichiers inclus ;
+  douze corpus bilingues valides, six conflits de normalisation, trois refus
+  syntaxiques et sept refus sémantiques bilingues, soit 2 751 refus sémantiques ;
+  capacités, sorties des assemblages transactionnelles, contrats sémantiques
+  historiques, allocations et origines/textes altérés vérifiés ; CTest Windows 5/5,
+  GNU/Linux 6/6, solution et validation MSBuild natives réussis ; conformité 20/20
+  par chaîne ; trois images identiques de 516 863 octets, vérifiées, avec 95 exports
+  et deux imports ; lecture/expansion côté hôte, chemin de compilation de fichiers
+  non remplacé ; tranche locale, sans commit/push/release, formats 1.0, ABI 1,
+  alpha.10 et bootstrap/backend C++ inchangés ;
+  puis préparation lexicale du texte développé et de ses origines dans le frontend :
+  requête additive de 112 octets, fragments de 40 octets et résultat de 48 octets,
+  deux exports français/anglais ; lexèmes et chaînes copiés sans réencodage,
+  BOM/LF/CRLF, EOF et capacités exactes, sorties transactionnelles sans allocation ;
+  40 lexèmes, quatre modes et 21 fragments refusés, arguments, refus tardifs,
+  dépassements et diagnostics lexicaux originaux testés ; les deux matrices
+  d'inclusions utilisent cette préparation, total sémantique inchangé à 2 751 ;
+  CTest Windows 5/5, GNU/Linux 6/6 et validation MSBuild native réussis, conformité
+  20/20 par chaîne ; trois images identiques vérifiées de 524 319 octets, 97 exports
+  et deux imports ; sélection des inclusions et pilote de fichiers restent côté
+  hôte ; alpha.10, formats 1.0, ABI 1 conservés, sans commit/push/release ;
+  puis expansion des inclusions en mémoire : catalogue et liens de 32 octets,
+  requête additive de 128 octets et résultat de 48 octets ; lexage complet avant
+  directives, `once` au point de rencontre, cycles, alias canoniques et limite
+  de 128 fichiers actifs ; sélection et préparation Gs++ transactionnelles,
+  arène libérée, lecture et chemins côté hôte ; 41 corpus français/anglais,
+  15 valides et 26 refus bilingues sur les dossiers testés, casse selon le système
+  de fichiers, diagnostics, capacités, allocations et catalogue/liens invalides
+  vérifiés ; matrices d'inclusions raccordées, total sémantique inchangé à 2 751 ;
+  CTest Windows 5/5, GNU/Linux 6/6 et validation native réussis, conformité 20/20
+  par chaîne ; entrées CMake/natif ordonnées de la même façon, trois images
+  identiques et vérifiées de 542 527 octets, 99 exports et deux imports ; ancien
+  pilote `gsppc` conservé, intégration de l'adaptateur au produit encore ouverte ;
+  alpha.10, formats 1.0 et ABI 1 inchangés, sans commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : catalogue de fichiers extrait des tests vers
+  `gspp_compiler`, miroir ABI partagé et préparation propriétaire par l'export
+  Gs++ ; instantané canonique, noms virtuels, indices communs, déplacements sûrs,
+  parcours itératif et limites de fichiers/liens/octets ; matrices d'inclusions
+  raccordées à cette API du produit, pilote par défaut inchangé. Lecture du
+  graphe encore anticipée et découverte des chemins par le lexeur C++ ; la
+  lecture/résolution à la demande reste nécessaire pour la parité des erreurs
+  d'E/S avant toute bascule du pilote. Noms virtuels, instantanés, alias,
+  déplacements, bornes, contrats ABI et graphe de 512 niveaux vérifiés ;
+  CTest Windows 5/5, GNU/Linux 6/6 et validation native réussis, conformité
+  20/20 par chaîne ; images identiques vérifiées, 542 527 octets et 99 exports,
+  total sémantique 2 751 inchangé ; alpha.10, formats 1.0 et ABI 1 conservés,
+  travail local sans commit/push/release ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
   familles sémantiques, notamment les contextes des constructions et les
   interactions de priorité entre passes non encore testées, dont les
@@ -575,8 +651,8 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 
 Le passage au jalon 0.28 n'est pas encore validé. Les prochaines tranches
 portent sur les interactions sémantiques restantes, les autres combinaisons de
-constructions, la normalisation des membres/groupes mixtes dans l'assemblage
-préparé et le raccordement des inclusions avec leurs origines internes, puis sur
+constructions, la lecture/résolution à la demande du catalogue et l'intégration
+du chemin préparé avec origines au pilote de compilation de fichiers, puis sur
 la consolidation de la conformité et des
 benchmarks du frontend 0.27. Le nombre de corpus réussis n'est ni un pourcentage
 d'achèvement ni un déclencheur automatique de changement de version.

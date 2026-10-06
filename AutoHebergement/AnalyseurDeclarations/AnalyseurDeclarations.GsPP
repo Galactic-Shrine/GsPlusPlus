@@ -1,6 +1,8 @@
 espace GalacticShrine::GsPP::Autohebergement {
     JetonLexe* NulJetonsDeclarations;
     NoeudDeclaration* NulNoeudsDeclarations;
+    constante OrigineJetonDeclarations* NulOriginesJetonsDeclarations;
+    constante TableOriginesUniteDeclarations* NulTablesOriginesDeclarations;
 
     structure TypeDeclarationInterne {
         naturel32 Genre;
@@ -50,8 +52,14 @@ espace GalacticShrine::GsPP::Autohebergement {
         NoeudExpressionInterne* ExpressionsTravail;
         naturel64 NombreExpressions;
         booléen EstInterface;
+        constante OrigineJetonDeclarations* OriginesJetons;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
+
+    booléen EstInterfaceCouranteDeclaration(EtatAnalyseDeclarations* etat) {
+        retourner etat->EstInterface || (etat->OriginesJetons
+            && etat->OriginesJetons[etat->Position].EstInterface != 0);
+    }
 
     structure ContexteMembreClasseDeclaration {
         ContexteEspaceDeclaration* Espace;
@@ -1390,7 +1398,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 retourner faux;
         si (!AnalyserDimensionsDeclaration(etat, &typeRetour)) retourner faux;
         si (!EstJetonDeclaration(etat, 34)) {
-            si (etat->EstInterface) {
+            si (EstInterfaceCouranteDeclaration(etat)) {
 
                 estPublique = faux;
                 estExterne = vrai;
@@ -1441,7 +1449,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
 
         naturel64 indexFonction = etat->NombreNoeuds;
-        si (etat->EstInterface) {
+        si (EstInterfaceCouranteDeclaration(etat)) {
 
             estPublique = faux;
             estExterne = vrai;
@@ -1605,6 +1613,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             }
         }
 
+        booléen interfaceMembre = EstInterfaceCouranteDeclaration(etat);
         si (!ExigerJetonDeclaration(
                 etat,
                 34,
@@ -1612,7 +1621,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner faux;
 
         naturel32 drapeaux = contexte->Visibilite | 4;
-        si (etat->EstInterface) drapeaux = contexte->Visibilite | 2;
+        si (interfaceMembre) drapeaux = contexte->Visibilite | 2;
         si (estVirtuelle) drapeaux = drapeaux | 64;
         si (estRemplacement) drapeaux = drapeaux | 128;
         naturel64 indexMembre = etat->NombreNoeuds;
@@ -1797,7 +1806,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     continuerInitialiseurs = faux;
             }
         }
-        si (etat->EstInterface) {
+        si (interfaceMembre) {
 
             si ((drapeaux & (256 | 512 | 1024)) != 0) {
 
@@ -2240,10 +2249,13 @@ espace GalacticShrine::GsPP::Autohebergement {
      * <résumé>Analyse un texte préparé sans changer le contrat mémoire des requêtes.</résumé>
      * @Paramètre(RequeteAnalyseDeclarations*: requete) Source et stockage fournis par l'appelant.
      * @Paramètre(booléen: estInterface) Prototypes externes implicites et absence de corps.
+     * @Paramètre(constante OrigineJetonDeclarations*: origines) Modes par jeton ou pointeur nul pour le contrat historique.
+     * @Paramètre(naturel64: nombreOrigines) Nombre exact de jetons, fin comprise, si une table est fournie.
      * @Retourner(ErreurAnalyseDeclarations) Premier diagnostic ou capacité exacte requise.
      **/
     ErreurAnalyseDeclarations AnalyserDeclarationsMode(
-        RequeteAnalyseDeclarations* requete, booléen estInterface) {
+        RequeteAnalyseDeclarations* requete, booléen estInterface,
+        constante OrigineJetonDeclarations* origines, naturel64 nombreOrigines) {
         si (!requete) retourner ErreurAnalyseDeclarations::ArgumentInvalide;
         InitialiserResultatDeclarations(&requete->Resultat);
         si ((!requete->Source && requete->Taille != 0)
@@ -2286,6 +2298,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.ExpressionsTravail = NulExpressionsDeclarations;
         etat.NombreExpressions = 0;
         etat.EstInterface = estInterface;
+        etat.OriginesJetons = origines;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
 
         etat.Jetons = convertir<JetonLexe*>(
@@ -2320,6 +2333,22 @@ espace GalacticShrine::GsPP::Autohebergement {
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
             retourner requete->Resultat.Erreur;
+        }
+
+        si (origines) {
+            booléen tableExacte = nombreOrigines == etat.NombreJetons;
+            naturel64 indexOrigine = 0;
+            tantque (tableExacte && indexOrigine < nombreOrigines) {
+                tableExacte = origines[indexOrigine].DebutOctets == etat.Jetons[indexOrigine].Debut
+                    && origines[indexOrigine].TailleOctets == etat.Jetons[indexOrigine].TailleSource;
+                indexOrigine = indexOrigine + 1;
+            }
+            si (!tableExacte) {
+                requete->Resultat.Erreur = ErreurAnalyseDeclarations::ArgumentInvalide;
+                requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);
+                retourner requete->Resultat.Erreur;
+            }
         }
 
         NoeudDeclaration programme = {
@@ -2383,10 +2412,13 @@ espace GalacticShrine::GsPP::Autohebergement {
     /**
      * <résumé>Assemble les textes et AST sans modifier les entrées ni publier une sortie partielle.</résumé>
      * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités préparées, stockage et tailles de sortie.
+     * @Paramètre(constante TableOriginesUniteDeclarations*: tables) Tables de jetons, ou pointeur nul pour le contrat historique.
+     * @Paramètre(naturel64: nombreFichiers) Taille du catalogue de fichiers commun aux tables.
      * @Retourner(ErreurAssemblageDeclarations) Résultat de l'assemblage syntaxique sans normalisation.
      **/
-    publique ErreurAssemblageDeclarations AssemblerDeclarationsPreparees(
-        RequeteAssemblageDeclarations* requete) {
+    ErreurAssemblageDeclarations AssemblerDeclarationsPrepareesInterne(
+        RequeteAssemblageDeclarations* requete,
+        constante TableOriginesUniteDeclarations* tables, naturel64 nombreFichiers) {
 
         si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
         requete->Resultat = {};
@@ -2441,10 +2473,14 @@ espace GalacticShrine::GsPP::Autohebergement {
             constante UniteDeclarationsPreparee* uniteMesuree = &requete->Unites[indexMesure];
             RequeteAnalyseDeclarations mesure = {
                 uniteMesuree->Source, uniteMesuree->Taille, NulNoeudsDeclarations, 0, {}};
-            ErreurAnalyseDeclarations codeMesure = AnalyserDeclarationsMode(
-                &mesure, uniteMesuree->EstInterface != 0);
+            constante TableOriginesUniteDeclarations* tableMesuree = NulTablesOriginesDeclarations;
+            si (tables) tableMesuree = &tables[indexMesure];
+            ErreurAnalyseDeclarations codeMesure = AnalyserUniteAssemblageAvecOrigines(
+                &mesure, uniteMesuree, tableMesuree, nombreFichiers);
             si (codeMesure != ErreurAnalyseDeclarations::CapaciteInsuffisante) {
                 SignalerErreurUniteAssemblage(requete, indexMesure, &mesure.Resultat);
+                si (tables && codeMesure == ErreurAnalyseDeclarations::ArgumentInvalide)
+                    requete->Resultat.Erreur = ErreurAssemblageDeclarations::ArgumentInvalide;
                 GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
                 retourner requete->Resultat.Erreur;
             }
@@ -2499,8 +2535,10 @@ espace GalacticShrine::GsPP::Autohebergement {
             constante UniteDeclarationsPreparee* uniteAnalysee = &requete->Unites[indexAnalyse];
             RequeteAnalyseDeclarations analyse = {
                 uniteAnalysee->Source, uniteAnalysee->Taille, noeudsUnite, maximumNoeudsUnite, {}};
-            ErreurAnalyseDeclarations codeAnalyse = AnalyserDeclarationsMode(
-                &analyse, uniteAnalysee->EstInterface != 0);
+            constante TableOriginesUniteDeclarations* tableAnalysee = NulTablesOriginesDeclarations;
+            si (tables) tableAnalysee = &tables[indexAnalyse];
+            ErreurAnalyseDeclarations codeAnalyse = AnalyserUniteAssemblageAvecOrigines(
+                &analyse, uniteAnalysee, tableAnalysee, nombreFichiers);
             si (codeAnalyse != ErreurAnalyseDeclarations::Reussite) {
                 SignalerErreurUniteAssemblage(requete, indexAnalyse, &analyse.Resultat);
                 GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
@@ -2544,15 +2582,19 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAssemblageDeclarations::Reussite;
     }
 
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsPreparees(RequeteAssemblageDeclarations* requete) {
+        retourner AssemblerDeclarationsPrepareesInterne(requete, NulTablesOriginesDeclarations, 0);
+    }
+
     publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
         RequeteAnalyseDeclarations* requete) {
 
-        retourner AnalyserDeclarationsMode(requete, faux);
+        retourner AnalyserDeclarationsMode(requete, faux, NulOriginesJetonsDeclarations, 0);
     }
 
     publique ErreurAnalyseDeclarations AnalyserDeclarationsInterface(
         RequeteAnalyseDeclarations* requete) {
 
-        retourner AnalyserDeclarationsMode(requete, vrai);
+        retourner AnalyserDeclarationsMode(requete, vrai, NulOriginesJetonsDeclarations, 0);
     }
 }

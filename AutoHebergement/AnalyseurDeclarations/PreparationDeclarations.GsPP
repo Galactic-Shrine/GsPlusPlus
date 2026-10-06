@@ -1,0 +1,127 @@
+/**
+ * <résumé>Préparation lexicale des fragments déjà sélectionnés après expansion.</résumé>
+ * Les fragments sont validés avant toute publication. Aucun service de fichier ni allocation n'est utilisé.
+ **/
+espace GalacticShrine::GsPP::Autohebergement {
+    ErreurPreparationDeclarations RefuserPreparationDeclarations(
+        RequetePreparationDeclarations* requete, ErreurPreparationDeclarations erreur, naturel64 index) {
+        requete->Resultat.Erreur = erreur;
+        requete->Resultat.DetailLexical = 0;
+        requete->Resultat.NombreOctetsSource = 0;
+        requete->Resultat.NombreOrigines = 0;
+        requete->Resultat.IndexJetonErreur = index;
+        si (index < requete->NombreFragments) {
+            requete->Resultat.IndexFichierErreur = requete->Fragments[index].IndexFichier;
+            requete->Resultat.LigneErreur = requete->Fragments[index].Ligne;
+            requete->Resultat.ColonneErreur = requete->Fragments[index].Colonne;
+        }
+        retourner erreur;
+    }
+
+    /**
+     * <résumé>Mesure, valide puis publie le texte et les origines d'une unité développée.</résumé>
+     * @Paramètre(RequetePreparationDeclarations*: requete) Fragments lexicaux stables, tampons indépendants et options 0/1.
+     * @Retourner(ErreurPreparationDeclarations) Aucun tampon n'est modifié si les entrées ou capacités sont refusées.
+     **/
+    publique ErreurPreparationDeclarations PreparerDeclarationsAvecOrigines(RequetePreparationDeclarations* requete) {
+        si (!requete) retourner ErreurPreparationDeclarations::ArgumentInvalide;
+        requete->Resultat = {};
+        requete->Resultat.IndexJetonErreur = requete->NombreFragments;
+        requete->Resultat.IndexFichierErreur = requete->NombreFichiers;
+        si (!requete->Fragments || requete->NombreFragments == 0 || requete->NombreFragments > 100_000_000
+            || requete->NombreFichiers == 0 || requete->NombreFichiers > 1_000_000
+            || (!requete->SourcePreparee && requete->CapaciteSource != 0)
+            || (!requete->Origines && requete->CapaciteOrigines != 0)
+            || requete->MarqueUtf8 > 1 || requete->FinLigneCrlf > 1) {
+            requete->Resultat.Erreur = ErreurPreparationDeclarations::ArgumentInvalide;
+            retourner requete->Resultat.Erreur;
+        }
+        naturel64 taillePreparee = 0;
+        si (requete->MarqueUtf8 != 0) taillePreparee = 3;
+        naturel64 tailleSeparation = 1;
+        si (requete->FinLigneCrlf != 0) tailleSeparation = 2;
+        naturel64 indexValidation = 0;
+        tantque (indexValidation < requete->NombreFragments) {
+            constante FragmentJetonDeclarations* fragmentValide = &requete->Fragments[indexValidation];
+            si ((!fragmentValide->Source && fragmentValide->Taille != 0)
+                || fragmentValide->IndexFichier >= requete->NombreFichiers
+                || fragmentValide->Ligne == 0 || fragmentValide->Colonne == 0
+                || fragmentValide->EstInterface > 1 || fragmentValide->Reserve != 0)
+                retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::ArgumentInvalide, indexValidation);
+            si (fragmentValide->Taille > 1_000_000_000)
+                retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::TailleExcessive, indexValidation);
+            booléen fin = indexValidation + 1 == requete->NombreFragments;
+            si (fin && fragmentValide->Taille != 0)
+                retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::FragmentInvalide, indexValidation);
+            si (!fin) {
+                si (fragmentValide->Taille == 0)
+                    retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::FragmentInvalide, indexValidation);
+                si (taillePreparee > 1_000_000_000 - tailleSeparation
+                    || fragmentValide->Taille > 1_000_000_000 - tailleSeparation - taillePreparee)
+                    retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::TailleExcessive, indexValidation);
+                JetonLexe jetonsValidation[2] = {};
+                RequeteLexage analyseFragment = {
+                    fragmentValide->Source, fragmentValide->Taille, &jetonsValidation[0], 2, {}};
+                ErreurLexage erreurFragment = AnalyserSource(&analyseFragment);
+                si (erreurFragment != ErreurLexage::Reussite && erreurFragment != ErreurLexage::CapaciteInsuffisante) {
+                    RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::ErreurLexicale, indexValidation);
+                    requete->Resultat.DetailLexical = convertir<naturel32>(erreurFragment);
+                    naturel64 ligneLexicale = convertir<naturel64>(fragmentValide->Ligne)
+                        + convertir<naturel64>(analyseFragment.Resultat.LigneErreur) - 1;
+                    naturel64 colonneLexicale = convertir<naturel64>(analyseFragment.Resultat.ColonneErreur);
+                    si (analyseFragment.Resultat.LigneErreur == 1)
+                        colonneLexicale = colonneLexicale + convertir<naturel64>(fragmentValide->Colonne) - 1;
+                    si (ligneLexicale > 4_294_967_295 || colonneLexicale > 4_294_967_295)
+                        retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::ArgumentInvalide, indexValidation);
+                    requete->Resultat.LigneErreur = convertir<naturel32>(ligneLexicale);
+                    requete->Resultat.ColonneErreur = convertir<naturel32>(colonneLexicale);
+                    retourner requete->Resultat.Erreur;
+                }
+                si (analyseFragment.Resultat.NombreJetons != 2 || jetonsValidation[0].Genre == 0
+                    || jetonsValidation[1].Genre != 0 || jetonsValidation[0].Debut != 0
+                    || jetonsValidation[0].TailleSource != fragmentValide->Taille)
+                    retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::FragmentInvalide, indexValidation);
+                si (jetonsValidation[0].Genre == 77 || jetonsValidation[0].Genre == 78)
+                    retourner RefuserPreparationDeclarations(requete, ErreurPreparationDeclarations::DirectiveNonDeveloppee, indexValidation);
+                taillePreparee = taillePreparee + fragmentValide->Taille + tailleSeparation;
+            }
+            indexValidation = indexValidation + 1;
+        }
+        requete->Resultat.NombreOctetsSource = taillePreparee;
+        requete->Resultat.NombreOrigines = requete->NombreFragments;
+        si (requete->CapaciteSource < taillePreparee || requete->CapaciteOrigines < requete->NombreFragments) {
+            requete->Resultat.Erreur = ErreurPreparationDeclarations::CapaciteInsuffisante;
+            retourner requete->Resultat.Erreur;
+        }
+        naturel64 positionPublication = 0;
+        si (requete->MarqueUtf8 != 0) {
+            requete->SourcePreparee[0] = convertir<caractère>(-17);
+            requete->SourcePreparee[1] = convertir<caractère>(-69);
+            requete->SourcePreparee[2] = convertir<caractère>(-65);
+            positionPublication = 3;
+        }
+        naturel64 indexPublication = 0;
+        tantque (indexPublication < requete->NombreFragments) {
+            constante FragmentJetonDeclarations* fragmentPublie = &requete->Fragments[indexPublication];
+            requete->Origines[indexPublication] = {
+                positionPublication, fragmentPublie->Taille, fragmentPublie->IndexFichier,
+                fragmentPublie->Ligne, fragmentPublie->Colonne, fragmentPublie->EstInterface, 0};
+            naturel64 octetPublication = 0;
+            tantque (octetPublication < fragmentPublie->Taille) {
+                requete->SourcePreparee[positionPublication] = fragmentPublie->Source[octetPublication];
+                positionPublication = positionPublication + 1;
+                octetPublication = octetPublication + 1;
+            }
+            si (indexPublication + 1 < requete->NombreFragments) {
+                si (requete->FinLigneCrlf != 0) {
+                    requete->SourcePreparee[positionPublication] = 13;
+                    positionPublication = positionPublication + 1;
+                }
+                requete->SourcePreparee[positionPublication] = 10;
+                positionPublication = positionPublication + 1;
+            }
+            indexPublication = indexPublication + 1;
+        }
+        retourner ErreurPreparationDeclarations::Reussite;
+    }
+}

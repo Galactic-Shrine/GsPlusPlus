@@ -1,0 +1,96 @@
+/** <résumé>Expansion en mémoire des inclusions textuelles ; les chemins sont résolus par l'hôte.</résumé> **/
+espace GalacticShrine::GsPP::Autohebergement {
+    structure FichierInclusionDeclarations {
+        constante caractère* Source;
+        naturel64 Taille;
+        naturel64 Identite;
+        naturel32 EstInterface;
+        naturel32 Reserve;
+    };
+
+    /** <résumé>Lien trié par fichier puis début de directive : disponible 0, introuvable 1, extension incompatible 2.</résumé> **/
+    structure LienInclusionDeclarations {
+        naturel64 IndexFichier;
+        naturel64 DebutDirective;
+        naturel64 IndexCible;
+        naturel32 Etat;
+        naturel32 Reserve;
+    };
+
+    énumération ErreurExpansionDeclarations {
+        Reussite = 0,
+        Success = 0,
+        CapaciteInsuffisante = 1,
+        InsufficientCapacity = 1,
+        ArgumentInvalide = 2,
+        InvalidArgument = 2,
+        AllocationImpossible = 3,
+        AllocationFailure = 3,
+        ErreurLexicale = 4,
+        LexicalError = 4,
+        DirectiveHorsDebutLigne = 5,
+        DirectiveNotAtLineStart = 5,
+        ArgumentDirectiveAttendu = 6,
+        ExpectedDirectiveArgument = 6,
+        TexteApresDirective = 7,
+        TextAfterDirective = 7,
+        PragmaNonPrisEnCharge = 8,
+        UnsupportedPragma = 8,
+        CheminInclusionAttendu = 9,
+        ExpectedIncludePath = 9,
+        FichierIntrouvable = 10,
+        FileNotFound = 10,
+        ExtensionIncompatible = 11,
+        IncompatibleExtension = 11,
+        CycleInclusion = 12,
+        IncludeCycle = 12,
+        ProfondeurExcessive = 13,
+        ExcessiveDepth = 13,
+        TailleExcessive = 14,
+        ExcessiveSize = 14,
+    };
+
+    structure ResultatExpansionDeclarations {
+        ErreurExpansionDeclarations Erreur;
+        naturel32 DetailLexical;
+        naturel64 IndexFichierErreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+        naturel64 NombreOctetsSource;
+        naturel64 NombreOrigines;
+        naturel64 NombreOctetsArene;
+    };
+
+    structure RequeteExpansionDeclarations {
+        constante FichierInclusionDeclarations* Fichiers;
+        naturel64 NombreFichiers;
+        constante LienInclusionDeclarations* Liens;
+        naturel64 NombreLiens;
+        naturel64 IndexRacine;
+        caractère* SourcePreparee;
+        naturel64 CapaciteSource;
+        OrigineJetonDeclarations* Origines;
+        naturel64 CapaciteOrigines;
+        naturel32 MarqueUtf8;
+        naturel32 FinLigneCrlf;
+        ResultatExpansionDeclarations Resultat;
+    };
+
+    /**
+     * <résumé>Développe #inclure/#include et #pragma once puis prépare le texte et les origines.</résumé>
+     * @Paramètre(RequeteExpansionDeclarations*: requete) Catalogue stable, identités canoniques et liens résolus par l'hôte.
+     * @Retourner(ErreurExpansionDeclarations) Capacités exactes ou premier diagnostic dans le fichier original.
+     * @etc. Les identités partagent les états once/cycle, mais les indices gardent les noms de diagnostic des alias.
+     * @etc. Les liens sont uniques et triés ; les états 1/2 portent IndexCible=NombreFichiers.
+     * @etc. L'hôte garantit les identités, contenus et cibles ; aucune lecture ni résolution de chemin ici.
+     * @etc. Deux sorties transactionnelles, arène libérée, limite de 128 fichiers actifs, EOF racine seul conservé.
+     * @etc. Entrées, sorties et requête doivent être des zones distinctes et stables.
+     **/
+    publique ErreurExpansionDeclarations DevelopperInclusionsDeclarations(RequeteExpansionDeclarations* requete);
+
+    alias InclusionSourceFile = FichierInclusionDeclarations;
+    alias ResolvedInclusionLink = LienInclusionDeclarations;
+    alias InclusionExpansionResult = ResultatExpansionDeclarations;
+    alias InclusionExpansionRequest = RequeteExpansionDeclarations;
+    alias ExpandDeclarationIncludes = DevelopperInclusionsDeclarations;
+}

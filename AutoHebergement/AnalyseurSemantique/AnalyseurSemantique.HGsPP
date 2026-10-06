@@ -463,6 +463,27 @@ espace GalacticShrine::GsPP::Autohebergement {
     alias UnitSemanticAnalysisRequest = RequeteAnalyseSemantiqueUnites;
     alias AnalyzeUnitSemantics = AnalyserSemantiqueUnites;
 
+    structure RequeteSemantiqueUnitesAvecOrigines {
+        RequeteAnalyseSemantique* Analyse;
+        constante RequeteAssemblageAvecOrigines* Declarations;
+        naturel64 IndexUniteErreur;
+        naturel64 IndexFichierErreur;
+        naturel32 LigneLocaleErreur;
+        naturel32 ColonneLocaleErreur;
+    };
+
+    /**
+     * <résumé>Analyse une sortie assemblée avec isolation des unités et diagnostics dans les fichiers inclus.</résumé>
+     * @Paramètre(RequeteSemantiqueUnitesAvecOrigines*: requete) Assemblage réussi, entrées inchangées et mêmes texte/AST dans Analyse.
+     * @Retourner(ErreurAnalyseSemantique) Diagnostic synthétique conservé, rang de l'unité et position originale disponibles.
+     * @etc. Valide les tables et le texte avant publication ; sans accès aux fichiers ni modification de l'assemblage.
+     * @etc. La sémantique conserve son contrat historique de préfixes de symboles/résolutions, pas celui de l'assemblage transactionnel.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecOrigines(RequeteSemantiqueUnitesAvecOrigines* requete);
+
+    alias OriginAwareUnitSemanticRequest = RequeteSemantiqueUnitesAvecOrigines;
+    alias AnalyzeOriginAwareUnitSemantics = AnalyserSemantiqueUnitesAvecOrigines;
+
     /**
      * <résumé>Stockage d'une globale définie, dans les données ou la zone zéro.</résumé>
      * @etc. Decalage est relatif à la zone choisie par Initialisee (bit 0).

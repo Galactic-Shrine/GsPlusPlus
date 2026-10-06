@@ -351,7 +351,7 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **2,301 negative corpora** in development sources (**619** in the published
+  with **2,719 negative corpora** in development sources (**619** in the published
   alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
@@ -456,6 +456,46 @@ All normative documentation is maintained in Markdown as its primary source.
   `volatile`/`constant volatile` preserved for addressed fields/elements in the
   Gs++ frontend, including arrow access; this does not add
   reference returns to ordinary Gs++ functions;
+- pointer references returned by callbacks: copies, bindings, retargeting, const
+  referents and pointer arrays; twenty executed bilingual corpora with pointer
+  targets and pointed values checked separately; dereferencing an extracted
+  pointer is no longer confused with a whole array;
+- references to callbacks with parameters: twenty-two executed bilingual corpora
+  verify independent copies, retargeting, calls, arguments and storage; both
+  analyzers protect constant callbacks without preventing calls or retargeting
+  pointers to constant data;
+- reference parameters in nested callbacks: twenty-four executed bilingual
+  corpora verify exact addresses and mutation traces, construction, reference
+  returns and short-circuiting; a constant callback can receive a mutable
+  argument when its signature allows it;
+- referenced structures and pointer slots in nested callbacks: twenty-four
+  executed bilingual corpora verify identity, independent copies, fields and
+  elements, construction and retargeting; a pointer to constant data may change
+  its target without allowing mutation of that data;
+- references in mixed method/free-function groups: twenty-two executed bilingual
+  corpora verify the selected target, mutation, qualifiers, base conversions and
+  construction contexts; equal scores remain ambiguous, without an implicit
+  C++-style preference for a reference;
+- mixed operators taking references: twenty-four executed bilingual corpora
+  verify mutation, pointer retargeting, class conversions, construction and
+  nested expressions; an exported trace checks call order and skipped execution
+  in built-in logical short-circuits;
+- operators in aggregate initializers: twenty-seven executed bilingual corpora
+  verify structures, unions, nested arrays, assignments, returns and construction;
+  each value is captured in element order; aggregate shape is checked before
+  its leaves in assignments and returns;
+- self-hosted analysis of prepared interfaces in memory: prototypes, implicitly
+  external globals, member visibility, types and signatures; twenty-two bilingual
+  syntax/semantic corpora and six type/data interfaces; this API does not read
+  files or expand includes;
+- self-hosted assembly of prepared sources and interfaces: text, AST and origin
+  table, with local diagnostics and namespace imports isolated per compilation unit;
+  thirteen valid bilingual corpora, guarded outputs and tested allocation failures;
+  member/mixed-group normalization and include integration remain to be implemented;
+- self-hosted normalization of prepared free functions/operators, globals and
+  aliases: definitions preferred over prototypes, first-declaration order preserved,
+  exact names and types compared before alias resolution; twenty-two valid bilingual
+  corpora and thirty differential normalization rejections;
 - fully validate each global initializer in source order, typing all its leaves
   before its constant-value pass; structural default-field check priority
   covered within the differential test scope;

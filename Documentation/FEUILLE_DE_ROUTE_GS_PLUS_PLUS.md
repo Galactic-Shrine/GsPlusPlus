@@ -10,6 +10,168 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
+### Ajout local du 6 octobre 2026 — normalisation préparée des déclarations libres
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Une entrée additive
+normalise les fonctions/opérateurs libres, globales et alias racines préparés :
+types et noms exacts avant résolution des alias, définitions préférées aux
+prototypes à la place de la première déclaration, origines conservées.
+Vingt-deux corpus bilingues valides, trente refus différentiels de normalisation,
+un refus syntaxique bilingue et huit refus sémantiques bilingues ; capacités,
+échecs d'allocation et priorités après fusion vérifiés. La matrice sémantique
+atteint **2 719 refus**, sans additionner les trente conflits de normalisation.
+CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+conformité 20/20 par chaîne ; trois images identiques de 490 623 octets, vérifiées,
+avec 83 exports. Anciens contrats, formats 1.0, ABI 1 et alpha.10 conservés.
+Membres/groupes mixtes et flux d'inclusions restent ouverts. Tranche locale
+non commitée/non poussée, distincte de la CI de `c58874b` et des paquets publiés.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#normalisation-préparée-des-déclarations-libres--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — assemblage préparé et origines des unités
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Le frontend Gs++
+assemble plusieurs interfaces/sources préparées en texte, AST et table
+d'origines. Une nouvelle entrée sémantique isole les imports directs/transitifs
+par unité et restitue les diagnostics locaux. Treize corpus bilingues valides,
+douze refus sémantiques et six refus syntaxiques bilingues ; sorties sans
+publication partielle, échecs d'allocation et origines altérées vérifiés.
+La matrice atteint **2 703 refus**. CTest Windows 5/5, GNU/Linux 6/6,
+solution et validation MSBuild natives réussis ; conformité 20/20 par chaîne ;
+trois images identiques de 466 447 octets, vérifiées, avec 81 exports.
+Anciens contrats, formats 1.0, ABI 1 et alpha.10 conservés.
+La normalisation prototype/définition et le raccordement des inclusions
+restent ouverts ; aucune compilation autonome de fichiers n'est revendiquée.
+Tranche locale non commitée/non poussée, distincte de la CI de `c58874b`
+à 2 301 refus et des paquets publiés. Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-préparé-et-origines-des-unités--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — interfaces préparées en mémoire
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** L'analyseur Gs++
+dispose maintenant d'une entrée d'interface réelle, avec prototypes externes,
+visibilité des membres et le contrat mémoire existant. Vingt-deux corpus
+bilingues syntaxiques/sémantiques, six interfaces de types/données, quatorze
+refus syntaxiques et quinze refus sémantiques bilingues passent ; capacités,
+sentinelles, AST intact et alternance des modes sont vérifiés. La matrice
+sémantique atteint **2 679 refus**. CTest Windows 5/5, GNU/Linux 6/6,
+solution et validation MSBuild natives réussis ; conformité 20/20 par chaîne ;
+trois images identiques de 452 815 octets et vérifiées.
+Formats 1.0, ABI 1, alpha.10 et structures publiques conservés ; deux exports
+ajoutés. Lecture/expansion, assemblage avec les sources et origines des
+inclusions restent à raccorder. Tranche locale non commitée/non poussée,
+distincte de la CI de `c58874b` à 2 301 refus et des paquets publiés.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#interfaces-préparées-en-mémoire--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — opérateurs des initialiseurs agrégés
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt-sept corpus
+bilingues exécutés contrôlent formes imbriquées, stockage, mutations, copies,
+retours, callbacks et constructions. Deux écarts de l'analyseur Gs++ sont corrigés :
+la forme des agrégats affectés et retournés est contrôlée avant leurs feuilles.
+Quarante-deux refus bilingues portent la matrice locale à **2 649**, avec code,
+ligne, colonne et AST intact comparés au bootstrap. CTest Windows 5/5,
+GNU/Linux 6/6, solution et validation MSBuild natives réussis ; conformité
+20/20 par chaîne ; trois images identiques de 451 599 octets et vérifiées.
+Version alpha.10 et contrats publics conservés ; backend C++ inchangé.
+Tranche locale non commitée/non poussée, distincte de la CI de `c58874b`
+à 2 301 refus et des paquets publiés.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#opérateurs-des-initialiseurs-agrégés--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — références des opérateurs mixtes et constructions
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt-quatre corpus
+bilingues exécutés vérifient les opérateurs recevant des références : mutations,
+redirections de pointeurs, qualifications, conversions de classes et constructions.
+Une trace exportée contrôle l'ordre des expressions imbriquées et successives,
+ainsi que l'absence d'appels dans les courts-circuits logiques intégrés.
+Vingt-quatre refus bilingues portent la matrice locale à **2 565**, avec
+ambiguïtés, qualifications, accès privés et priorités des diagnostics vérifiés.
+CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+conformité 20/20 par chaîne ; trois images identiques, inchangées et vérifiées.
+Aucune nouvelle correction nécessaire, version alpha.10 et contrats publics
+conservés. Tranche locale non commitée/non poussée, distincte de la CI de
+`c58874b` à 2 301 refus et des paquets publiés.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#références-des-opérateurs-mixtes-et-constructions--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — références des groupes mixtes et constructions
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt-deux corpus
+bilingues exécutés vérifient la sélection entre méthodes et fonctions libres,
+qualifications des références, conversions de classes dérivées vers une base,
+récepteurs constants/volatiles, alias et mutations. Les appels dans les champs
+par défaut, bases, membres et délégations sont également couverts. Vingt-quatre
+refus bilingues portent la matrice locale à **2 517**, avec les ambiguïtés et
+priorités des diagnostics vérifiées. CTest Windows 5/5, GNU/Linux 6/6, solution
+et validation MSBuild natives réussis ; conformité 20/20 par chaîne ; trois
+images identiques, inchangées et vérifiées. Aucune nouvelle correction nécessaire,
+version alpha.10 et contrats publics conservés. Tranche locale non commitée/non
+poussée, distincte de la CI de `c58874b` à 2 301 refus et des paquets publiés.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#références-des-groupes-mixtes-et-constructions--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — structures et pointeurs référencés des callbacks imbriqués
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt-quatre corpus
+bilingues exécutés vérifient les structures transmises sans copie, copies par
+valeur indépendantes, champs/éléments, constructions et emplacements de pointeurs
+redirigés. Les adresses réelles, dispositions natives et traces avant/après sont
+contrôlées, avec protection des données constantes. Vingt-quatre refus bilingues
+portent la matrice locale à **2 469**. CTest Windows 5/5, GNU/Linux 6/6, solution
+et validation MSBuild natives réussis ; conformité 20/20 par chaîne ; trois
+images identiques, inchangées et vérifiées. Aucune nouvelle correction des
+analyseurs ou du backend nécessaire ; version alpha.10 et contrats publics
+conservés. Tranche locale non commitée/non poussée, distincte de la CI de
+`c58874b` à 2 301 refus et des paquets publiés.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#références-de-structures-et-de-pointeurs-dans-les-callbacks-imbriqués--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — arguments référencés des callbacks imbriqués
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt-quatre
+corpus bilingues exécutés composent références de callbacks, paramètres référencés
+et retours référencés. Les adresses et traces de mutation, appels imbriqués,
+constructions et courts-circuits sont vérifiés. Vingt refus bilingues portent
+la matrice locale à **2 421**. CTest Windows 5/5, GNU/Linux 6/6, solution et
+validation MSBuild natives réussis ; conformité 20/20 par chaîne ; trois images
+identiques, inchangées et vérifiées. Cette couverture ne modifie pas les analyseurs,
+le backend ni les contrats publics ; version alpha.10 conservée, tranche non
+commitée/non poussée, distincte de la CI de `c58874b` à 2 301 refus.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#arguments-référencés-des-callbacks-imbriqués--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — références de callbacks paramétrés et stockage constant
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt-deux
+corpus bilingues exécutés vérifient les appels paramétrés, cibles, lectures et
+copies indépendantes. Les deux analyseurs protègent le stockage des callbacks
+constants, sans interdire l'appel ni la réaffectation des pointeurs vers des
+données constantes. Vingt-cinq refus bilingues portent la matrice locale à
+**2 381** ; huit refus unitaires protègent également le bootstrap. CTest Windows
+5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis, conformité
+20/20 par chaîne et trois images identiques acceptées par le vérificateur. Backend,
+AST public, formats et ABI inchangés, version alpha.10 conservée ; tranche non
+commitée et non poussée, distincte de `c58874b` et de sa CI à 2 301 refus.
+Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#références-de-callbacks-paramétrés-et-stockage-constant--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — références de pointeurs et cibles de tableaux
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Vingt corpus
+bilingues exécutés vérifient les références vers des emplacements de pointeurs,
+leurs cibles et les données pointées. Le frontend distingue un déréférencement
+d'un véritable tableau ou sous-tableau, sans changer les diagnostics ni le
+bootstrap/backend. Quinze refus bilingues portent la matrice locale à **2 331**.
+CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ;
+conformité 20/20 par chaîne et trois images identiques acceptées par le vérificateur.
+La consolidation précédente `c58874b` est signée, poussée et sa CI réussit sur
+les trois chaînes avec 2 301 refus ; cette nouvelle tranche n'y est pas incluse.
+Version alpha.10 conservée. Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#références-de-pointeurs-des-callbacks-et-cibles-de-tableaux--6-octobre-2026).
+
 ### Ajout local du 6 octobre 2026 — qualifications des champs adressés via callbacks
 
 **VALIDÉ dans le périmètre testé.** Le frontend

@@ -115,6 +115,16 @@ namespace GsPP
             return type;
         }
 
+        /**
+         * <résumé>Protège un callback constant sans confondre son stockage avec des données pointées.</résumé>
+         * Les qualifications d'un pointeur de données portent sur sa cible ; celles
+         * d'un callback de niveau zéro protègent la valeur de fonction stockée.
+         **/
+        bool EstValeurDeTypeConstant(const TypeGs& type)
+        {
+            return type.EstConstante && !type.EstPointeur();
+        }
+
         std::string SuffixeSurcharge(const Fonction& fonction)
         {
             std::string signature;
@@ -1083,8 +1093,7 @@ namespace GsPP
             ? SansReference(cible.TypeRetour)
             : cible.TypeRetour;
         appel.EstValeurConstante = appel.RetourneReference
-            && appel.TypeSemantique.EstConstante
-            && !appel.TypeSemantique.EstAdresse()
+            && EstValeurDeTypeConstant(appel.TypeSemantique)
             && !appel.TypeSemantique.EstTableau();
     }
 
@@ -1636,8 +1645,7 @@ namespace GsPP
                         ? SansReference(trouve->second)
                         : trouve->second;
                     expression.EstValeurConstante =
-                        expression.TypeSemantique.EstConstante
-                        && !expression.TypeSemantique.EstAdresse()
+                        EstValeurDeTypeConstant(expression.TypeSemantique)
                         && !expression.TypeSemantique.EstTableau();
                 }
                 else
@@ -1754,14 +1762,14 @@ namespace GsPP
                     if (type.EstPointeurFonction())
                     {
                         expression.TypeSemantique = type;
+                        expression.EstValeurConstante = EstValeurDeTypeConstant(type);
                         break;
                     }
                     if (!type.EstPointeur())
                         Erreur(expression.Position, "'*' exige un pointeur", "'*' requires a pointer");
                     --type.NiveauPointeur;
                     expression.TypeSemantique = type;
-                    expression.EstValeurConstante = type.EstConstante
-                        && !type.EstAdresse();
+                    expression.EstValeurConstante = EstValeurDeTypeConstant(type);
                 }
                 else
                 {
@@ -1823,7 +1831,7 @@ namespace GsPP
                 }
                 expression.EstValeurConstante = membre.Objet->EstValeurConstante
                     || (typeObjet.EstConstante && typeObjet.EstStructure())
-                    || (trouve->Type.EstConstante && !trouve->Type.EstAdresse());
+                    || EstValeurDeTypeConstant(trouve->Type);
                 break;
             }
             case GenreExpression::Index:
@@ -1842,7 +1850,7 @@ namespace GsPP
                 index.TailleElement = TailleType(typeObjet, _Structures);
                 expression.TypeSemantique = typeObjet;
                 expression.EstValeurConstante = index.Objet->EstValeurConstante
-                    || (typeObjet.EstConstante && !typeObjet.EstAdresse());
+                    || EstValeurDeTypeConstant(typeObjet);
                 break;
             }
             case GenreExpression::Affectation:
@@ -2151,8 +2159,7 @@ namespace GsPP
                     ? SansReference(*typeCible.RetourFonction)
                     : *typeCible.RetourFonction;
                 expression.EstValeurConstante = appel.RetourneReference
-                    && expression.TypeSemantique.EstConstante
-                    && !expression.TypeSemantique.EstAdresse()
+                    && EstValeurDeTypeConstant(expression.TypeSemantique)
                     && !expression.TypeSemantique.EstTableau();
                 break;
             }

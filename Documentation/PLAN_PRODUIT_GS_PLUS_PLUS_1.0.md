@@ -474,6 +474,91 @@ elle ne clôt pas le frontend 0.27.
   supplémentaires, portant la matrice locale à 2 301 refus ; CTest Windows 5/5,
   GNU/Linux 6/6, solution et validation natives réussis, conformité 20/20 par
   chaîne ; trois images identiques et vérifiées, bootstrap et backend inchangés ;
+  puis références vers les emplacements de pointeurs retournés par callbacks :
+  vingt corpus bilingues exécutés avec cibles, données et nombre d'appels exacts ;
+  distinguer le déréférencement d'un pointeur extrait d'un tableau des dimensions
+  encore présentes ; quinze refus bilingues, 2 331 refus locaux, CTest Windows
+  5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis ; conformité
+  20/20 par chaîne, trois images identiques et vérifiées ; cette tranche est distincte de
+  la consolidation `c58874b` poussée, signée et validée par sa CI à 2 301 refus ;
+  puis références de callbacks paramétrés : vingt-deux corpus bilingues exécutés
+  avec cibles, lectures, appels et argument exacts ; protéger le stockage constant
+  dans les deux analyseurs, sans interdire l'appel ni la réaffectation des pointeurs
+  de données qualifiés ; vingt-cinq refus bilingues, 2 381 refus locaux et huit
+  refus unitaires du bootstrap ; CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives réussis, conformité 20/20 par chaîne et trois images
+  identiques et vérifiées ; tranche locale distincte de la CI publiée, backend
+  et ABI inchangés ;
+  puis paramètres référencés des callbacks imbriqués : vingt-quatre corpus
+  bilingues exécutés composant référence de callback, paramètre et retour par
+  référence ; contrôler les adresses réelles, traces de mutation et courts-circuits ;
+  vingt refus bilingues, 2 421 refus locaux, CTest Windows 5/5, GNU/Linux 6/6,
+  solution et validation MSBuild natives réussis, conformité 20/20 par chaîne ;
+  trois images identiques, inchangées et vérifiées ; aucune correction supplémentaire
+  des analyseurs ou du backend, contrats publics et version alpha.10 conservés ;
+  puis structures et pointeurs référencés des callbacks imbriqués : vingt-quatre
+  corpus bilingues exécutés contrôlent identité, dispositions natives, copies
+  indépendantes, champs/éléments, constructions et redirections, avec adresses
+  et traces exactes ; vingt-quatre refus bilingues, 2 469 refus locaux,
+  CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives
+  réussis, conformité 20/20 par chaîne ; trois images identiques, inchangées
+  et vérifiées ; couverture de comportements déjà implémentés, sans nouvelle
+  correction des analyseurs ou du backend, contrats publics et alpha.10 conservés ;
+  puis références dans les groupes mêlant méthodes et fonctions : vingt-deux
+  corpus bilingues exécutés vérifient les déclarations sélectionnées, mutations,
+  qualifications, conversions de classes et constructions ; vingt-quatre refus
+  bilingues, 2 517 refus locaux, ambiguïtés et priorités des diagnostics couvertes ;
+  CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis,
+  conformité 20/20 par chaîne ; trois images identiques, inchangées et vérifiées ;
+  règles de surcharge actuelles confirmées, sans nouvelle correction, changement
+  de contrats publics ou de version alpha.10 ;
+  puis opérateurs mixtes recevant des références : vingt-quatre corpus bilingues
+  exécutés contrôlent les déclarations, mutations, redirections de pointeurs,
+  conversions de classes, constructions et expressions imbriquées ; une trace
+  exportée vérifie ordre et nombre d'appels, ainsi que les courts-circuits intégrés ;
+  vingt-quatre refus bilingues, 2 565 refus locaux, priorités des expressions,
+  constructions et affectations couvertes ; CTest Windows 5/5, GNU/Linux 6/6,
+  solution et validation MSBuild natives réussis, conformité 20/20 par chaîne ;
+  trois images identiques, inchangées et vérifiées ; aucune nouvelle correction,
+  contrats publics et version alpha.10 conservés ;
+  puis opérateurs des initialiseurs agrégés : vingt-sept corpus bilingues exécutés
+  contrôlent stockage, mutations, valeurs capturées dans l'ordre, éléments omis,
+  copies, retours, callbacks et constructions ; les priorités de forme avant
+  les feuilles des agrégats affectés et retournés sont corrigées dans l'analyseur
+  Gs++ ; quarante-deux refus bilingues, 2 649 refus locaux, code/ligne/colonne
+  et AST intact vérifiés ; CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives réussis, conformité 20/20 par chaîne ; trois
+  images identiques de 451 599 octets et vérifiées ; backend C++, contrats
+  publics et version alpha.10 conservés ;
+  puis interfaces préparées en mémoire : une entrée d'analyse Gs++ avec alias
+  anglais produit les prototypes externes et conserve la visibilité des membres ;
+  vingt-deux corpus bilingues syntaxiques/sémantiques et six interfaces de types
+  ou données, quatorze refus syntaxiques et quinze refus sémantiques bilingues ;
+  capacités, sentinelles et AST intact vérifiés ; 2 679 refus sémantiques locaux,
+  CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives réussis,
+  conformité 20/20 par chaîne ; trois images identiques de 452 815 octets et
+  vérifiées ; structures publiques, formats 1.0, ABI 1 et alpha.10 conservés ;
+  lecture/expansion, assemblage avec les sources et origines d'inclusion restent
+  à raccorder ;
+  puis assemblage préparé et origines des unités : texte, AST et table
+  d'origines sans sorties partielles, sémantique par unité avec isolation
+  des imports directs/transitifs et restitution des diagnostics locaux ;
+  treize corpus bilingues valides, douze refus sémantiques et six refus
+  syntaxiques bilingues ; capacités, échecs d'allocation et origines altérées
+  vérifiés ; 2 703 refus locaux, CTest Windows 5/5, GNU/Linux 6/6,
+  solution et validation MSBuild natives réussis ; conformité 20/20 par chaîne ;
+  trois images identiques de 466 447 octets, vérifiées, avec 81 exports ;
+  anciens contrats, formats 1.0, ABI 1 et alpha.10 conservés ; la normalisation
+  prototype/définition et le raccordement du flux d'inclusions restent ouverts ;
+  puis normalisation préparée des déclarations libres : entrée additive pour
+  fonctions/opérateurs libres, globales et alias racines, avec types/noms exacts,
+  définition préférée à la place de la première déclaration et origines conservées ;
+  vingt-deux corpus bilingues valides, trente refus de normalisation, un refus
+  syntaxique bilingue et huit refus sémantiques bilingues ; 2 719 refus sémantiques
+  locaux, capacités et chaque échec d'allocation vérifiés ; CTest Windows 5/5,
+  GNU/Linux 6/6, solution et validation MSBuild natives réussis ; conformité 20/20
+  par chaîne ; trois images identiques de 490 623 octets, vérifiées, avec 83 exports ;
+  membres/groupes mixtes et flux d'inclusions restent ouverts ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
   familles sémantiques, notamment les contextes des constructions et les
   interactions de priorité entre passes non encore testées, dont les
@@ -490,7 +575,8 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 
 Le passage au jalon 0.28 n'est pas encore validé. Les prochaines tranches
 portent sur les interactions sémantiques restantes, les autres combinaisons de
-constructions et l'alimentation du frontend à partir des interfaces, puis sur
+constructions, la normalisation des membres/groupes mixtes dans l'assemblage
+préparé et le raccordement des inclusions avec leurs origines internes, puis sur
 la consolidation de la conformité et des
 benchmarks du frontend 0.27. Le nombre de corpus réussis n'est ni un pourcentage
 d'achèvement ni un déclencheur automatique de changement de version.

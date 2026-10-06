@@ -1,4 +1,5 @@
 #include "GsPP/ChargeurGsE.hpp"
+#include "GsPP/Compilation.hpp"
 #include "GsPP/AnalyseurSemantique.hpp"
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
@@ -15,11 +16,13 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <new>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -134,6 +137,45 @@ namespace
         ResultatAnalyseDeclarationsHote Resultat;
     };
 
+    struct UniteDeclarationsPrepareeHote
+    {
+        const char* Source;
+        std::uint64_t Taille;
+        std::uint32_t EstInterface, Reserve;
+    };
+
+    struct OrigineUniteDeclarationsHote
+    {
+        std::uint64_t DebutOctets, TailleOctets;
+        std::uint32_t PremiereLigne, NombreLignes, OctetsBom, Reserve;
+    };
+
+    struct ResultatAssemblageDeclarationsHote
+    {
+        std::uint32_t Erreur, LigneErreur, ColonneErreur, Detail;
+        std::uint64_t IndexUniteErreur, NombreNoeuds, NombreOctetsSource, NombreOrigines, NombreOctetsArene;
+        std::uint32_t DetailLexical, Reserve;
+    };
+
+    struct RequeteAssemblageDeclarationsHote
+    {
+        const UniteDeclarationsPrepareeHote* Unites;
+        std::uint64_t NombreUnites;
+        char* SourceAssemblee;
+        std::uint64_t CapaciteSource;
+        NoeudDeclarationHote* Noeuds;
+        std::uint64_t CapaciteNoeuds;
+        OrigineUniteDeclarationsHote* Origines;
+        std::uint64_t CapaciteOrigines;
+        ResultatAssemblageDeclarationsHote Resultat;
+    };
+
+    static_assert(sizeof(UniteDeclarationsPrepareeHote) == 24);
+    static_assert(sizeof(OrigineUniteDeclarationsHote) == 32);
+    static_assert(sizeof(ResultatAssemblageDeclarationsHote) == 64);
+    static_assert(sizeof(RequeteAssemblageDeclarationsHote) == 128);
+    static_assert(offsetof(RequeteAssemblageDeclarationsHote, Resultat) == 64);
+
     struct SymboleSemantiqueHote
     {
         std::uint64_t IndexNoeud;
@@ -179,6 +221,16 @@ namespace
         std::uint64_t CapaciteResolutions;
         ResultatAnalyseSemantiqueHote Resultat;
     };
+
+    struct RequeteAnalyseSemantiqueUnitesHote
+    {
+        RequeteAnalyseSemantiqueHote* Analyse;
+        const OrigineUniteDeclarationsHote* Origines;
+        std::uint64_t NombreOrigines, IndexUniteErreur;
+        std::uint32_t LigneLocaleErreur, ColonneLocaleErreur;
+    };
+
+    static_assert(sizeof(RequeteAnalyseSemantiqueUnitesHote) == 40);
 
     struct GlobaleEmiseHote
     {
@@ -247,11 +299,14 @@ namespace
     std::uint64_t NombreLiberations = 0;
     bool LiberationInvalide = false;
     bool EchecTransactionTeste = false;
+    std::optional<std::uint64_t> LimiteAllocationsAssemblage;
 
     std::uint8_t* GS_ABI_HOTE AllouerMemoireHote(
         std::uint64_t taille)
     {
         if (taille == 0)
+            return nullptr;
+        if (LimiteAllocationsAssemblage && NombreAllocations >= *LimiteAllocationsAssemblage)
             return nullptr;
         if (taille == 4097)
         {
@@ -1029,6 +1084,7 @@ namespace
                         else
                             drapeauxFonction |= 16U;
                         if (fonction.Corps) drapeauxFonction |= 4U;
+                        if (fonction.EstExterne) drapeauxFonction |= 2U;
                         if (fonction.EstVirtuelle) drapeauxFonction |= 64U;
                         if (fonction.EstRemplacement)
                             drapeauxFonction |= 128U;
@@ -1627,12 +1683,13 @@ namespace
     std::vector<NoeudDeclarationHote> ComparerDeclarations(
         AnalyseurDeclarationsAutoHeberge analyseur,
         const std::string& source,
-        std::string_view nomCorpus)
+        std::string_view nomCorpus,
+        bool estInterface = false)
     {
         const auto jetons = GsPP::Lexeur(
             source, std::string(nomCorpus)).Analyser();
         const auto programme = GsPP::AnalyseurSyntaxique(
-            jetons, std::string(nomCorpus)).Analyser();
+            jetons, std::string(nomCorpus), estInterface).Analyser();
         const auto reference = ConstruireDeclarationsReference(programme);
 
         RequeteAnalyseDeclarationsHote requete{
@@ -1775,7 +1832,8 @@ namespace
         AnalyseurDeclarationsAutoHeberge analyseur,
         const std::string& source,
         std::uint32_t erreurAttendue,
-        std::string_view nomCorpus)
+        std::string_view nomCorpus,
+        bool estInterface = false)
     {
         std::uint32_t ligne = 0;
         std::uint32_t colonne = 0;
@@ -1785,7 +1843,7 @@ namespace
             const auto jetons = GsPP::Lexeur(
                 source, std::string(nomCorpus)).Analyser();
             (void)GsPP::AnalyseurSyntaxique(
-                jetons, std::string(nomCorpus)).Analyser();
+                jetons, std::string(nomCorpus), estInterface).Analyser();
         }
         catch (const GsPP::ErreurCompilation& erreur)
         {
@@ -2627,13 +2685,14 @@ namespace
         AnalyseurDeclarationsAutoHeberge syntaxe,
         AnalyseurSemantiqueAutoHeberge semantique,
         const std::string& source,
-        std::string_view nomCorpus)
+        std::string_view nomCorpus,
+        bool estInterface = false)
     {
-        auto noeuds = ComparerDeclarations(syntaxe, source, nomCorpus);
+        auto noeuds = ComparerDeclarations(syntaxe, source, nomCorpus, estInterface);
         const auto noeudsAvant = noeuds;
         auto jetons = GsPP::Lexeur(source, std::string(nomCorpus)).Analyser();
         auto programme = GsPP::AnalyseurSyntaxique(
-            std::move(jetons), std::string(nomCorpus)).Analyser();
+            std::move(jetons), std::string(nomCorpus), estInterface).Analyser();
         try
         {
             GsPP::AnalyseurSemantique().Analyser(programme);
@@ -2756,9 +2815,10 @@ namespace
         AnalyseurSemantiqueAutoHeberge semantique,
         const std::string& source,
         std::uint32_t erreurAttendue,
-        std::string_view nomCorpus)
+        std::string_view nomCorpus,
+        bool estInterface = false)
     {
-        auto noeuds = ComparerDeclarations(syntaxe, source, nomCorpus);
+        auto noeuds = ComparerDeclarations(syntaxe, source, nomCorpus, estInterface);
         const auto noeudsAvant = noeuds;
         std::uint32_t ligne = 0;
         std::uint32_t colonne = 0;
@@ -2768,7 +2828,7 @@ namespace
             auto jetons = GsPP::Lexeur(
                 source, std::string(nomCorpus)).Analyser();
             auto programme = GsPP::AnalyseurSyntaxique(
-                std::move(jetons), std::string(nomCorpus)).Analyser();
+                std::move(jetons), std::string(nomCorpus), estInterface).Analyser();
             GsPP::AnalyseurSemantique().Analyser(programme);
         }
         catch (const GsPP::ErreurCompilation& erreur)
@@ -7991,6 +8051,1732 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                   << " corpus bilingues exécutés avec stockage d'hôte vérifié.\n";
     }
 
+    struct DonneesReferencesPointeursHote {
+        std::int32_t Valeurs[2];
+        std::int32_t* Adresse;
+        const std::int32_t* AdresseConstante;
+    };
+
+    std::uint32_t NombreLecturesReferencesPointeursHote = 0;
+
+    std::int32_t*& GS_ABI_HOTE LireReferencePointeurHote(DonneesReferencesPointeursHote* donnees) {
+        ++NombreLecturesReferencesPointeursHote;
+        return donnees->Adresse;
+    }
+    const std::int32_t*& GS_ABI_HOTE LireReferencePointeurConstantHote(DonneesReferencesPointeursHote* donnees) {
+        ++NombreLecturesReferencesPointeursHote;
+        return donnees->AdresseConstante;
+    }
+
+    /**
+     * <résumé>Vérifie un retour de référence vers un pointeur, distinct de son référent.</résumé>
+     * Les callbacks C++ retournent les emplacements réels du stockage hôte.
+     * La cible du pointeur et les données pointées sont contrôlées séparément.
+     **/
+    void TesterRetoursReferencesPointeursCallbacks(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "structure D { entier32 Valeurs[2]; entier32* Adresse; constante entier32* AdresseConstante; }; ";
+        struct Corpus {
+            std::string Texte;
+            std::uint64_t Callback;
+            std::int32_t X = 41;
+            std::int32_t Y = 1;
+            bool AdresseSecondElement = false;
+            bool AdresseConstanteSecondElement = false;
+            std::uint32_t NombreLectures = 1;
+        };
+        const auto mutablePointeur = reinterpret_cast<std::uint64_t>(&LireReferencePointeurHote);
+        const auto constantPointeur = reinterpret_cast<std::uint64_t>(&LireReferencePointeurConstantHote);
+        const std::vector<Corpus> valides{
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { retourner *lire(d) + 1; }", mutablePointeur},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32*& liaison = lire(d); *liaison = 42; retourner *liaison; }", mutablePointeur, 42},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "lire(d) = &d->Valeurs[1]; *lire(d) = 42; retourner d->Valeurs[1]; }", mutablePointeur, 41, 42, true, false, 2},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32** adresse = &lire(d); *adresse = &d->Valeurs[1]; **adresse = 42; retourner d->Valeurs[1]; }",
+             mutablePointeur, 41, 42, true},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* valeur = lire(d); *valeur = 42; retourner d->Valeurs[0]; }", mutablePointeur, 42},
+            {"classe C { entier32 X; publique: constructeur(entier32*& p) : X(*p + 1) {} "
+             "entier32 Lire() { retourner soi.X; } }; publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "C c(lire(d)); retourner c.Lire(); }", mutablePointeur},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* tableau[2] = {lire(d), &d->Valeurs[1]}; *tableau[0] = 42; retourner *tableau[0]; }", mutablePointeur, 42},
+            {"vide Fixer(entier32*& p, entier32* remplacement) { p = remplacement; } "
+             "publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "Fixer(lire(d), &d->Valeurs[1]); *lire(d) = 42; retourner d->Valeurs[1]; }", mutablePointeur, 41, 42, true, false, 2},
+            {"entier32* LireValeur(entier32*& p) { retourner p; } "
+             "publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* valeur = LireValeur(lire(d)); retourner *valeur + 1; }", mutablePointeur},
+            {"publique entier32 Principal(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { "
+             "constante entier32* valeur = lire(d); retourner *valeur + 1; }", constantPointeur},
+            {"publique entier32 Principal(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { "
+             "constante entier32*& liaison = lire(d); liaison = convertir<constante entier32*>(&d->Valeurs[1]); "
+             "retourner *liaison + 41; }", constantPointeur, 41, 1, false, true},
+            {"publique entier32 Principal(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { "
+             "constante entier32** adresse = &lire(d); *adresse = convertir<constante entier32*>(&d->Valeurs[1]); "
+             "retourner **adresse + 41; }", constantPointeur, 41, 1, false, true},
+            {"publique entier32 Principal(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { "
+             "lire(d) = convertir<constante entier32*>(&d->Valeurs[1]); retourner *lire(d) + 41; }",
+             constantPointeur, 41, 1, false, true, 2},
+            {"classe C { entier32 X = *lire(d) + 1; publique: constructeur(pointeur_fonction<constante entier32*&(D*)> lire, D* d) {} "
+             "entier32 Lire() { retourner soi.X; } }; publique entier32 Principal(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { "
+             "C c(lire, d); retourner c.Lire(); }", constantPointeur},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "lire(d)[1] = 42; retourner lire(d)[1]; }", mutablePointeur, 41, 42, false, false, 2},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* adresse = &lire(d)[1]; *adresse = 42; retourner *adresse; }", mutablePointeur, 41, 42},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* adresse = &*lire(d); *adresse = 42; retourner *adresse; }", mutablePointeur, 42},
+            {"publique entier32 Principal(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { "
+             "constante entier32* adresse = &*lire(d); retourner *adresse + 1; }", constantPointeur},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* tableau[1][2] = {{lire(d), &d->Valeurs[1]}}; *tableau[0][0] = 42; retourner *tableau[0][0]; }",
+             mutablePointeur, 42},
+            {"publique entier32 Principal(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* tableau[1][2] = {{lire(d), &d->Valeurs[1]}}; tableau[0][1] = &d->Valeurs[0]; "
+             "*tableau[0][1] = 42; retourner d->Valeurs[0]; }", mutablePointeur, 42},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + valides[index].Texte;
+            std::optional<GsPP::CodeMachine> reference;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "retour-reference-pointeur-callback-valide-" + std::to_string(index);
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                const auto structure = std::find_if(programme.Structures.begin(), programme.Structures.end(),
+                    [](const auto& candidate) { return candidate.NomComplet() == "D"; });
+                Exiger(structure != programme.Structures.end() && structure->Taille == sizeof(DonneesReferencesPointeursHote)
+                        && structure->Alignement == alignof(DonneesReferencesPointeursHote) && structure->Champs.size() == 3
+                        && structure->Champs[0].Decalage == offsetof(DonneesReferencesPointeursHote, Valeurs)
+                        && structure->Champs[1].Decalage == offsetof(DonneesReferencesPointeursHote, Adresse)
+                        && structure->Champs[2].Decalage == offsetof(DonneesReferencesPointeursHote, AdresseConstante),
+                    "la disposition des emplacements de pointeurs ne respecte pas l'ABI : " + nom);
+                std::unordered_map<std::uint64_t, std::uint64_t> types;
+                for (const auto& fonction : programme.Fonctions)
+                    for (const auto& parametre : fonction.Parametres)
+                        if (parametre.Nom != "soi")
+                            types.emplace((static_cast<std::uint64_t>(parametre.Position.Ligne) << 32U) | parametre.Position.Colonne,
+                                HacherTypeDeclaration(parametre.Type));
+                std::size_t nombreParametres = 0;
+                for (const auto& symbole : resultat.Symboles)
+                    if (symbole.Genre == 8)
+                    {
+                        ++nombreParametres;
+                        const auto& declaration = resultat.Noeuds[symbole.IndexNoeud];
+                        const auto type = types.find((static_cast<std::uint64_t>(declaration.Ligne) << 32U) | declaration.Colonne);
+                        Exiger(type != types.end() && symbole.HachageType == type->second,
+                            "signature de référence de pointeur différente du bootstrap : " + nom);
+                    }
+                Exiger(nombreParametres == types.size(), "paramètres de référence de pointeur manquants : " + nom);
+                const auto machine = GsPP::GenerateurX64().Generer(programme);
+                if (reference)
+                    Exiger(machine.Texte == reference->Texte && machine.Donnees == reference->Donnees,
+                        "octets bilingues des références de pointeurs différents : " + nom);
+                else reference = machine;
+                const auto contenu = GsPP::EcrivainGsE().Construire(machine, "Principal");
+                Exiger(contenu == GsPP::EcrivainGsE().Construire(GsPP::GenerateurX64().Generer(programme), "Principal"),
+                    "image des références de pointeurs non reproductible : " + nom);
+                ZoneExecutable zone(AlignerPage(Lire64(contenu, 48)));
+                const auto image = GsPP::ChargeurGsE().Charger(contenu, zone.Base());
+                Exiger(image.Imports.empty(), "les références de pointeurs ajoutent un import statique : " + nom);
+                zone.Copier(image.Memoire);
+                DonneesReferencesPointeursHote donnees{{41, 1}, nullptr, nullptr};
+                donnees.Adresse = &donnees.Valeurs[0];
+                donnees.AdresseConstante = &donnees.Valeurs[0];
+                NombreLecturesReferencesPointeursHote = 0;
+                using FonctionTest = std::int32_t (GS_ABI_HOTE *)(std::uint64_t, DonneesReferencesPointeursHote*);
+                const auto valeur = reinterpret_cast<FonctionTest>(image.AdressePointEntree)(valides[index].Callback, &donnees);
+                Exiger(valeur == 42 && donnees.Valeurs[0] == valides[index].X && donnees.Valeurs[1] == valides[index].Y,
+                    "lecture ou mutation du référent incorrecte : " + nom);
+                Exiger(donnees.Adresse == &donnees.Valeurs[valides[index].AdresseSecondElement ? 1 : 0]
+                        && donnees.AdresseConstante == &donnees.Valeurs[valides[index].AdresseConstanteSecondElement ? 1 : 0],
+                    "mutation de l'emplacement du pointeur incorrecte : " + nom);
+                Exiger(NombreLecturesReferencesPointeursHote == valides[index].NombreLectures,
+                    "une référence de pointeur réévalue le callback : " + nom);
+            }
+        }
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"publique vide F(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { entier32*& x = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { constante entier32*& x = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<entier32*(D*)> lire, D* d) { entier32*& x = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { entier32& x = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { *lire(d) = 42; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { entier32* x = lire(d); }", 45},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { lire(d) = 42; Absente; }", 73},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { lire(Absente, 0); }", 54},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { lire(d)(); Absente; }", 53},
+            {"publique vide F(pointeur_fonction<constante entier32*&(D*)> lire, D* d) { entier32** x = &lire(d); }", 45},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { lire(d)[vrai]; Absente; }", 51},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d, entier64* autre) { lire(d) = autre; Absente; }", 73},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* tableau[2] = {lire(d), &d->Valeurs[1]}; tableau = Absente; }", 72},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* tableau[1][2] = {{lire(d), &d->Valeurs[1]}}; tableau[0] = Absente; }", 72},
+            {"publique vide F(pointeur_fonction<entier32*&(D*)> lire, D* d) { "
+             "entier32* tableau[2] = {lire(d), &d->Valeurs[1]}; *tableau[0] = vrai; Absente; }", 73},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "retour-reference-pointeur-callback-refuse-" + std::to_string(index));
+        }
+        std::cout << "Références de pointeurs des callbacks : " << valides.size()
+                  << " corpus bilingues exécutés, pointeurs et référents vérifiés séparément.\n";
+    }
+
+    using CallbackParametreReferenceHote = std::int32_t (GS_ABI_HOTE *)(std::int32_t);
+
+    struct DonneesReferencesCallbacksParametresHote {
+        CallbackParametreReferenceHote Actif;
+        CallbackParametreReferenceHote Alternative;
+    };
+
+    std::uint32_t NombreLecturesCallbacksParametresHote = 0;
+    std::uint32_t NombreAppelsCallbacksParametresHote = 0;
+    std::int32_t DernierArgumentCallbackParametreHote = 0;
+
+    std::int32_t GS_ABI_HOTE CibleCallbackParametreHote(std::int32_t valeur) {
+        ++NombreAppelsCallbacksParametresHote;
+        DernierArgumentCallbackParametreHote = valeur;
+        return valeur + 1;
+    }
+    std::int32_t GS_ABI_HOTE AutreCibleCallbackParametreHote(std::int32_t valeur) {
+        ++NombreAppelsCallbacksParametresHote;
+        DernierArgumentCallbackParametreHote = valeur;
+        return valeur + 2;
+    }
+    CallbackParametreReferenceHote& GS_ABI_HOTE LireCallbackParametreHote(DonneesReferencesCallbacksParametresHote* donnees) {
+        ++NombreLecturesCallbacksParametresHote;
+        return donnees->Actif;
+    }
+    const CallbackParametreReferenceHote& GS_ABI_HOTE LireCallbackParametreConstantHote(DonneesReferencesCallbacksParametresHote* donnees) {
+        ++NombreLecturesCallbacksParametresHote;
+        return donnees->Actif;
+    }
+    volatile CallbackParametreReferenceHote& GS_ABI_HOTE LireCallbackParametreVolatileHote(DonneesReferencesCallbacksParametresHote* donnees) {
+        ++NombreLecturesCallbacksParametresHote;
+        return donnees->Actif;
+    }
+    const volatile CallbackParametreReferenceHote& GS_ABI_HOTE LireCallbackParametreConstantVolatileHote(DonneesReferencesCallbacksParametresHote* donnees) {
+        ++NombreLecturesCallbacksParametresHote;
+        return donnees->Actif;
+    }
+
+    /**
+     * <résumé>Distingue l'emplacement d'un callback paramétré de sa cible et de ses copies.</résumé>
+     * Le pont hôte utilise des références C++ réelles et compte les lectures et appels séparément.
+     **/
+    void TesterReferencesCallbacksParametres(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations =
+            "structure R { pointeur_fonction<entier32(entier32)> Actif; pointeur_fonction<entier32(entier32)> Alternative; }; ";
+        struct Corpus {
+            std::string Texte;
+            std::uint64_t Callback;
+            bool Remplace = false;
+            std::uint32_t NombreLectures = 1;
+            std::int32_t Argument = 41;
+        };
+        const auto mutableCallback = reinterpret_cast<std::uint64_t>(&LireCallbackParametreHote);
+        const auto constantCallback = reinterpret_cast<std::uint64_t>(&LireCallbackParametreConstantHote);
+        const auto volatileCallback = reinterpret_cast<std::uint64_t>(&LireCallbackParametreVolatileHote);
+        const auto constantVolatileCallback = reinterpret_cast<std::uint64_t>(&LireCallbackParametreConstantVolatileHote);
+        const std::vector<Corpus> valides{
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "retourner lire(d)(41); }", mutableCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>& liaison = lire(d); retourner liaison(41); }", mutableCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "lire(d) = d->Alternative; retourner lire(d)(40); }", mutableCallback, true, 2, 40},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>& liaison = lire(d); liaison = d->Alternative; retourner liaison(40); }",
+             mutableCallback, true, 1, 40},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>* adresse = &lire(d); *adresse = d->Alternative; retourner (*adresse)(40); }",
+             mutableCallback, true, 1, 40},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> copie = lire(d); lire(d) = d->Alternative; retourner copie(41); }",
+             mutableCallback, true, 2},
+            {"vide Fixer(pointeur_fonction<entier32(entier32)>& cible, pointeur_fonction<entier32(entier32)> autre) { cible = autre; } "
+             "publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "Fixer(lire(d), d->Alternative); retourner lire(d)(40); }", mutableCallback, true, 2, 40},
+            {"structure S { pointeur_fonction<entier32(entier32)> F; }; "
+             "publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "S s = {lire(d)}; retourner s.F(41); }", mutableCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> tableau[1] = {lire(d)}; retourner tableau[0](41); }", mutableCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> tableau[1][2] = {{lire(d), d->Alternative}}; "
+             "tableau[0][0] = tableau[0][1]; retourner tableau[0][0](40); }", mutableCallback, false, 1, 40},
+            {"classe C { entier32 X; publique: constructeur(pointeur_fonction<entier32(entier32)>& f) : X(f(41)) {} "
+             "entier32 Lire() { retourner soi.X; } }; "
+             "publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "C c(lire(d)); retourner c.Lire(); }", mutableCallback},
+            {"classe C { entier32 X = lire(d)(41); publique: "
+             "constructeur(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) {} "
+             "entier32 Lire() { retourner soi.X; } }; "
+             "publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "C c(lire, d); retourner c.Lire(); }", mutableCallback},
+            {"publique entier32 Principal(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "constante pointeur_fonction<entier32(entier32)>& liaison = lire(d); retourner liaison(41); }", constantCallback},
+            {"publique entier32 Principal(pointeur_fonction<volatile pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "volatile pointeur_fonction<entier32(entier32)>& liaison = lire(d); retourner liaison(41); }", volatileCallback},
+            {"publique entier32 Principal(pointeur_fonction<constante volatile pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "constante volatile pointeur_fonction<entier32(entier32)>& liaison = lire(d); retourner liaison(41); }",
+             constantVolatileCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "retourner (*lire(d))(41); }", mutableCallback},
+            {"publique entier32 Principal(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "constante pointeur_fonction<entier32(entier32)>* adresse = &lire(d); retourner (*adresse)(41); }", constantCallback},
+            {"publique entier32 Principal(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "constante pointeur_fonction<entier32(entier32)>* adresse = &lire(d); retourner adresse[0](41); }", constantCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>* adresse = &lire(d); adresse[0] = d->Alternative; retourner adresse[0](40); }",
+             mutableCallback, true, 1, 40},
+            {"publique entier32 Principal(pointeur_fonction<constante volatile pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "constante volatile pointeur_fonction<entier32(entier32)>* adresse = &lire(d); retourner (*adresse)(41); }",
+             constantVolatileCallback},
+            {"publique entier32 Principal(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "constante pointeur_fonction<entier32(entier32)> copie = lire(d); retourner copie(41); }", constantCallback},
+            {"publique entier32 Principal(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)>* adresse = &lire; retourner (*adresse)(d)(41); }",
+             mutableCallback},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            std::optional<GsPP::CodeMachine> reference;
+            const auto source = declarations + valides[index].Texte;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "reference-callback-parametre-valide-" + std::to_string(index);
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                const auto structure = std::find_if(programme.Structures.begin(), programme.Structures.end(),
+                    [](const auto& candidate) { return candidate.NomComplet() == "R"; });
+                Exiger(structure != programme.Structures.end()
+                        && structure->Taille == sizeof(DonneesReferencesCallbacksParametresHote)
+                        && structure->Alignement == alignof(DonneesReferencesCallbacksParametresHote)
+                        && structure->Champs.size() == 2
+                        && structure->Champs[0].Decalage == offsetof(DonneesReferencesCallbacksParametresHote, Actif)
+                        && structure->Champs[1].Decalage == offsetof(DonneesReferencesCallbacksParametresHote, Alternative),
+                    "disposition du stockage des callbacks paramétrés différente : " + nom);
+                std::unordered_map<std::uint64_t, std::uint64_t> types;
+                for (const auto& fonction : programme.Fonctions)
+                    for (const auto& parametre : fonction.Parametres)
+                        if (parametre.Nom != "soi")
+                            types.emplace((static_cast<std::uint64_t>(parametre.Position.Ligne) << 32U) | parametre.Position.Colonne,
+                                HacherTypeDeclaration(parametre.Type));
+                std::size_t nombreParametres = 0;
+                for (const auto& symbole : resultat.Symboles)
+                    if (symbole.Genre == 8)
+                    {
+                        ++nombreParametres;
+                        const auto& declaration = resultat.Noeuds[symbole.IndexNoeud];
+                        const auto type = types.find((static_cast<std::uint64_t>(declaration.Ligne) << 32U) | declaration.Colonne);
+                        Exiger(type != types.end() && symbole.HachageType == type->second,
+                            "signature des callbacks paramétrés différente : " + nom);
+                    }
+                Exiger(nombreParametres == types.size(), "paramètres des callbacks paramétrés manquants : " + nom);
+                const auto machine = GsPP::GenerateurX64().Generer(programme);
+                if (reference)
+                    Exiger(machine.Texte == reference->Texte && machine.Donnees == reference->Donnees,
+                        "octets bilingues des callbacks paramétrés différents : " + nom);
+                else reference = machine;
+                const auto contenu = GsPP::EcrivainGsE().Construire(machine, "Principal");
+                Exiger(contenu == GsPP::EcrivainGsE().Construire(GsPP::GenerateurX64().Generer(programme), "Principal"),
+                    "image des callbacks paramétrés non reproductible : " + nom);
+                ZoneExecutable zone(AlignerPage(Lire64(contenu, 48)));
+                const auto image = GsPP::ChargeurGsE().Charger(contenu, zone.Base());
+                Exiger(image.Imports.empty(), "les callbacks paramétrés ajoutent un import statique : " + nom);
+                zone.Copier(image.Memoire);
+                DonneesReferencesCallbacksParametresHote donnees{&CibleCallbackParametreHote, &AutreCibleCallbackParametreHote};
+                NombreLecturesCallbacksParametresHote = 0;
+                NombreAppelsCallbacksParametresHote = 0;
+                DernierArgumentCallbackParametreHote = 0;
+                using FonctionTest = std::int32_t (GS_ABI_HOTE *)(std::uint64_t, DonneesReferencesCallbacksParametresHote*);
+                const auto valeur = reinterpret_cast<FonctionTest>(image.AdressePointEntree)(valides[index].Callback, &donnees);
+                Exiger(valeur == 42 && donnees.Actif == (valides[index].Remplace ? &AutreCibleCallbackParametreHote : &CibleCallbackParametreHote)
+                        && donnees.Alternative == &AutreCibleCallbackParametreHote,
+                    "copie ou remplacement du callback paramétré incorrect : " + nom);
+                Exiger(NombreLecturesCallbacksParametresHote == valides[index].NombreLectures
+                        && NombreAppelsCallbacksParametresHote == 1 && DernierArgumentCallbackParametreHote == valides[index].Argument,
+                    "lectures, appels ou argument du callback paramétré incorrects : " + nom);
+            }
+        }
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "lire(d) = d->Alternative; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>& liaison = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>& liaison = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier64)>& liaison = lire(d); }", 69},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "lire(d)(Absente, 0); }", 54},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "lire(Absente, 0)(Absente); }", 54},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "lire(d)(vrai); Absente; }", 55},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "lire(d) = 42; Absente; }", 73},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "pointeur_fonction<entier32(entier64)> autre) { lire(d) = autre; Absente; }", 73},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>* adresse = &lire(d); }", 45},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)>* adresse = &lire(d); adresse(Absente); }", 53},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> tableau[1] = {lire(d)}; tableau = Absente; }", 72},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> tableau[1] = {lire(d)}; tableau[0](Absente, 0); }", 54},
+            {"classe C { entier32 X = lire(d)(vrai); publique: "
+             "constructeur(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { Absente; } };", 55},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { lire(d) = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { "
+             "constante pointeur_fonction<entier32(entier32)> copie = lire(d); copie = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { "
+             "constante pointeur_fonction<entier32(entier32)>& liaison = lire(d); liaison = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { "
+             "constante pointeur_fonction<entier32(entier32)>* adresse = &lire(d); *adresse = autre; Absente; }", 71},
+            {"structure Q { constante pointeur_fonction<entier32(entier32)> F; }; "
+             "publique vide F(Q* q, constante pointeur_fonction<entier32(entier32)> autre) { q->F = autre; Absente; }", 71},
+            {"publique vide F(constante pointeur_fonction<entier32(entier32)>* adresse, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { adresse[0] = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { "
+             "constante pointeur_fonction<entier32(entier32)> tableau[1] = {lire(d)}; tableau[0] = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante volatile pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante volatile pointeur_fonction<entier32(entier32)> autre) { lire(d) = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d, "
+             "constante pointeur_fonction<entier32(entier32)> autre) { *lire(d) = autre; Absente; }", 71},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> tableau[1] = {lire(d)}; tableau(Absente); }", 53},
+            {"publique vide F(pointeur_fonction<pointeur_fonction<entier32(entier32)>&(R*)> lire, R* d) { "
+             "pointeur_fonction<entier32(entier32)> tableau[1][1] = {{lire(d)}}; tableau[0](Absente); }", 53},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "reference-callback-parametre-refuse-" + std::to_string(index));
+        }
+        std::cout << "Références de callbacks paramétrés : " << valides.size()
+                  << " corpus bilingues exécutés, stockage, cible, lectures et appels vérifiés.\n";
+    }
+
+    using CallbackMutationReferenceHote = std::int32_t& (GS_ABI_HOTE *)(std::int32_t&);
+    using CallbackLectureReferenceHote = std::int32_t (GS_ABI_HOTE *)(const std::int32_t&);
+
+    struct DonneesArgumentsReferencesHote {
+        std::int32_t Valeurs[2];
+        std::int32_t* Adresse;
+        CallbackMutationReferenceHote Mutation;
+        CallbackLectureReferenceHote Lecture;
+    };
+
+    struct EvenementArgumentReferenceHote {
+        const std::int32_t* Adresse;
+        std::int32_t Avant;
+        std::int32_t Apres;
+        bool LectureSeule;
+    };
+
+    std::array<EvenementArgumentReferenceHote, 4> TraceArgumentsReferencesHote{};
+    std::uint32_t NombreArgumentsReferencesHote = 0;
+    std::uint32_t NombreLecturesArgumentsReferencesHote = 0;
+
+    std::int32_t& GS_ABI_HOTE MuterArgumentReferenceHote(std::int32_t& valeur) {
+        const auto avant = valeur;
+        ++valeur;
+        if (NombreArgumentsReferencesHote < TraceArgumentsReferencesHote.size())
+            TraceArgumentsReferencesHote[NombreArgumentsReferencesHote] = {&valeur, avant, valeur, false};
+        ++NombreArgumentsReferencesHote;
+        return valeur;
+    }
+    std::int32_t GS_ABI_HOTE LireArgumentReferenceHote(const std::int32_t& valeur) {
+        if (NombreArgumentsReferencesHote < TraceArgumentsReferencesHote.size())
+            TraceArgumentsReferencesHote[NombreArgumentsReferencesHote] = {&valeur, valeur, valeur, true};
+        ++NombreArgumentsReferencesHote;
+        return valeur + 1;
+    }
+    CallbackMutationReferenceHote& GS_ABI_HOTE LireMutateurReferencesHote(DonneesArgumentsReferencesHote* donnees) {
+        ++NombreLecturesArgumentsReferencesHote;
+        return donnees->Mutation;
+    }
+    const CallbackMutationReferenceHote& GS_ABI_HOTE LireMutateurReferencesConstantHote(DonneesArgumentsReferencesHote* donnees) {
+        ++NombreLecturesArgumentsReferencesHote;
+        return donnees->Mutation;
+    }
+    CallbackMutationReferenceHote GS_ABI_HOTE CopierMutateurReferencesHote(DonneesArgumentsReferencesHote* donnees) {
+        ++NombreLecturesArgumentsReferencesHote;
+        return donnees->Mutation;
+    }
+    const CallbackLectureReferenceHote& GS_ABI_HOTE LireLecteurReferencesHote(DonneesArgumentsReferencesHote* donnees) {
+        ++NombreLecturesArgumentsReferencesHote;
+        return donnees->Lecture;
+    }
+
+    /**
+     * <résumé>Compose références de callbacks, paramètres par référence et retours par référence.</résumé>
+     * Le pont vérifie l'adresse réelle de chaque argument et l'ordre des mutations, sans copie cachée.
+     **/
+    void TesterArgumentsReferencesCallbacksImbriques(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations = "structure V { entier32 Valeurs[2]; entier32* Adresse; "
+            "pointeur_fonction<entier32&(entier32&)> Mutation; pointeur_fonction<entier32(constante entier32&)> Lecture; }; ";
+        const std::string typeMutation = "pointeur_fonction<pointeur_fonction<entier32&(entier32&)>&(V*)>";
+        const std::string typeMutationConstante = "pointeur_fonction<constante pointeur_fonction<entier32&(entier32&)>&(V*)>";
+        const std::string typeCopieMutation = "pointeur_fonction<pointeur_fonction<entier32&(entier32&)>(V*)>";
+        const std::string typeLecture = "pointeur_fonction<constante pointeur_fonction<entier32(constante entier32&)>&(V*)>";
+        const auto principal = [](std::string_view type, std::string_view corps) {
+            return "publique entier32 Principal(" + std::string(type) + " lire, V* d) { " + std::string(corps) + " }";
+        };
+        struct EvenementAttendu {
+            std::size_t IndexValeur;
+            std::int32_t Avant;
+            std::int32_t Apres;
+            bool LectureSeule = false;
+        };
+        struct Corpus {
+            std::string Texte;
+            std::uint64_t Callback;
+            std::int32_t XAvant = 41;
+            std::int32_t YAvant = 1;
+            std::int32_t XApres = 42;
+            std::int32_t YApres = 1;
+            std::uint32_t NombreLectures = 1;
+            std::vector<EvenementAttendu> Evenements{{0, 41, 42}};
+        };
+        const auto mutateur = reinterpret_cast<std::uint64_t>(&LireMutateurReferencesHote);
+        const auto mutateurConstant = reinterpret_cast<std::uint64_t>(&LireMutateurReferencesConstantHote);
+        const auto copieMutateur = reinterpret_cast<std::uint64_t>(&CopierMutateurReferencesHote);
+        const auto lecteur = reinterpret_cast<std::uint64_t>(&LireLecteurReferencesHote);
+        const std::vector<Corpus> valides{
+            {principal(typeMutation, "retourner lire(d)(d->Valeurs[0]);"), mutateur},
+            {principal(typeMutation, "lire(d)(d->Valeurs[0]) = 42; retourner d->Valeurs[0];"),
+             mutateur, 40, 1, 42, 1, 1, {{0, 40, 41}}},
+            {principal(typeMutation, "entier32& liaison = lire(d)(d->Valeurs[0]); liaison = 42; retourner liaison;"),
+             mutateur, 40, 1, 42, 1, 1, {{0, 40, 41}}},
+            {principal(typeMutation, "entier32* adresse = &lire(d)(d->Valeurs[0]); *adresse = 42; retourner *adresse;"),
+             mutateur, 40, 1, 42, 1, 1, {{0, 40, 41}}},
+            {principal(typeMutation, "retourner lire(d)(*d->Adresse);"), mutateur},
+            {principal(typeMutation, "retourner lire(d)(d->Adresse[1]) + 1;"),
+             mutateur, 41, 40, 41, 41, 1, {{1, 40, 41}}},
+            {"entier32 Ajouter(entier32& valeur) { valeur = valeur + 1; retourner valeur; } "
+             + principal(typeMutation, "retourner Ajouter(lire(d)(d->Valeurs[0]));"),
+             mutateur, 40, 1, 42, 1, 1, {{0, 40, 41}}},
+            {"classe C { entier32 X; publique: constructeur(entier32& valeur) : X(valeur + 1) { valeur = 42; } "
+             "entier32 Lire() { retourner soi.X; } }; "
+             + principal(typeMutation, "C c(lire(d)(d->Valeurs[0])); retourner c.Lire();"),
+             mutateur, 40, 1, 42, 1, 1, {{0, 40, 41}}},
+            {"classe C { entier32 X = lire(d)(d->Valeurs[0]) + 1; publique: constructeur(" + typeMutation
+             + " lire, V* d) {} entier32 Lire() { retourner soi.X; } }; "
+             + principal(typeMutation, "C c(lire, d); retourner c.Lire();"),
+             mutateur, 40, 1, 41, 1, 1, {{0, 40, 41}}},
+            {"classe Base { publique: entier32 X; constructeur(entier32& valeur) : X(valeur) {} }; "
+             "classe C : publique Base { publique: constructeur(" + typeMutation
+             + " lire, V* d) : parent(lire(d)(d->Valeurs[0])) {} }; "
+             + principal(typeMutation, "C c(lire, d); retourner c.X;"), mutateur},
+            {"structure S { entier32 X; }; "
+             + principal(typeMutation, "S s = {lire(d)(d->Valeurs[0])}; retourner s.X;"), mutateur},
+            {principal(typeMutation, "pointeur_fonction<entier32&(entier32&)>* adresse = &lire(d); "
+                "retourner (*adresse)(d->Valeurs[0]);"), mutateur},
+            {principal(typeMutation, "retourner lire(d)(d->Valeurs[0]) + lire(d)(d->Valeurs[1]);"),
+             mutateur, 20, 20, 21, 21, 2, {{0, 20, 21}, {1, 20, 21}}},
+            {principal(typeCopieMutation, "retourner lire(d)(d->Valeurs[0]);"), copieMutateur},
+            {principal(typeCopieMutation, "lire(d)(d->Valeurs[0]) = 42; retourner d->Valeurs[0];"),
+             copieMutateur, 40, 1, 42, 1, 1, {{0, 40, 41}}},
+            {principal(typeMutationConstante, "retourner lire(d)(d->Valeurs[0]);"), mutateurConstant},
+            {principal(typeMutationConstante, "constante pointeur_fonction<entier32&(entier32&)>& liaison = lire(d); "
+                "retourner liaison(d->Valeurs[0]);"), mutateurConstant},
+            {principal(typeLecture, "retourner lire(d)(d->Valeurs[0]);"),
+             lecteur, 41, 1, 41, 1, 1, {{0, 41, 41, true}}},
+            {principal(typeLecture, "constante entier32* adresse = convertir<constante entier32*>(&d->Valeurs[0]); "
+                "retourner lire(d)(*adresse);"), lecteur, 41, 1, 41, 1, 1, {{0, 41, 41, true}}},
+            {principal(typeLecture, "retourner lire(d)(d->Mutation(d->Valeurs[0]));"),
+             lecteur, 40, 1, 41, 1, 1, {{0, 40, 41}, {0, 41, 41, true}}},
+            {principal(typeMutation, "retourner lire(d)(lire(d)(d->Valeurs[0]));"),
+             mutateur, 40, 1, 42, 1, 2, {{0, 40, 41}, {0, 41, 42}}},
+            {principal(typeMutation, "retourner lire(d)(d->Mutation(d->Valeurs[0]));"),
+             mutateur, 40, 1, 42, 1, 1, {{0, 40, 41}, {0, 41, 42}}},
+            {principal(typeMutation, "faux && lire(d)(d->Valeurs[0]); retourner 42;"),
+             mutateur, 41, 1, 41, 1, 0, {}},
+            {principal(typeMutation, "vrai || lire(d)(d->Valeurs[0]); retourner 42;"),
+             mutateur, 41, 1, 41, 1, 0, {}},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + valides[index].Texte;
+            std::optional<GsPP::CodeMachine> reference;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "argument-reference-callback-imbrique-valide-" + std::to_string(index);
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                const auto structure = std::find_if(programme.Structures.begin(), programme.Structures.end(),
+                    [](const auto& candidate) { return candidate.NomComplet() == "V"; });
+                Exiger(structure != programme.Structures.end() && structure->Taille == sizeof(DonneesArgumentsReferencesHote)
+                        && structure->Alignement == alignof(DonneesArgumentsReferencesHote) && structure->Champs.size() == 4
+                        && structure->Champs[0].Decalage == offsetof(DonneesArgumentsReferencesHote, Valeurs)
+                        && structure->Champs[1].Decalage == offsetof(DonneesArgumentsReferencesHote, Adresse)
+                        && structure->Champs[2].Decalage == offsetof(DonneesArgumentsReferencesHote, Mutation)
+                        && structure->Champs[3].Decalage == offsetof(DonneesArgumentsReferencesHote, Lecture),
+                    "disposition des arguments référencés différente du pont hôte : " + nom);
+                std::unordered_map<std::uint64_t, std::uint64_t> types;
+                for (const auto& fonction : programme.Fonctions)
+                    for (const auto& parametre : fonction.Parametres)
+                        if (parametre.Nom != "soi")
+                            types.emplace((static_cast<std::uint64_t>(parametre.Position.Ligne) << 32U) | parametre.Position.Colonne,
+                                HacherTypeDeclaration(parametre.Type));
+                std::size_t nombreParametres = 0;
+                for (const auto& symbole : resultat.Symboles)
+                    if (symbole.Genre == 8)
+                    {
+                        ++nombreParametres;
+                        const auto& declaration = resultat.Noeuds[symbole.IndexNoeud];
+                        const auto type = types.find((static_cast<std::uint64_t>(declaration.Ligne) << 32U) | declaration.Colonne);
+                        Exiger(type != types.end() && symbole.HachageType == type->second,
+                            "signature d'argument référencé différente : " + nom);
+                    }
+                Exiger(nombreParametres == types.size(), "paramètres des arguments référencés manquants : " + nom);
+                const auto machine = GsPP::GenerateurX64().Generer(programme);
+                if (reference)
+                    Exiger(machine.Texte == reference->Texte && machine.Donnees == reference->Donnees,
+                        "octets bilingues des arguments référencés différents : " + nom);
+                else reference = machine;
+                const auto contenu = GsPP::EcrivainGsE().Construire(machine, "Principal");
+                Exiger(contenu == GsPP::EcrivainGsE().Construire(GsPP::GenerateurX64().Generer(programme), "Principal"),
+                    "image des arguments référencés non reproductible : " + nom);
+                ZoneExecutable zone(AlignerPage(Lire64(contenu, 48)));
+                const auto image = GsPP::ChargeurGsE().Charger(contenu, zone.Base());
+                Exiger(image.Imports.empty(), "les arguments référencés ajoutent un import statique : " + nom);
+                zone.Copier(image.Memoire);
+                DonneesArgumentsReferencesHote donnees{{valides[index].XAvant, valides[index].YAvant}, nullptr,
+                    &MuterArgumentReferenceHote, &LireArgumentReferenceHote};
+                donnees.Adresse = &donnees.Valeurs[0];
+                TraceArgumentsReferencesHote = {};
+                NombreArgumentsReferencesHote = 0;
+                NombreLecturesArgumentsReferencesHote = 0;
+                using FonctionTest = std::int32_t (GS_ABI_HOTE *)(std::uint64_t, DonneesArgumentsReferencesHote*);
+                const auto valeur = reinterpret_cast<FonctionTest>(image.AdressePointEntree)(valides[index].Callback, &donnees);
+                Exiger(valeur == 42 && donnees.Valeurs[0] == valides[index].XApres && donnees.Valeurs[1] == valides[index].YApres
+                        && donnees.Adresse == &donnees.Valeurs[0]
+                        && donnees.Mutation == &MuterArgumentReferenceHote && donnees.Lecture == &LireArgumentReferenceHote,
+                    "mutation de l'argument ou du stockage inattendue : " + nom);
+                Exiger(NombreLecturesArgumentsReferencesHote == valides[index].NombreLectures
+                        && NombreArgumentsReferencesHote == valides[index].Evenements.size(),
+                    "réévaluation d'un callback ou appel manquant : " + nom);
+                for (std::size_t evenement = 0; evenement < valides[index].Evenements.size(); ++evenement)
+                {
+                    const auto& attendu = valides[index].Evenements[evenement];
+                    const auto& obtenu = TraceArgumentsReferencesHote[evenement];
+                    Exiger(obtenu.Adresse == &donnees.Valeurs[attendu.IndexValeur]
+                            && obtenu.Avant == attendu.Avant && obtenu.Apres == attendu.Apres
+                            && obtenu.LectureSeule == attendu.LectureSeule,
+                        "argument copié ou ordre des mutations différent : " + nom);
+                }
+            }
+        }
+        const auto fonction = [](std::string_view type, std::string_view corps) {
+            return "publique vide F(" + std::string(type) + " lire, V* d) { " + std::string(corps) + " }";
+        };
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {fonction(typeMutation, "lire(d)(42); Absente;"), 55},
+            {fonction(typeMutation, "lire(d)(d->Valeurs[0] + 1); Absente;"), 55},
+            {fonction(typeMutation, "lire(d)({42}); Absente;"), 69},
+            {fonction(typeMutation, "constante entier32& valeur = d->Valeurs[0]; lire(d)(valeur); Absente;"), 55},
+            {fonction(typeMutation, "entier64 valeur = 41; lire(d)(valeur); Absente;"), 55},
+            {fonction(typeMutation, "lire(d)(Absente, 0);"), 54},
+            {fonction(typeMutation, "lire(Absente, 0)(Absente);"), 54},
+            {fonction(typeMutation, "lire(d)(d->Valeurs[vrai]); Absente;"), 51},
+            {fonction(typeLecture, "lire(d)(42); Absente;"), 55},
+            {fonction(typeLecture, "lire(d)({42}); Absente;"), 69},
+            {fonction(typeMutation, "lire(d)(d->Lecture(d->Valeurs[0])); Absente;"), 55},
+            {fonction(typeLecture, "lire(d)(d->Mutation(42)); Absente;"), 55},
+            {fonction(typeMutation, "constante entier32* valeur = convertir<constante entier32*>(&d->Valeurs[0]); "
+                "lire(d)(*valeur); Absente;"), 55},
+            {fonction(typeMutation, "booléen valeur = vrai; lire(d)(valeur); Absente;"), 55},
+            {fonction(typeMutation, "lire(d)(d->Valeurs[0]) = vrai; Absente;"), 73},
+            {fonction(typeLecture, "entier32& liaison = lire(d)(d->Valeurs[0]); Absente;"), 69},
+            {fonction(typeMutation, "pointeur_fonction<entier32(entier32&)>& liaison = lire(d); Absente;"), 69},
+            {"classe C { entier32 X = lire(d)(42); publique: constructeur(" + typeMutation + " lire, V* d) { Absente; } };", 55},
+            {"classe Base { publique: constructeur(entier32& valeur) {} }; classe C : publique Base { publique: "
+             "constructeur(" + typeMutation + " lire, V* d) : parent(lire(d)(42)) { Absente; } };", 55},
+            {"classe C { publique: constructeur(entier32& valeur) {} constructeur(" + typeMutation
+             + " lire, V* d) : soi(lire(d)(42)) { Absente; } };", 55},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "argument-reference-callback-imbrique-refuse-" + std::to_string(index));
+        }
+        std::cout << "Arguments référencés des callbacks imbriqués : " << valides.size()
+                  << " corpus bilingues exécutés, adresses et traces de mutation vérifiées.\n";
+    }
+
+    struct StructureReferenceHote {
+        std::int32_t X;
+        std::int32_t Y[2];
+        std::int32_t* Adresse;
+    };
+
+    using CallbackStructureReferenceHote = StructureReferenceHote& (GS_ABI_HOTE *)(StructureReferenceHote&);
+    using CallbackStructureConstanteHote = const StructureReferenceHote& (GS_ABI_HOTE *)(const StructureReferenceHote&);
+    using CallbackPointeurReferenceHote = std::int32_t*& (GS_ABI_HOTE *)(std::int32_t*&, std::int32_t*);
+    using CallbackPointeurConstantReferenceHote = const std::int32_t*& (GS_ABI_HOTE *)(const std::int32_t*&, const std::int32_t*);
+
+    struct DonneesStructuresPointeursHote {
+        StructureReferenceHote Objet;
+        StructureReferenceHote Second;
+        std::int32_t* Cible;
+        const std::int32_t* CibleConstante;
+        CallbackStructureReferenceHote Mutation;
+        CallbackStructureConstanteHote Lecture;
+        CallbackPointeurReferenceHote Redirection;
+        CallbackPointeurConstantReferenceHote RedirectionConstante;
+    };
+
+    struct EvenementStructurePointeurHote {
+        std::uint32_t Genre;
+        const void* Adresse;
+        std::uintptr_t Avant;
+        std::uintptr_t Apres;
+    };
+
+    std::array<EvenementStructurePointeurHote, 4> TraceStructuresPointeursHote{};
+    std::uint32_t NombreStructuresPointeursHote = 0;
+    std::uint32_t NombreLecturesStructuresPointeursHote = 0;
+
+    void TracerStructurePointeurHote(std::uint32_t genre, const void* adresse, std::uintptr_t avant, std::uintptr_t apres) {
+        if (NombreStructuresPointeursHote < TraceStructuresPointeursHote.size())
+            TraceStructuresPointeursHote[NombreStructuresPointeursHote] = {genre, adresse, avant, apres};
+        ++NombreStructuresPointeursHote;
+    }
+    StructureReferenceHote& GS_ABI_HOTE MuterStructureReferenceHote(StructureReferenceHote& objet) {
+        const auto avant = objet.X;
+        ++objet.X;
+        TracerStructurePointeurHote(1, &objet, avant, objet.X);
+        return objet;
+    }
+    const StructureReferenceHote& GS_ABI_HOTE LireStructureConstanteHote(const StructureReferenceHote& objet) {
+        TracerStructurePointeurHote(2, &objet, objet.X, objet.X);
+        return objet;
+    }
+    std::int32_t*& GS_ABI_HOTE RedirigerPointeurReferenceHote(std::int32_t*& cible, std::int32_t* remplacement) {
+        const auto avant = reinterpret_cast<std::uintptr_t>(cible);
+        cible = remplacement;
+        TracerStructurePointeurHote(3, &cible, avant, reinterpret_cast<std::uintptr_t>(cible));
+        return cible;
+    }
+    const std::int32_t*& GS_ABI_HOTE RedirigerPointeurConstantReferenceHote(const std::int32_t*& cible, const std::int32_t* remplacement) {
+        const auto avant = reinterpret_cast<std::uintptr_t>(cible);
+        cible = remplacement;
+        TracerStructurePointeurHote(4, &cible, avant, reinterpret_cast<std::uintptr_t>(cible));
+        return cible;
+    }
+    CallbackStructureReferenceHote& GS_ABI_HOTE LireMutateurStructureHote(DonneesStructuresPointeursHote* donnees) {
+        ++NombreLecturesStructuresPointeursHote;
+        return donnees->Mutation;
+    }
+    CallbackStructureConstanteHote& GS_ABI_HOTE LireLecteurStructureHote(DonneesStructuresPointeursHote* donnees) {
+        ++NombreLecturesStructuresPointeursHote;
+        return donnees->Lecture;
+    }
+    CallbackPointeurReferenceHote& GS_ABI_HOTE LireRedirectionPointeurHote(DonneesStructuresPointeursHote* donnees) {
+        ++NombreLecturesStructuresPointeursHote;
+        return donnees->Redirection;
+    }
+    CallbackPointeurConstantReferenceHote& GS_ABI_HOTE LireRedirectionPointeurConstantHote(DonneesStructuresPointeursHote* donnees) {
+        ++NombreLecturesStructuresPointeursHote;
+        return donnees->RedirectionConstante;
+    }
+
+    /**
+     * <résumé>Vérifie l'identité des agrégats et des emplacements de pointeurs traversant les callbacks.</résumé>
+     * La qualification de la donnée pointée ne rend pas constant l'emplacement du pointeur.
+     **/
+    void TesterReferencesStructuresPointeursCallbacksImbriques(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations = "structure P { entier32 X; entier32 Y[2]; entier32* Adresse; }; "
+            "structure Z { P Objet; P Second; entier32* Cible; constante entier32* CibleConstante; "
+            "pointeur_fonction<P&(P&)> Mutation; pointeur_fonction<constante P&(constante P&)> Lecture; "
+            "pointeur_fonction<entier32*&(entier32*&, entier32*)> Redirection; "
+            "pointeur_fonction<constante entier32*&(constante entier32*&, constante entier32*)> RedirectionConstante; }; ";
+        const std::string typeMutation = "pointeur_fonction<pointeur_fonction<P&(P&)>&(Z*)>";
+        const std::string typeLecture = "pointeur_fonction<pointeur_fonction<constante P&(constante P&)>&(Z*)>";
+        const std::string typePointeur = "pointeur_fonction<pointeur_fonction<entier32*&(entier32*&, entier32*)>&(Z*)>";
+        const std::string typePointeurConstant = "pointeur_fonction<pointeur_fonction<constante entier32*&(constante entier32*&, constante entier32*)>&(Z*)>";
+        const auto principal = [](std::string_view type, std::string_view corps) {
+            return "publique entier32 Principal(" + std::string(type) + " lire, Z* z) { " + std::string(corps) + " }";
+        };
+        struct EvenementAttendu {
+            std::uint32_t Genre;
+            std::size_t IndexArgument;
+            std::uintptr_t Avant;
+            std::uintptr_t Apres;
+        };
+        struct Corpus {
+            std::string Texte;
+            std::uint64_t Callback;
+            std::int32_t XAvant = 41;
+            std::int32_t SecondAvant = 41;
+            std::int32_t XApres = 42;
+            std::int32_t SecondApres = 41;
+            bool CibleSeconde = false;
+            bool CibleConstanteSeconde = false;
+            std::uint32_t NombreLectures = 1;
+            std::vector<EvenementAttendu> Evenements{{1, 0, 41, 42}};
+            std::int32_t YApres = 9;
+        };
+        const auto mutateur = reinterpret_cast<std::uint64_t>(&LireMutateurStructureHote);
+        const auto lecteur = reinterpret_cast<std::uint64_t>(&LireLecteurStructureHote);
+        const auto redirection = reinterpret_cast<std::uint64_t>(&LireRedirectionPointeurHote);
+        const auto redirectionConstante = reinterpret_cast<std::uint64_t>(&LireRedirectionPointeurConstantHote);
+        const std::vector<Corpus> valides{
+            {principal(typeMutation, "retourner lire(z)(z->Objet).X;"), mutateur},
+            {principal(typeMutation, "P& liaison = lire(z)(z->Objet); liaison.X = 42; retourner liaison.X;"),
+             mutateur, 40, 41, 42, 41, false, false, 1, {{1, 0, 40, 41}}},
+            {principal(typeMutation, "P* adresse = &lire(z)(z->Objet); adresse->X = 42; retourner adresse->X;"),
+             mutateur, 40, 41, 42, 41, false, false, 1, {{1, 0, 40, 41}}},
+            {principal(typeMutation, "P copie = lire(z)(z->Objet); copie.X = 1; retourner copie.X + z->Objet.X - 1;"), mutateur},
+            {principal(typeMutation, "lire(z)(z->Objet).Y[1] = 42; retourner z->Objet.Y[1];"),
+             mutateur, 41, 41, 42, 41, false, false, 1, {{1, 0, 41, 42}}, 42},
+            {principal(typeMutation, "P* objet = &z->Objet; retourner lire(z)(*objet).X;"), mutateur},
+            {principal(typeMutation, "retourner lire(z)(z->Objet).X + lire(z)(z->Second).X;"),
+             mutateur, 20, 20, 21, 21, false, false, 2, {{1, 0, 20, 21}, {1, 1, 20, 21}}},
+            {principal(typeMutation, "retourner lire(z)(lire(z)(z->Objet)).X;"),
+             mutateur, 40, 41, 42, 41, false, false, 2, {{1, 0, 40, 41}, {1, 0, 41, 42}}},
+            {"classe C { entier32 X; publique: constructeur(P& objet) : X(objet.X) { objet.Y[1] = 42; } "
+             "entier32 Lire() { retourner soi.X; } }; "
+             + principal(typeMutation, "C c(lire(z)(z->Objet)); retourner c.Lire();"),
+             mutateur, 41, 41, 42, 41, false, false, 1, {{1, 0, 41, 42}}, 42},
+            {"classe Base { publique: entier32 X; constructeur(P& objet) : X(objet.X) {} }; "
+             "classe C : publique Base { publique: constructeur(" + typeMutation
+             + " lire, Z* z) : parent(lire(z)(z->Objet)) {} }; "
+             + principal(typeMutation, "C c(lire, z); retourner c.X;"), mutateur},
+            {"classe C { entier32 X = lire(z)(z->Objet).X; publique: constructeur(" + typeMutation
+             + " lire, Z* z) {} entier32 Lire() { retourner soi.X; } }; "
+             + principal(typeMutation, "C c(lire, z); retourner c.Lire();"), mutateur},
+            {principal(typeLecture, "retourner lire(z)(z->Objet).X + 1;"),
+             lecteur, 41, 41, 41, 41, false, false, 1, {{2, 0, 41, 41}}},
+            {principal(typeLecture, "constante P& liaison = lire(z)(z->Objet); retourner liaison.X + 1;"),
+             lecteur, 41, 41, 41, 41, false, false, 1, {{2, 0, 41, 41}}},
+            {principal(typeLecture, "constante P* objet = &lire(z)(z->Objet); "
+                "constante entier32* adresse = &objet->Y[1]; retourner *adresse + 33;"),
+             lecteur, 41, 41, 41, 41, false, false, 1, {{2, 0, 41, 41}}},
+            {principal(typeLecture, "P copie = lire(z)(z->Objet); copie.X = 42; retourner copie.X;"),
+             lecteur, 41, 41, 41, 41, false, false, 1, {{2, 0, 41, 41}}},
+            {principal(typePointeur, "retourner *lire(z)(z->Cible, &z->Second.X) + 1;"),
+             redirection, 41, 41, 41, 41, true, false, 1, {{3, 2, 0, 1}}},
+            {principal(typePointeur, "entier32*& liaison = lire(z)(z->Cible, &z->Second.X); "
+                "*liaison = 42; retourner z->Second.X;"),
+             redirection, 41, 41, 41, 42, true, false, 1, {{3, 2, 0, 1}}},
+            {principal(typePointeur, "entier32** adresse = &lire(z)(z->Cible, &z->Second.X); "
+                "**adresse = 42; retourner z->Second.X;"),
+             redirection, 41, 41, 41, 42, true, false, 1, {{3, 2, 0, 1}}},
+            {"classe C { entier32 X = *lire(z)(z->Cible, &z->Second.X) + 1; publique: constructeur(" + typePointeur
+             + " lire, Z* z) {} entier32 Lire() { retourner soi.X; } }; "
+             + principal(typePointeur, "C c(lire, z); retourner c.Lire();"),
+             redirection, 41, 41, 41, 41, true, false, 1, {{3, 2, 0, 1}}},
+            {"vide Fixer(entier32*& cible, entier32* remplacement) { cible = remplacement; } "
+             + principal(typePointeur, "Fixer(lire(z)(z->Cible, &z->Second.X), &z->Objet.X); retourner *z->Cible + 1;"),
+             redirection, 41, 41, 41, 41, false, false, 1, {{3, 2, 0, 1}}},
+            {principal(typePointeurConstant, "retourner *lire(z)(z->CibleConstante, "
+                "convertir<constante entier32*>(&z->Second.X)) + 1;"),
+             redirectionConstante, 41, 41, 41, 41, false, true, 1, {{4, 3, 0, 1}}},
+            {principal(typePointeurConstant, "constante entier32*& liaison = lire(z)(z->CibleConstante, "
+                "convertir<constante entier32*>(&z->Second.X)); liaison = convertir<constante entier32*>(&z->Objet.X); "
+                "retourner *liaison + 1;"),
+             redirectionConstante, 41, 41, 41, 41, false, false, 1, {{4, 3, 0, 1}}},
+            {principal(typePointeurConstant, "constante entier32** adresse = &lire(z)(z->CibleConstante, "
+                "convertir<constante entier32*>(&z->Second.X)); retourner **adresse + 1;"),
+             redirectionConstante, 41, 41, 41, 41, false, true, 1, {{4, 3, 0, 1}}},
+            {principal(typePointeur, "lire(z)(z->Cible, &z->Second.X); retourner *lire(z)(z->Cible, &z->Objet.X) + 1;"),
+             redirection, 41, 41, 41, 41, false, false, 2, {{3, 2, 0, 1}, {3, 2, 1, 0}}},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            const auto source = declarations + valides[index].Texte;
+            std::optional<GsPP::CodeMachine> reference;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+            {
+                const auto nom = "structure-pointeur-reference-callback-valide-" + std::to_string(index);
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                const auto verifierDisposition = [&](std::string_view nomStructure, std::size_t taille,
+                    std::size_t alignement, const std::vector<std::size_t>& decalages) {
+                    const auto structure = std::find_if(programme.Structures.begin(), programme.Structures.end(),
+                        [&](const auto& candidate) { return candidate.NomComplet() == nomStructure; });
+                    Exiger(structure != programme.Structures.end() && structure->Taille == taille
+                            && structure->Alignement == alignement && structure->Champs.size() == decalages.size(),
+                        "disposition de structure référencée différente du pont hôte : " + nom);
+                    for (std::size_t champ = 0; champ < decalages.size(); ++champ)
+                        Exiger(structure->Champs[champ].Decalage == decalages[champ],
+                            "décalage du stockage référencé différent : " + nom);
+                };
+                verifierDisposition("P", sizeof(StructureReferenceHote), alignof(StructureReferenceHote),
+                    {offsetof(StructureReferenceHote, X), offsetof(StructureReferenceHote, Y), offsetof(StructureReferenceHote, Adresse)});
+                verifierDisposition("Z", sizeof(DonneesStructuresPointeursHote), alignof(DonneesStructuresPointeursHote),
+                    {offsetof(DonneesStructuresPointeursHote, Objet), offsetof(DonneesStructuresPointeursHote, Second),
+                     offsetof(DonneesStructuresPointeursHote, Cible), offsetof(DonneesStructuresPointeursHote, CibleConstante),
+                     offsetof(DonneesStructuresPointeursHote, Mutation), offsetof(DonneesStructuresPointeursHote, Lecture),
+                     offsetof(DonneesStructuresPointeursHote, Redirection), offsetof(DonneesStructuresPointeursHote, RedirectionConstante)});
+                std::unordered_map<std::uint64_t, std::uint64_t> types;
+                for (const auto& fonction : programme.Fonctions)
+                    for (const auto& parametre : fonction.Parametres)
+                        if (parametre.Nom != "soi")
+                            types.emplace((static_cast<std::uint64_t>(parametre.Position.Ligne) << 32U) | parametre.Position.Colonne,
+                                HacherTypeDeclaration(parametre.Type));
+                std::size_t nombreParametres = 0;
+                for (const auto& symbole : resultat.Symboles)
+                    if (symbole.Genre == 8)
+                    {
+                        ++nombreParametres;
+                        const auto& declaration = resultat.Noeuds[symbole.IndexNoeud];
+                        const auto type = types.find((static_cast<std::uint64_t>(declaration.Ligne) << 32U) | declaration.Colonne);
+                        Exiger(type != types.end() && symbole.HachageType == type->second,
+                            "signature de structure ou pointeur référencé différente : " + nom);
+                    }
+                Exiger(nombreParametres == types.size(), "paramètres de structures ou pointeurs référencés manquants : " + nom);
+                const auto machine = GsPP::GenerateurX64().Generer(programme);
+                if (reference)
+                    Exiger(machine.Texte == reference->Texte && machine.Donnees == reference->Donnees,
+                        "octets bilingues des structures ou pointeurs référencés différents : " + nom);
+                else reference = machine;
+                const auto contenu = GsPP::EcrivainGsE().Construire(machine, "Principal");
+                Exiger(contenu == GsPP::EcrivainGsE().Construire(GsPP::GenerateurX64().Generer(programme), "Principal"),
+                    "image des structures ou pointeurs référencés non reproductible : " + nom);
+                ZoneExecutable zone(AlignerPage(Lire64(contenu, 48)));
+                const auto image = GsPP::ChargeurGsE().Charger(contenu, zone.Base());
+                Exiger(image.Imports.empty(), "un import statique a été ajouté : " + nom);
+                zone.Copier(image.Memoire);
+                DonneesStructuresPointeursHote donnees{{valides[index].XAvant, {7, 9}, nullptr},
+                    {valides[index].SecondAvant, {11, 13}, nullptr}, nullptr, nullptr,
+                    &MuterStructureReferenceHote, &LireStructureConstanteHote,
+                    &RedirigerPointeurReferenceHote, &RedirigerPointeurConstantReferenceHote};
+                donnees.Objet.Adresse = &donnees.Objet.Y[0];
+                donnees.Second.Adresse = &donnees.Second.Y[0];
+                donnees.Cible = &donnees.Objet.X;
+                donnees.CibleConstante = &donnees.Objet.X;
+                TraceStructuresPointeursHote = {};
+                NombreStructuresPointeursHote = 0;
+                NombreLecturesStructuresPointeursHote = 0;
+                using FonctionTest = std::int32_t (GS_ABI_HOTE *)(std::uint64_t, DonneesStructuresPointeursHote*);
+                const auto valeur = reinterpret_cast<FonctionTest>(image.AdressePointEntree)(valides[index].Callback, &donnees);
+                Exiger(valeur == 42 && donnees.Objet.X == valides[index].XApres && donnees.Second.X == valides[index].SecondApres
+                        && donnees.Objet.Y[0] == 7 && donnees.Objet.Y[1] == valides[index].YApres
+                        && donnees.Second.Y[0] == 11 && donnees.Second.Y[1] == 13
+                        && donnees.Objet.Adresse == &donnees.Objet.Y[0] && donnees.Second.Adresse == &donnees.Second.Y[0]
+                        && donnees.Cible == (valides[index].CibleSeconde ? &donnees.Second.X : &donnees.Objet.X)
+                        && donnees.CibleConstante == (valides[index].CibleConstanteSeconde ? &donnees.Second.X : &donnees.Objet.X)
+                        && donnees.Mutation == &MuterStructureReferenceHote && donnees.Lecture == &LireStructureConstanteHote
+                        && donnees.Redirection == &RedirigerPointeurReferenceHote
+                        && donnees.RedirectionConstante == &RedirigerPointeurConstantReferenceHote,
+                    "identité ou mutation des structures et pointeurs inattendue : " + nom);
+                Exiger(NombreLecturesStructuresPointeursHote == valides[index].NombreLectures
+                        && NombreStructuresPointeursHote == valides[index].Evenements.size()
+                        && NombreStructuresPointeursHote <= TraceStructuresPointeursHote.size(),
+                    "callback réévalué ou événement de structure/pointeur manquant : " + nom);
+                const std::array<const void*, 4> arguments{&donnees.Objet, &donnees.Second, &donnees.Cible, &donnees.CibleConstante};
+                const std::array<std::uintptr_t, 2> cibles{reinterpret_cast<std::uintptr_t>(&donnees.Objet.X),
+                    reinterpret_cast<std::uintptr_t>(&donnees.Second.X)};
+                for (std::size_t evenement = 0; evenement < valides[index].Evenements.size(); ++evenement)
+                {
+                    const auto& attendu = valides[index].Evenements[evenement];
+                    const auto& obtenu = TraceStructuresPointeursHote[evenement];
+                    const auto avant = attendu.Genre <= 2 ? attendu.Avant : cibles.at(attendu.Avant);
+                    const auto apres = attendu.Genre <= 2 ? attendu.Apres : cibles.at(attendu.Apres);
+                    Exiger(obtenu.Genre == attendu.Genre && obtenu.Adresse == arguments.at(attendu.IndexArgument)
+                            && obtenu.Avant == avant && obtenu.Apres == apres,
+                        "structure copiée, mauvais emplacement de pointeur ou ordre différent : " + nom);
+                }
+            }
+        }
+        const auto fonction = [](std::string_view type, std::string_view corps) {
+            return "publique vide F(" + std::string(type) + " lire, Z* z) { " + std::string(corps) + " }";
+        };
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {fonction(typeMutation, "lire(z)({42}); Absente;"), 69},
+            {fonction(typeMutation, "constante P& valeur = z->Objet; lire(z)(valeur); Absente;"), 55},
+            {"structure Q { entier32 X; entier32 Y[2]; entier32* Adresse; }; "
+             + fonction(typeMutation, "Q autre = {42, {7, 9}, &z->Objet.X}; lire(z)(autre); Absente;"), 55},
+            {fonction(typeMutation, "lire(z)(z->Objet.Inconnue); Absente;"), 24},
+            {fonction(typeMutation, "lire(z)(Absente, 0);"), 54},
+            {fonction(typeMutation, "lire(Absente, 0)(Absente);"), 54},
+            {fonction(typeLecture, "lire(z)(z->Objet).X = 42; Absente;"), 71},
+            {fonction(typeLecture, "lire(z)(z->Objet).Y[1] = 42; Absente;"), 71},
+            {fonction(typeLecture, "P& liaison = lire(z)(z->Objet); Absente;"), 69},
+            {fonction(typeLecture, "P* adresse = &lire(z)(z->Objet); Absente;"), 45},
+            {fonction(typeMutation, "P& liaison = lire(z); Absente;"), 69},
+            {fonction(typeMutation, "lire(z)(z->Objet).X = vrai; Absente;"), 73},
+            {fonction(typePointeur, "lire(z)(&z->Objet.X, &z->Second.X); Absente;"), 55},
+            {fonction(typePointeur, "lire(z)(z->CibleConstante, &z->Second.X); Absente;"), 55},
+            {fonction(typePointeur, "entier64 autre = 41; lire(z)(z->Cible, &autre); Absente;"), 55},
+            {fonction(typePointeur, "lire(z)(z->Cible, Absente, 0);"), 54},
+            {fonction(typePointeur, "lire(z)(z->Cible, &z->Second.X) = vrai; Absente;"), 73},
+            {fonction(typePointeurConstant, "*lire(z)(z->CibleConstante, convertir<constante entier32*>(&z->Second.X)) = 42; Absente;"), 71},
+            {fonction(typePointeurConstant, "entier32*& liaison = lire(z)(z->CibleConstante, "
+                "convertir<constante entier32*>(&z->Second.X)); Absente;"), 69},
+            {fonction(typePointeurConstant, "lire(z)(z->Cible, convertir<constante entier32*>(&z->Second.X)); Absente;"), 55},
+            {fonction(typePointeurConstant, "lire(z)(z->CibleConstante, &z->Second.X); Absente;"), 55},
+            {"classe C { entier32 X = lire(z)(z->Objet).Inconnue; publique: constructeur(" + typeLecture
+             + " lire, Z* z) { Absente; } };", 24},
+            {"classe C { entier32 X = *lire(z)(z->CibleConstante); publique: constructeur(" + typePointeurConstant
+             + " lire, Z* z) { Absente; } };", 54},
+            {"classe Base { publique: constructeur(P& objet) {} }; classe C : publique Base { publique: constructeur("
+             + typeMutation + " lire, Z* z) : parent(lire(z)({42})) { Absente; } };", 69},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "structure-pointeur-reference-callback-refuse-" + std::to_string(index));
+        }
+        std::cout << "Structures et pointeurs référencés des callbacks imbriqués : " << valides.size()
+                  << " corpus bilingues exécutés, identité, qualifications et redirections vérifiées.\n";
+    }
+
+    /**
+     * <résumé>Compare conversions, qualifications et priorités des groupes mêlant méthodes et fonctions.</résumé>
+     * Les corpus exécutés contrôlent la déclaration choisie et les mutations des référents.
+     **/
+    void TesterReferencesGroupesMixtesConstructions(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const auto groupe = [](std::string_view typeMethode, std::string_view typeLibre,
+            std::string_view corpsMethode, std::string_view corpsLibre) {
+            return "classe C { publique: entier32 Choisir(" + std::string(typeMethode) + " valeur) { "
+                + std::string(corpsMethode) + " } }; espace C { publique entier32 Choisir(C& objet, "
+                + std::string(typeLibre) + " valeur) { " + std::string(corpsLibre) + " } } ";
+        };
+        const auto principal = [](std::string_view corps) {
+            return "publique entier32 Principal() { " + std::string(corps) + " }";
+        };
+        const std::string scalaire = groupe("entier32&", "constante entier32&",
+            "valeur = valeur + 1; retourner valeur;", "retourner valeur + 1;");
+        const std::string pointeur = groupe("entier32*&", "constante entier32*&",
+            "*valeur = 42; retourner *valeur;", "retourner *valeur + 1;");
+        const std::string heritage = "classe B { publique: entier32 X; }; classe D : publique B { publique: "
+            "virtuel entier32 Marqueur() { retourner 1; } }; ";
+        struct Corpus { std::string Texte; bool Methode; };
+        const std::vector<Corpus> valides{
+            {groupe("entier32&", "booléen", "valeur = 42; retourner valeur;", "retourner 1;")
+             + principal("C c; entier32 x = 41; entier32 resultat = c.Choisir(x); retourner resultat + x - 42;"), true},
+            {groupe("booléen", "constante entier32&", "retourner 1;", "retourner valeur + 1;")
+             + principal("C c; constante entier32 x = 41; retourner c.Choisir(x);"), false},
+            {scalaire + principal("C c; constante entier32 x = 41; retourner C::Choisir(c, x);"), false},
+            {groupe("constante entier32&", "booléen", "retourner valeur;", "retourner 1;")
+             + principal("C c; entier32 x = 42; retourner c.Choisir(x);"), true},
+            {groupe("constante entier32&", "booléen", "retourner valeur;", "retourner 1;")
+             + principal("C c; constante entier32 x = 42; retourner c.Choisir(x);"), true},
+            {groupe("entier32&", "entier32", "retourner 1;", "retourner valeur;")
+             + principal("C c; retourner c.Choisir(42);"), false},
+            {groupe("entier32&", "entier64", "valeur = 42; retourner valeur;", "retourner 1;")
+             + principal("C c; entier32 x = 41; entier32 resultat = C::Choisir(c, x); retourner resultat + x - 42;"), true},
+            {pointeur + principal("C c; entier32 x = 41; entier32* p = &x; "
+                "entier32 resultat = c.Choisir(p); retourner resultat + x - 42;"), true},
+            {pointeur + principal("C c; entier32 x = 41; constante entier32* p = convertir<constante entier32*>(&x); "
+                "retourner c.Choisir(p) + x - 41;"), false},
+            {groupe("entier32*", "constante entier32*", "retourner 1;", "retourner *valeur + 1;")
+             + principal("C c; entier32 x = 41; retourner c.Choisir(convertir<constante entier32*>(&x));"), false},
+            {heritage + groupe("B&", "D&", "retourner 1;", "retourner valeur.X;")
+             + principal("C c; D d; d.X = 42; retourner c.Choisir(d);"), false},
+            {heritage + groupe("D&", "B&", "retourner valeur.X;", "retourner 1;")
+             + principal("C c; D d; d.X = 42; retourner C::Choisir(c, d);"), true},
+            {"classe C { publique: entier32 Choisir(entier32& valeur) { retourner 1; } }; "
+             "espace C { publique entier32 Choisir(constante C& objet, entier32& valeur) { valeur = 42; retourner valeur; } } "
+             + principal("C c; constante C* p = convertir<constante C*>(&c); entier32 x = 41; "
+                "entier32 resultat = p->Choisir(x); retourner resultat + x - 42;"), false},
+            {groupe("constante entier32&", "booléen", "retourner valeur;", "retourner 1;")
+             + principal("volatile C c; entier32 x = 42; retourner c.Choisir(x);"), true},
+            {pointeur + "alias Vue = C; " + principal("Vue c; entier32 x = 41; "
+                "constante entier32* p = convertir<constante entier32*>(&x); retourner C::Choisir(c, p);"), false},
+            {scalaire + "classe H { entier32 X = objet.Choisir(x); publique: constructeur(C& objet, constante entier32& x) {} "
+             "entier32 Lire() { retourner soi.X; } }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.Lire();"), false},
+            {scalaire + "classe H { entier32 X; publique: constructeur(C& objet, constante entier32& x) : X(objet.Choisir(x)) {} "
+             "entier32 Lire() { retourner soi.X; } }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.Lire();"), false},
+            {scalaire + "classe Base { publique: entier32 X; constructeur(entier32 x) : X(x) {} }; "
+             "classe H : publique Base { publique: constructeur(C& objet, constante entier32& x) : parent(objet.Choisir(x)) {} }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.X;"), false},
+            {scalaire + "classe M { publique: entier32 X; constructeur(entier32 x) : X(x) {} }; "
+             "classe H { M m; publique: constructeur(C& objet, constante entier32& x) : m(objet.Choisir(x)) {} "
+             "entier32 Lire() { retourner soi.m.X; } }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.Lire();"), false},
+            {scalaire + "classe H { entier32 X; publique: constructeur(C& objet, constante entier32& x) : soi(objet.Choisir(x)) {} "
+             "constructeur(entier32 x) : X(x) {} entier32 Lire() { retourner soi.X; } }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.Lire();"), false},
+            {heritage + groupe("B&", "booléen", "retourner valeur.X;", "retourner 1;")
+             + principal("C c; D d; d.X = 42; retourner c.Choisir(d);"), true},
+            {heritage + groupe("booléen", "constante B&", "retourner 1;", "retourner valeur.X;")
+             + principal("C c; D d; d.X = 42; constante D& vue = d; retourner c.Choisir(vue);"), false},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            std::optional<GsPP::CodeMachine> reference;
+            for (const auto& texte : {valides[index].Texte, TraduireCorpusConversions(valides[index].Texte)})
+            {
+                const auto nom = "reference-groupe-mixte-construction-valide-" + std::to_string(index);
+                const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+                auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+                GsPP::AnalyseurSemantique().Analyser(programme);
+                std::unordered_map<std::uint64_t, std::vector<const GsPP::Fonction*>> cibles;
+                const auto visiter = [&](auto&& self, const GsPP::Expression& expression) -> void {
+                    switch (expression.Genre)
+                    {
+                        case GsPP::GenreExpression::Appel:
+                        {
+                            const auto& appel = static_cast<const GsPP::ExpressionAppel&>(expression);
+                            const auto cible = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                                [&](const auto& fonction) { return fonction.NomComplet() == appel.NomDirect; });
+                            if (cible != programme.Fonctions.end() && cible->Nom == "Choisir")
+                            {
+                                Exiger(cible->EstMethode == valides[index].Methode,
+                                    "cible prévue du groupe mixte différente du bootstrap : " + nom);
+                                const auto& origine = *appel.Cible;
+                                cibles[(static_cast<std::uint64_t>(origine.Position.Ligne) << 32U)
+                                    | origine.Position.Colonne].push_back(&*cible);
+                            }
+                            self(self, *appel.Cible);
+                            for (const auto& argument : appel.Arguments) self(self, *argument);
+                            break;
+                        }
+                        case GsPP::GenreExpression::Binaire:
+                        {
+                            const auto& binaire = static_cast<const GsPP::ExpressionBinaire&>(expression);
+                            self(self, *binaire.Gauche);
+                            self(self, *binaire.Droite);
+                            break;
+                        }
+                        case GsPP::GenreExpression::Unaire:
+                            self(self, *static_cast<const GsPP::ExpressionUnaire&>(expression).Operande);
+                            break;
+                        case GsPP::GenreExpression::Conversion:
+                            self(self, *static_cast<const GsPP::ExpressionConversion&>(expression).Valeur);
+                            break;
+                        case GsPP::GenreExpression::Membre:
+                            self(self, *static_cast<const GsPP::ExpressionMembre&>(expression).Objet);
+                            break;
+                        case GsPP::GenreExpression::Affectation:
+                        {
+                            const auto& affectation = static_cast<const GsPP::ExpressionAffectation&>(expression);
+                            self(self, *affectation.Cible);
+                            self(self, *affectation.Valeur);
+                            break;
+                        }
+                        default: break;
+                    }
+                };
+                for (const auto& fonction : programme.Fonctions)
+                {
+                    if (fonction.Corps)
+                        for (const auto& instruction : fonction.Corps->Instructions)
+                        {
+                            if (instruction->Genre == GsPP::GenreInstruction::Retour)
+                            {
+                                const auto& valeur = static_cast<const GsPP::InstructionRetour&>(*instruction).Valeur;
+                                if (valeur) visiter(visiter, *valeur);
+                            }
+                            else if (instruction->Genre == GsPP::GenreInstruction::Expression)
+                                visiter(visiter, *static_cast<const GsPP::InstructionExpression&>(*instruction).Valeur);
+                            else if (instruction->Genre == GsPP::GenreInstruction::Variable)
+                            {
+                                const auto& variable = static_cast<const GsPP::InstructionVariable&>(*instruction);
+                                if (variable.Initialiseur) visiter(visiter, *variable.Initialiseur);
+                                for (const auto& argument : variable.ArgumentsConstruction) visiter(visiter, *argument);
+                            }
+                        }
+                    for (const auto& champ : fonction.InitialiseursChamps)
+                    {
+                        for (const auto& argument : champ.Arguments) visiter(visiter, *argument);
+                        if (champ.InitialiseurParDefaut) visiter(visiter, *champ.InitialiseurParDefaut);
+                    }
+                    for (const auto& argument : fonction.ArgumentsConstructeurBase) visiter(visiter, *argument);
+                    for (const auto& argument : fonction.ArgumentsConstructeurDelegue) visiter(visiter, *argument);
+                }
+                std::size_t nombreAttendu = 0;
+                for (const auto& [position, selections] : cibles) nombreAttendu += selections.size();
+                Exiger(nombreAttendu != 0, "appel mixte absent du corpus : " + nom);
+                std::size_t nombre = 0;
+                for (const auto& resolution : resultat.Resolutions)
+                {
+                    const auto& origine = resultat.Noeuds[resolution.IndexNoeud];
+                    if ((origine.Genre != 24 && origine.Genre != 29)
+                        || origine.Parent >= resultat.Noeuds.size()
+                        || resultat.Noeuds[origine.Parent].Genre != 28
+                        || resolution.IndexNoeud != origine.Parent + 1) continue;
+                    const auto& declaration = resultat.Noeuds[resultat.Symboles[resolution.IndexSymbole].IndexNoeud];
+                    if (declaration.HachageNom != HacherTexte("Choisir")) continue;
+                    const auto selection = cibles.find((static_cast<std::uint64_t>(origine.Ligne) << 32U) | origine.Colonne);
+                    Exiger(selection != cibles.end(), "appel mixte publié absent du bootstrap : " + nom);
+                    const auto attendu = std::find_if(selection->second.begin(), selection->second.end(),
+                        [&](const auto* fonction) {
+                            return declaration.Ligne == fonction->Position.Ligne && declaration.Colonne == fonction->Position.Colonne
+                                && resolution.HachageType == HacherTypeDeclaration(fonction->TypeRetour)
+                                && ((resolution.Drapeaux & 32U) != 0) == fonction->EstMethode;
+                        });
+                    Exiger(attendu != selection->second.end(), "cible ou retour du groupe mixte différent : " + nom);
+                    selection->second.erase(attendu);
+                    ++nombre;
+                }
+                Exiger(nombre == nombreAttendu, "sélection mixte omise ou dupliquée : " + nom);
+                const auto machine = GsPP::GenerateurX64().Generer(programme);
+                if (reference)
+                    Exiger(machine.Texte == reference->Texte && machine.Donnees == reference->Donnees,
+                        "octets bilingues des groupes mixtes différents : " + nom);
+                else reference = machine;
+                const auto contenu = GsPP::EcrivainGsE().Construire(machine, "Principal");
+                Exiger(contenu == GsPP::EcrivainGsE().Construire(GsPP::GenerateurX64().Generer(programme), "Principal"),
+                    "image des groupes mixtes non reproductible : " + nom);
+                ZoneExecutable zone(AlignerPage(Lire64(contenu, 48)));
+                const auto image = GsPP::ChargeurGsE().Charger(contenu, zone.Base());
+                Exiger(image.Imports.empty(), "import d'hôte ajouté par les groupes mixtes : " + nom);
+                zone.Copier(image.Memoire);
+                using FonctionTest = std::int32_t (GS_ABI_HOTE *)();
+                Exiger(reinterpret_cast<FonctionTest>(image.AdressePointEntree)() == 42,
+                    "surcharge exécutée ou mutation du référent incorrecte : " + nom);
+            }
+        }
+        const auto fonction = [](std::string_view type, std::string_view corps) {
+            return "publique vide F(C& objet, " + std::string(type) + " x) { " + std::string(corps) + " }";
+        };
+        const std::string ambigu = groupe("entier32&", "entier32", "retourner 1;", "retourner 2;");
+        const std::string nonCompatible = groupe("entier32&", "booléen", "retourner 1;", "retourner 2;");
+        const std::string prive = "classe C { privée: entier32 Choisir(entier32& valeur) { retourner valeur; } }; "
+            "espace C { publique entier32 Choisir(C& objet, booléen valeur) { retourner 2; } } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {scalaire + fonction("entier32&", "objet.Choisir(x); Absente;"), 22},
+            {scalaire + fonction("entier32&", "C::Choisir(objet, x); Absente;"), 22},
+            {ambigu + fonction("entier32&", "objet.Choisir(x); Absente;"), 22},
+            {nonCompatible + fonction("constante entier32&", "objet.Choisir(x); Absente;"), 21},
+            {nonCompatible + fonction("entier64&", "objet.Choisir(x); Absente;"), 21},
+            {nonCompatible + fonction("entier32&", "objet.Choisir(42); Absente;"), 21},
+            {nonCompatible + fonction("entier32&", "objet.Choisir(x + 1); Absente;"), 21},
+            {prive + fonction("entier32&", "objet.Choisir(x); Absente;"), 25},
+            {prive + fonction("entier32&", "objet.Choisir(Absente, 0);"), 21},
+            {nonCompatible + fonction("entier32&", "objet.Choisir(x, Absente);"), 21},
+            {pointeur + fonction("entier32**&", "objet.Choisir(x); Absente;"), 21},
+            {pointeur + fonction("entier32&", "objet.Choisir(&x); Absente;"), 21},
+            {heritage + groupe("B&", "booléen", "retourner 1;", "retourner 2;")
+             + fonction("constante D&", "objet.Choisir(x); Absente;"), 21},
+            {heritage + groupe("B**", "booléen", "retourner 1;", "retourner 2;")
+             + fonction("D**", "objet.Choisir(x); Absente;"), 21},
+            {scalaire + "classe H { entier32 X = objet.Choisir(x); publique: constructeur(C& objet, entier32& x) { Absente; } };", 22},
+            {nonCompatible + "classe H { entier32 X = objet.Choisir(x); publique: constructeur(C& objet, constante entier32& x) { Absente; } };", 21},
+            {prive + "classe H { entier32 X = objet.Choisir(x); publique: constructeur(C& objet, entier32& x) { Absente; } };", 25},
+            {scalaire + "classe Base { publique: constructeur(entier32 x) {} }; classe H : publique Base { publique: "
+             "constructeur(C& objet, entier32& x) : parent(objet.Choisir(x)) { Absente; } };", 22},
+            {scalaire + "classe M { publique: constructeur(entier32 x) {} }; classe H { M m; publique: "
+             "constructeur(C& objet, entier32& x) : m(objet.Choisir(x)) { Absente; } };", 22},
+            {scalaire + "classe H { publique: constructeur(C& objet, entier32& x) : soi(objet.Choisir(x)) { Absente; } "
+             "constructeur(entier32 x) {} };", 22},
+            {nonCompatible + "classe Base { publique: constructeur(entier32 x) {} }; classe H : publique Base { publique: "
+             "constructeur(C& objet, constante entier32& x) : parent(objet.Choisir(x)) { Absente; } };", 21},
+            {prive + "classe Base { publique: constructeur(entier32 x) {} }; classe H : publique Base { publique: "
+             "constructeur(C& objet, entier32& x) : parent(objet.Choisir(x)) { Absente; } };", 25},
+            {scalaire + "classe H { entier32 X = objet.Choisir(x); entier32 Y = Absente; publique: "
+             "constructeur(C& objet, entier32& x) {} };", 22},
+            {nonCompatible + "classe H { entier32 X = objet.Choisir(x, Absente); publique: "
+             "constructeur(C& objet, entier32& x) {} };", 21},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+            for (const auto& texte : {refus[index].first, TraduireCorpusConversions(refus[index].first)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "reference-groupe-mixte-construction-refuse-" + std::to_string(index));
+        std::cout << "Références des groupes mixtes et constructions : " << valides.size()
+                  << " corpus bilingues exécutés, surcharges et mutations vérifiées.\n";
+    }
+
+    /**
+     * <résumé>Compare les opérateurs des corpus bilingues et contrôle leur exécution native.</résumé>
+     * Le parcours couvre aussi les éléments d'agrégats et les expressions des constructions.
+     **/
+    void VerifierOperateursReferencesBilingues(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique,
+        const std::string& source, bool methode, std::int32_t traceAttendue,
+        std::size_t nombreOperateursAttendu, const std::string& nom)
+    {
+        std::optional<GsPP::CodeMachine> reference;
+        for (const auto& texte : {source, TraduireCorpusConversions(source)})
+        {
+            const auto resultat = AnalyserSemantiqueValide(syntaxe, semantique, texte, nom);
+            auto programme = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, nom).Analyser(), nom).Analyser();
+            GsPP::AnalyseurSemantique().Analyser(programme);
+            std::unordered_map<std::uint64_t, std::vector<const GsPP::Fonction*>> cibles;
+            const auto visiter = [&](auto&& self, const GsPP::Expression& expression) -> void {
+                std::string symbole;
+                switch (expression.Genre)
+                {
+                    case GsPP::GenreExpression::Agregat:
+                        for (const auto& element : static_cast<const GsPP::ExpressionAgregat&>(expression).Elements)
+                            self(self, *element);
+                        break;
+                    case GsPP::GenreExpression::Unaire:
+                    {
+                        const auto& unaire = static_cast<const GsPP::ExpressionUnaire&>(expression);
+                        symbole = unaire.NomSurcharge;
+                        self(self, *unaire.Operande);
+                        break;
+                    }
+                    case GsPP::GenreExpression::Binaire:
+                    {
+                        const auto& binaire = static_cast<const GsPP::ExpressionBinaire&>(expression);
+                        symbole = binaire.NomSurcharge;
+                        self(self, *binaire.Gauche);
+                        self(self, *binaire.Droite);
+                        break;
+                    }
+                    case GsPP::GenreExpression::Appel:
+                    {
+                        const auto& appel = static_cast<const GsPP::ExpressionAppel&>(expression);
+                        self(self, *appel.Cible);
+                        for (const auto& argument : appel.Arguments) self(self, *argument);
+                        break;
+                    }
+                    case GsPP::GenreExpression::Affectation:
+                    {
+                        const auto& affectation = static_cast<const GsPP::ExpressionAffectation&>(expression);
+                        self(self, *affectation.Cible);
+                        self(self, *affectation.Valeur);
+                        break;
+                    }
+                    case GsPP::GenreExpression::Conversion:
+                        self(self, *static_cast<const GsPP::ExpressionConversion&>(expression).Valeur);
+                        break;
+                    case GsPP::GenreExpression::Membre:
+                        self(self, *static_cast<const GsPP::ExpressionMembre&>(expression).Objet);
+                        break;
+                    case GsPP::GenreExpression::Index:
+                    {
+                        const auto& indexation = static_cast<const GsPP::ExpressionIndex&>(expression);
+                        self(self, *indexation.Objet);
+                        self(self, *indexation.Indice);
+                        break;
+                    }
+                    default: break;
+                }
+                if (symbole.empty()) return;
+                const auto cible = std::find_if(programme.Fonctions.begin(), programme.Fonctions.end(),
+                    [&](const auto& fonction) { return fonction.NomComplet() == symbole; });
+                Exiger(cible != programme.Fonctions.end() && cible->EstMethode == methode,
+                    "cible prévue de l'opérateur référencé différente du bootstrap : " + nom);
+                cibles[(static_cast<std::uint64_t>(expression.Position.Ligne) << 32U)
+                    | expression.Position.Colonne].push_back(&*cible);
+            };
+            for (const auto& fonction : programme.Fonctions)
+            {
+                if (fonction.Corps)
+                    for (const auto& instruction : fonction.Corps->Instructions)
+                    {
+                        if (instruction->Genre == GsPP::GenreInstruction::Retour)
+                        {
+                            const auto& valeur = static_cast<const GsPP::InstructionRetour&>(*instruction).Valeur;
+                            if (valeur) visiter(visiter, *valeur);
+                        }
+                        else if (instruction->Genre == GsPP::GenreInstruction::Expression)
+                            visiter(visiter, *static_cast<const GsPP::InstructionExpression&>(*instruction).Valeur);
+                        else if (instruction->Genre == GsPP::GenreInstruction::Variable)
+                        {
+                            const auto& variable = static_cast<const GsPP::InstructionVariable&>(*instruction);
+                            if (variable.Initialiseur) visiter(visiter, *variable.Initialiseur);
+                            for (const auto& argument : variable.ArgumentsConstruction) visiter(visiter, *argument);
+                        }
+                    }
+                for (const auto& champ : fonction.InitialiseursChamps)
+                {
+                    for (const auto& argument : champ.Arguments) visiter(visiter, *argument);
+                    if (champ.InitialiseurParDefaut) visiter(visiter, *champ.InitialiseurParDefaut);
+                }
+                for (const auto& argument : fonction.ArgumentsConstructeurBase) visiter(visiter, *argument);
+                for (const auto& argument : fonction.ArgumentsConstructeurDelegue) visiter(visiter, *argument);
+            }
+            std::size_t nombreAttendu = 0;
+            for (const auto& [position, selections] : cibles) nombreAttendu += selections.size();
+            Exiger(nombreAttendu == nombreOperateursAttendu,
+                "nombre d'opérateurs prévu différent du bootstrap : " + nom);
+            std::size_t nombre = 0;
+            for (const auto& resolution : resultat.Resolutions)
+            {
+                if ((resolution.Drapeaux & 256U) == 0) continue;
+                const auto& origine = resultat.Noeuds[resolution.IndexNoeud];
+                const auto selection = cibles.find((static_cast<std::uint64_t>(origine.Ligne) << 32U) | origine.Colonne);
+                Exiger(selection != cibles.end(), "opérateur publié absent du bootstrap : " + nom);
+                const auto& declaration = resultat.Noeuds[resultat.Symboles[resolution.IndexSymbole].IndexNoeud];
+                const auto attendu = std::find_if(selection->second.begin(), selection->second.end(),
+                    [&](const auto* fonction) {
+                        return declaration.Ligne == fonction->Position.Ligne && declaration.Colonne == fonction->Position.Colonne
+                            && resolution.HachageType == HacherTypeDeclaration(fonction->TypeRetour)
+                            && ((resolution.Drapeaux & 32U) != 0) == fonction->EstMethode;
+                    });
+                Exiger(attendu != selection->second.end(), "opérateur, retour ou drapeau différent du bootstrap : " + nom);
+                selection->second.erase(attendu);
+                ++nombre;
+            }
+            Exiger(nombre == nombreAttendu, "opérateur référencé omis ou dupliqué : " + nom);
+            const auto machine = GsPP::GenerateurX64().Generer(programme);
+            if (reference)
+                Exiger(machine.Texte == reference->Texte && machine.Donnees == reference->Donnees,
+                    "octets bilingues des opérateurs référencés différents : " + nom);
+            else reference = machine;
+            const auto contenu = GsPP::EcrivainGsE().Construire(machine, "Principal");
+            Exiger(contenu == GsPP::EcrivainGsE().Construire(GsPP::GenerateurX64().Generer(programme), "Principal"),
+                "image des opérateurs référencés non reproductible : " + nom);
+            ZoneExecutable zone(AlignerPage(Lire64(contenu, 48)));
+            const auto image = GsPP::ChargeurGsE().Charger(contenu, zone.Base());
+            Exiger(image.Imports.empty(), "import ajouté par les opérateurs référencés : " + nom);
+            zone.Copier(image.Memoire);
+            using FonctionTest = std::int32_t (GS_ABI_HOTE *)();
+            Exiger(reinterpret_cast<FonctionTest>(image.AdressePointEntree)() == 42,
+                "résultat ou mutation des opérateurs référencés incorrect : " + nom);
+            const auto trace = image.ChercherExport("Trace");
+            Exiger(trace.has_value(), "trace des opérateurs référencés absente : " + nom);
+            std::int32_t valeurTrace = 0;
+            std::memcpy(&valeurTrace, reinterpret_cast<const void*>(static_cast<std::uintptr_t>(*trace)), sizeof(valeurTrace));
+            Exiger(valeurTrace == traceAttendue, "ordre ou nombre d'appels d'opérateurs incorrect : " + nom);
+        }
+    }
+
+    /**
+     * <résumé>Compare les opérateurs mixtes référencés, leurs mutations et leurs contextes de construction.</résumé>
+     * Une trace exportée sépare les résolutions sémantiques des appels réellement exécutés.
+     **/
+    void TesterReferencesOperateursMixtesConstructions(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const auto groupe = [](std::string_view typeMethode, std::string_view typeLibre,
+            std::string_view corpsMethode, std::string_view corpsLibre) {
+            return "classe C { publique: entier32* Cible; entier32 opérateur+(" + std::string(typeMethode)
+                + " valeur) { Trace = Trace * 10 + 1; " + std::string(corpsMethode)
+                + " } }; espace C { publique entier32 opérateur+(C& objet, " + std::string(typeLibre)
+                + " valeur) { Trace = Trace * 10 + 2; " + std::string(corpsLibre) + " } } ";
+        };
+        const auto principal = [](std::string_view corps) {
+            return "publique entier32 Principal() { " + std::string(corps) + " }";
+        };
+        const std::string mutation = groupe("entier32&", "booléen",
+            "valeur = valeur + 1; retourner valeur;", "retourner 1;");
+        const std::string scalaire = groupe("entier32&", "constante entier32&",
+            "valeur = valeur + 1; retourner valeur;", "retourner valeur + 1;");
+        const std::string pointeur = groupe("entier32*&", "constante entier32*&",
+            "valeur = soi.Cible; retourner *valeur;",
+            "valeur = convertir<constante entier32*>(objet.Cible); retourner *valeur;");
+        const std::string heritage = "classe B { publique: entier32 X; }; classe D : publique B { publique: "
+            "virtuel entier32 Marqueur() { retourner 1; } }; ";
+        struct Corpus {
+            std::string Texte;
+            bool Methode;
+            std::int32_t Trace;
+            std::size_t NombreOperateurs = 1;
+        };
+        const std::vector<Corpus> valides{
+            {mutation + principal("C c; entier32 x = 41; entier32 resultat = c + x; retourner resultat + x - 42;"), true, 1},
+            {mutation + principal("C c; entier32 valeurs[1] = {41}; entier32 resultat = c + valeurs[0]; "
+                "retourner resultat + valeurs[0] - 42;"), true, 1},
+            {mutation + principal("C c; entier32 x = 41; entier32* p = &x; entier32 resultat = c + *p; "
+                "retourner resultat + x - 42;"), true, 1},
+            {groupe("constante entier32&", "booléen", "retourner valeur;", "retourner 1;")
+             + principal("C c; entier32 x = 42; retourner c + x;"), true, 1},
+            {groupe("constante entier32&", "booléen", "retourner valeur;", "retourner 1;")
+             + principal("C c; constante entier32 x = 42; retourner c + x;"), true, 1},
+            {scalaire + principal("C c; constante entier32 x = 41; retourner c + x;"), false, 2},
+            {groupe("entier32&", "entier32", "retourner 1;", "retourner valeur;")
+             + principal("C c; retourner c + 42;"), false, 2},
+            {groupe("entier32&", "entier32", "retourner 1;", "Trace = Trace * 10 + valeur; retourner valeur + 1;")
+             + principal("C c; retourner c + (c + 40);"), false, 6061, 2},
+            {groupe("entier32&", "booléen", "Trace = Trace * 10 + valeur; valeur = valeur + 1; retourner valeur;", "retourner 1;")
+             + principal("C c; entier32 x = 19; entier32 y = 21; entier32 resultat = (c + x) + (c + y); "
+                "retourner resultat + x + y - 42;"), true, 2931, 2},
+            {pointeur + principal("C c; entier32 x = 41; entier32 y = 42; c.Cible = &y; entier32* p = &x; "
+                "entier32 resultat = c + p; retourner resultat + *p + convertir<entier32>(p == &y) + x - 84;"), true, 1},
+            {pointeur + principal("C c; entier32 x = 41; entier32 y = 42; c.Cible = &y; "
+                "constante entier32* p = convertir<constante entier32*>(&x); entier32 resultat = c + p; "
+                "retourner resultat + *p + convertir<entier32>(p == convertir<constante entier32*>(&y)) + x - 84;"), false, 2},
+            {heritage + groupe("B&", "D&", "retourner 1;", "retourner valeur.X;")
+             + principal("C c; D d; d.X = 42; retourner c + d;"), false, 2},
+            {heritage + groupe("D&", "B&", "retourner valeur.X;", "retourner 1;")
+             + principal("C c; D d; d.X = 42; retourner c + d;"), true, 1},
+            {"classe C { publique: entier32 opérateur+(entier32& valeur) { Trace = Trace * 10 + 1; retourner 1; } }; "
+             "espace C { publique entier32 opérateur+(constante C& objet, entier32& valeur) { "
+             "Trace = Trace * 10 + 2; valeur = 42; retourner valeur; } } "
+             + principal("C c; constante C& vue = c; entier32 x = 41; entier32 resultat = vue + x; "
+                "retourner resultat + x - 42;"), false, 2},
+            {mutation + principal("volatile C c; entier32 x = 41; entier32 resultat = c + x; "
+                "retourner resultat + x - 42;"), true, 1},
+            {scalaire + "classe H { entier32 X = objet + x; publique: constructeur(C& objet, constante entier32& x) {} "
+             "entier32 Lire() { retourner soi.X; } }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.Lire();"), false, 2},
+            {mutation + "classe H { entier32 X; publique: constructeur(C& objet, entier32& x) : X(objet + x) {} "
+             "entier32 Lire() { retourner soi.X; } }; "
+             + principal("C c; entier32 x = 41; H h(c, x); retourner h.Lire() + x - 42;"), true, 1},
+            {scalaire + "classe Base { publique: entier32 X; constructeur(entier32 x) : X(x) {} }; "
+             "classe H : publique Base { publique: constructeur(C& objet, constante entier32& x) : parent(objet + x) {} }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.X;"), false, 2},
+            {mutation + "classe M { publique: entier32 X; constructeur(entier32 x) : X(x) {} }; "
+             "classe H { M m; publique: constructeur(C& objet, entier32& x) : m(objet + x) {} "
+             "entier32 Lire() { retourner soi.m.X; } }; "
+             + principal("C c; entier32 x = 41; H h(c, x); retourner h.Lire() + x - 42;"), true, 1},
+            {scalaire + "classe H { entier32 X; publique: constructeur(C& objet, constante entier32& x) : soi(objet + x) {} "
+             "constructeur(entier32 x) : X(x) {} entier32 Lire() { retourner soi.X; } }; "
+             + principal("C c; constante entier32 x = 41; H h(c, x); retourner h.Lire();"), false, 2},
+            {"classe Base {}; classe C : publique Base { publique: entier32 opérateur~() { "
+             "Trace = Trace * 10 + 1; retourner 42; } }; espace C { publique entier32 opérateur~(Base& objet) { "
+             "Trace = Trace * 10 + 2; retourner 1; } } " + principal("C c; retourner ~c;"), true, 1},
+            {"classe C { publique: entier32 opérateur~() { Trace = Trace * 10 + 1; retourner 1; } }; "
+             "espace C { publique entier32 opérateur~(constante C& objet) { Trace = Trace * 10 + 2; retourner 42; } } "
+             + principal("C c; constante C& vue = c; retourner ~vue;"), false, 2},
+            {mutation + principal("C c; entier32 x = 41; faux && (c + x); retourner 42 + x - 41;"), true, 0},
+            {scalaire + principal("C c; constante entier32 x = 41; vrai || (c + x); retourner 42 + x - 41;"), false, 0},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            VerifierOperateursReferencesBilingues(syntaxe, semantique,
+                "publique entier32 Trace = 0; " + valides[index].Texte, valides[index].Methode,
+                valides[index].Trace, valides[index].NombreOperateurs,
+                "reference-operateur-mixte-construction-valide-" + std::to_string(index));
+        const auto fonction = [](std::string_view type, std::string_view corps) {
+            return "publique vide F(C& objet, " + std::string(type) + " x) { " + std::string(corps) + " }";
+        };
+        const std::string prive = "classe C { privée: entier32 opérateur+(entier32& valeur) { retourner valeur; } }; "
+            "espace C { publique entier32 opérateur+(C& objet, booléen valeur) { retourner 2; } } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {scalaire + fonction("entier32&", "objet + x; Absente;"), 22},
+            {groupe("entier32&", "entier32", "retourner 1;", "retourner 2;")
+             + fonction("entier32&", "objet + x; Absente;"), 22},
+            {mutation + fonction("constante entier32&", "objet + x; Absente;"), 21},
+            {mutation + fonction("entier32&", "faux && (objet + (x + 1)); Absente;"), 21},
+            {mutation + fonction("entier32&", "objet + 42; Absente;"), 21},
+            {mutation + fonction("entier32&", "objet + (x + 1); Absente;"), 21},
+            {pointeur + fonction("entier32&", "objet + &x; Absente;"), 21},
+            {pointeur + fonction("entier32**&", "objet + x; Absente;"), 21},
+            {groupe("entier32*&", "booléen", "retourner 1;", "retourner 2;")
+             + fonction("constante entier32*&", "objet + x; Absente;"), 21},
+            {heritage + groupe("B&", "booléen", "retourner 1;", "retourner 2;")
+             + fonction("constante D&", "objet + x; Absente;"), 21},
+            {prive + fonction("entier32&", "objet + x; Absente;"), 25},
+            {"classe C { privée: entier32 opérateur+(entier32& valeur) { retourner valeur; } }; "
+             "espace C { publique entier32 opérateur+(C& objet, constante entier32& valeur) { retourner valeur; } } "
+             + fonction("entier32&", "objet + x; Absente;"), 22},
+            {scalaire + fonction("entier32&", "objet + (objet + x); Absente;"), 22},
+            {scalaire + fonction("entier32&", "(objet + x) + Absente;"), 22},
+            {scalaire + fonction("entier32&", "Absente + (objet + x);"), 18},
+            {mutation + fonction("constante entier32&", "(objet + x)(Absente);"), 21},
+            {scalaire + "classe H { entier32 X = objet + x; publique: constructeur(C& objet, entier32& x) { Absente; } };", 22},
+            {mutation + "classe H { entier32 X = objet + x; publique: constructeur(C& objet, constante entier32& x) { Absente; } };", 21},
+            {prive + "classe H { entier32 X = objet + x; publique: constructeur(C& objet, entier32& x) { Absente; } };", 25},
+            {scalaire + "classe Base { publique: constructeur(entier32 x) {} }; classe H : publique Base { publique: "
+             "constructeur(C& objet, entier32& x) : parent(objet + x) { Absente; } };", 22},
+            {scalaire + "classe M { publique: constructeur(entier32 x) {} }; classe H { M m; publique: "
+             "constructeur(C& objet, entier32& x) : m(objet + x) { Absente; } };", 22},
+            {scalaire + "classe H { publique: constructeur(C& objet, entier32& x) : soi(objet + x) { Absente; } "
+             "constructeur(entier32 x) {} };", 22},
+            {scalaire + fonction("entier32&", "constante entier32 fixe = 0; fixe = objet + x;"), 71},
+            {scalaire + fonction("entier32&", "entier32 tableau[1]; tableau = objet + x;"), 72},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = "publique entier32 Trace = 0; " + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "reference-operateur-mixte-construction-refuse-" + std::to_string(index));
+        }
+        std::cout << "Références des opérateurs mixtes et constructions : " << valides.size()
+                  << " corpus bilingues exécutés, cibles, mutations et traces vérifiées.\n";
+    }
+
+    /**
+     * <résumé>Vérifie les opérateurs dans les agrégats, leur stockage et la priorité entre éléments.</résumé>
+     * Les traces distinguent la visite sémantique, l'exécution et la capture de chaque valeur.
+     **/
+    void TesterOperateursInitialiseursAgreges(
+        AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::string declarations = "publique entier32 Trace = 0; structure P { entier32 X; entier32 Y; }; "
+            "structure Bloc { P Couple; entier32 Valeurs[2]; }; union U { entier32 X; entier64 Y; }; ";
+        const std::string mutation = "classe C { publique: entier32 opérateur+(entier32& valeur) { "
+            "Trace = Trace * 10 + valeur; valeur = valeur + 1; retourner valeur; } }; "
+            "espace C { publique entier32 opérateur+(C& objet, booléen valeur) { Trace = 9; retourner 1; } } ";
+        const std::string lecture = "classe C { publique: entier32 opérateur+(booléen valeur) { Trace = 9; retourner 1; } }; "
+            "espace C { publique entier32 opérateur+(C& objet, constante entier32& valeur) { "
+            "Trace = Trace * 10 + valeur; retourner valeur + 1; } } ";
+        const std::string adresses = "structure Adresses { entier32* Mutable; constante entier32* Lecture; }; "
+            "classe C { publique: entier32* Cible; entier32* opérateur+(entier32*& valeur) { "
+            "Trace = Trace * 10 + *valeur; valeur = soi.Cible; retourner valeur; } }; "
+            "espace C { publique entier32* opérateur+(C& objet, booléen valeur) { Trace = 9; retourner objet.Cible; } } ";
+        const auto principal = [](std::string_view corps) {
+            return "publique entier32 Principal() { " + std::string(corps) + " }";
+        };
+        const std::string depart = "C c; entier32 x = 1; entier32 y = 2; ";
+        const std::string verifierP = "retourner 42 * convertir<entier32>(p.X == 2 && p.Y == 3 && x == 2 && y == 3);";
+        struct Corpus {
+            std::string Texte;
+            std::int32_t Trace;
+            std::size_t NombreOperateurs;
+            bool Methode = true;
+        };
+        const std::vector<Corpus> valides{
+            {mutation + principal(depart + "P p = {c + x, c + y}; " + verifierP), 12, 2},
+            {mutation + principal("C c; entier32 x = 41; entier32 valeur = {{c + x}}; "
+                "retourner 42 * convertir<entier32>(valeur == 42 && x == 42);"), 41, 1},
+            {mutation + principal(depart + "P p = {{{c + x}}, {c + y}}; " + verifierP), 12, 2},
+            {mutation + principal(depart + "entier32 valeurs[2] = {c + x, c + y}; "
+                "retourner 42 * convertir<entier32>(valeurs[0] == 2 && valeurs[1] == 3 && x == 2 && y == 3);"), 12, 2},
+            {mutation + principal(depart + "entier32 z = 3; entier32 w = 4; "
+                "entier32 valeurs[2][2] = {{c + x, c + y}, {c + z, c + w}}; retourner 42 * convertir<entier32>("
+                "valeurs[0][0] == 2 && valeurs[0][1] == 3 && valeurs[1][0] == 4 && valeurs[1][1] == 5 "
+                "&& x == 2 && y == 3 && z == 4 && w == 5);"), 1234, 4},
+            {mutation + principal(depart + "entier32 z = 3; entier32 w = 4; "
+                "Bloc b = {{c + x, c + y}, {c + z, c + w}}; retourner 42 * convertir<entier32>("
+                "b.Couple.X == 2 && b.Couple.Y == 3 && b.Valeurs[0] == 4 && b.Valeurs[1] == 5 "
+                "&& x == 2 && y == 3 && z == 4 && w == 5);"), 1234, 4},
+            {mutation + principal(depart + "entier32 z = 3; entier32 w = 4; "
+                "P valeurs[2] = {{c + x, c + y}, {c + z, c + w}}; retourner 42 * convertir<entier32>("
+                "valeurs[0].X == 2 && valeurs[0].Y == 3 && valeurs[1].X == 4 && valeurs[1].Y == 5 "
+                "&& x == 2 && y == 3 && z == 4 && w == 5);"), 1234, 4},
+            {mutation + principal("C c; entier32 x = 41; entier32 valeurs[3] = {c + x}; "
+                "retourner 42 * convertir<entier32>(valeurs[0] == 42 && valeurs[1] == 0 && valeurs[2] == 0 && x == 42);"), 41, 1},
+            {mutation + principal("C c; entier32 x = 41; P p = {c + x}; "
+                "retourner 42 * convertir<entier32>(p.X == 42 && p.Y == 0 && x == 42);"), 41, 1},
+            {mutation + principal("C c; entier32 x = 41; U u = {c + x}; "
+                "retourner 42 * convertir<entier32>(u.X == 42 && x == 42);"), 41, 1},
+            {mutation + "structure Alignee { naturel8 Petit; P Paire; entier64 Grand; }; "
+             + principal(depart + "Alignee a = {7, {c + x, c + y}, 42}; retourner 42 * convertir<entier32>("
+                "a.Petit == 7 && a.Paire.X == 2 && a.Paire.Y == 3 && a.Grand == 42 && x == 2 && y == 3);"), 12, 2},
+            {mutation + principal(depart + "P p = {c + x, c + y}; P copie = p; copie.X = 0; "
+                "retourner 42 * convertir<entier32>(p.X == 2 && p.Y == 3 && copie.X == 0 && copie.Y == 3 && x == 2 && y == 3);"), 12, 2},
+            {mutation + principal(depart + "P p = {}; p = {c + x, c + y}; " + verifierP), 12, 2},
+            {mutation + "entier32 Somme(P p) { retourner p.X + p.Y; } "
+             + principal(depart + "entier32 valeur = Somme({c + x, c + y}); "
+                "retourner 42 * convertir<entier32>(valeur == 5 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "entier32 Somme(P p) { retourner p.X + p.Y; } "
+             + principal(depart + "pointeur_fonction<entier32(P)> rappel = Somme; entier32 valeur = rappel({c + x, c + y}); "
+                "retourner 42 * convertir<entier32>(valeur == 5 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "P Produire(C& c, entier32& x, entier32& y) { retourner {c + x, c + y}; } "
+             + principal(depart + "P p = Produire(c, x, y); " + verifierP), 12, 2},
+            {mutation + "Bloc Produire(C& c, entier32& x, entier32& y) { retourner {{c + x, c + y}, {}}; } "
+             + principal(depart + "Bloc b = Produire(c, x, y); retourner 42 * convertir<entier32>("
+                "b.Couple.X == 2 && b.Couple.Y == 3 && b.Valeurs[0] == 0 && b.Valeurs[1] == 0 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "classe H { P p = {c + x, c + y}; publique: constructeur(C& c, entier32& x, entier32& y) {} "
+             "entier32 Lire() { retourner soi.p.X + soi.p.Y; } }; "
+             + principal(depart + "H h(c, x, y); retourner 42 * convertir<entier32>(h.Lire() == 5 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "classe H { P p; publique: constructeur(C& c, entier32& x, entier32& y) : p({c + x, c + y}) {} "
+             "entier32 Lire() { retourner soi.p.X + soi.p.Y; } }; "
+             + principal(depart + "H h(c, x, y); retourner 42 * convertir<entier32>(h.Lire() == 5 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "classe Base { publique: entier32 X; constructeur(P p) : X(p.X + p.Y) {} }; "
+             "classe H : publique Base { publique: constructeur(C& c, entier32& x, entier32& y) : parent({c + x, c + y}) {} }; "
+             + principal(depart + "H h(c, x, y); retourner 42 * convertir<entier32>(h.X == 5 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "classe M { publique: entier32 X; constructeur(P p) : X(p.X + p.Y) {} }; "
+             "classe H { M m; publique: constructeur(C& c, entier32& x, entier32& y) : m({c + x, c + y}) {} "
+             "entier32 Lire() { retourner soi.m.X; } }; "
+             + principal(depart + "H h(c, x, y); retourner 42 * convertir<entier32>(h.Lire() == 5 && x == 2 && y == 3);"), 12, 2},
+            {mutation + "classe H { entier32 X; publique: constructeur(C& c, entier32& x, entier32& y) : soi({c + x, c + y}) {} "
+             "constructeur(P p) : X(p.X + p.Y) {} entier32 Lire() { retourner soi.X; } }; "
+             + principal(depart + "H h(c, x, y); retourner 42 * convertir<entier32>(h.Lire() == 5 && x == 2 && y == 3);"), 12, 2},
+            {lecture + principal("C c; constante entier32 x = 1; constante entier32 y = 2; P p = {c + x, c + y}; "
+                "retourner 42 * convertir<entier32>(p.X == 2 && p.Y == 3 && x == 1 && y == 2);"), 12, 2, false},
+            {mutation + "structure Etat { booléen Ignore; entier32 Valeur; }; "
+             + principal("C c; entier32 x = 41; entier32 y = 41; Etat e = {faux && (c + x), c + y}; "
+                "retourner 42 * convertir<entier32>(e.Ignore == faux && e.Valeur == 42 && x == 41 && y == 42);"), 41, 2},
+            {mutation + principal(depart + "P p = {c + x, x}; "
+                "retourner 42 * convertir<entier32>(p.X == 2 && p.Y == 2 && x == 2 && y == 2);"), 1, 1},
+            {mutation + principal("C c; entier32 x = 40; P p = {c + x, c + x}; "
+                "retourner 42 * convertir<entier32>(p.X == 41 && p.Y == 42 && x == 42);"), 441, 2},
+            {adresses + principal("C c; entier32 x = 1; entier32 y = 3; entier32 cible = 42; c.Cible = &cible; "
+                "entier32* a = &x; entier32* b = &y; Adresses p = {c + a, convertir<constante entier32*>(c + b)}; "
+                "retourner 42 * convertir<entier32>(p.Mutable == &cible && p.Lecture == convertir<constante entier32*>(&cible) "
+                "&& a == &cible && b == &cible && x == 1 && y == 3 && *p.Mutable == 42 && *p.Lecture == 42);"), 13, 2},
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+            VerifierOperateursReferencesBilingues(syntaxe, semantique, declarations + valides[index].Texte,
+                valides[index].Methode, valides[index].Trace, valides[index].NombreOperateurs,
+                "operateur-initialiseur-agrege-valide-" + std::to_string(index));
+        const auto fonction = [](std::string_view corps) {
+            return "publique vide F(C& objet, constante entier32& x) { " + std::string(corps) + " }";
+        };
+        const std::string prive = "classe C { privée: entier32 opérateur+(entier32& valeur) { retourner valeur; } }; "
+            "espace C { publique entier32 opérateur+(C& objet, booléen valeur) { retourner 1; } } ";
+        const std::vector<std::pair<std::string, std::uint32_t>> refus{
+            {mutation + fonction("P p = {objet + x, Absente};"), 21},
+            {mutation + fonction("P p = {Absente, objet + x};"), 18},
+            {mutation + fonction("P p = {vrai, objet + x};"), 45},
+            {mutation + fonction("P p = {objet + x, vrai};"), 21},
+            {mutation + fonction("P p = {objet + x, Absente, 0};"), 43},
+            {mutation + fonction("entier32 valeurs[1] = {objet + x, Absente};"), 42},
+            {mutation + fonction("entier32 valeurs[2] = {objet + x, vrai};"), 21},
+            {mutation + fonction("entier32 valeurs[2] = {vrai, objet + x};"), 45},
+            {mutation + fonction("Bloc b = {{objet + x, 0}, {Absente, 0, 0}};"), 21},
+            {mutation + fonction("Bloc b = {{0, 0}, {Absente, 0, 0}};"), 42},
+            {mutation + fonction("Bloc b = {{vrai, objet + x}, {Absente, 0, 0}};"), 45},
+            {mutation + fonction("U u = {objet + x, Absente};"), 43},
+            {mutation + fonction("entier32 valeur = {{objet + x, 0}};"), 44},
+            {mutation + fonction("P& p = {objet + x, Absente};"), 69},
+            {mutation + fonction("constante P p = {0, 0}; p = {objet + x, Absente};"), 71},
+            {mutation + fonction("P p = {}; p = {objet + x, Absente, 0};"), 43},
+            {mutation + fonction("naturel8 valeurs[2] = {300, objet + x};"), 90},
+            {mutation + fonction("naturel8 valeurs[2] = {objet + x, 300};"), 21},
+            {mutation + "classe H { P p = {objet + x, vrai}; publique: constructeur(C& objet, constante entier32& x) { Absente; } };", 21},
+            {mutation + "classe H { P p = {vrai, objet + x}; publique: constructeur(C& objet, constante entier32& x) { Absente; } };", 45},
+            {prive + "classe H { P p = {objet + x, Absente}; publique: constructeur(C& objet, entier32& x) {} };", 25},
+            {mutation + "classe H { P p; publique: constructeur(C& objet, constante entier32& x) : p({objet + x, Absente}) { Absente; } };", 21},
+            {mutation + "classe Base { publique: constructeur(P p) {} }; classe H : publique Base { publique: "
+             "constructeur(C& objet, constante entier32& x) : parent({objet + x, vrai}) { Absente; } };", 21},
+            {mutation + "classe M { publique: constructeur(P p) {} }; classe H { M m; publique: "
+             "constructeur(C& objet, constante entier32& x) : m({objet + x, vrai}) { Absente; } };", 21},
+            {mutation + "classe H { publique: constructeur(C& objet, constante entier32& x) : soi({objet + x, vrai}) { Absente; } "
+             "constructeur(P p) {} };", 21},
+            {mutation + "vide Somme(P p) {} vide Somme(entier32 p) {} "
+             + fonction("Somme({objet + x, Absente});"), 22},
+            {mutation + "vide Somme(P p) {} " + fonction("pointeur_fonction<vide(P)> rappel = Somme; rappel({vrai, objet + x});"), 45},
+            {mutation + "vide Somme(P p) {} " + fonction("pointeur_fonction<vide(P)> rappel = Somme; rappel({objet + x, Absente}, 0);"), 54},
+            {mutation + "publique P Produire(C& objet, constante entier32& x) { retourner {objet + x, vrai}; }", 21},
+            {mutation + fonction("P p = {}; p = {vrai, objet + x};"), 45},
+            {mutation + fonction("Bloc b = {}; b = {{0, 0}, {objet + x, Absente, 0}};"), 42},
+            {mutation + fonction("U u = {}; u = {objet + x, Absente};"), 43},
+            {mutation + fonction("entier32 valeur = 0; valeur = {objet + x, Absente};"), 44},
+            {mutation + fonction("entier32 valeur = 0; valeur = {vrai};"), 45},
+            {mutation + fonction("P p = {}; P* adresse = &p; *adresse = {objet + x, Absente, 0};"), 43},
+            {mutation + "structure Contenant { P Paire; }; " + fonction("Contenant c = {}; c.Paire = {objet + x, Absente, 0};"), 43},
+            {mutation + "publique P Produire(C& objet, constante entier32& x) { retourner {objet + x, Absente, 0}; }", 43},
+            {mutation + "publique P Produire(C& objet, constante entier32& x) { retourner {vrai, objet + x}; }", 45},
+            {mutation + "publique entier32 Produire(C& objet, constante entier32& x) { retourner {objet + x, Absente}; }", 44},
+            {mutation + "publique entier32 Produire(C& objet, constante entier32& x) { retourner {vrai}; }", 45},
+            {mutation + "publique U Produire(C& objet, constante entier32& x) { retourner {objet + x, Absente}; }", 43},
+            {mutation + "publique Bloc Produire(C& objet, constante entier32& x) { retourner {{0, 0}, {objet + x, Absente, 0}}; }", 42},
+        };
+        for (std::size_t index = 0; index < refus.size(); ++index)
+        {
+            const auto source = declarations + refus[index].first;
+            for (const auto& texte : {source, TraduireCorpusConversions(source)})
+                ComparerErreurSemantique(syntaxe, semantique, texte, refus[index].second,
+                    "operateur-initialiseur-agrege-refuse-" + std::to_string(index));
+        }
+        std::cout << "Opérateurs des initialiseurs agrégés : " << valides.size()
+                  << " corpus bilingues exécutés, stockage, mutations et ordre des éléments vérifiés.\n";
+    }
+
     void TesterPrioritesPlansConstructeursSemantiques(
         AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
     {
@@ -8357,6 +10143,803 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             }
     }
 
+    /**
+     * <résumé>Analyse réellement les interfaces en Gs++ sans reconstruire leur AST côté hôte.</résumé>
+     * Les textes sont préparés : la lecture et l'expansion des inclusions restent hors de cette API.
+     **/
+    void TesterInterfacesEnMemoire(
+        AnalyseurDeclarationsAutoHeberge source, AnalyseurDeclarationsAutoHeberge interface,
+        AnalyseurSemantiqueAutoHeberge semantique)
+    {
+        const std::vector<std::string> valides{
+            "entier32 Lire();",
+            "publique entier32 Lire(entier32 valeur); publique entier32 Globale;",
+            "externe vide Journaliser(constante caractère* texte); constante entier32 Limite;",
+            "entier32 Lire(entier32 valeur); entier64 Lire(entier64 valeur);",
+            "structure P { entier32 X; entier32 Y; }; P Lire(P p); P Globale;",
+            "union U { entier32 X; entier64 Y; }; U Lire(U u);",
+            "énumération Etat { Actif = 1, Suivant }; Etat Lire(Etat valeur);",
+            "entier32 Modifier(entier32& valeur, constante entier32& lecture);",
+            "entier32* Rediriger(entier32*& valeur, constante entier32* lecture);",
+            "pointeur_fonction<entier32(entier32)> Creer(); pointeur_fonction<entier32(entier32)> Rappel;",
+            "pointeur_fonction<entier32&(entier32&)> Creer();",
+            "classe C { publique: constructeur(); destructeur(); entier32 Lire(); };",
+            "classe C { privée: entier32 X; alias Valeur = X; entier32 Lire(); protégée: constructeur(entier32 x); publique: destructeur(); };",
+            "classe C { publique: entier32 opérateur+(entier32 valeur); entier32 opérateur!(); };",
+            "classe Base { publique: constructeur(); virtuel entier32 Lire(); }; classe D : publique Base { publique: constructeur(); remplacer entier32 Lire(); };",
+            "classe C { entier32 X; publique: constructeur(entier32 valeur); entier32 Modifier(entier32& valeur); };",
+            "classe C { publique: constructeur(); constructeur(entier32 valeur); destructeur(); };",
+            "espace N { structure P { entier32 X; }; alias Vue = P; entier32 Lire(Vue p); } utilisant espace N; Vue Globale;",
+            "entier32 Valeurs[2][3]; vide Recevoir(entier32* valeurs);",
+            "espace A::B { structure P { entier32 X; }; P Lire(constante P& p); } alias Vue = A::B::P;",
+            "classe C { publique: constructeur(); }; espace C { entier32 opérateur+(C& objet, entier32 valeur); }",
+            "\xEF\xBB\xBF/** Interface UTF-8. **/\r\nespace Démo {\r\nstructure Point { entier32 X; };\r\nPoint Créer(constante Point& valeur);\r\n}\r\n",
+        };
+        for (std::size_t index = 0; index < valides.size(); ++index)
+        {
+            std::optional<std::vector<NoeudDeclarationHote>> precedent;
+            for (const auto& texte : {valides[index], TraduireCorpusConversions(valides[index])})
+            {
+                const auto resultat = AnalyserSemantiqueValide(interface, semantique, texte,
+                    "interface-memoire-valide-" + std::to_string(index), true);
+                NoeudDeclarationHote sentinelle;
+                std::memset(&sentinelle, 0xA5, sizeof(sentinelle));
+                auto tampon = resultat.Noeuds;
+                tampon.push_back(sentinelle);
+                RequeteAnalyseDeclarationsHote requete{
+                    texte.data(), texte.size(), tampon.data(), resultat.Noeuds.size(), {}};
+                Exiger(interface(&requete) == 0
+                        && std::memcmp(tampon.data(), resultat.Noeuds.data(), resultat.Noeuds.size() * sizeof(sentinelle)) == 0
+                        && std::memcmp(&tampon.back(), &sentinelle, sizeof(sentinelle)) == 0,
+                    "AST d'interface non déterministe ou écriture au-delà de la capacité exacte");
+                std::fill(tampon.begin(), tampon.end(), sentinelle);
+                --requete.Capacite;
+                Exiger(interface(&requete) == 1 && requete.Resultat.CapaciteRequise == resultat.Noeuds.size()
+                        && std::memcmp(tampon.data(), resultat.Noeuds.data(), requete.Capacite * sizeof(sentinelle)) == 0
+                        && std::memcmp(&tampon[requete.Capacite], &sentinelle, sizeof(sentinelle)) == 0
+                        && std::memcmp(&tampon.back(), &sentinelle, sizeof(sentinelle)) == 0,
+                    "préfixe d'AST d'interface incorrect ou écriture après la capacité partielle");
+                for (const auto& noeud : resultat.Noeuds)
+                {
+                    const bool fonction = noeud.Genre == 1 || (noeud.Genre >= 12 && noeud.Genre <= 15);
+                    if (fonction)
+                        Exiger((noeud.Drapeaux & 2U) != 0 && (noeud.Drapeaux & 4U) == 0,
+                            "un prototype d'interface n'est pas externe ou possède un corps");
+                    if (noeud.Genre == 1 || noeud.Genre == 3 || (noeud.Genre == 15 && noeud.Parent == 0))
+                        Exiger((noeud.Drapeaux & 1U) == 0,
+                            "une déclaration racine d'interface ne doit pas exporter une définition publique");
+                }
+                for (const auto& resolution : resultat.Resolutions)
+                    Exiger(!(resultat.Noeuds[resolution.IndexNoeud].Genre == 13
+                            && (resolution.Drapeaux & 32768U) != 0),
+                        "un prototype de constructeur produit un plan de corps");
+                if (precedent)
+                {
+                    Exiger(precedent->size() == resultat.Noeuds.size(), "taille d'AST d'interface bilingue différente");
+                    for (std::size_t noeud = 0; noeud < precedent->size(); ++noeud)
+                        Exiger(MemeStructureDeclaration((*precedent)[noeud], resultat.Noeuds[noeud]),
+                            "structure d'AST d'interface bilingue différente");
+                }
+                precedent = resultat.Noeuds;
+            }
+        }
+        const std::vector<std::string> validesSyntaxiques{
+            "structure Point { entier32 X; entier32 Y; };",
+            "énumération Etat { Actif = 1, Suivant };",
+            "union U { entier32 X; entier64 Y; };",
+            "structure P { entier32 X; }; alias Vue = P;",
+            "publique constante entier32 Limite; entier32 Valeurs[2];",
+            "espace N { structure P { entier32 X; }; } utilisant espace N; alias Vue = P;",
+        };
+        for (std::size_t index = 0; index < validesSyntaxiques.size(); ++index)
+            for (const auto& texte : {validesSyntaxiques[index], TraduireCorpusConversions(validesSyntaxiques[index])})
+                ComparerDeclarations(interface, texte, "interface-memoire-types-" + std::to_string(index), true);
+        const std::vector<std::pair<std::string, std::uint32_t>> refusSyntaxiques{
+            {"publique entier32 Lire() { retourner 42; }", 11},
+            {"publique entier32 Globale = 42;", 15},
+            {"classe C { publique: constructeur() {} };", 11},
+            {"classe C { entier32 X; publique: constructeur() : X(42); };", 15},
+            {"classe C { publique: constructeur() : soi(42); constructeur(entier32 valeur); };", 15},
+            {"classe Base {}; classe C : publique Base { publique: constructeur() : parent(); };", 15},
+            {"classe C { publique: destructeur(entier32 valeur); };", 24},
+            {"classe C { publique: entier32 Lire() : X(42); };", 25},
+            {"entier32 Lire() : X(42);", 25},
+            {"structure P { entier32 X = 42; };", 20},
+            {"entier32 Lire()", 11},
+            {"entier32 Lire(entier32);", 5},
+            {"classe C { publique: entier32 Lire() { retourner 42; } };", 11},
+            {"classe C { publique: destructeur() {} };", 11},
+        };
+        for (std::size_t index = 0; index < refusSyntaxiques.size(); ++index)
+            for (const auto& texte : {refusSyntaxiques[index].first, TraduireCorpusConversions(refusSyntaxiques[index].first)})
+                ComparerErreurDeclarations(interface, texte, refusSyntaxiques[index].second,
+                    "interface-memoire-syntaxe-refuse-" + std::to_string(index), true);
+        const std::vector<std::pair<std::string, std::uint32_t>> refusSemantiques{
+            {"Inconnu Lire();", 100},
+            {"vide Lire(vide valeur);", 105},
+            {"entier32 Lire(entier32 a, entier32 b, entier32 c, entier32 d, entier32 e);", 106},
+            {"entier32& Lire();", 104},
+            {"pointeur_fonction<entier32(vide)> Rappel;", 102},
+            {"pointeur_fonction<entier32(entier32, entier32, entier32, entier32, entier32)> Rappel;", 103},
+            {"vide Globale;", 78},
+            {"alias Vue = Inconnu;", 110},
+            {"structure P { P Valeur; };", 57},
+            {"classe C : publique C {};", 115},
+            {"classe Base { publique: virtuel entier32 Lire(); }; classe D : publique Base { publique: remplacer entier64 Lire(); };", 116},
+            {"classe C { publique: entier32 opérateur/(); };", 59},
+            {"classe C { entier32 X = valeur; publique: constructeur(entier32 valeur); };", 39},
+            {"classe C { entier32 X = Absente; publique: constructeur(); };", 39},
+            {"vide Recevoir(entier32 valeurs[2]);", 105},
+        };
+        for (std::size_t index = 0; index < refusSemantiques.size(); ++index)
+            for (const auto& texte : {"vide Temoin();\n" + refusSemantiques[index].first,
+                                     TraduireCorpusConversions("vide Temoin();\n" + refusSemantiques[index].first)})
+                ComparerErreurSemantique(interface, semantique, texte, refusSemantiques[index].second,
+                    "interface-memoire-semantique-refuse-" + std::to_string(index), true);
+
+        ComparerDeclarations(interface, "", "interface-memoire-vide", true);
+        ComparerErreurDeclarations(source, "entier32 Lire();", 9, "prototype-hors-interface");
+        ComparerDeclarations(source, "publique entier32 Lire() { retourner 42; }", "source-apres-interface");
+        for (const auto& texteListe : {std::string("entier32 Lire() : X(42);"), std::string("int32 Lire() : X(42);")})
+            ComparerErreurDeclarations(source, texteListe, 25, "liste-fonction-hors-constructeur");
+        ComparerDeclarations(interface, "entier32 Lire();", "interface-apres-source", true);
+        Exiger(interface(nullptr) == 3, "requête d'interface nulle acceptée");
+        RequeteAnalyseDeclarationsHote invalide{nullptr, 1, nullptr, 0, {}};
+        Exiger(interface(&invalide) == 3 && invalide.Resultat.LigneErreur == 1 && invalide.Resultat.ColonneErreur == 1,
+            "source d'interface nulle acceptée");
+        const std::string texte = "entier32 Lire();";
+        invalide = {texte.data(), texte.size(), nullptr, 1, {}};
+        Exiger(interface(&invalide) == 3, "capacité d'interface sans tampon acceptée");
+        std::cout << "Interfaces en mémoire : " << valides.size() << " corpus bilingues analysés, "
+                  << validesSyntaxiques.size() << " interfaces de types/données analysées, "
+                  << refusSyntaxiques.size() << " refus syntaxiques et " << refusSemantiques.size()
+                  << " refus sémantiques bilingues, prototypes et AST intacts vérifiés.\n";
+    }
+
+    using AssembleurDeclarationsAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequeteAssemblageDeclarationsHote*);
+    using AnalyseurSemantiqueUnitesAutoHeberge =
+        std::uint32_t (GS_ABI_HOTE *)(RequeteAnalyseSemantiqueUnitesHote*);
+
+    struct CorpusAssemblage
+    {
+        std::vector<std::pair<std::string, bool>> Unites;
+        std::uint32_t ErreurSemantique = 0;
+    };
+
+    /**
+     * <résumé>Compare l'assemblage réel aux analyses bootstrap indépendantes et retrouve l'origine des diagnostics.</résumé>
+     **/
+    void TesterAssemblageDeclarationsPreparees(
+        AssembleurDeclarationsAutoHeberge assembler, AnalyseurDeclarationsAutoHeberge source,
+        AnalyseurDeclarationsAutoHeberge interface, AnalyseurSemantiqueUnitesAutoHeberge semantique)
+    {
+        const std::vector<CorpusAssemblage> valides{
+            {{{"structure P { entier32 X; };", true}, {"publique entier32 F() { P p = {42}; retourner p.X; }", false}}},
+            {{{"énumération Etat { Actif = 42 };", true}, {"publique entier32 F() { retourner convertir<entier32>(Etat::Actif); }", false}}},
+            {{{"union U { entier32 X; entier64 Y; };", true}, {"publique entier32 F(U u) { retourner u.X; }", false}}},
+            {{{"structure P { entier32 X; }; alias Vue = P;", true}, {"publique entier32 F(constante Vue& p) { retourner p.X; }", false}}},
+            {{{"classe C { publique: entier32 X; };", true}, {"publique entier32 F(C c) { retourner c.X; }", false}}},
+            {{{"structure P { entier32 X; };", true}, {"énumération E { V = 42 };", true},
+              {"publique entier32 Lire(P p) { retourner p.X; }", false},
+              {"publique entier32 F() { P p = {42}; retourner Lire(p); }", false}}},
+            {{{"", true}, {"\xEF\xBB\xBF", false}, {"publique entier32 F() { retourner 42; }", false}}},
+            {{{"\xEF\xBB\xBF// Début\r\nespace Démo { structure Point { entier32 X; }; }\r\n", true},
+              {"\xEF\xBB\xBF\r\nespace Démo { publique entier32 Créer() { Point p = {42}; retourner p.X; } }", false}}},
+            {{{"publique entier32 Lire() { retourner 42; }", false}, {"structure P { entier32 X; };", true},
+              {"publique entier32 F() { retourner Lire(); }", false}}},
+            {{{"pointeur_fonction<entier32()> Rappel;", true}, {"publique entier32 F() { retourner Rappel(); }", false}}},
+            {{{"espace N { structure P { entier32 X; }; } utilisant espace N;", true},
+              {"utilisant espace N; publique entier32 F() { P p = {42}; retourner p.X; }", false}}},
+            {{{"structure P { entier32 X; }; // sans LF final", true},
+              {"publique entier32 F() { P p = {42}; retourner p.X; } // fin", false}}},
+            {{{"espace A { structure P { entier32 X; }; }", true},
+              {"espace B { utilisant espace A; } utilisant espace B; publique entier32 F() { P p = {42}; retourner p.X; }", false}}},
+        };
+        const std::vector<CorpusAssemblage> invalides{
+            {{{"Inconnu Lire();", true}, {"publique vide F() {}", false}}, 100},
+            {{{"vide Globale;", true}, {"publique vide F() {}", false}}, 78},
+            {{{"alias Vue = Inconnu;", true}, {"publique vide F() {}", false}}, 110},
+            {{{"structure P { P Valeur; };", true}, {"publique vide F() {}", false}}, 57},
+            {{{"classe C : publique C {};", true}, {"publique vide F() {}", false}}, 115},
+            {{{"structure P { entier32 X; };", true}, {"\r\npublique entier32 F() { retourner Absente; }", false}}, 18},
+            {{{"structure P { entier32 X; };", true}, {"publique vide F() { vide x; }", false}}, 123},
+            {{{"structure P { entier32 X; };", true}, {"publique vide F() { constante entier32 x; }", false}}, 125},
+            {{{"espace N { structure P { entier32 X; }; } utilisant espace N;", true},
+              {"publique entier32 F() { P p = {42}; retourner p.X; }", false}}, 100},
+            {{{"espace N { entier32 Lire(); } utilisant espace N;", true},
+              {"publique entier32 F() { retourner Lire(); }", false}}, 18},
+            {{{"espace A { entier32 Lire(); } espace B { utilisant espace A; }", true},
+              {"utilisant espace B; publique entier32 F() { retourner Lire(); }", false}}, 18},
+            {{{"espace N { structure P { entier32 X; }; } utilisant espace N;", true},
+              {"P Globale; publique vide F() {}", false}}, 100},
+        };
+        auto tester = [&](const CorpusAssemblage& corpus, bool anglais)
+        {
+            std::vector<std::string> textes;
+            for (const auto& unite : corpus.Unites)
+                textes.push_back(anglais ? TraduireCorpusConversions(unite.first) : unite.first);
+            const auto textesAvant = textes;
+            std::vector<UniteDeclarationsPrepareeHote> unites;
+            std::vector<OrigineUniteDeclarationsHote> originesAttendues;
+            std::vector<NoeudDeclarationHote> attendus;
+            std::string texteAttendu;
+            std::uint32_t ligne = 1;
+            GsPP::Programme programme;
+            for (std::size_t index = 0; index < textes.size(); ++index)
+            {
+                const auto& texte = textes[index];
+                const bool estInterface = corpus.Unites[index].second;
+                unites.push_back({texte.data(), texte.size(), estInterface ? 1U : 0U, 0});
+                auto noeuds = ComparerDeclarations(estInterface ? interface : source,
+                    texte, "assemblage-unite-" + std::to_string(index), estInterface);
+                const bool bom = texte.starts_with("\xEF\xBB\xBF");
+                const auto tailleBom = bom ? 3U : 0U;
+                const auto nombreLignes = 1U + static_cast<std::uint32_t>(std::count(texte.begin(), texte.end(), '\n'));
+                originesAttendues.push_back({texteAttendu.size(), texte.size() - tailleBom, ligne, nombreLignes, tailleBom, 0});
+                if (attendus.empty()) attendus.push_back(noeuds.front());
+                const auto decalageNoeuds = attendus.size() - 1;
+                for (std::size_t n = 1; n < noeuds.size(); ++n)
+                {
+                    auto noeud = noeuds[n];
+                    if (noeud.Parent != 0) noeud.Parent += decalageNoeuds;
+                    noeud.Ligne += ligne - 1;
+                    if (noeud.TailleNom != 0) noeud.DebutNom = noeud.DebutNom - tailleBom + texteAttendu.size();
+                    attendus.push_back(noeud);
+                }
+                texteAttendu += texte.substr(tailleBom) + '\n';
+                ligne += nombreLignes;
+                const auto fichier = "unite-" + std::to_string(index);
+                auto partie = GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, fichier).Analyser(), fichier, estInterface).Analyser();
+                auto ajouter = [](auto& destination, auto& origine)
+                {
+                    destination.insert(destination.end(), std::make_move_iterator(origine.begin()), std::make_move_iterator(origine.end()));
+                };
+                ajouter(programme.Structures, partie.Structures);
+                ajouter(programme.Enumerations, partie.Enumerations);
+                ajouter(programme.VariablesGlobales, partie.VariablesGlobales);
+                ajouter(programme.Fonctions, partie.Fonctions);
+                ajouter(programme.Aliases, partie.Aliases);
+                ajouter(programme.Utilisations, partie.Utilisations);
+                ajouter(programme.EspacesNoms, partie.EspacesNoms);
+            }
+            const auto unitesAvant = unites;
+            RequeteAssemblageDeclarationsHote requete{unites.data(), unites.size(), nullptr, 0, nullptr, 0, nullptr, 0, {}};
+            Exiger(assembler(&requete) == 1 && requete.Resultat.NombreNoeuds == attendus.size()
+                && requete.Resultat.NombreOctetsSource == texteAttendu.size() && requete.Resultat.NombreOrigines == unites.size()
+                && requete.Resultat.IndexUniteErreur == unites.size() && requete.Resultat.NombreOctetsArene != 0,
+                "tailles requises de l'assemblage incorrectes");
+            std::vector<char> texteSortie(texteAttendu.size() + 1, '\x5A');
+            NoeudDeclarationHote gardeNoeud;
+            OrigineUniteDeclarationsHote gardeOrigine;
+            std::memset(&gardeNoeud, 0xA5, sizeof(gardeNoeud));
+            std::memset(&gardeOrigine, 0xA5, sizeof(gardeOrigine));
+            std::vector<NoeudDeclarationHote> noeudsSortie(attendus.size() + 1, gardeNoeud);
+            std::vector<OrigineUniteDeclarationsHote> originesSortie(unites.size() + 1, gardeOrigine);
+            requete.SourceAssemblee = texteSortie.data();
+            requete.CapaciteSource = texteAttendu.size();
+            requete.Noeuds = noeudsSortie.data();
+            requete.CapaciteNoeuds = attendus.size();
+            requete.Origines = originesSortie.data();
+            requete.CapaciteOrigines = unites.size();
+            auto intact = [&]()
+            {
+                Exiger(std::all_of(texteSortie.begin(), texteSortie.end(), [](char c) { return c == '\x5A'; }), "texte partiel publié");
+                for (const auto& noeud : noeudsSortie)
+                    Exiger(std::memcmp(&noeud, &gardeNoeud, sizeof(noeud)) == 0, "AST partiel publié");
+                for (const auto& origine : originesSortie)
+                    Exiger(std::memcmp(&origine, &gardeOrigine, sizeof(origine)) == 0, "origines partielles publiées");
+            };
+            for (auto* capacite : {&requete.CapaciteSource, &requete.CapaciteNoeuds, &requete.CapaciteOrigines})
+            {
+                --*capacite;
+                Exiger(assembler(&requete) == 1, "une sortie d'assemblage trop petite n'est pas refusée");
+                ++*capacite;
+                intact();
+            }
+            // Injecter un échec à chaque allocation jusqu'au premier assemblage complet.
+            bool injectionTerminee = false;
+            for (std::uint64_t budget = 0; budget < 128; ++budget)
+            {
+                LimiteAllocationsAssemblage = NombreAllocations + budget;
+                const auto code = assembler(&requete);
+                LimiteAllocationsAssemblage.reset();
+                Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+                    "une allocation refusée laisse une arène vivante");
+                if (code == 0) { injectionTerminee = true; break; }
+                Exiger(code == 3, "échec d'allocation non propagé par l'assemblage");
+                intact();
+            }
+            Exiger(injectionTerminee && assembler(&requete) == 0, "assemblage complet impossible");
+            Exiger(std::string(texteSortie.data(), texteAttendu.size()) == texteAttendu && texteSortie.back() == '\x5A', "texte assemblé incorrect ou non borné");
+            Exiger(std::memcmp(noeudsSortie.data(), attendus.data(), attendus.size() * sizeof(gardeNoeud)) == 0
+                && std::memcmp(&noeudsSortie.back(), &gardeNoeud, sizeof(gardeNoeud)) == 0, "AST assemblé incorrect ou non borné");
+            Exiger(std::memcmp(originesSortie.data(), originesAttendues.data(), unites.size() * sizeof(gardeOrigine)) == 0
+                && std::memcmp(&originesSortie.back(), &gardeOrigine, sizeof(gardeOrigine)) == 0, "origines incorrectes ou non bornées");
+            Exiger(textes == textesAvant && std::memcmp(unites.data(), unitesAvant.data(), unites.size() * sizeof(unites[0])) == 0, "unités d'entrée modifiées");
+
+            std::optional<std::tuple<std::string, std::uint32_t, std::uint32_t>> diagnostic;
+            std::string messageBootstrap;
+            try { GsPP::AnalyseurSemantique().Analyser(programme); }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())};
+                messageBootstrap = erreur.what();
+            }
+            Exiger(diagnostic.has_value() == (corpus.ErreurSemantique != 0),
+                "contrat sémantique bootstrap de l'assemblage incorrect : " + messageBootstrap + ", source=" + texteAttendu);
+            const auto astAvant = noeudsSortie;
+            RequeteAnalyseSemantiqueHote analyse{texteSortie.data(), texteAttendu.size(), noeudsSortie.data(), attendus.size(), nullptr, 0, nullptr, 0, {}};
+            RequeteAnalyseSemantiqueUnitesHote analyseUnites{&analyse, originesSortie.data(), unites.size(), 0, 0, 0};
+            const auto code = semantique(&analyseUnites);
+            if (diagnostic)
+            {
+                std::size_t indexOrigine = originesAttendues.size();
+                for (std::size_t i = 0; i < originesAttendues.size(); ++i)
+                    if (analyse.Resultat.LigneErreur >= originesAttendues[i].PremiereLigne
+                        && analyse.Resultat.LigneErreur - originesAttendues[i].PremiereLigne < originesAttendues[i].NombreLignes)
+                        indexOrigine = i;
+                Exiger(indexOrigine < unites.size() && code == corpus.ErreurSemantique, "diagnostic assemblé sans origine ou code incorrect : " + std::to_string(code));
+                Exiger(std::get<0>(*diagnostic) == "unite-" + std::to_string(indexOrigine)
+                    && std::get<1>(*diagnostic) == analyse.Resultat.LigneErreur - originesAttendues[indexOrigine].PremiereLigne + 1
+                    && std::get<2>(*diagnostic) == analyse.Resultat.ColonneErreur
+                    && analyseUnites.IndexUniteErreur == indexOrigine
+                    && analyseUnites.LigneLocaleErreur == std::get<1>(*diagnostic)
+                    && analyseUnites.ColonneLocaleErreur == std::get<2>(*diagnostic), "origine du diagnostic différente du bootstrap");
+                ++NombreRefusSemantiquesDifferentiels;
+            }
+            else
+            {
+                Exiger(code == 4, "mesure sémantique de l'assemblage valide refusée : " + std::to_string(code));
+                std::vector<SymboleSemantiqueHote> symboles(analyse.Resultat.NombreSymboles);
+                std::vector<ResolutionSemantiqueHote> resolutions(analyse.Resultat.NombreResolutions);
+                analyse.Symboles = symboles.data(); analyse.CapaciteSymboles = symboles.size();
+                analyse.Resolutions = resolutions.data(); analyse.CapaciteResolutions = resolutions.size();
+                Exiger(semantique(&analyseUnites) == 0 && analyseUnites.IndexUniteErreur == unites.size()
+                    && analyseUnites.LigneLocaleErreur == 0 && analyseUnites.ColonneLocaleErreur == 0,
+                    "validation sémantique de l'assemblage échouée");
+            }
+            Exiger(std::memcmp(noeudsSortie.data(), astAvant.data(), astAvant.size() * sizeof(gardeNoeud)) == 0, "AST assemblé modifié par la sémantique");
+            analyse.Symboles = nullptr; analyse.CapaciteSymboles = 0;
+            analyse.Resolutions = nullptr; analyse.CapaciteResolutions = 0;
+            const auto originesAvant = originesSortie;
+            for (int champ = 0; champ < 8; ++champ)
+            {
+                auto mauvaisesOrigines = originesSortie;
+                if (champ == 0) ++mauvaisesOrigines[0].DebutOctets;
+                if (champ == 1) mauvaisesOrigines[0].TailleOctets = UINT64_MAX;
+                if (champ == 2) ++mauvaisesOrigines[0].PremiereLigne;
+                if (champ == 3) ++mauvaisesOrigines[0].NombreLignes;
+                if (champ == 4) mauvaisesOrigines[0].OctetsBom = 1;
+                if (champ == 5) mauvaisesOrigines[0].Reserve = 1;
+                analyseUnites.Origines = champ == 6 ? nullptr : mauvaisesOrigines.data();
+                analyseUnites.NombreOrigines = champ == 7 ? 0 : unites.size();
+                Exiger(semantique(&analyseUnites) == 1 && analyse.Resultat.Erreur == 1
+                    && analyseUnites.IndexUniteErreur == analyseUnites.NombreOrigines
+                    && analyseUnites.LigneLocaleErreur == 0 && analyseUnites.ColonneLocaleErreur == 0,
+                    "table d'origines incohérente acceptée ou diagnostic périmé conservé");
+            }
+            analyseUnites.Origines = originesSortie.data(); analyseUnites.NombreOrigines = unites.size();
+            const auto separateur = static_cast<std::size_t>(originesSortie[0].TailleOctets);
+            texteSortie[separateur] = ' ';
+            Exiger(semantique(&analyseUnites) == 1, "séparateur d'unité absent accepté");
+            texteSortie[separateur] = '\n';
+            --analyse.TailleSource;
+            Exiger(semantique(&analyseUnites) == 1, "source assemblée tronquée acceptée");
+            ++analyse.TailleSource;
+            Exiger(std::memcmp(noeudsSortie.data(), astAvant.data(), astAvant.size() * sizeof(gardeNoeud)) == 0
+                && std::memcmp(originesSortie.data(), originesAvant.data(), originesAvant.size() * sizeof(gardeOrigine)) == 0,
+                "AST ou origines modifiés après rejet d'une table d'origines");
+        };
+        for (const auto& corpus : valides) for (bool anglais : {false, true}) tester(corpus, anglais);
+        for (const auto& corpus : invalides) for (bool anglais : {false, true}) tester(corpus, anglais);
+
+        // L'assemblage ne prétend pas normaliser une déclaration et sa définition.
+        for (bool anglais : {false, true})
+        {
+            const auto prototype = anglais ? std::string("int32 Lire();") : std::string("entier32 Lire();");
+            const auto definition = anglais ? std::string("public int32 Lire() { return 42; }")
+                                            : std::string("publique entier32 Lire() { retourner 42; }");
+            UniteDeclarationsPrepareeHote unites[]{{prototype.data(), prototype.size(), 1, 0}, {definition.data(), definition.size(), 0, 0}};
+            RequeteAssemblageDeclarationsHote analyse{unites, 2, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+            Exiger(assembler(&analyse) == 1, "assemblage prototype/définition non mesuré");
+            std::vector<char> texte(analyse.Resultat.NombreOctetsSource);
+            std::vector<NoeudDeclarationHote> noeuds(analyse.Resultat.NombreNoeuds);
+            std::vector<OrigineUniteDeclarationsHote> origines(2);
+            analyse.SourceAssemblee = texte.data(); analyse.CapaciteSource = texte.size();
+            analyse.Noeuds = noeuds.data(); analyse.CapaciteNoeuds = noeuds.size();
+            analyse.Origines = origines.data(); analyse.CapaciteOrigines = origines.size();
+            Exiger(assembler(&analyse) == 0 && std::count_if(noeuds.begin(), noeuds.end(),
+                [](const auto& n) { return n.Genre == 1 && n.Parent == 0; }) == 2,
+                "une normalisation implicite a supprimé un prototype ou sa définition");
+        }
+
+        Exiger(assembler(nullptr) == 2, "requête d'assemblage nulle acceptée");
+        Exiger(semantique(nullptr) == 1, "requête de sémantique par unité nulle acceptée");
+        RequeteAnalyseSemantiqueUnitesHote analyseNulle{};
+        Exiger(semantique(&analyseNulle) == 1, "analyse par unité sans requête sémantique acceptée");
+        RequeteAssemblageDeclarationsHote requete{};
+        Exiger(assembler(&requete) == 2, "assemblage sans unité accepté");
+        const std::string valide = "structure P { entier32 X; };";
+        const std::vector<std::pair<std::string, bool>> erreursSyntaxiques{
+            {"entier32 Lire() { retourner 42; }", true}, {"entier32 X = 42;", true},
+            {"structure P { entier32 X;", true}, {"entier32 F() { retourner ;", false},
+            {"/** commentaire inachevé", true}, {"\xFF", false},
+        };
+        for (const auto& [texteInitial, estInterface] : erreursSyntaxiques)
+            for (const auto& texte : {texteInitial, TraduireCorpusConversions(texteInitial)})
+            {
+                UniteDeclarationsPrepareeHote unites[]{{valide.data(), valide.size(), 1, 0}, {texte.data(), texte.size(), estInterface ? 1U : 0U, 0}};
+                NoeudDeclarationHote garde;
+                OrigineUniteDeclarationsHote origine;
+                std::memset(&garde, 0xA5, sizeof(garde)); std::memset(&origine, 0xA5, sizeof(origine));
+                const auto gardeAvant = garde; const auto origineAvant = origine;
+                char sortie = 'Z';
+                requete = {unites, 2, &sortie, 1, &garde, 1, &origine, 1, {}};
+                RequeteAnalyseDeclarationsHote analyse{texte.data(), texte.size(), nullptr, 0, {}};
+                const auto code = (estInterface ? interface : source)(&analyse);
+                Exiger(assembler(&requete) == 4 && requete.Resultat.IndexUniteErreur == 1
+                    && requete.Resultat.Detail == code && requete.Resultat.DetailLexical == analyse.Resultat.Detail
+                    && requete.Resultat.LigneErreur == analyse.Resultat.LigneErreur && requete.Resultat.ColonneErreur == analyse.Resultat.ColonneErreur,
+                    "diagnostic syntaxique de l'unité perdu pendant l'assemblage");
+                std::uint32_t ligne = 0, colonne = 0;
+                try { (void)GsPP::AnalyseurSyntaxique(GsPP::Lexeur(texte, "unite-1").Analyser(), "unite-1", estInterface).Analyser(); }
+                catch (const GsPP::ErreurCompilation& erreur) { ligne = static_cast<std::uint32_t>(erreur.Ligne()); colonne = static_cast<std::uint32_t>(erreur.Colonne()); }
+                Exiger(ligne == requete.Resultat.LigneErreur && colonne == requete.Resultat.ColonneErreur && ligne != 0,
+                    "diagnostic syntaxique assemblé différent du bootstrap");
+                Exiger(sortie == 'Z' && std::memcmp(&garde, &gardeAvant, sizeof(garde)) == 0
+                    && std::memcmp(&origine, &origineAvant, sizeof(origine)) == 0, "sorties altérées après refus syntaxique");
+            }
+        for (const auto unite : std::vector<UniteDeclarationsPrepareeHote>{
+                 {nullptr, 1, 0, 0}, {valide.data(), valide.size(), 2, 0}, {valide.data(), valide.size(), 1, 1},
+                 {valide.data(), 1'000'000'000, 0, 0}, {valide.data(), UINT64_MAX, 0, 0}})
+        {
+            requete = {&unite, 1, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+            Exiger(assembler(&requete) == (unite.Taille >= 1'000'000'000 ? 5U : 2U)
+                && requete.Resultat.IndexUniteErreur == 0, "unité incohérente ou taille excessive acceptée");
+        }
+        UniteDeclarationsPrepareeHote unite{valide.data(), valide.size(), 1, 0};
+        for (auto capacite : {0, 1, 2})
+        {
+            requete = {&unite, 1, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+            if (capacite == 0) requete.CapaciteSource = 1;
+            if (capacite == 1) requete.CapaciteNoeuds = 1;
+            if (capacite == 2) requete.CapaciteOrigines = 1;
+            Exiger(assembler(&requete) == 2, "capacité sans tampon d'assemblage acceptée");
+        }
+        requete = {&unite, 1'000'001, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+        Exiger(assembler(&requete) == 5, "nombre excessif d'unités accepté");
+        UniteDeclarationsPrepareeHote tropGrandes[]{{valide.data(), 999'999'999, 0, 0}, {valide.data(), 1, 0, 0}};
+        requete = {tropGrandes, 2, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+        Exiger(assembler(&requete) == 5 && requete.Resultat.IndexUniteErreur == 1,
+            "taille cumulée excessive acceptée avant l'analyse des textes");
+        UniteDeclarationsPrepareeHote vides[]{{nullptr, 0, 1, 0}, {nullptr, 0, 0, 0}};
+        char texteVide[2]{};
+        NoeudDeclarationHote racineVide{};
+        OrigineUniteDeclarationsHote originesVides[2]{};
+        requete = {vides, 2, texteVide, 2, &racineVide, 1, originesVides, 2, {}};
+        Exiger(assembler(&requete) == 0 && requete.Resultat.NombreNoeuds == 1
+            && requete.Resultat.NombreOctetsSource == 2 && texteVide[0] == '\n' && texteVide[1] == '\n'
+            && racineVide.Genre == 0 && originesVides[0].PremiereLigne == 1 && originesVides[1].PremiereLigne == 2,
+            "assemblage d'unités vides avec pointeurs nuls incorrect");
+        Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "assemblage avec fuite mémoire");
+        std::cout << "Assemblage préparé : " << valides.size() << " corpus bilingues valides, " << invalides.size()
+                  << " refus sémantiques et " << erreursSyntaxiques.size() << " refus syntaxiques bilingues, origines et sorties transactionnelles vérifiées.\n";
+    }
+
+    /** <résumé>Compare les sélections au normaliseur C++, puis analyse les vrais AST normalisés Gs++.</résumé> **/
+    void TesterNormalisationDeclarationsPreparees(
+        AssembleurDeclarationsAutoHeberge normaliser,
+        AnalyseurDeclarationsAutoHeberge source, AnalyseurDeclarationsAutoHeberge interface,
+        AnalyseurSemantiqueUnitesAutoHeberge semantique)
+    {
+        struct Corpus
+        {
+            std::vector<std::pair<std::string, bool>> Unites;
+            std::uint32_t ErreurNormalisation = 0;
+            std::uint32_t ErreurSemantique = 0;
+        };
+        const std::vector<Corpus> valides{
+            {{{"entier32 Lire(entier32 valeur);", true}, {"publique entier32 Lire(entier32 x) { retourner x; }", false}}},
+            {{{"publique entier32 Lire() { retourner 42; }", false}, {"entier32 Lire();", true}}},
+            {{{"externe entier32 Lire(); externe entier32 Lire();", false}, {"publique entier32 Lire() { retourner 42; }", false}, {"entier32 Lire();", true}}},
+            {{{"entier32 Lire(entier32 valeur); entier32 Lire(entier64 valeur);", true}, {"publique entier32 Lire(entier64 x) { retourner 2; } publique entier32 Lire(entier32 x) { retourner x; }", false}}},
+            {{{"espace A::B { entier32 Lire(); }", true}, {"espace A { espace B { publique entier32 Lire() { retourner 42; } } }", false}}},
+            {{{"espace A { entier32 Lire(); } espace B { entier32 Lire(); }", true}, {"espace B { publique entier32 Lire() { retourner 2; } } espace A { publique entier32 Lire() { retourner 1; } }", false}}},
+            {{{"vide Modifier(entier32& valeur, constante entier32& lecture);", true}, {"publique vide Modifier(entier32& x, constante entier32& y) { x = y; }", false}}},
+            {{{"vide Lire(constante volatile entier32* valeur);", true}, {"publique vide Lire(volatile constante constante entier32* x) {}", false}}},
+            {{{"structure P { entier32 X; }; P Creer(P valeur);", true}, {"publique P Creer(P p) { retourner p; }", false}}},
+            {{{"espace N { structure P { entier32 X; }; } vide Lire(N :: P* valeur);", true}, {"publique vide Lire(N::P* p) {}", false}}},
+            {{{"pointeur_fonction<entier32()> Creer(); entier32 Cible();", true}, {"publique entier32 Cible() { retourner 42; } publique pointeur_fonction<entier32()> Creer() { retourner Cible; }", false}}},
+            {{{"vide Lire(pointeur_fonction<pointeur_fonction<entier32()>()> valeur);", true}, {"publique vide Lire(pointeur_fonction< pointeur_fonction< int32() > () > x) {}", false}}},
+            {{{"vide Lire(pointeur_fonction<entier32&(entier32&)> valeur);", true}, {"publique vide Lire(pointeur_fonction<entier32&(entier32&)> x) {}", false}}},
+            {{{"entier32 Globale;", true}, {"publique entier32 Globale = 42; publique entier32 Lire() { retourner Globale; }", false}, {"entier32 Globale;", true}}},
+            {{{"publique entier32 Globale; publique vide Lire() {}", false}, {"entier32 Globale;", true}}},
+            {{{"entier32 Valeurs[1_0];", true}, {"publique entier32 Valeurs[10] = {42}; publique entier32 Lire() { retourner Valeurs[0]; }", false}}},
+            {{{"constante entier32 Globale;", true}, {"publique constante entier32 Globale = 42; publique entier32 Lire() { retourner Globale; }", false}}},
+            {{{"espace N { structure P { entier32 X; }; } alias Vue = N :: P;", true}, {"alias Vue = N::P; publique entier32 Lire(Vue p) { retourner p.X; }", false}}},
+            {{{"structure P { entier32 X; }; espace N { alias Vue = P; }", true}, {"alias N :: Vue = P; publique entier32 Lire(N::Vue p) { retourner p.X; }", false}}},
+            {{{"structure P { entier32 X; }; entier32 opérateur+(P p, entier32 x);", true}, {"publique entier32 opérateur+(P p, entier32 x) { retourner p.X + x; }", false}}},
+            {{{"\xEF\xBB\xBF\r\nespace Démo { entier32 Créer(); } // fin", true}, {"\xEF\xBB\xBF\r\nespace Démo { publique entier32 Créer() { retourner 42; } }", false}}},
+            {{{"classe C { publique: entier32 Lire() { retourner 42; } }; externe entier32 F(C& c);", false}, {"publique entier32 F(C& c) { retourner c.Lire(); }", false}}},
+        };
+        const std::vector<Corpus> refus{
+            {{{"entier32 Lire();", true}, {"publique entier64 Lire() { retourner 42; }", false}}, 6},
+            {{{"publique entier32 Lire() { retourner 42; }", false}, {"entier64 Lire();", true}}, 6},
+            {{{"publique entier32 Lire(entier32 x) { retourner x; }", false}, {"publique entier32 Lire(entier32 y) { retourner y; }", false}}, 7},
+            {{{"entier32 Lire();", true}, {"publique entier32 Lire() { retourner 1; } publique entier32 Lire() { retourner 2; }", false}}, 7},
+            {{{"entier32* Lire();", true}, {"publique constante entier32* Lire() { retourner 0; }", false}}, 6},
+            {{{"pointeur_fonction<entier32()> Lire();", true}, {"publique pointeur_fonction<entier64()> Lire() { retourner 0; }", false}}, 6},
+            {{{"entier32 Globale;", true}, {"entier64 Globale; publique vide F() {}", false}}, 8},
+            {{{"entier32 Globale;", false}, {"entier32 Globale; publique vide F() {}", false}}, 9},
+            {{{"entier32 Valeurs[2][3];", true}, {"entier32 Valeurs[3][2]; publique vide F() {}", false}}, 8},
+            {{{"constante entier32 Globale;", true}, {"entier32 Globale; publique vide F() {}", false}}, 8},
+            {{{"structure P {}; structure Q {}; alias Vue = P;", true}, {"alias Vue = Q; publique vide F() {}", false}}, 10},
+            {{{"espace N { structure P {}; } alias Vue = N::P;", true}, {"espace N { alias Vue = P; } alias Vue = N::Vue; publique vide F() {}", false}}, 10},
+            // Fonctions avant globales avant alias, indépendamment de leurs positions dans le texte.
+            {{{"entier32 Globale; alias Vue = Inconnu; entier32 Lire();", true}, {"alias Vue = Autre; entier64 Globale; publique entier64 Lire() { retourner 0; }", false}}, 6},
+            {{{"entier32 Globale; alias Vue = Inconnu;", true}, {"alias Vue = Autre; entier64 Globale; publique vide F() {}", false}}, 8},
+            {{{"publique entier32 F() { retourner 1; } publique entier32 G() { retourner 2; }", false}, {"publique entier32 G() { retourner 3; } publique entier32 F() { retourner 4; }", false}}, 7},
+            // Une unité syntaxiquement invalide est refusée avant la normalisation du programme.
+            {{{"entier32 Lire();", true}, {"publique entier64 Lire() { retourner 1; }", false}, {"structure P { entier32 X;", true}}, 4},
+        };
+        const std::vector<Corpus> refusSemantiques{
+            {{{"entier32 F(); entier32 G();", true}, {"publique entier32 G() { retourner AbsentG; } publique entier32 F() { retourner AbsentF; }", false}}, 0, 18},
+            {{{"vide F(); vide G();", true}, {"publique vide G() { vide x; } publique vide F() { constante entier32 y; }", false}}, 0, 125},
+            {{{"vide F(entier32 a, entier32 b, entier32 c, entier32 d, entier32 e);", true}, {"publique vide F(entier32 v, entier32 w, entier32 x, entier32 y, entier32 z) {}", false}}, 0, 106},
+            {{{"structure P {}; alias Vue = P; vide F(Vue* p);", true}, {"publique vide F(P* p) {}", false}}, 0, 118},
+            {{{"structure " + NomCollisionLiaisonA + " {}; structure " + NomCollisionLiaisonB + " {};", true},
+              {"publique vide F(" + NomCollisionLiaisonA + "* p) {} publique vide F(" + NomCollisionLiaisonB + "* p) {}", false}}, 0, 119},
+            {{{"structure " + NomCollisionCallbackA + " {}; structure " + NomCollisionCallbackB + " {};", true},
+              {"publique vide F(pointeur_fonction<vide(" + NomCollisionCallbackA + "*)> p) {} publique vide F(pointeur_fonction<vide(" + NomCollisionCallbackB + "*)> p) {}", false}}, 0, 119},
+            {{{"Inconnu F();", true}, {"publique Inconnu F() { retourner {}; }", false}}, 0, 100},
+            {{{"espace N { structure P {}; } utilisant espace N; vide F();", true}, {"publique vide F() { P p; }", false}}, 0, 100},
+        };
+        std::size_t nombreRefusNormalisation = 0;
+        auto cleFonction = [](const GsPP::Fonction& fonction)
+        {
+            std::string cle = "F:" + fonction.NomSourceComplet() + '(';
+            for (const auto& parametre : fonction.Parametres) cle += parametre.Type.Afficher() + ';';
+            return cle + ')';
+        };
+        auto tester = [&](const Corpus& corpus, bool anglais)
+        {
+            std::vector<std::string> textes;
+            for (const auto& unite : corpus.Unites) textes.push_back(anglais ? TraduireCorpusConversions(unite.first) : unite.first);
+            const auto textesAvant = textes;
+            std::vector<UniteDeclarationsPrepareeHote> unites;
+            std::vector<OrigineUniteDeclarationsHote> origines;
+            std::vector<NoeudDeclarationHote> bruts;
+            std::string texteBrut;
+            using Position = std::pair<std::uint32_t, std::uint32_t>;
+            std::map<Position, std::string> cles;
+            GsPP::Programme programme;
+            std::optional<std::tuple<std::string, std::uint32_t, std::uint32_t>> diagnostic;
+            std::string messageBootstrap;
+            std::uint32_t premiereLigne = 1;
+            try
+            {
+                for (std::size_t index = 0; index < textes.size(); ++index)
+                {
+                    const auto& texte = textes[index];
+                    const auto fichier = "unite-" + std::to_string(index);
+                    unites.push_back({texte.data(), texte.size(), corpus.Unites[index].second ? 1U : 0U, 0});
+                    const auto bom = texte.starts_with("\xEF\xBB\xBF") ? 3U : 0U;
+                    const auto nombreLignes = 1U + static_cast<std::uint32_t>(std::count(texte.begin(), texte.end(), '\n'));
+                    origines.push_back({texteBrut.size(), texte.size() - bom, premiereLigne, nombreLignes, bom, 0});
+                    auto jetons = GsPP::Lexeur(texte, fichier).Analyser();
+                    for (auto& jeton : jetons) jeton.Ligne += premiereLigne - 1;
+                    auto partie = GsPP::AnalyseurSyntaxique(std::move(jetons), fichier, corpus.Unites[index].second).Analyser();
+                    for (const auto& fonction : partie.Fonctions)
+                        if (!fonction.EstMethode) cles[{static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne)}] = cleFonction(fonction);
+                    for (const auto& globale : partie.VariablesGlobales)
+                        cles[{static_cast<std::uint32_t>(globale.Position.Ligne), static_cast<std::uint32_t>(globale.Position.Colonne)}] = "G:" + globale.NomComplet();
+                    for (const auto& alias : partie.Aliases)
+                        cles[{static_cast<std::uint32_t>(alias.Position.Ligne), static_cast<std::uint32_t>(alias.Position.Colonne)}] = "A:" + alias.NomComplet();
+                    auto ajouter = [](auto& destination, auto& origine)
+                    {
+                        destination.insert(destination.end(), std::make_move_iterator(origine.begin()), std::make_move_iterator(origine.end()));
+                    };
+                    ajouter(programme.Structures, partie.Structures); ajouter(programme.Enumerations, partie.Enumerations);
+                    ajouter(programme.VariablesGlobales, partie.VariablesGlobales); ajouter(programme.Fonctions, partie.Fonctions);
+                    ajouter(programme.Aliases, partie.Aliases); ajouter(programme.Utilisations, partie.Utilisations); ajouter(programme.EspacesNoms, partie.EspacesNoms);
+                    auto noeuds = ComparerDeclarations(corpus.Unites[index].second ? interface : source, texte, fichier, corpus.Unites[index].second);
+                    if (bruts.empty()) bruts.push_back(noeuds.front());
+                    const auto base = bruts.size() - 1;
+                    for (std::size_t n = 1; n < noeuds.size(); ++n)
+                    {
+                        auto noeud = noeuds[n];
+                        if (noeud.Parent != 0) noeud.Parent += base;
+                        noeud.Ligne += premiereLigne - 1;
+                        if (noeud.TailleNom != 0) noeud.DebutNom = noeud.DebutNom - bom + texteBrut.size();
+                        bruts.push_back(noeud);
+                    }
+                    texteBrut += texte.substr(bom) + '\n';
+                    premiereLigne += nombreLignes;
+                }
+                GsPP::NormaliserDeclarations(programme);
+            }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())};
+                messageBootstrap = erreur.what();
+            }
+            // Même en cas de refus syntaxique, fournir toutes les unités à l'entrée Gs++.
+            unites.clear();
+            for (std::size_t index = 0; index < textes.size(); ++index)
+                unites.push_back({textes[index].data(), textes[index].size(), corpus.Unites[index].second ? 1U : 0U, 0});
+            const auto unitesAvant = unites;
+            NoeudDeclarationHote gardeNoeud; OrigineUniteDeclarationsHote gardeOrigine;
+            std::memset(&gardeNoeud, 0xA5, sizeof(gardeNoeud)); std::memset(&gardeOrigine, 0xA5, sizeof(gardeOrigine));
+            char gardeTexte = 'Z';
+            auto noeudGarde = gardeNoeud; auto origineGarde = gardeOrigine;
+            RequeteAssemblageDeclarationsHote requete{unites.data(), unites.size(), &gardeTexte, 1, &noeudGarde, 1, &origineGarde, 1, {}};
+            const auto mesure = normaliser(&requete);
+            auto localiser = [&](std::uint32_t ligne)
+            {
+                for (std::size_t index = 0; index < origines.size(); ++index)
+                    if (ligne >= origines[index].PremiereLigne && ligne - origines[index].PremiereLigne < origines[index].NombreLignes)
+                        return std::pair<std::uint64_t, std::uint32_t>{index, ligne - origines[index].PremiereLigne + 1};
+                throw std::runtime_error("diagnostic bootstrap hors table d'origines");
+            };
+            Exiger(gardeTexte == 'Z' && std::memcmp(&noeudGarde, &gardeNoeud, sizeof(gardeNoeud)) == 0
+                && std::memcmp(&origineGarde, &gardeOrigine, sizeof(gardeOrigine)) == 0, "sorties modifiées pendant la mesure normalisée");
+            if (corpus.ErreurNormalisation != 0)
+            {
+                Exiger(diagnostic.has_value(), "le bootstrap devait refuser la normalisation");
+                const auto [index, ligne] = localiser(std::get<1>(*diagnostic));
+                Exiger(mesure == corpus.ErreurNormalisation && requete.Resultat.Erreur == mesure
+                    && requete.Resultat.IndexUniteErreur == index && requete.Resultat.LigneErreur == ligne
+                    && requete.Resultat.ColonneErreur == std::get<2>(*diagnostic)
+                    && std::get<0>(*diagnostic) == "unite-" + std::to_string(index),
+                    "diagnostic de normalisation différent du bootstrap : attendu=" + std::to_string(corpus.ErreurNormalisation)
+                    + ", obtenu=" + std::to_string(mesure) + ", bootstrap=" + messageBootstrap);
+                if (mesure != 4) ++nombreRefusNormalisation;
+                return;
+            }
+            Exiger(!diagnostic && mesure == 1, "normalisation valide refusée : " + std::to_string(mesure) + " " + messageBootstrap);
+            std::map<std::string, Position> selections;
+            for (const auto& fonction : programme.Fonctions)
+                if (!fonction.EstMethode) selections[cleFonction(fonction)] = {static_cast<std::uint32_t>(fonction.Position.Ligne), static_cast<std::uint32_t>(fonction.Position.Colonne)};
+            for (const auto& globale : programme.VariablesGlobales)
+                selections["G:" + globale.NomComplet()] = {static_cast<std::uint32_t>(globale.Position.Ligne), static_cast<std::uint32_t>(globale.Position.Colonne)};
+            for (const auto& alias : programme.Aliases)
+                selections["A:" + alias.NomComplet()] = {static_cast<std::uint32_t>(alias.Position.Ligne), static_cast<std::uint32_t>(alias.Position.Colonne)};
+            std::map<Position, std::size_t> racines;
+            std::vector<std::size_t> fins(bruts.size(), bruts.size());
+            std::size_t precedent = 0;
+            for (std::size_t index = 1; index < bruts.size(); ++index)
+                if (bruts[index].Parent == 0)
+                {
+                    fins[precedent] = index; precedent = index;
+                    racines[{bruts[index].Ligne, bruts[index].Colonne}] = index;
+                }
+            std::vector<NoeudDeclarationHote> attendus{bruts.front()};
+            std::vector<std::string> dejaVus;
+            for (std::size_t index = 1; index < bruts.size(); index = fins[index])
+            {
+                const Position position{bruts[index].Ligne, bruts[index].Colonne};
+                auto choisi = index;
+                if (const auto cle = cles.find(position); cle != cles.end())
+                {
+                    if (std::find(dejaVus.begin(), dejaVus.end(), cle->second) != dejaVus.end()) continue;
+                    dejaVus.push_back(cle->second);
+                    choisi = racines.at(selections.at(cle->second));
+                }
+                const auto destination = attendus.size();
+                for (std::size_t n = choisi; n < fins[choisi]; ++n)
+                {
+                    auto noeud = bruts[n];
+                    if (noeud.Parent != 0) noeud.Parent = noeud.Parent - choisi + destination;
+                    attendus.push_back(noeud);
+                }
+            }
+            Exiger(requete.Resultat.NombreNoeuds == attendus.size() && requete.Resultat.NombreOctetsSource == texteBrut.size()
+                && requete.Resultat.NombreOrigines == origines.size(), "capacités normalisées différentes du bootstrap");
+            std::vector<char> texteSortie(texteBrut.size() + 1, 'Z');
+            std::vector<NoeudDeclarationHote> noeuds(attendus.size() + 1, gardeNoeud);
+            std::vector<OrigineUniteDeclarationsHote> originesSortie(origines.size() + 1, gardeOrigine);
+            requete.SourceAssemblee = texteSortie.data(); requete.CapaciteSource = texteBrut.size();
+            requete.Noeuds = noeuds.data(); requete.CapaciteNoeuds = attendus.size();
+            requete.Origines = originesSortie.data(); requete.CapaciteOrigines = origines.size();
+            auto intact = [&]()
+            {
+                Exiger(std::all_of(texteSortie.begin(), texteSortie.end(), [](char c) { return c == 'Z'; }), "texte normalisé partiellement publié");
+                for (const auto& noeud : noeuds) Exiger(std::memcmp(&noeud, &gardeNoeud, sizeof(noeud)) == 0, "AST normalisé partiellement publié");
+                for (const auto& origine : originesSortie) Exiger(std::memcmp(&origine, &gardeOrigine, sizeof(origine)) == 0, "origines normalisées partiellement publiées");
+            };
+            for (auto* capacite : {&requete.CapaciteSource, &requete.CapaciteNoeuds, &requete.CapaciteOrigines})
+            {
+                --*capacite; Exiger(normaliser(&requete) == 1, "capacité partielle normalisée acceptée"); ++*capacite; intact();
+            }
+            bool succes = false;
+            for (std::uint64_t budget = 0; budget < 192; ++budget)
+            {
+                LimiteAllocationsAssemblage = NombreAllocations + budget;
+                const auto code = normaliser(&requete);
+                LimiteAllocationsAssemblage.reset();
+                Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "arène de normalisation non libérée");
+                if (code == 0) { succes = true; break; }
+                Exiger(code == 3, "échec d'allocation du normaliseur non propagé"); intact();
+            }
+            Exiger(succes && normaliser(&requete) == 0, "normalisation complète impossible");
+            Exiger(std::string(texteSortie.data(), texteBrut.size()) == texteBrut && texteSortie.back() == 'Z'
+                && std::memcmp(noeuds.data(), attendus.data(), attendus.size() * sizeof(gardeNoeud)) == 0
+                && std::memcmp(&noeuds.back(), &gardeNoeud, sizeof(gardeNoeud)) == 0
+                && std::memcmp(originesSortie.data(), origines.data(), origines.size() * sizeof(gardeOrigine)) == 0
+                && std::memcmp(&originesSortie.back(), &gardeOrigine, sizeof(gardeOrigine)) == 0, "normalisation différente des sélections bootstrap ou sortie non bornée");
+            Exiger(textes == textesAvant && std::memcmp(unites.data(), unitesAvant.data(), unites.size() * sizeof(unites[0])) == 0, "entrées de normalisation modifiées");
+            const auto astAvant = noeuds;
+            const auto originesAvant = originesSortie;
+            const auto texteAvant = texteSortie;
+            diagnostic.reset();
+            try { GsPP::AnalyseurSemantique().Analyser(programme); }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())};
+                messageBootstrap = erreur.what();
+            }
+            Exiger(diagnostic.has_value() == (corpus.ErreurSemantique != 0), "contrat sémantique après normalisation incorrect : " + messageBootstrap);
+            RequeteAnalyseSemantiqueHote analyse{texteSortie.data(), texteBrut.size(), noeuds.data(), attendus.size(), nullptr, 0, nullptr, 0, {}};
+            RequeteAnalyseSemantiqueUnitesHote analyseUnites{&analyse, originesSortie.data(), origines.size(), 0, 0, 0};
+            const auto code = semantique(&analyseUnites);
+            if (diagnostic)
+            {
+                const auto [index, ligne] = localiser(std::get<1>(*diagnostic));
+                Exiger(code == corpus.ErreurSemantique && analyseUnites.IndexUniteErreur == index
+                    && analyseUnites.LigneLocaleErreur == ligne && analyseUnites.ColonneLocaleErreur == std::get<2>(*diagnostic),
+                    "priorité sémantique après normalisation différente : attendu=" + std::to_string(corpus.ErreurSemantique)
+                    + ", obtenu=" + std::to_string(code) + ", bootstrap=" + messageBootstrap);
+                ++NombreRefusSemantiquesDifferentiels;
+            }
+            else
+            {
+                Exiger(code == 4, "AST normalisé valide refusé : code=" + std::to_string(code));
+                std::vector<SymboleSemantiqueHote> symboles(analyse.Resultat.NombreSymboles);
+                std::vector<ResolutionSemantiqueHote> resolutions(analyse.Resultat.NombreResolutions);
+                analyse.Symboles = symboles.data(); analyse.CapaciteSymboles = symboles.size();
+                analyse.Resolutions = resolutions.data(); analyse.CapaciteResolutions = resolutions.size();
+                Exiger(semantique(&analyseUnites) == 0 && analyseUnites.IndexUniteErreur == origines.size(), "analyse de l'AST normalisé échouée");
+            }
+            Exiger(std::memcmp(noeuds.data(), astAvant.data(), astAvant.size() * sizeof(gardeNoeud)) == 0
+                && std::memcmp(originesSortie.data(), originesAvant.data(), originesAvant.size() * sizeof(gardeOrigine)) == 0
+                && texteSortie == texteAvant, "AST, texte ou origines normalisés modifiés par la sémantique");
+        };
+        for (const auto& corpus : valides) for (bool anglais : {false, true}) tester(corpus, anglais);
+        for (const auto& corpus : refus) for (bool anglais : {false, true}) tester(corpus, anglais);
+        for (const auto& corpus : refusSemantiques) for (bool anglais : {false, true}) tester(corpus, anglais);
+        Exiger(normaliser(nullptr) == 2, "requête normalisée nulle acceptée");
+        RequeteAssemblageDeclarationsHote invalide{};
+        Exiger(normaliser(&invalide) == 2, "normalisation sans unité acceptée");
+        const std::string texte = "vide F();";
+        UniteDeclarationsPrepareeHote unite{texte.data(), texte.size(), 1, 0};
+        for (int champ = 0; champ < 3; ++champ)
+        {
+            invalide = {&unite, 1, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+            if (champ == 0) invalide.CapaciteSource = 1;
+            if (champ == 1) invalide.CapaciteNoeuds = 1;
+            if (champ == 2) invalide.CapaciteOrigines = 1;
+            Exiger(normaliser(&invalide) == 2, "capacité sans tampon normalisé acceptée");
+        }
+        for (const auto uniteInvalide : std::vector<UniteDeclarationsPrepareeHote>{
+                 {nullptr, 1, 0, 0}, {texte.data(), texte.size(), 2, 0}, {texte.data(), texte.size(), 1, 1},
+                 {texte.data(), UINT64_MAX, 0, 0}})
+        {
+            invalide = {&uniteInvalide, 1, nullptr, 0, nullptr, 0, nullptr, 0, {}};
+            Exiger(normaliser(&invalide) == (uniteInvalide.Taille == UINT64_MAX ? 5U : 2U), "unité normalisée invalide acceptée");
+        }
+        UniteDeclarationsPrepareeHote uniteVide{nullptr, 0, 1, 0};
+        char texteVide{}; NoeudDeclarationHote racineVide{}; OrigineUniteDeclarationsHote origineVide{};
+        invalide = {&uniteVide, 1, &texteVide, 1, &racineVide, 1, &origineVide, 1, {}};
+        Exiger(normaliser(&invalide) == 0 && texteVide == '\n' && racineVide.Genre == 0
+            && invalide.Resultat.NombreNoeuds == 1 && origineVide.NombreLignes == 1,
+            "normalisation d'une unité vide incorrecte");
+        Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "normalisation avec fuite mémoire");
+        std::cout << "Normalisation préparée : " << valides.size() << " corpus bilingues valides, " << nombreRefusNormalisation
+                  << " refus différentiels de normalisation, 1 refus syntaxique bilingue et " << refusSemantiques.size()
+                  << " refus sémantiques bilingues ; sélections, origines et sorties transactionnelles vérifiées.\n";
+    }
+
     void TesterUtilisationsEspacesSemantiques(
         AnalyseurDeclarationsAutoHeberge syntaxe, AnalyseurSemantiqueAutoHeberge semantique)
     {
@@ -8462,6 +11045,13 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                "export syntaxique requis par la sémantique absent");
         const auto syntaxe = reinterpret_cast<AnalyseurDeclarationsAutoHeberge>(
             *exportSyntaxe);
+        const auto exportInterface = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsInterface");
+        const auto aliasInterface = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeInterfaceDeclarations");
+        Exiger(exportInterface.has_value() && exportInterface == aliasInterface,
+            "exports français et anglais de l'analyse d'interface absents ou différents");
+        const auto interface = reinterpret_cast<AnalyseurDeclarationsAutoHeberge>(*exportInterface);
 
         const auto contenu = LireFichier(chemin);
         const auto tailleImage = Lire64(contenu, 48);
@@ -8489,6 +11079,29 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                "export de l’analyseur sémantique Gs++ absent");
         const auto semantique =
             reinterpret_cast<AnalyseurSemantiqueAutoHeberge>(*adresse);
+        TesterInterfacesEnMemoire(syntaxe, interface, semantique);
+        const auto exportAssemblage = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsPreparees");
+        const auto aliasAssemblage = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AssemblePreparedDeclarations");
+        Exiger(exportAssemblage.has_value() && exportAssemblage == aliasAssemblage,
+            "exports français et anglais de l'assemblage absents ou différents");
+        const auto exportSemantiqueUnites = image.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnites");
+        const auto aliasSemantiqueUnites = image.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeUnitSemantics");
+        Exiger(exportSemantiqueUnites.has_value() && exportSemantiqueUnites == aliasSemantiqueUnites,
+            "exports français et anglais de la sémantique par unité absents ou différents");
+        TesterAssemblageDeclarationsPreparees(reinterpret_cast<AssembleurDeclarationsAutoHeberge>(*exportAssemblage), syntaxe, interface,
+            reinterpret_cast<AnalyseurSemantiqueUnitesAutoHeberge>(*exportSemantiqueUnites));
+        const auto exportNormalisation = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsNormalisees");
+        const auto aliasNormalisation = imageSyntaxe.ChercherExport(
+            "GalacticShrine::GsPP::Autohebergement::AssembleNormalizedDeclarations");
+        Exiger(exportNormalisation.has_value() && exportNormalisation == aliasNormalisation,
+            "exports français et anglais de la normalisation absents ou différents");
+        TesterNormalisationDeclarationsPreparees(reinterpret_cast<AssembleurDeclarationsAutoHeberge>(*exportNormalisation), syntaxe, interface,
+            reinterpret_cast<AnalyseurSemantiqueUnitesAutoHeberge>(*exportSemantiqueUnites));
         const auto adresseEmission = image.ChercherExport(
             "GalacticShrine::GsPP::Autohebergement::EmettreGlobales");
         const auto aliasEmission = image.ChercherExport(
@@ -8528,6 +11141,13 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         TesterQualificationsConstructionsSemantiques(syntaxe, semantique);
         TesterCallbacksChampsContextuelsSemantiques(syntaxe, semantique);
         TesterRetoursReferencesCallbacks(syntaxe, semantique);
+        TesterRetoursReferencesPointeursCallbacks(syntaxe, semantique);
+        TesterReferencesCallbacksParametres(syntaxe, semantique);
+        TesterArgumentsReferencesCallbacksImbriques(syntaxe, semantique);
+        TesterReferencesStructuresPointeursCallbacksImbriques(syntaxe, semantique);
+        TesterReferencesGroupesMixtesConstructions(syntaxe, semantique);
+        TesterReferencesOperateursMixtesConstructions(syntaxe, semantique);
+        TesterOperateursInitialiseursAgreges(syntaxe, semantique);
         TesterPrioritesPlansConstructeursSemantiques(syntaxe, semantique);
         TesterConstructionsLocalesContextuellesSemantiques(syntaxe, semantique);
         TesterChampsParDefautContextuelsSemantiques(syntaxe, semantique);

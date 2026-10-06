@@ -219,13 +219,120 @@ espace GalacticShrine::GsPP::Autohebergement {
         ResultatAnalyseDeclarations Resultat;
     };
 
+    énumération ErreurAssemblageDeclarations {
+        Reussite = 0,
+        Success = 0,
+        CapaciteInsuffisante = 1,
+        InsufficientCapacity = 1,
+        ArgumentInvalide = 2,
+        InvalidArgument = 2,
+        AllocationImpossible = 3,
+        AllocationFailure = 3,
+        ErreurDeclaration = 4,
+        DeclarationError = 4,
+        TailleExcessive = 5,
+        ExcessiveSize = 5,
+        FonctionIncompatible = 6,
+        IncompatibleFunction = 6,
+        FonctionDefiniePlusieursFois = 7,
+        FunctionDefinedMoreThanOnce = 7,
+        GlobaleIncompatible = 8,
+        IncompatibleGlobal = 8,
+        GlobaleDefiniePlusieursFois = 9,
+        GlobalDefinedMoreThanOnce = 9,
+        AliasIncompatible = 10,
+        IncompatibleAlias = 10,
+    };
+
+    structure UniteDeclarationsPreparee {
+        constante caractère* Source;
+        naturel64 Taille;
+        naturel32 EstInterface;
+        naturel32 Reserve;
+    };
+
+    structure OrigineUniteDeclarations {
+        naturel64 DebutOctets;
+        naturel64 TailleOctets;
+        naturel32 PremiereLigne;
+        naturel32 NombreLignes;
+        naturel32 OctetsBom;
+        naturel32 Reserve;
+    };
+
+    structure ResultatAssemblageDeclarations {
+        ErreurAssemblageDeclarations Erreur;
+        naturel32 LigneErreur;
+        naturel32 ColonneErreur;
+        naturel32 Detail;
+        naturel64 IndexUniteErreur;
+        naturel64 NombreNoeuds;
+        naturel64 NombreOctetsSource;
+        naturel64 NombreOrigines;
+        naturel64 NombreOctetsArene;
+        naturel32 DetailLexical;
+        naturel32 Reserve;
+    };
+
+    structure RequeteAssemblageDeclarations {
+        constante UniteDeclarationsPreparee* Unites;
+        naturel64 NombreUnites;
+        caractère* SourceAssemblee;
+        naturel64 CapaciteSource;
+        NoeudDeclaration* Noeuds;
+        naturel64 CapaciteNoeuds;
+        OrigineUniteDeclarations* Origines;
+        naturel64 CapaciteOrigines;
+        ResultatAssemblageDeclarations Resultat;
+    };
+
+    /**
+     * <résumé>Assemble les AST d'unités préparées et conserve leurs origines sans lire de fichier.</résumé>
+     * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités et trois tampons distincts de sortie.
+     * @Retourner(ErreurAssemblageDeclarations) Diagnostic local à une unité ou tailles exactes requises.
+     * @etc. Aucun tampon de sortie n'est écrit en cas d'erreur ou de capacité insuffisante.
+     * @etc. Les tampons ne doivent se recouvrir ni entre eux ni avec les entrées.
+     * @etc. Un LF sépare les unités ; les BOM initiaux sont retirés ; les déclarations ne sont pas fusionnées.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsPreparees(
+        RequeteAssemblageDeclarations* requete);
+
+    alias PreparedDeclarationUnit = UniteDeclarationsPreparee;
+    alias DeclarationUnitOrigin = OrigineUniteDeclarations;
+    alias DeclarationAssemblyResult = ResultatAssemblageDeclarations;
+    alias DeclarationAssemblyRequest = RequeteAssemblageDeclarations;
+    alias AssemblePreparedDeclarations = AssemblerDeclarationsPreparees;
+
+    /**
+     * <résumé>Assemble puis normalise les fonctions libres, globales et alias racines préparés.</résumé>
+     * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités et trois tampons distincts ne recouvrant pas les entrées.
+     * @Retourner(ErreurAssemblageDeclarations) Diagnostic local ou tailles exactes après normalisation.
+     * @etc. Types comparés avant résolution des alias ; fonctions, puis globales, puis alias.
+     * @etc. Définitions préférées aux prototypes à la place de leur première déclaration.
+     * @etc. Membres de classes et types non fusionnés ; aucune sortie partielle ni lecture de fichier.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsNormalisees(
+        RequeteAssemblageDeclarations* requete);
+
+    alias AssembleNormalizedDeclarations = AssemblerDeclarationsNormalisees;
+
     publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
+        RequeteAnalyseDeclarations* requete);
+
+    /**
+     * <résumé>Analyse le contenu préparé d'une interface sans lire de fichier.</résumé>
+     * @Paramètre(RequeteAnalyseDeclarations*: requete) Texte sans directives d'inclusion et tampon AST.
+     * @Retourner(ErreurAnalyseDeclarations) Résultat selon le même protocole de capacité que les sources.
+     * @etc. Fonctions et globales externes implicites ; membres sans corps, visibilité conservée.
+     **/
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsInterface(
         RequeteAnalyseDeclarations* requete);
 
     alias DeclarationNode = NoeudDeclaration;
     alias DeclarationAnalysisResult = ResultatAnalyseDeclarations;
     alias DeclarationAnalysisRequest = RequeteAnalyseDeclarations;
     alias AnalyzeSourceDeclarations = AnalyserDeclarationsSource;
+    alias AnalyzeInterfaceDeclarations = AnalyserDeclarationsInterface;
 
     alias NoeudSyntaxique = NoeudDeclaration;
     alias SyntaxNode = NoeudDeclaration;

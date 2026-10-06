@@ -1,0 +1,513 @@
+/**
+ * <résumé>Normalisation préparée des déclarations libres, sans modifier l'assemblage brut.</résumé>
+ * Les clés utilisent des noms et types lexicaux exacts, avant résolution des alias.
+ **/
+espace GalacticShrine::GsPP::Autohebergement {
+    JetonLexe* NulJetonsNormalisation;
+    structure CheminNomNormalisation {
+        naturel64 Parent;
+        naturel64 Jeton;
+    };
+
+    structure MetadonneesNormalisation {
+        naturel64 Nom;
+        naturel64 DebutType;
+        naturel64 TailleType;
+        naturel64 CibleAlias;
+        naturel64 FinSousArbre;
+        naturel64 Selection;
+    };
+
+    structure CurseurTypeNormalisation {
+        naturel64 Position;
+        booléen SecondChevron;
+    };
+
+    structure EtatNormalisationDeclarations {
+        RequeteAssemblageDeclarations* Brut;
+        JetonLexe* Jetons;
+        naturel64 NombreJetons;
+        naturel64* EspacesJetons;
+        naturel64* PileEspaces;
+        CheminNomNormalisation* Chemins;
+        naturel64 NombreChemins;
+        naturel64* MotsTypes;
+        naturel64 NombreMotsTypes;
+        MetadonneesNormalisation* Metadonnees;
+    };
+
+    naturel64 NulSelectionNormalisation() {
+        retourner 18_446_744_073_709_551_615;
+    }
+
+    naturel64 AjouterNomNormalisation(
+        EtatNormalisationDeclarations* etat, naturel64 parentChemin, naturel64 jeton) {
+        naturel64 index = etat->NombreChemins;
+        etat->Chemins[index] = {parentChemin, jeton};
+        etat->NombreChemins = index + 1;
+        retourner index;
+    }
+
+    /** <résumé>Mémorise les espaces lexicaux, sans considérer les utilisations comme des ouvertures.</résumé> **/
+    vide InitialiserEspacesNormalisation(EtatNormalisationDeclarations* etat) {
+        naturel64 courant = 0;
+        naturel64 profondeur = 0;
+        naturel64 index = 0;
+        etat->NombreChemins = 1;
+        etat->Chemins[0] = {0, 0};
+        tantque (index < etat->NombreJetons) {
+            etat->EspacesJetons[index] = courant;
+            naturel32 genre = etat->Jetons[index].Genre;
+            si (genre == 4 && (index == 0 || etat->Jetons[index - 1].Genre != 76)) {
+                naturel64 chemin = courant;
+                index = index + 1;
+                tantque (etat->Jetons[index].Genre != 36) {
+                    etat->EspacesJetons[index] = courant;
+                    si (etat->Jetons[index].Genre == 1) chemin = AjouterNomNormalisation(etat, chemin, index);
+                    index = index + 1;
+                }
+                etat->EspacesJetons[index] = courant;
+                etat->PileEspaces[profondeur] = courant;
+                profondeur = profondeur + 1;
+                courant = chemin;
+            }
+            sinon si (genre == 36) {
+                etat->PileEspaces[profondeur] = courant;
+                profondeur = profondeur + 1;
+            }
+            sinon si (genre == 37) {
+                profondeur = profondeur - 1;
+                courant = etat->PileEspaces[profondeur];
+            }
+            index = index + 1;
+        }
+    }
+
+    naturel64 ChercherJetonOctetNormalisation(EtatNormalisationDeclarations* etat, naturel64 debut) {
+        naturel64 gauche = 0;
+        naturel64 droite = etat->NombreJetons;
+        tantque (gauche < droite) {
+            naturel64 milieu = gauche + (droite - gauche) / 2;
+            si (etat->Jetons[milieu].Debut < debut) gauche = milieu + 1;
+            sinon droite = milieu;
+        }
+        retourner gauche;
+    }
+
+    naturel64 ChercherJetonPositionNormalisation(
+        EtatNormalisationDeclarations* etat, NoeudDeclaration* noeud) {
+        naturel64 gauche = 0;
+        naturel64 droite = etat->NombreJetons;
+        tantque (gauche < droite) {
+            naturel64 milieu = gauche + (droite - gauche) / 2;
+            JetonLexe* jeton = &etat->Jetons[milieu];
+            si (jeton->Ligne < noeud->Ligne || (jeton->Ligne == noeud->Ligne && jeton->Colonne < noeud->Colonne))
+                gauche = milieu + 1;
+            sinon droite = milieu;
+        }
+        retourner gauche;
+    }
+
+    naturel64 LireNomNormalisation(
+        EtatNormalisationDeclarations* etat, naturel64 parentChemin, naturel64* position) {
+        naturel64 chemin = AjouterNomNormalisation(etat, parentChemin, *position);
+        *position = *position + 1;
+        tantque (etat->Jetons[*position].Genre == 44) {
+            *position = *position + 1;
+            chemin = AjouterNomNormalisation(etat, chemin, *position);
+            *position = *position + 1;
+        }
+        retourner chemin;
+    }
+
+    booléen MemesJetonsNomsNormalisation(EtatNormalisationDeclarations* etat, naturel64 gauche, naturel64 droite) {
+        JetonLexe* a = &etat->Jetons[gauche];
+        JetonLexe* b = &etat->Jetons[droite];
+        si (a->Genre != b->Genre || a->TailleSource != b->TailleSource) retourner faux;
+        naturel64 index = 0;
+        tantque (index < a->TailleSource) {
+            si (etat->Brut->SourceAssemblee[a->Debut + index] != etat->Brut->SourceAssemblee[b->Debut + index]) retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    booléen MemesNomsNormalisation(EtatNormalisationDeclarations* etat, naturel64 gauche, naturel64 droite) {
+        tantque (gauche != 0 && droite != 0) {
+            si (!MemesJetonsNomsNormalisation(etat, etat->Chemins[gauche].Jeton, etat->Chemins[droite].Jeton)) retourner faux;
+            gauche = etat->Chemins[gauche].Parent;
+            droite = etat->Chemins[droite].Parent;
+        }
+        retourner gauche == droite;
+    }
+
+    naturel32 GenreCurseurNormalisation(EtatNormalisationDeclarations* etat, CurseurTypeNormalisation* curseur) {
+        si (curseur->SecondChevron) retourner 50;
+        retourner etat->Jetons[curseur->Position].Genre;
+    }
+
+    vide AvancerCurseurNormalisation(CurseurTypeNormalisation* curseur) {
+        curseur->SecondChevron = faux;
+        curseur->Position = curseur->Position + 1;
+    }
+
+    vide AjouterMotTypeNormalisation(EtatNormalisationDeclarations* etat, naturel64 mot) {
+        etat->MotsTypes[etat->NombreMotsTypes] = mot;
+        etat->NombreMotsTypes = etat->NombreMotsTypes + 1;
+    }
+
+    /** <résumé>Encode exactement la structure des types, y compris les callbacks imbriqués et les noms complets.</résumé> **/
+    vide EncoderTypeNormalisation(EtatNormalisationDeclarations* etat, CurseurTypeNormalisation* curseur) {
+        naturel64 qualificatifs = 0;
+        tantque (GenreCurseurNormalisation(etat, curseur) == 12 || GenreCurseurNormalisation(etat, curseur) == 13) {
+            si (GenreCurseurNormalisation(etat, curseur) == 12) qualificatifs = qualificatifs | 1;
+            sinon qualificatifs = qualificatifs | 2;
+            AvancerCurseurNormalisation(curseur);
+        }
+        AjouterMotTypeNormalisation(etat, qualificatifs);
+        naturel32 genre = GenreCurseurNormalisation(etat, curseur);
+        AjouterMotTypeNormalisation(etat, convertir<naturel64>(genre));
+        si (genre == 1) {
+            naturel64 emplacementTaille = etat->NombreMotsTypes;
+            AjouterMotTypeNormalisation(etat, 0);
+            naturel64 taille = 0;
+            booléen suite = vrai;
+            tantque (suite) {
+                JetonLexe* partie = &etat->Jetons[curseur->Position];
+                naturel64 indexOctet = 0;
+                tantque (indexOctet < partie->TailleSource) {
+                    AjouterMotTypeNormalisation(etat, convertir<naturel64>(convertir<octet>(etat->Brut->SourceAssemblee[partie->Debut + indexOctet])));
+                    taille = taille + 1;
+                    indexOctet = indexOctet + 1;
+                }
+                AvancerCurseurNormalisation(curseur);
+                suite = GenreCurseurNormalisation(etat, curseur) == 44;
+                si (suite) {
+                    AjouterMotTypeNormalisation(etat, 58);
+                    AjouterMotTypeNormalisation(etat, 58);
+                    taille = taille + 2;
+                    AvancerCurseurNormalisation(curseur);
+                }
+            }
+            etat->MotsTypes[emplacementTaille] = taille;
+        }
+        sinon si (genre == 26) {
+            AvancerCurseurNormalisation(curseur);
+            AvancerCurseurNormalisation(curseur);
+            EncoderTypeNormalisation(etat, curseur);
+            AvancerCurseurNormalisation(curseur);
+            naturel64 emplacementNombre = etat->NombreMotsTypes;
+            AjouterMotTypeNormalisation(etat, 0);
+            naturel64 nombreParametres = 0;
+            booléen continuerParametres = GenreCurseurNormalisation(etat, curseur) != 35;
+            tantque (continuerParametres) {
+                EncoderTypeNormalisation(etat, curseur);
+                nombreParametres = nombreParametres + 1;
+                si (GenreCurseurNormalisation(etat, curseur) == 41) AvancerCurseurNormalisation(curseur);
+                sinon continuerParametres = faux;
+            }
+            etat->MotsTypes[emplacementNombre] = nombreParametres;
+            AvancerCurseurNormalisation(curseur);
+            si (GenreCurseurNormalisation(etat, curseur) == 60) curseur->SecondChevron = vrai;
+            sinon AvancerCurseurNormalisation(curseur);
+        }
+        sinon AvancerCurseurNormalisation(curseur);
+        naturel64 pointeurs = 0;
+        tantque (GenreCurseurNormalisation(etat, curseur) == 63) {
+            pointeurs = pointeurs + 1;
+            AvancerCurseurNormalisation(curseur);
+        }
+        AjouterMotTypeNormalisation(etat, pointeurs);
+        naturel64 reference = 0;
+        si (GenreCurseurNormalisation(etat, curseur) == 55) {
+            reference = 1;
+            AvancerCurseurNormalisation(curseur);
+        }
+        AjouterMotTypeNormalisation(etat, reference);
+    }
+
+    vide EncoderDimensionsNormalisation(EtatNormalisationDeclarations* etat, CurseurTypeNormalisation* curseur) {
+        naturel64 emplacementNombre = etat->NombreMotsTypes;
+        AjouterMotTypeNormalisation(etat, 0);
+        naturel64 nombre = 0;
+        tantque (GenreCurseurNormalisation(etat, curseur) == 38) {
+            AvancerCurseurNormalisation(curseur);
+            JetonLexe* dimension = &etat->Jetons[curseur->Position];
+            naturel64 valeur = 0;
+            naturel64 index = 0;
+            tantque (index < dimension->TailleSource) {
+                octet chiffre = convertir<octet>(etat->Brut->SourceAssemblee[dimension->Debut + index]);
+                si (chiffre != 95) valeur = valeur * 10 + convertir<naturel64>(chiffre - 48);
+                index = index + 1;
+            }
+            AjouterMotTypeNormalisation(etat, valeur);
+            nombre = nombre + 1;
+            AvancerCurseurNormalisation(curseur);
+            AvancerCurseurNormalisation(curseur);
+        }
+        etat->MotsTypes[emplacementNombre] = nombre;
+    }
+
+    booléen EstFonctionLibreNormalisation(NoeudDeclaration* noeud) {
+        retourner noeud->Parent == 0 && (noeud->Genre == 1 || noeud->Genre == 15);
+    }
+
+    vide InitialiserMetadonneesNormalisation(EtatNormalisationDeclarations* etat) {
+        naturel64 index = 0;
+        tantque (index < etat->Brut->Resultat.NombreNoeuds) {
+            etat->Metadonnees[index] = {0, 0, 0, 0, 0, index};
+            index = index + 1;
+        }
+        naturel64 racine = 0;
+        index = 1;
+        tantque (index < etat->Brut->Resultat.NombreNoeuds) {
+            NoeudDeclaration* noeud = &etat->Brut->Noeuds[index];
+            si (noeud->Parent == 0) {
+                etat->Metadonnees[racine].FinSousArbre = index;
+                racine = index;
+            }
+            booléen fonction = EstFonctionLibreNormalisation(noeud);
+            booléen globale = noeud->Parent == 0 && noeud->Genre == 3;
+            booléen estAlias = noeud->Parent == 0 && noeud->Genre == 10;
+            booléen parametre = noeud->Genre == 2 && EstFonctionLibreNormalisation(&etat->Brut->Noeuds[noeud->Parent]);
+            si (fonction || globale || estAlias) {
+                naturel64 positionNom = ChercherJetonOctetNormalisation(etat, noeud->DebutNom);
+                etat->Metadonnees[index].Nom = LireNomNormalisation(etat, etat->EspacesJetons[positionNom], &positionNom);
+                si (estAlias) {
+                    positionNom = positionNom + 1;
+                    etat->Metadonnees[index].CibleAlias = LireNomNormalisation(etat, 0, &positionNom);
+                }
+            }
+            si (fonction || globale || parametre) {
+                CurseurTypeNormalisation curseur = {ChercherJetonPositionNormalisation(etat, noeud), faux};
+                tantque (GenreCurseurNormalisation(etat, &curseur) == 9
+                    || GenreCurseurNormalisation(etat, &curseur) == 10 || GenreCurseurNormalisation(etat, &curseur) == 11)
+                    AvancerCurseurNormalisation(&curseur);
+                etat->Metadonnees[index].DebutType = etat->NombreMotsTypes;
+                EncoderTypeNormalisation(etat, &curseur);
+                si (fonction && noeud->Genre == 15) AvancerCurseurNormalisation(&curseur);
+                AvancerCurseurNormalisation(&curseur);
+                EncoderDimensionsNormalisation(etat, &curseur);
+                etat->Metadonnees[index].TailleType = etat->NombreMotsTypes - etat->Metadonnees[index].DebutType;
+            }
+            index = index + 1;
+        }
+        etat->Metadonnees[racine].FinSousArbre = index;
+    }
+
+    booléen MemesTypesNormalisation(EtatNormalisationDeclarations* etat, naturel64 gauche, naturel64 droite) {
+        MetadonneesNormalisation* a = &etat->Metadonnees[gauche];
+        MetadonneesNormalisation* b = &etat->Metadonnees[droite];
+        si (a->TailleType != b->TailleType) retourner faux;
+        naturel64 index = 0;
+        tantque (index < a->TailleType) {
+            si (etat->MotsTypes[a->DebutType + index] != etat->MotsTypes[b->DebutType + index]) retourner faux;
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
+    booléen MemesParametresNormalisation(EtatNormalisationDeclarations* etat, naturel64 gauche, naturel64 droite) {
+        naturel64 a = gauche + 1;
+        naturel64 b = droite + 1;
+        tantque (a < etat->Brut->Resultat.NombreNoeuds && b < etat->Brut->Resultat.NombreNoeuds
+            && etat->Brut->Noeuds[a].Genre == 2 && etat->Brut->Noeuds[a].Parent == gauche
+            && etat->Brut->Noeuds[b].Genre == 2 && etat->Brut->Noeuds[b].Parent == droite) {
+            si (!MemesTypesNormalisation(etat, a, b)) retourner faux;
+            a = a + 1;
+            b = b + 1;
+        }
+        booléen resteA = a < etat->Brut->Resultat.NombreNoeuds
+            && etat->Brut->Noeuds[a].Genre == 2 && etat->Brut->Noeuds[a].Parent == gauche;
+        booléen resteB = b < etat->Brut->Resultat.NombreNoeuds
+            && etat->Brut->Noeuds[b].Genre == 2 && etat->Brut->Noeuds[b].Parent == droite;
+        retourner !resteA && !resteB;
+    }
+
+    ErreurAssemblageDeclarations NormaliserFamilleDeclarations(
+        EtatNormalisationDeclarations* etat, naturel32 famille, naturel64* indexErreur) {
+        naturel64 index = 1;
+        tantque (index < etat->Brut->Resultat.NombreNoeuds) {
+            NoeudDeclaration* noeud = &etat->Brut->Noeuds[index];
+            booléen candidat = noeud->Parent == 0 && noeud->Genre == famille;
+            si (famille == 1) candidat = EstFonctionLibreNormalisation(noeud);
+            si (candidat) {
+                naturel64 precedent = 1;
+                tantque (precedent < index) {
+                    naturel64 choisi = etat->Metadonnees[precedent].Selection;
+                    si (choisi != NulSelectionNormalisation()) {
+                        NoeudDeclaration* ancien = &etat->Brut->Noeuds[choisi];
+                        booléen memeFamille = ancien->Parent == 0 && ancien->Genre == famille;
+                        si (famille == 1) memeFamille = EstFonctionLibreNormalisation(ancien);
+                        si (memeFamille && MemesNomsNormalisation(etat, etat->Metadonnees[choisi].Nom, etat->Metadonnees[index].Nom)
+                            && (famille != 1 || MemesParametresNormalisation(etat, choisi, index))) {
+                            *indexErreur = index;
+                            si (famille == 10) {
+                                si (!MemesNomsNormalisation(etat, etat->Metadonnees[choisi].CibleAlias, etat->Metadonnees[index].CibleAlias))
+                                    retourner ErreurAssemblageDeclarations::AliasIncompatible;
+                            }
+                            sinon {
+                                si (!MemesTypesNormalisation(etat, choisi, index)) {
+                                    si (famille == 1) retourner ErreurAssemblageDeclarations::FonctionIncompatible;
+                                    retourner ErreurAssemblageDeclarations::GlobaleIncompatible;
+                                }
+                                si ((ancien->Drapeaux & 2) == 0 && (noeud->Drapeaux & 2) == 0) {
+                                    si (famille == 1) retourner ErreurAssemblageDeclarations::FonctionDefiniePlusieursFois;
+                                    retourner ErreurAssemblageDeclarations::GlobaleDefiniePlusieursFois;
+                                }
+                                si ((ancien->Drapeaux & 2) != 0 && (noeud->Drapeaux & 2) == 0)
+                                    etat->Metadonnees[precedent].Selection = index;
+                            }
+                            etat->Metadonnees[index].Selection = NulSelectionNormalisation();
+                            precedent = index;
+                        }
+                    }
+                    precedent = precedent + 1;
+                }
+            }
+            index = index + 1;
+        }
+        retourner ErreurAssemblageDeclarations::Reussite;
+    }
+
+    vide LocaliserErreurNormalisation(
+        RequeteAssemblageDeclarations* requete, RequeteAssemblageDeclarations* brut, naturel64 index) {
+        NoeudDeclaration* noeud = &brut->Noeuds[index];
+        naturel64 origine = 0;
+        tantque (origine < brut->NombreUnites) {
+            OrigineUniteDeclarations* unite = &brut->Origines[origine];
+            si (noeud->Ligne >= unite->PremiereLigne && noeud->Ligne - unite->PremiereLigne < unite->NombreLignes) {
+                requete->Resultat.IndexUniteErreur = origine;
+                requete->Resultat.LigneErreur = noeud->Ligne - unite->PremiereLigne + 1;
+                requete->Resultat.ColonneErreur = noeud->Colonne;
+                retourner;
+            }
+            origine = origine + 1;
+        }
+    }
+
+    /**
+     * <résumé>Prépare une sortie normalisée privée avant toute publication dans les tampons.</résumé>
+     * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités et tampons distincts de l'appelant.
+     * @Retourner(ErreurAssemblageDeclarations) Résultat pour les déclarations libres uniquement.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsNormalisees(RequeteAssemblageDeclarations* requete) {
+
+        si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
+        requete->Resultat = {};
+        requete->Resultat.IndexUniteErreur = requete->NombreUnites;
+        si ((!requete->SourceAssemblee && requete->CapaciteSource != 0)
+            || (!requete->Noeuds && requete->CapaciteNoeuds != 0)
+            || (!requete->Origines && requete->CapaciteOrigines != 0)) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::ArgumentInvalide;
+            retourner requete->Resultat.Erreur;
+        }
+        RequeteAssemblageDeclarations brut = {};
+        brut.Unites = requete->Unites;
+        brut.NombreUnites = requete->NombreUnites;
+        ErreurAssemblageDeclarations erreur = AssemblerDeclarationsPreparees(&brut);
+        si (erreur != ErreurAssemblageDeclarations::CapaciteInsuffisante) {
+            requete->Resultat = brut.Resultat;
+            retourner erreur;
+        }
+        GalacticShrine::GsPP::Hebergee::AreneMemoire arene;
+        GalacticShrine::GsPP::Hebergee::InitialiserArene(&arene, 4096);
+        brut.CapaciteSource = brut.Resultat.NombreOctetsSource;
+        brut.CapaciteNoeuds = brut.Resultat.NombreNoeuds;
+        brut.CapaciteOrigines = brut.Resultat.NombreOrigines;
+        brut.SourceAssemblee = convertir<caractère*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, brut.CapaciteSource, 1));
+        brut.Noeuds = convertir<NoeudDeclaration*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, brut.CapaciteNoeuds * 64, 8));
+        brut.Origines = convertir<OrigineUniteDeclarations*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, brut.CapaciteOrigines * 32, 8));
+        si (!brut.SourceAssemblee || !brut.Noeuds || !brut.Origines) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::AllocationImpossible;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
+            retourner requete->Resultat.Erreur;
+        }
+        erreur = AssemblerDeclarationsPreparees(&brut);
+        si (erreur != ErreurAssemblageDeclarations::Reussite) {
+            requete->Resultat = brut.Resultat;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
+            retourner erreur;
+        }
+        RequeteLexage lexage = {convertir<constante caractère*>(brut.SourceAssemblee), brut.CapaciteSource, NulJetonsNormalisation, 0, {}};
+        AnalyserSource(&lexage);
+        EtatNormalisationDeclarations etat = {};
+        etat.Brut = &brut;
+        etat.NombreJetons = lexage.Resultat.CapaciteRequise;
+        etat.Jetons = convertir<JetonLexe*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, etat.NombreJetons * 48, 8));
+        etat.EspacesJetons = convertir<naturel64*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, etat.NombreJetons * 8, 8));
+        etat.PileEspaces = convertir<naturel64*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, etat.NombreJetons * 8, 8));
+        etat.Chemins = convertir<CheminNomNormalisation*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, (etat.NombreJetons + 1) * 16, 8));
+        etat.MotsTypes = convertir<naturel64*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, (etat.NombreJetons * 8 + brut.CapaciteSource) * 8, 8));
+        etat.Metadonnees = convertir<MetadonneesNormalisation*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&arene, brut.CapaciteNoeuds * 48, 8));
+        si (!etat.Jetons || !etat.EspacesJetons || !etat.PileEspaces || !etat.Chemins || !etat.MotsTypes || !etat.Metadonnees) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::AllocationImpossible;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
+            retourner requete->Resultat.Erreur;
+        }
+        lexage.Jetons = etat.Jetons;
+        lexage.Capacite = etat.NombreJetons;
+        AnalyserSource(&lexage);
+        InitialiserEspacesNormalisation(&etat);
+        InitialiserMetadonneesNormalisation(&etat);
+        naturel64 indexErreur = 0;
+        erreur = NormaliserFamilleDeclarations(&etat, 1, &indexErreur);
+        si (erreur == ErreurAssemblageDeclarations::Reussite) erreur = NormaliserFamilleDeclarations(&etat, 3, &indexErreur);
+        si (erreur == ErreurAssemblageDeclarations::Reussite) erreur = NormaliserFamilleDeclarations(&etat, 10, &indexErreur);
+        requete->Resultat = brut.Resultat;
+        requete->Resultat.NombreOctetsArene = arene.NombreOctets;
+        si (erreur != ErreurAssemblageDeclarations::Reussite) {
+            requete->Resultat.Erreur = erreur;
+            requete->Resultat.NombreNoeuds = 0;
+            LocaliserErreurNormalisation(requete, &brut, indexErreur);
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
+            retourner erreur;
+        }
+        naturel64 nombreNoeuds = 1;
+        naturel64 racine = 1;
+        tantque (racine < brut.CapaciteNoeuds) {
+            naturel64 choisi = etat.Metadonnees[racine].Selection;
+            si (choisi != NulSelectionNormalisation())
+                nombreNoeuds = nombreNoeuds + etat.Metadonnees[choisi].FinSousArbre - choisi;
+            racine = etat.Metadonnees[racine].FinSousArbre;
+        }
+        requete->Resultat.NombreNoeuds = nombreNoeuds;
+        si (!requete->SourceAssemblee || requete->CapaciteSource < brut.CapaciteSource
+            || !requete->Noeuds || requete->CapaciteNoeuds < nombreNoeuds
+            || !requete->Origines || requete->CapaciteOrigines < brut.CapaciteOrigines) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::CapaciteInsuffisante;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
+            retourner requete->Resultat.Erreur;
+        }
+        requete->Noeuds[0] = brut.Noeuds[0];
+        naturel64 destination = 1;
+        racine = 1;
+        tantque (racine < brut.CapaciteNoeuds) {
+            naturel64 choisi = etat.Metadonnees[racine].Selection;
+            si (choisi != NulSelectionNormalisation()) {
+                naturel64 debutDestination = destination;
+                naturel64 indexNoeud = choisi;
+                tantque (indexNoeud < etat.Metadonnees[choisi].FinSousArbre) {
+                    NoeudDeclaration noeud = brut.Noeuds[indexNoeud];
+                    si (noeud.Parent != 0) noeud.Parent = noeud.Parent - choisi + debutDestination;
+                    requete->Noeuds[destination] = noeud;
+                    destination = destination + 1;
+                    indexNoeud = indexNoeud + 1;
+                }
+            }
+            racine = etat.Metadonnees[racine].FinSousArbre;
+        }
+        naturel64 octetCopie = 0;
+        tantque (octetCopie < brut.CapaciteSource) {
+            requete->SourceAssemblee[octetCopie] = brut.SourceAssemblee[octetCopie];
+            octetCopie = octetCopie + 1;
+        }
+        naturel64 origineCopie = 0;
+        tantque (origineCopie < brut.CapaciteOrigines) {
+            requete->Origines[origineCopie] = brut.Origines[origineCopie];
+            origineCopie = origineCopie + 1;
+        }
+        GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
+        retourner ErreurAssemblageDeclarations::Reussite;
+    }
+}

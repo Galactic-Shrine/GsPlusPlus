@@ -41,6 +41,7 @@ espace GalacticShrine::GsPP::Autohebergement {
     RequeteAnalyseSemantique* NulRequetesAnalyseSemantique;
     constante caractère* NulCaracteresSemantiques;
     RequeteEmissionGlobales* NulRequetesEmissionGlobales;
+    constante OrigineUniteDeclarations* NulOriginesSemantiques;
     GlobaleEmise* NulGlobalesEmises;
     RelocalisationGlobale* NulRelocalisationsGlobales;
 
@@ -56,6 +57,8 @@ espace GalacticShrine::GsPP::Autohebergement {
     structure EtatAnalyseSemantique {
 
         RequeteAnalyseSemantique* Requete;
+        constante OrigineUniteDeclarations* Origines;
+        naturel64 NombreOrigines;
         SymboleSemantique* SymbolesTravail;
         naturel64 NombreSymboles;
         naturel64 NombreResolutions;
@@ -1050,6 +1053,19 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner HacherNomDeclarationAliasSemantique(etat, symbole);
     }
 
+    booléen MemeUnitePositionsSemantiques(
+        EtatAnalyseSemantique* etat, naturel64 gauche, naturel64 droite) {
+        si (etat->NombreOrigines == 0) retourner vrai;
+        naturel64 index = 0;
+        tantque (index < etat->NombreOrigines) {
+            constante OrigineUniteDeclarations* origine = &etat->Origines[index];
+            si (gauche >= origine->DebutOctets && gauche - origine->DebutOctets < origine->TailleOctets)
+                retourner droite >= origine->DebutOctets && droite - origine->DebutOctets < origine->TailleOctets;
+            index = index + 1;
+        }
+        retourner faux;
+    }
+
     /** <résumé>Parcourt les imports transitifs au niveau de leur ancêtre commun, avec une file bornée.</résumé> **/
     booléen CorrespondNiveauUtiliseSemantique(
         EtatAnalyseSemantique* etat, RechercheNomUtiliseSemantique* recherche, naturel64 nom) {
@@ -1061,6 +1077,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             constante NoeudDeclaration* utilisation = &etat->Requete->Noeuds[index];
             naturel64 declarant = IndexEspaceUtiliseSemantique(etat, utilisation->HachageEspace);
             si (utilisation->Genre == 36 && utilisation->DebutNom < recherche->Debut
+                && MemeUnitePositionsSemantiques(etat, utilisation->DebutNom, recherche->Debut)
                 && EspaceContientUtiliseSemantique(etat, declarant, espaceRecherche)) {
                 naturel64 effacer = 0;
                 tantque (effacer < etat->NombreEspacesUtilises) {
@@ -1083,6 +1100,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     tantque (transitif < etat->Requete->NombreNoeuds) {
                         constante NoeudDeclaration* suivant = &etat->Requete->Noeuds[transitif];
                         si (suivant->Genre == 36 && suivant->DebutNom < recherche->Debut
+                            && MemeUnitePositionsSemantiques(etat, suivant->DebutNom, recherche->Debut)
                             && suivant->HachageEspace == etat->NomsEspacesUtilises[cible]) {
                             naturel64 enfant = etat->CiblesEspacesUtilises[transitif];
                             si (etat->VisitesEspacesUtilises[enfant] == 0) {
@@ -5892,6 +5910,21 @@ espace GalacticShrine::GsPP::Autohebergement {
             && !EstTypeAdresseSemantique(etat, typeExpressionConstante))
             retourner vrai;
 
+        /**
+         * <résumé>Un callback constant protège sa valeur stockée, contrairement au pointeur de données.</résumé>
+         * Une indirection supplémentaire reste un pointeur vers ce stockage.
+         **/
+        si (EstTypeConstantSemantique(etat, typeExpressionConstante)) {
+
+            naturel64 origineCallbackConstant = TrouverOrigineTypeExpressionSemantique(
+                etat, indexExpression);
+            DescriptionTypeJetonsSemantique descriptionCallbackConstant;
+            si (LireDescriptionPointeurFonctionNoeudSemantique(
+                    etat, origineCallbackConstant, typeExpressionConstante, &descriptionCallbackConstant)
+                && descriptionCallbackConstant.NiveauPointeur == 0)
+                retourner vrai;
+        }
+
         constante NoeudDeclaration* expressionConstante =
             &etat->Requete->Noeuds[indexExpression];
         si (expressionConstante->Genre == 29
@@ -9097,21 +9130,35 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurAnalyseSemantique::Reussite;
     }
 
+    /**
+     * <résumé>Distingue les dimensions encore présentes d'un pointeur extrait puis déréférencé.</résumé>
+     * @Paramètre(EtatAnalyseSemantique*: etat) AST compact et dimensions des déclarations.
+     * @Paramètre(naturel64: indexExpression) Cible résolue avant toute analyse de la valeur affectée.
+     * @Retourner(booléen) Vrai seulement pour un tableau entier ou un sous-tableau non indexé entièrement.
+     **/
     booléen EstExpressionTableauSemantique(
         EtatAnalyseSemantique* etat, naturel64 indexExpression) {
+
+        si (indexExpression >= etat->Requete->NombreNoeuds) retourner faux;
+        naturel64 racineTableau = indexExpression;
+        naturel32 nombreIndicesTableau = 0;
+        tantque (racineTableau < etat->Requete->NombreNoeuds
+            && etat->Requete->Noeuds[racineTableau].Genre == 30) {
+
+            nombreIndicesTableau = nombreIndicesTableau + 1;
+            racineTableau = TrouverEnfantDirectSemantique(etat, racineTableau, 0);
+        }
+        si (racineTableau >= etat->Requete->NombreNoeuds) retourner faux;
+        naturel32 genreRacineTableau = etat->Requete->Noeuds[racineTableau].Genre;
+        si (genreRacineTableau != 24 && genreRacineTableau != 29) retourner faux;
         naturel64 origineTableau = TrouverOrigineTypeExpressionSemantique(
-            etat, indexExpression);
+            etat, racineTableau);
         DescriptionHachageTypeSemantique dimensionsTableau;
         si (origineTableau >= etat->Requete->NombreNoeuds
             || !LireDimensionsNoeudSemantique(
                 etat, origineTableau, &dimensionsTableau))
             retourner faux;
-        naturel64 typeElementFinal = HachageElementFinalTableauSemantique(
-            etat, origineTableau);
-        naturel64 typeExpression = HachageTypeExpressionSemantique(
-            etat, indexExpression);
-        retourner typeElementFinal != 0
-            && typeExpression != typeElementFinal;
+        retourner nombreIndicesTableau < dimensionsTableau.NombreDimensions;
     }
 
     /**
@@ -9614,6 +9661,29 @@ espace GalacticShrine::GsPP::Autohebergement {
             naturel64 parentExpression = etat->Requete->Noeuds[indexExpression].Parent;
             booléen argumentAgregeDiffere = etat->Requete->Noeuds[indexExpression].Genre == 32
                 && parentExpression < indexExpression && etat->Requete->Noeuds[parentExpression].Genre == 28;
+            booléen affectationAgregeeContextuelle = etat->Requete->Noeuds[indexExpression].Genre == 32
+                && parentExpression < indexExpression && etat->Requete->Noeuds[parentExpression].Genre == 27
+                && TrouverEnfantDirectSemantique(etat, parentExpression, 1) == indexExpression;
+            booléen retourAgregeContextuel = etat->Requete->Noeuds[indexExpression].Genre == 32
+                && parentExpression < indexExpression && etat->Requete->Noeuds[parentExpression].Genre == 17;
+            si (affectationAgregeeContextuelle) {
+
+                /** <résumé>La cible est déjà contrôlée ; valider la forme avant les feuilles de la valeur affectée.</résumé> **/
+                naturel64 cibleAgregee = TrouverEnfantDirectSemantique(etat, parentExpression, 0);
+                ErreurAnalyseSemantique erreurAffectationAgregee = ValiderArgumentAgregeTypeSemantique(
+                    etat, indexExpression, HachageTypeExpressionSemantique(etat, cibleAgregee));
+                si (erreurAffectationAgregee != ErreurAnalyseSemantique::Reussite) retourner erreurAffectationAgregee;
+            }
+            si (retourAgregeContextuel) {
+
+                /** <résumé>Le type de retour impose la forme de l'agrégat avant la visite de ses éléments.</résumé> **/
+                naturel64 fonctionRetourAgrege = TrouverFonctionContenantSemantique(etat, parentExpression);
+                si (fonctionRetourAgrege >= etat->Requete->NombreNoeuds)
+                    retourner SignalerErreurSemantique(etat, ErreurAnalyseSemantique::AstInvalide, parentExpression, 46);
+                ErreurAnalyseSemantique erreurRetourAgrege = ValiderArgumentAgregeTypeSemantique(
+                    etat, indexExpression, etat->Requete->Noeuds[fonctionRetourAgrege].HachageType);
+                si (erreurRetourAgrege != ErreurAnalyseSemantique::Reussite) retourner erreurRetourAgrege;
+            }
             si (etat->Requete->Noeuds[indexExpression].Genre == 31) {
 
                 DescriptionTypeJetonsSemantique cible;
@@ -9621,7 +9691,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 si (erreurCibleConversion != ErreurAnalyseSemantique::Reussite) retourner erreurCibleConversion;
             }
             prochain = prochain + 1;
-            si (argumentAgregeDiffere)
+            si (argumentAgregeDiffere || affectationAgregeeContextuelle || retourAgregeContextuel)
                 tantque (prochain < fin && etat->Requete->Noeuds[prochain].Parent >= indexExpression)
                     prochain = prochain + 1;
             booléen termine = prochain >= fin
@@ -10319,7 +10389,9 @@ espace GalacticShrine::GsPP::Autohebergement {
 
     ErreurAnalyseSemantique AnalyserSemantiqueInterne(
         RequeteAnalyseSemantique* requete,
-        RequeteEmissionGlobales* emission) {
+        RequeteEmissionGlobales* emission,
+        constante OrigineUniteDeclarations* origines,
+        naturel64 nombreOrigines) {
         si (requete == NulRequetesAnalyseSemantique)
             retourner ErreurAnalyseSemantique::ArgumentInvalide;
 
@@ -10335,6 +10407,8 @@ espace GalacticShrine::GsPP::Autohebergement {
 
         EtatAnalyseSemantique etat;
         etat.Requete = requete;
+        etat.Origines = origines;
+        etat.NombreOrigines = nombreOrigines;
         etat.ConstructeurChampActif = requete->NombreNoeuds;
         etat.SymbolesTravail = NulSymbolesSemantiques;
         etat.NombreSymboles = 0;
@@ -10615,7 +10689,66 @@ espace GalacticShrine::GsPP::Autohebergement {
 
     publique ErreurAnalyseSemantique AnalyserSemantique(RequeteAnalyseSemantique* requete) {
 
-        retourner AnalyserSemantiqueInterne(requete, NulRequetesEmissionGlobales);
+        retourner AnalyserSemantiqueInterne(requete, NulRequetesEmissionGlobales, NulOriginesSemantiques, 0);
+    }
+
+    /**
+     * <résumé>Valide la table d'origines, conserve l'isolation lexicale et retrouve le diagnostic local.</résumé>
+     * @Paramètre(RequeteAnalyseSemantiqueUnites*: requete) Analyse et origines produites par l'assemblage préparé.
+     * @Retourner(ErreurAnalyseSemantique) Résultat de la passe sans modifier les structures d'entrée.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnites(RequeteAnalyseSemantiqueUnites* requete) {
+
+        si (!requete) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        requete->IndexUniteErreur = requete->NombreOrigines;
+        requete->LigneLocaleErreur = 0;
+        requete->ColonneLocaleErreur = 0;
+        si (!requete->Analyse) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        requete->Analyse->Resultat = {};
+        requete->Analyse->Resultat.Erreur = ErreurAnalyseSemantique::ArgumentInvalide;
+        si (!requete->Origines || requete->NombreOrigines == 0 || requete->NombreOrigines > 1_000_000
+            || !requete->Analyse->Source || requete->Analyse->TailleSource > 1_000_000_000)
+            retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        naturel64 indexValidation = 0;
+        naturel64 prochainOctet = 0;
+        naturel32 prochaineLigne = 1;
+        tantque (indexValidation < requete->NombreOrigines) {
+            constante OrigineUniteDeclarations* origineValidee = &requete->Origines[indexValidation];
+            si (origineValidee->DebutOctets != prochainOctet || origineValidee->PremiereLigne != prochaineLigne
+                || origineValidee->Reserve != 0 || (origineValidee->OctetsBom != 0 && origineValidee->OctetsBom != 3)
+                || prochainOctet >= requete->Analyse->TailleSource
+                || origineValidee->TailleOctets >= requete->Analyse->TailleSource - prochainOctet)
+                retourner ErreurAnalyseSemantique::ArgumentInvalide;
+            naturel32 nombreLignes = 1;
+            naturel64 indexOctet = 0;
+            tantque (indexOctet < origineValidee->TailleOctets) {
+                si (requete->Analyse->Source[prochainOctet + indexOctet] == 10) nombreLignes = nombreLignes + 1;
+                indexOctet = indexOctet + 1;
+            }
+            si (origineValidee->NombreLignes != nombreLignes
+                || requete->Analyse->Source[prochainOctet + origineValidee->TailleOctets] != 10)
+                retourner ErreurAnalyseSemantique::ArgumentInvalide;
+            prochaineLigne = prochaineLigne + nombreLignes;
+            prochainOctet = prochainOctet + origineValidee->TailleOctets + 1;
+            indexValidation = indexValidation + 1;
+        }
+        si (prochainOctet != requete->Analyse->TailleSource) retourner ErreurAnalyseSemantique::ArgumentInvalide;
+        ErreurAnalyseSemantique erreur = AnalyserSemantiqueInterne(
+            requete->Analyse, NulRequetesEmissionGlobales, requete->Origines, requete->NombreOrigines);
+        naturel32 ligne = requete->Analyse->Resultat.LigneErreur;
+        naturel64 indexDiagnostic = 0;
+        tantque (ligne != 0 && indexDiagnostic < requete->NombreOrigines) {
+            constante OrigineUniteDeclarations* origineDiagnostic = &requete->Origines[indexDiagnostic];
+            si (ligne >= origineDiagnostic->PremiereLigne
+                && ligne - origineDiagnostic->PremiereLigne < origineDiagnostic->NombreLignes) {
+                requete->IndexUniteErreur = indexDiagnostic;
+                requete->LigneLocaleErreur = ligne - origineDiagnostic->PremiereLigne + 1;
+                requete->ColonneLocaleErreur = requete->Analyse->Resultat.ColonneErreur;
+                retourner erreur;
+            }
+            indexDiagnostic = indexDiagnostic + 1;
+        }
+        retourner erreur;
     }
 
     publique ErreurAnalyseSemantique EmettreGlobales(RequeteEmissionGlobales* requete) {
@@ -10637,7 +10770,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         analyse.TailleSource = requete->TailleSource;
         analyse.Noeuds = requete->Noeuds;
         analyse.NombreNoeuds = requete->NombreNoeuds;
-        ErreurAnalyseSemantique erreur = AnalyserSemantiqueInterne(&analyse, requete);
+        ErreurAnalyseSemantique erreur = AnalyserSemantiqueInterne(&analyse, requete, NulOriginesSemantiques, 0);
         requete->Resultat.Erreur = erreur;
         requete->Resultat.LigneErreur = analyse.Resultat.LigneErreur;
         requete->Resultat.ColonneErreur = analyse.Resultat.ColonneErreur;

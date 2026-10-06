@@ -362,7 +362,7 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **2 301 corpus négatifs** dans les sources de développement (**619** dans
+  avec **2 719 corpus négatifs** dans les sources de développement (**619** dans
   l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
@@ -470,6 +470,46 @@ principale.
   bootstrap, qualifications `volatile` et `constante volatile` conservées pour
   les champs/éléments adressés par le frontend Gs++, y compris par flèche ; cela
   n'ajoute pas les retours par référence aux fonctions ordinaires Gs++ ;
+- références de pointeurs retournées par les callbacks : copies, liaisons,
+  changements de cible, référents constants et tableaux de pointeurs ; vingt
+  corpus bilingues exécutés avec pointeurs et valeurs pointées contrôlés séparément ;
+  le déréférencement d'un élément n'est plus confondu avec un tableau entier ;
+- références vers des callbacks paramétrés : vingt-deux corpus bilingues exécutés
+  avec copies indépendantes, remplacement, appels, arguments et stockage vérifiés ;
+  les deux analyseurs protègent les callbacks constants sans interdire leur appel
+  ni la réaffectation des pointeurs vers des données constantes ;
+- paramètres référencés des callbacks imbriqués : vingt-quatre corpus bilingues
+  exécutés avec adresses et traces de mutation exactes, constructions, références
+  retournées et courts-circuits vérifiés ; un callback constant peut recevoir
+  un argument mutable lorsque sa signature l'autorise ;
+- structures et emplacements de pointeurs référencés dans les callbacks imbriqués :
+  vingt-quatre corpus bilingues exécutés vérifient l'identité, les copies indépendantes,
+  champs et éléments, constructions et redirections ; un pointeur vers une donnée
+  constante peut changer de cible sans autoriser la mutation de cette donnée ;
+- références dans les groupes mêlant méthodes et fonctions : vingt-deux corpus
+  bilingues exécutés vérifient la cible sélectionnée, les mutations, qualifications,
+  conversions vers une base et contextes de construction ; les égalités de score
+  restent ambiguës, sans préférence implicite de style C++ pour une référence ;
+- opérateurs mixtes recevant des références : vingt-quatre corpus bilingues
+  exécutés vérifient mutations, redirections de pointeurs, conversions de classes,
+  constructions et expressions imbriquées ; une trace exportée contrôle l'ordre
+  des appels et l'absence d'exécution dans les courts-circuits logiques intégrés ;
+- opérateurs dans les initialiseurs agrégés : vingt-sept corpus bilingues exécutés
+  vérifient structures, unions, tableaux imbriqués, affectations, retours et
+  constructions ; chaque valeur est capturée dans l'ordre des éléments ;
+  la forme agrégée est contrôlée avant ses feuilles dans les affectations et retours ;
+- analyse auto-hébergée d'interfaces préparées en mémoire : prototypes, globales
+  externes implicites, visibilité des membres, types et signatures ; vingt-deux
+  corpus bilingues syntaxiques/sémantiques et six interfaces de types/données ;
+  cette API ne lit pas les fichiers et ne développe pas les inclusions ;
+- assemblage auto-hébergé de sources et interfaces préparées : texte, AST et
+  table d'origines, avec diagnostics locaux et imports d'espaces isolés par unité ;
+  treize corpus bilingues valides, sorties protégées et échecs d'allocation testés ;
+  la normalisation des membres/groupes mixtes et le raccordement des inclusions restent à faire ;
+- normalisation auto-hébergée des fonctions/opérateurs libres, globales et alias
+  préparés : définitions préférées aux prototypes, ordre des premières déclarations
+  conservé, noms et types exacts comparés avant résolution des alias ; vingt-deux
+  corpus bilingues valides et trente refus de normalisation différentiels ;
 - initialiseurs globaux contrôlés entièrement dans l'ordre source, avec typage
   de toutes les feuilles avant leur passe constante ; priorité des contrôles
   structurels des champs par défaut, dans le périmètre différentiel testé ;

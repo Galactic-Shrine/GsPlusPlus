@@ -61,6 +61,7 @@ add_custom_command(
         "${GS_AUTO_SOURCE}/ClassificateurMotsCles.GsPP"
         "${GS_LEXEUR_SOURCE}/Lexeur.GsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/NormalisationDeclarations.GsPP"
         --format gsobj -o "${GS_ANALYSEUR_DECLARATIONS_OBJET}"
     DEPENDS
         gsppc
@@ -71,6 +72,7 @@ add_custom_command(
         "${GS_AUTO_SOURCE}/ClassificateurMotsCles.GsPP"
         "${GS_LEXEUR_SOURCE}/Lexeur.GsPP"
         "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/AnalyseurDeclarations.GsPP"
+        "${GS_ANALYSEUR_DECLARATIONS_SOURCE}/NormalisationDeclarations.GsPP"
     VERBATIM
 )
 

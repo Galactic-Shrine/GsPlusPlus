@@ -24,6 +24,9 @@ $sources = @()
 foreach ($stage in @('ClassificateurMotsCles', 'Lexeur', 'AnalyseurDeclarations')) {
     $headers += Join-Path $root "AutoHebergement/$stage/$stage.HGsPP"
     $sources += Join-Path $root "AutoHebergement/$stage/$stage.GsPP"
+    if ($stage -eq 'AnalyseurDeclarations') {
+        $sources += Join-Path $root 'AutoHebergement/AnalyseurDeclarations/NormalisationDeclarations.GsPP'
+    }
     Invoke-Compiler ($headers + $sources + @('--format', 'gsobj', '-o', "$auto/$stage.GsObj"))
 }
 $semantic = Join-Path $root 'AutoHebergement/AnalyseurSemantique/AnalyseurSemantique'

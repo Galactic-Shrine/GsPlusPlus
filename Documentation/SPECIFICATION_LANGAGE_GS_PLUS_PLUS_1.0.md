@@ -245,6 +245,42 @@ Sont inclus dans le périmètre candidat :
 - symboles publics compatibles entre unités uniquement si leur signature ABI
   est identique.
 
+Les groupes mêlant méthodes et fonctions libres comparent les candidats
+compatibles selon les règles de surcharge actuelles, sans priorité automatique
+de la méthode. Un référent constant exclut une référence scalaire mutable ;
+un temporaire n'est pas lié à une référence. Une conversion prise en charge
+vers une classe de base coûte davantage qu'une correspondance exacte avec
+la classe dérivée. Si deux candidats ont le même meilleur score, l'appel reste
+ambigu ; une référence scalaire n'est pas automatiquement préférée à une
+valeur du même type, ni une référence mutable à une référence constante
+compatible avec ce même argument mutable. Les qualifications des pointeurs
+participent à leur compatibilité. Ces règles s'appliquent aussi aux appels
+dans les champs par défaut, initialiseurs explicites, bases, membres et
+délégations des constructeurs, dans le périmètre vérifié.
+
+Les groupes mixtes d'opérateurs suivent les mêmes règles de sélection :
+les paramètres référencés conservent le stockage du scalaire, de l'élément
+de tableau ou du pointeur reçu. Un opérateur prenant `entier32*&` peut changer
+la cible de ce pointeur ; avec `constante entier32*&`, cette redirection reste
+autorisée sans permettre la mutation de la donnée pointée. Les expressions
+imbriquées et les expressions des constructions conservent les qualifications
+et contrôles de liaison. Dans les combinaisons vérifiées avec `&&` et `||`
+intégrés, le court-circuit empêche l'exécution de l'opérateur contenu dans
+l'opérande ignoré, mais pas son analyse sémantique : une expression invalide
+reste refusée. Cette couverture ne revendique pas les mêmes propriétés pour
+toutes les surcharges d'opérateurs logiques.
+
+Dans les initialiseurs agrégés couverts, les expressions sont évaluées et
+leurs valeurs stockées dans l'ordre des éléments. Deux éléments utilisant
+le même référent capturent chacun sa valeur au moment de leur évaluation :
+une mutation ultérieure ne réécrit pas l'élément déjà initialisé. Les éléments
+omis sont initialisés à zéro dans les structures et tableaux vérifiés.
+Le contrôle sémantique vérifie la forme et le nombre d'éléments à chaque
+niveau d'agrégat avant ses feuilles, puis contrôle chaque élément selon son
+type destination avant de passer au suivant. Cette priorité s'applique aussi
+aux valeurs agrégées affectées ou retournées ; les interdictions concernant
+la cible d'affectation restent vérifiées avant sa valeur.
+
 Une signature de callback peut retourner une référence : son appel constitue
 alors une valeur gauche liée au stockage renvoyé, et non une copie temporaire.
 La lecture charge la valeur référencée ; la liaison, la prise d'adresse et
@@ -259,6 +295,50 @@ après un accès par flèche. Les champs de type pointeur ou callback conservent
 qualifications de leur propre type déclaré, sans ajouter celles de leur objet
 contenant au pointeur stocké. `volatile` ne fournit pas de garantie d'atomicité
 ou de synchronisation ; les primitives atomiques restent distinctes.
+
+Un retour de callback `entier32*&` désigne l'emplacement contenant le pointeur :
+sa lecture copie la cible, tandis qu'une liaison ou prise d'adresse conserve
+l'accès à cet emplacement. `constante entier32*&` désigne un pointeur vers des
+données constantes : ce pointeur peut être réaffecté avec une valeur du même
+type qualifié, mais les données pointées ne peuvent pas être modifiées.
+
+Un callback retournant `pointeur_fonction<entier32(entier32)>&` peut fournir
+un emplacement modifiable de callback : l'appel imbriqué lit sa fonction,
+la liaison ou prise d'adresse conserve son stockage, et une copie garde sa
+propre cible après remplacement de l'original. Contrairement au pointeur vers
+des données constantes, `constante pointeur_fonction<entier32(entier32)>&`
+protège la valeur du callback stocké : sa lecture et son appel restent autorisés,
+mais son remplacement est refusé, directement ou via liaison, déréférencement,
+champ ou indexation. Aucune conversion de qualification supplémentaire n'est
+introduite ; les signatures restent contrôlées exactement.
+
+Une signature de callback peut combiner paramètre et retour par référence,
+par exemple `pointeur_fonction<entier32&(entier32&)>`, même lorsque ce callback
+est lui-même obtenu par référence ou copié par valeur. Le paramètre reçoit
+le stockage de l'argument, et le retour peut désigner ce même stockage.
+La constance du callback n'ajoute pas de qualification à ses paramètres :
+un callback constant acceptant `entier32&` peut modifier cet argument.
+Un paramètre `constante entier32&` reste une référence de lecture ; les
+temporaires et référents incompatibles restent refusés selon les règles de
+liaison actuelles, sans liaison temporaire supplémentaire de style C++.
+
+Le même contrat s'applique aux structures : `pointeur_fonction<P&(P&)>`
+reçoit le stockage de `P`, y compris ses champs, tableaux et pointeurs, et peut
+le retourner sans copie. Une copie par valeur de ce retour garde un stockage
+indépendant. Avec `constante P&`, les champs et éléments restent protégés.
+Un callback `pointeur_fonction<entier32*&(entier32*&, entier32*)>` reçoit
+l'emplacement du pointeur, pas seulement sa cible ; il peut le rediriger et
+retourner ce même emplacement. La variante
+`pointeur_fonction<constante entier32*&(constante entier32*&, constante entier32*)>`
+autorise également la redirection, mais interdit la mutation de la donnée
+pointée. Les qualifications des arguments restent contrôlées exactement ;
+ces formes n'introduisent ni conversion implicite supplémentaire ni liaison
+de référence à un temporaire.
+
+Une affectation de tableau entier ou de sous-tableau reste interdite. Cette
+règle ne s'applique pas au déréférencement d'un pointeur extrait d'un tableau
+de pointeurs : l'affectation vise alors le référent et suit ses propres règles
+de type et de constance.
 
 Ce fonctionnement est vérifié avec des callbacks C++ fournis par l'hôte dans
 la matrice de développement. Il n'autorise pas encore les fonctions ordinaires
@@ -329,6 +409,70 @@ symboles dupliqués, les cibles absentes et les signatures incompatibles.
 Les conteneurs et métadonnées de cette compilation sont définis par les
 formats [GsObj 1.0](FORMAT_GSOBJ_1.0.md) et
 [XML de projet 1.0](FORMAT_PROJETS_GS_PLUS_PLUS_1.0.md).
+
+### Analyse auto-hébergée d'une interface en mémoire
+
+L'entrée `GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsInterface`
+et son alias `AnalyzeInterfaceDeclarations` acceptent un contenu UTF-8
+**déjà préparé**, avec la même `RequeteAnalyseDeclarations` et les mêmes
+capacités que `AnalyserDeclarationsSource`. Le mode s'applique à tout le
+texte de cette requête ; il n'est pas déduit d'une extension de fichier.
+
+Fonctions et globales deviennent externes implicitement, sans export public
+de définition. Les membres de classes restent soumis à leur visibilité,
+avec prototypes externes et absence de corps. Une globale initialisée, un
+corps de fonction ou une liste d'initialisation de constructeur sont refusés.
+Types, champs, énumérations, alias et utilisations d'espaces restent analysés.
+Les contrôles de signature existants restent applicables aux prototypes.
+
+Cette entrée ne lit aucun fichier, ne traite pas `#inclure` / `#include` ou
+`#pragma once`, n'assemble pas les unités et ne normalise pas les prototypes
+contre leurs définitions. Les positions retournées sont celles du texte fourni,
+sans identité de fichier dans l'AST compact. L'assemblage préparé est décrit
+ci-dessous ; sa normalisation et les origines internes aux inclusions restent
+à raccorder. L'analyse
+sémantique complète actuelle garde notamment l'exigence d'au moins une fonction.
+
+### Assemblage auto-hébergé de plusieurs unités préparées
+
+`AssemblerDeclarationsPreparees` / `AssemblePreparedDeclarations` analyse
+séparément les sources et interfaces préparées, puis produit un texte UTF-8,
+un AST à racine unique et une table d'origines. Il retire uniquement le BOM
+initial de chaque unité et ajoute un LF après chaque contenu, sans terminateur
+nul. Parents, lignes et tranches nominales sont rebasés. Les trois tailles
+sont interrogeables ; aucun tampon de sortie n'est écrit en cas d'erreur ou
+de capacité insuffisante. Les anciens contrats restent inchangés.
+
+`AnalyserSemantiqueUnites` / `AnalyzeUnitSemantics` reçoit cette table avec
+la requête sémantique existante : les imports d'espaces directs/transitifs
+restent limités à leur unité, et le diagnostic expose aussi le rang de
+l'unité et ses positions locales. Une interface analysée comme unité
+séparée n'est pas une inclusion textuelle dans son consommateur.
+
+L'assemblage brut n'effectue **pas la normalisation** des prototypes,
+globales et alias répétés. Un prototype et sa définition sont tous deux
+conservés dans l'AST assemblé. L'expansion des inclusions et leur origine
+interne restent côté hôte ; cette API préparée ne lit aucun fichier.
+Voir le [contrat du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-préparé-et-origines-des-unités--6-octobre-2026).
+
+### Normalisation préparée des déclarations libres
+
+`AssemblerDeclarationsNormalisees` / `AssembleNormalizedDeclarations` est une
+entrée additive utilisant la même requête d'assemblage. Elle normalise les
+fonctions/opérateurs libres, globales et alias racines après analyse de toutes
+les unités, avec les règles du bootstrap dans ce périmètre. Les noms et types
+sont comparés exactement avant résolution des alias ; une définition compatible
+remplace les prototypes à la place de la première déclaration. Les doubles
+définitions et incompatibilités sont refusées : fonctions, puis globales, puis
+alias. Les positions restent celles de la déclaration choisie ou fautive.
+
+Les besoins de capacité de l'AST sont ceux de la sortie normalisée. Aucun
+des trois tampons n'est publié en cas d'erreur ou de capacité insuffisante.
+L'assemblage brut conserve son comportement sans fusion. Les membres de
+classes ne sont pas encore normalisés ; types et énumérations restent
+distincts. Cette entrée ne remplace pas encore la normalisation générale
+du bootstrap et ne développe pas les inclusions.
+Voir le [contrat de normalisation](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#normalisation-préparée-des-déclarations-libres--6-octobre-2026).
 
 ## Profils d’exécution
 

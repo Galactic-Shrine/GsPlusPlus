@@ -1473,6 +1473,46 @@ namespace
                "une signature de callback incompatible a été liée entre GsObj");
     }
 
+    /**
+     * <résumé>Protège les callbacks constants sans interdire la réaffectation des pointeurs de données.</résumé>
+     **/
+    void TesterStockageCallbacksConstants()
+    {
+        const std::vector<std::string> refus{
+            "publique vide F(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&()> lire, "
+            "constante pointeur_fonction<entier32(entier32)> autre) { lire() = autre; Absente; }",
+            "public void F(function_pointer<const function_pointer<int32(int32)>&()> lire, "
+            "const function_pointer<int32(int32)> autre) { lire() = autre; Absente; }",
+            "publique vide F(constante pointeur_fonction<entier32(entier32)> f, "
+            "constante pointeur_fonction<entier32(entier32)> autre) { f = autre; Absente; }",
+            "publique vide F(constante pointeur_fonction<entier32(entier32)>* adresse, "
+            "constante pointeur_fonction<entier32(entier32)> autre) { *adresse = autre; Absente; }",
+            "publique vide F(constante pointeur_fonction<entier32(entier32)>* adresse, "
+            "constante pointeur_fonction<entier32(entier32)> autre) { adresse[0] = autre; Absente; }",
+            "structure Q { constante pointeur_fonction<entier32(entier32)> F; }; "
+            "publique vide F(Q* q, constante pointeur_fonction<entier32(entier32)> autre) { q->F = autre; Absente; }",
+            "publique vide F(constante pointeur_fonction<entier32(entier32)> f, "
+            "constante pointeur_fonction<entier32(entier32)> autre) { "
+            "constante pointeur_fonction<entier32(entier32)> tableau[1] = {f}; tableau[0] = autre; Absente; }",
+            "publique vide F(constante volatile pointeur_fonction<entier32(entier32)> f, "
+            "constante volatile pointeur_fonction<entier32(entier32)> autre) { f = autre; Absente; }",
+        };
+        for (const auto& source : refus)
+        {
+            bool refuseAvantExpressionSuivante = false;
+            try { (void)Compiler(source); }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                refuseAvantExpressionSuivante = std::string(erreur.what()).find("valeur constante") != std::string::npos;
+            }
+            Exiger(refuseAvantExpressionSuivante, "un callback constant a été remplacé ou le diagnostic suivant a pris priorité");
+        }
+        (void)Compiler("publique entier32 Lire(pointeur_fonction<constante pointeur_fonction<entier32(entier32)>&()> f) { "
+            "retourner f()(41); }");
+        (void)Compiler("publique vide Fixer(constante entier32*& adresse, constante entier32* autre) { adresse = autre; }");
+        (void)Compiler("public void Fixer(const int32*& adresse, const int32* autre) { adresse = autre; }");
+    }
+
     void TesterGsE()
     {
         const auto machine = Compiler(R"(
@@ -3544,6 +3584,7 @@ int main()
         TesterValeursStructures();
         TesterIndexationPointeurs();
         TesterPointeursFonction();
+        TesterStockageCallbacksConstants();
         TesterModeleObjet018();
         TesterHeritage019();
         TesterInitialisationParent020();

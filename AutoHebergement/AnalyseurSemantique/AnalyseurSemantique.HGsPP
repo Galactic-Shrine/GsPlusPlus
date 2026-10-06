@@ -443,6 +443,26 @@ espace GalacticShrine::GsPP::Autohebergement {
     alias SemanticAnalysisRequest = RequeteAnalyseSemantique;
     alias AnalyzeSemantics = AnalyserSemantique;
 
+    structure RequeteAnalyseSemantiqueUnites {
+        RequeteAnalyseSemantique* Analyse;
+        constante OrigineUniteDeclarations* Origines;
+        naturel64 NombreOrigines;
+        naturel64 IndexUniteErreur;
+        naturel32 LigneLocaleErreur;
+        naturel32 ColonneLocaleErreur;
+    };
+
+    /**
+     * <résumé>Analyse un AST assemblé en isolant les utilisations d'espaces par unité.</résumé>
+     * @Paramètre(RequeteAnalyseSemantiqueUnites*: requete) Analyse existante et table d'origines de l'assembleur.
+     * @Retourner(ErreurAnalyseSemantique) Diagnostic synthétique dans Analyse, origine et position locales dans la requête.
+     * @etc. Aucune normalisation des prototypes ; aucun accès aux fichiers ; ancien contrat conservé.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnites(RequeteAnalyseSemantiqueUnites* requete);
+
+    alias UnitSemanticAnalysisRequest = RequeteAnalyseSemantiqueUnites;
+    alias AnalyzeUnitSemantics = AnalyserSemantiqueUnites;
+
     /**
      * <résumé>Stockage d'une globale définie, dans les données ou la zone zéro.</résumé>
      * @etc. Decalage est relatif à la zone choisie par Initialisee (bit 0).

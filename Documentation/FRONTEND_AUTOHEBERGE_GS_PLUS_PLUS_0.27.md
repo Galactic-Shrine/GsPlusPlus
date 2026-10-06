@@ -11,8 +11,18 @@ constructions locales, plans de durée de vie et priorités des bases/champs cou
 déclarations locales contextuelles, recherche lexicale des espaces parents
 et contexte des noms et opérateurs dans les méthodes, constructeurs et destructeurs
 et types de conversions, callbacks et arguments agrégés des constructions,
-diagnostics internes des champs par défaut, retours par référence des callbacks
-qualifications des champs/éléments adressés et émission des globales
+diagnostics internes des champs par défaut, retours par référence des callbacks,
+qualifications des champs/éléments adressés, références de pointeurs des callbacks,
+distinction des cibles de tableaux, références de callbacks paramétrés,
+protection de leur stockage constant, arguments référencés des callbacks imbriqués,
+références de structures et emplacements de pointeurs dans ces callbacks,
+qualifications et conversions des références de groupes mixtes dans les constructions,
+opérateurs mixtes référencés, constructions et expressions imbriquées,
+opérateurs des initialiseurs agrégés, affectations et retours contextuels,
+analyse des interfaces préparées en mémoire, assemblage préparé et normalisation
+des déclarations libres, origines
+des diagnostics et isolation des imports par unité
+et émission des globales
 VALIDÉS dans le périmètre testé — 6 octobre 2026.**
 
 La génération machine C++ des noms locaux réutilisés dans des portées distinctes
@@ -22,15 +32,20 @@ une migration du backend vers Gs++.
 Les sources actuelles annoncent `0.27.0-alpha.10`.
 La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 regroupe les résultats de la publication, avec 619 refus différentiels.
-Le développement après alpha.10, décrit plus bas, en vérifie 2 301. Le commit
-signé [`5e816df`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/5e816df50bd13d633466fffc1845aa0283910960)
-a été poussé sur `main` le 5 octobre 2026 ; sa
-[CI Windows, Linux et MSBuild natif](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37356033613)
-réussit avec 1 957 refus. La consolidation du 6 octobre regroupe les tranches
-suivantes de déclarations et portées locales, recherche lexicale, contextes
-de méthodes et constructeurs, callbacks et qualifications des champs adressés.
-Elle est validée localement sous CMake/MSVC, GNU/Linux et MSBuild natif avec
-2 301 refus ; cette preuve locale ne vaut pas résultat de CI distante.
+Le développement après alpha.10, décrit plus bas, en vérifie 2 719. Le commit
+signé [`c58874b`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/c58874bc7e8f107a542700ccc185c2c05e254099)
+a été poussé sur `main` le 6 octobre 2026 ; GitHub confirme sa signature valide.
+Sa [CI Windows, Linux et MSBuild natif](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37454112641)
+réussit et valide la consolidation à 2 301 refus. Cette consolidation regroupe
+les déclarations et portées locales, recherche lexicale, contextes de méthodes
+et constructeurs, callbacks et qualifications des champs adressés.
+Les tranches suivantes de références de pointeurs, cibles de tableaux et
+callbacks paramétrés, arguments référencés, structures et emplacements de
+pointeurs, références de groupes et d'opérateurs mixtes et opérateurs des
+initialiseurs agrégés, interfaces préparées en mémoire, puis assemblage préparé
+et origines des unités, normalisation des déclarations libres, restent locales
+et non commitées ; leurs 2 719 refus
+ne sont pas revendiqués pour cette CI.
 Aucune de ces tranches n'est incluse dans les paquets alpha.10 publiés.
 Les sections de jalons ci-dessous conservent
 leurs versions, empreintes et limites au moment de chaque validation ; les
@@ -3836,10 +3851,959 @@ pas les retours par référence aux fonctions ordinaires Gs++, ni de garantie
 d'atomicité, de synchronisation ou de barrière mémoire à `volatile`.
 Version alpha.10, formats 1.0 et ABI 1 conservés ; aucun commit, push ou release.
 
+## Références de pointeurs des callbacks et cibles de tableaux — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes de construction.**
+`TesterRetoursReferencesPointeursCallbacks` étend les retours par référence
+aux emplacements de pointeurs. Ses callbacks C++ de test retournent réellement
+`entier32*&` ou `constante entier32*&` selon la signature testée, vers deux
+emplacements distincts de stockage fournis par l'hôte.
+
+### Contrat et défaut corrigé
+
+La référence désigne ici l'emplacement contenant le pointeur, et non directement
+la valeur pointée. Une lecture copie le pointeur ; une liaison ou une prise
+d'adresse permet de modifier son emplacement. Les valeurs du tableau pointé
+et les cibles des deux pointeurs sont donc vérifiées séparément. Dans la forme
+`constante entier32*&`, les données pointées sont constantes, pas l'emplacement
+du pointeur : celui-ci peut être remplacé par un autre pointeur du même type
+qualifié, mais les données pointées ne peuvent pas être modifiées. Les tests
+n'ajoutent pas de conversion implicite de qualification.
+
+Le corpus de tableau de pointeurs a révélé un écart du frontend : après
+`entier32* tableau[2] = {lire(d), &d->Valeurs[1]}`, l'affectation
+`*tableau[0] = 42` était refusée avec le diagnostic 72 à la position 1:222 du
+corpus de régression. Le contrôle comparait le type de la cible au type de
+l'élément final de la déclaration d'origine et assimilait toute différence
+à un tableau encore présent, même après déréférencement d'un pointeur.
+
+`EstExpressionTableauSemantique` distingue désormais les dimensions qui restent
+après les indexations de la déclaration réellement accédée. Un tableau entier
+ou un sous-tableau conserve le diagnostic 72, prioritaire sur l'analyse de la
+valeur affectée. Le déréférencement d'un pointeur extrait n'est plus considéré
+comme un tableau ; une valeur incompatible conserve alors son diagnostic 73
+et sa position. Le bootstrap C++, le backend et les diagnostics publics ne
+changent pas dans cette tranche.
+
+### Matrice
+
+Les **20 corpus bilingues exécutés** couvrent lecture, copie, liaison,
+réaffectation de pointeur, double indirection, passage à une fonction ou
+un constructeur, retour ordinaire de pointeur par valeur, champ par défaut,
+référents constants, indexation, adresse de référent, tableaux de pointeurs
+à une ou deux dimensions et mutation d'un élément de tableau de pointeurs.
+
+Chaque exécution vérifie le résultat 42, les deux valeurs du tableau hôte,
+la cible exacte de chacun des deux pointeurs, et le nombre exact d'appels.
+La disposition du pont de test est comparée au bootstrap : taille 24 octets,
+alignement 8, champs aux offsets 0, 8 et 16. Les empreintes complètes et les
+positions de tous les paramètres sont comparées ; les octets bilingues et
+images reproductibles, les capacités/tampons partiels et l'AST intact restent
+contrôlés. Ces images n'ajoutent pas d'import statique, mais leur exécution
+utilise explicitement les callbacks C++ et le stockage de l'hôte.
+
+Les **15 refus bilingues** ajoutent 30 comparaisons de code/ligne/colonne :
+liaisons incompatibles ou sur retour par valeur, qualifications supprimées,
+mutation d'un référent constant, cible non appelable, mauvaise arité avant
+argument inconnu, indice booléen, affectation de pointeur incompatible et
+véritables affectations de tableaux/sous-tableaux avant valeur inconnue.
+La matrice complète atteint **2 331 refus différentiels**, contre 2 301 avant
+cette tranche.
+
+### Validation
+
+Les trois constructions et validations complètes réussissent :
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ;
+- GNU/Linux, sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+La conformité est **20/20 par chaîne**. Les trois matrices sémantiques passent
+les 20 nouveaux corpus bilingues exécutés et les **2 331 refus différentiels**.
+Les versions générées indiquent toutes `0.27.0-alpha.10`.
+
+Les trois images `Frontend.GsE` reconstruites sont identiques : **449 983 octets**,
+SHA-256 `3013076EC85961F9BA5FCF97572E397D4A564FFE0810FF3FF6242A9289FD2D2A`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. La reconstruction du frontend produit 336 658 octets
+de code, 184 octets de données, 120 octets de données nulles, 297 symboles et
+1 743 relocalisations pour l'objet ; l'édition de liens résout 537 symboles et
+2 614 relocalisations.
+
+`ConteneursDynamiques.GsPP` reste inchangé, SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+
+Version alpha.10, formats 1.0 et ABI 1 conservés. Cette tranche reste locale,
+distincte du commit `c58874b` poussé et validé par sa CI ; aucun nouveau commit,
+push, tag, paquet ou release n'est créé après cette consolidation. Les retours
+par référence de fonctions ordinaires Gs++ restent refusés ; le stockage de
+l'hôte doit rester valide et aucun backend auto-hébergé n'est revendiqué.
+
+## Références de callbacks paramétrés et stockage constant — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes de construction.**
+`TesterReferencesCallbacksParametres` vérifie des callbacks retournant une
+référence vers un callback `pointeur_fonction<entier32(entier32)>` stocké par
+l'hôte, y compris les versions `constante`, `volatile` et `constante volatile`.
+
+### Contrat et défaut corrigé
+
+L'appel `lire(d)(41)` lit la fonction contenue dans l'emplacement retourné,
+puis lui passe son argument. Une liaison ou prise d'adresse conserve cet
+emplacement ; une copie conserve sa propre cible lorsque l'original est
+remplacé. La mutation d'un tableau local de callbacks ne doit pas remplacer
+le callback de l'hôte dont l'élément a été copié.
+
+Le nouveau corpus de stockage constant a révélé un défaut commun au bootstrap
+et au frontend : `lire(d) = autre` était accepté lorsque la référence et
+`autre` portaient le même type de callback constant. Le diagnostic suivant,
+sur `Absente` à la position 1:288 du corpus, était donc émis à la place du
+refus de mutation. Les deux analyseurs excluaient tous les types d'adresse
+de la constance de valeur, sans distinguer un callback d'un pointeur de données.
+
+Le bootstrap protège désormais la valeur d'un callback constant de niveau zéro
+dans les variables, retours par référence, champs, indexations et
+déréférencements. Le frontend reconnaît également ce stockage constant avant
+de contrôler la valeur affectée. Le diagnostic **71** et sa position sont
+comparés au bootstrap corrigé, sans nouveau code ni changement de l'AST public.
+La lecture et l'appel restent autorisés. Le backend machine n'est pas modifié.
+
+Cette règle ne rend pas constant l'emplacement de `constante entier32*&` :
+ce type désigne toujours un pointeur réaffectable vers des données constantes.
+Les signatures et qualifications des callbacks restent exactes ; aucune
+nouvelle conversion implicite ou explicite de qualification n'est introduite.
+`volatile` ne fournit pas de synchronisation ni d'atomicité.
+
+### Matrice
+
+Les **22 corpus bilingues exécutés** couvrent appels imbriqués avec paramètre,
+liaisons, remplacement direct ou via une fonction ordinaire, adresse du
+stockage, indexation du pointeur vers ce stockage, copie indépendante,
+structures et tableaux de callbacks, constructeur, champ par défaut,
+qualifications et adresse du callback lecteur lui-même.
+
+Chaque exécution contrôle le résultat 42, la cible exacte des deux emplacements
+hôtes, le nombre de lectures, l'unique appel à la fonction cible et l'argument
+effectivement reçu. Le pont ABI mesure 16 octets, alignement 8, champs aux
+offsets 0 et 8. Les types et positions des paramètres, octets FR/EN,
+reproductibilité des images, AST intact et capacités/tampons partiels restent
+comparés. Les images n'ajoutent pas d'import statique, mais leur exécution
+dépend explicitement du pont C++ et de son stockage valide.
+
+Les **25 refus bilingues** ajoutent 50 comparaisons code/ligne/colonne :
+liaisons ou signatures incompatibles, arité avant argument inconnu dans les
+appels imbriqués, argument incompatible, perte de qualification lors de
+la prise d'adresse, pointeur vers callback non appelable sans déréférencement,
+tableaux et sous-tableaux non appelables, affectation de tableau entier,
+et mutation de callback constant par retour, liaison, copie, champ,
+déréférencement ou indexation. La matrice atteint **2 381 refus différentiels**,
+contre 2 331 avant cette tranche.
+
+`TesterStockageCallbacksConstants` ajoute huit refus unitaires au bootstrap,
+dont le cas central FR/EN, ainsi que des compilations positives de lecture
+d'un callback constant et de réaffectation FR/EN d'un pointeur vers des données
+constantes. Les autres matrices restent exécutées, notamment les 20 corpus
+de références de pointeurs de la tranche précédente.
+
+### Validation
+
+Les trois constructions et validations complètes réussissent :
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ;
+- GNU/Linux, sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne**, 22 nouveaux corpus bilingues exécutés et
+**2 381 refus différentiels** réussis dans les trois matrices sémantiques.
+Les trois en-têtes de version générés indiquent `0.27.0-alpha.10`.
+
+Les trois images `Frontend.GsE` reconstruites sont identiques : **450 255 octets**,
+SHA-256 `8B4929279E7ABDC1D08E51AEE0D40790D5F082051EC2B502CD28221839ED96AB`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. L'objet sémantique contient 336 938 octets de code,
+184 octets de données, 120 octets de données nulles, 297 symboles et
+1 746 relocalisations ; le frontend lié résout 537 symboles et
+2 617 relocalisations.
+
+`ConteneursDynamiques.GsPP` reste inchangé, SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+Le contrôle de style et `git diff --check` réussissent.
+
+Version alpha.10, formats 1.0 et ABI 1 conservés. Cette tranche reste locale,
+non commitée et non poussée ; elle n'est pas incluse dans la CI du commit
+`c58874b` ni dans les paquets alpha.10 publiés. Les retours par référence des
+fonctions ordinaires Gs++ et le backend auto-hébergé restent hors de cette tranche.
+
+## Arguments référencés des callbacks imbriqués — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes de construction.**
+`TesterArgumentsReferencesCallbacksImbriques` compose trois mécanismes :
+référence vers un callback, paramètre passé par référence et retour de
+référence depuis le callback appelé. Cette couverture ne requiert pas de
+correction supplémentaire des analyseurs ni du backend.
+
+### Contrat et matrice
+
+Un callback `pointeur_fonction<entier32&(entier32&)>` reçoit l'adresse du
+stockage de son argument et peut retourner cette même adresse. Dans
+`lire(d)(d->Valeurs[0])`, le premier appel fournit le callback ; le second
+reçoit l'adresse de l'élément. Sa lecture charge la valeur finale, tandis que
+la liaison, prise d'adresse et affectation conservent le référent réel.
+
+La constance du callback stocké ne rend pas constants ses paramètres : un
+callback constant dont la signature accepte `entier32&` peut modifier cet
+argument. Inversement, le callback de lecture `entier32(constante entier32&)`
+accepte un référent constant sans le modifier. Une copie par valeur du callback
+conserve également les paramètres et retours par référence de sa signature.
+Les liaisons à un temporaire, agrégat temporaire ou référent incompatible
+restent refusées ; aucune conversion supplémentaire n'est introduite.
+
+Les **24 corpus bilingues exécutés** couvrent lectures et mutations,
+liaisons et adresses du retour, arguments extraits d'un tableau ou d'un pointeur,
+passage à une fonction ordinaire, constructeur et initialisation de base,
+champ par défaut, agrégat, adresse et copie du callback, stockage de callback
+constant, argument constant, doubles appels sur des référents distincts ou
+identiques et courts-circuits `faux && ...` / `vrai || ...` sans appel.
+
+Le pont C++ utilise de véritables paramètres et retours par référence. Chaque
+cas vérifie le résultat 42, les valeurs finales, les adresses exactes reçues
+par l'hôte, les valeurs avant/après chaque appel, l'ordre des mutations ou
+lectures, le nombre exact d'appels et les cibles des pointeurs/callbacks
+restées intactes. Le pont ABI mesure 32 octets, alignement 8, quatre champs
+aux offsets 0, 8, 16 et 24. Les empreintes et positions de tous les paramètres,
+octets FR/EN, images reproductibles, capacités/tampons partiels et AST intact
+restent contrôlés. Aucun import statique n'est ajouté aux images de test,
+mais elles utilisent explicitement les callbacks et le stockage de l'hôte.
+
+Les **20 refus bilingues** ajoutent 40 comparaisons code/ligne/colonne :
+paramètres référencés recevant littéraux, calculs, agrégats temporaires,
+référents constants ou types incompatibles ; mauvaise arité avant argument
+inconnu ; indice booléen ; résultat par valeur passé comme référence ; retour
+par valeur lié à une référence ; signature de retour incompatible ; affectation
+incompatible sur le retour référencé ; priorités internes des champs par défaut,
+bases et délégations. La matrice atteint **2 421 refus différentiels**, contre
+2 381 avant cette tranche.
+
+### Validation
+
+Les trois constructions et validations complètes réussissent :
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ;
+- GNU/Linux, sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne**, 24 nouveaux corpus bilingues exécutés et
+**2 421 refus différentiels** réussis dans les trois matrices sémantiques.
+Les trois en-têtes de version générés indiquent `0.27.0-alpha.10`.
+
+Les trois `Frontend.GsE` des constructions sont identiques et inchangés par
+rapport à la tranche précédente : **450 255 octets**, SHA-256
+`8B4929279E7ABDC1D08E51AEE0D40790D5F082051EC2B502CD28221839ED96AB`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. Ce lot ajoute des tests et documentation, pas de
+modification des sources du frontend ou du backend.
+
+`ConteneursDynamiques.GsPP` reste inchangé, SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+Le contrôle de style et `git diff --check` réussissent.
+
+Version alpha.10, formats 1.0, ABI 1, AST public et diagnostics conservés.
+Cette tranche est locale, non commitée et non poussée ; les résultats ne sont
+pas inclus dans la CI de `c58874b` ni dans les paquets alpha.10 publiés.
+Les fonctions ordinaires Gs++ retournant une référence restent refusées ; le
+stockage de l'hôte doit rester valide et aucun backend auto-hébergé n'est revendiqué.
+
+## Références de structures et de pointeurs dans les callbacks imbriqués — 6 octobre 2026
+
+### Contrats et couverture
+
+`TesterReferencesStructuresPointeursCallbacksImbriques` étend les paramètres
+et retours référencés aux agrégats et aux emplacements de pointeurs. Les
+**24 corpus valides bilingues**, soit 48 exécutions natives, couvrent :
+
+- `P&(P&)` : adresse réelle de l'agrégat, liaison et prise d'adresse du retour,
+  mutation d'un champ ou élément, copie indépendante, argument déréférencé,
+  deux agrégats distincts et deux mutations successives du même agrégat ;
+- `constante P&(constante P&)` : lecture sans mutation, liaison et adresse
+  qualifiées, éléments qualifiés et copie par valeur indépendante ;
+- `entier32*&(entier32*&, entier32*)` : adresse réelle de l'emplacement du
+  pointeur, changement de cible, liaison ou adresse du retour, mutation de
+  la nouvelle cible et transmission à une fonction Gs++ prenant une référence ;
+- la variante de pointeur vers `constante entier32` : redirection autorisée,
+  retour du même emplacement, adresse doublement indirecte et protection de
+  la donnée pointée ;
+- constructions locales, champs par défaut et base recevant un agrégat
+  référencé, ordre exact des événements et nombre d'évaluations des callbacks.
+
+Le pont C++ utilise une vraie structure native, et non une vue obtenue par
+réinterprétation d'un tableau : taille, alignement et décalages de chaque
+champ de `P` et du stockage `Z` sont comparés au programme Gs++. Les signatures
+complètes des paramètres sont également comparées aux symboles auto-hébergés.
+Chaque exécution vérifie les adresses, valeurs avant/après, champs non modifiés,
+cibles de pointeurs et cibles de callbacks. Les images produites sont
+reproductibles ; leurs octets de code et données sont identiques en français
+et en anglais. Leur génération machine utilise toujours le backend C++.
+
+Les **24 corpus refusés bilingues** ajoutent 48 comparaisons, portant la
+matrice locale à **2 469 refus différentiels**. Ils contrôlent diagnostic,
+ligne, colonne et AST intact : agrégat temporaire, référent constant utilisé
+comme mutable, autre structure de même disposition, champ inconnu, types et
+qualifications de pointeurs incompatibles, mauvaise arité, liaison invalide,
+mutation constante et type d'affectation incorrect. Les priorités des appels
+imbriqués, champs par défaut et bases sont également vérifiées.
+
+### Validation
+
+Les validations complètes des trois chaînes réussissent :
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne**, 24 nouveaux corpus bilingues exécutés et
+**2 469 refus différentiels** réussis dans les trois matrices sémantiques.
+Les trois versions générées indiquent `0.27.0-alpha.10`.
+
+Les trois `Frontend.GsE` sont identiques et inchangés : **450 255 octets**,
+SHA-256 `8B4929279E7ABDC1D08E51AEE0D40790D5F082051EC2B502CD28221839ED96AB`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. `ConteneursDynamiques.GsPP` reste inchangé,
+SHA-256 `4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+Le contrôle de style et `git diff --check` réussissent.
+
+Aucune nouvelle correction des analyseurs ou du backend n'est nécessaire pour
+ces cas : ce lot consolide la couverture de comportements déjà implémentés.
+Version alpha.10, formats 1.0, ABI 1, AST public et diagnostics conservés.
+La tranche reste locale, non commitée et non poussée ; elle n'est pas incluse
+dans la CI de `c58874b` ni dans les paquets alpha.10 publiés. Les callbacks et
+le stockage fournis par l'hôte doivent rester valides ; aucun retour référencé
+de fonction ordinaire Gs++ ni backend auto-hébergé supplémentaire n'est revendiqué.
+
+## Références des groupes mixtes et constructions — 6 octobre 2026
+
+### Contrats et couverture
+
+`TesterReferencesGroupesMixtesConstructions` compare les groupes réunissant
+une méthode et une fonction libre de même nom qualifié. Les **22 corpus
+valides bilingues**, soit 44 exécutions natives, vérifient :
+
+- références scalaires mutables et constantes, temporaire accepté par une
+  surcharge par valeur et exclusion d'une conversion numérique implicite
+  non prise en charge pour un argument variable ;
+- références de pointeurs mutables ou vers des données constantes, pointeur
+  qualifié par conversion explicite et alias du type du récepteur ;
+- correspondance exacte avec une classe dérivée contre conversion vers sa
+  base, références de base constantes et disposition avec table virtuelle ;
+- récepteur constant excluant la méthode mutable, récepteur volatile,
+  appels par point, flèche et nom qualifié ;
+- champs par défaut, champs explicitement initialisés, constructions de bases
+  et membres, ainsi que délégation à un autre constructeur.
+
+Pour chaque appel mixte, la déclaration choisie, sa position, son type de
+retour et son statut méthode/fonction sont comparés au bootstrap C++. Le
+comparateur parcourt les corps et les expressions des constructions, vérifie
+le nombre exact de sélections et refuse les sélections manquantes, dupliquées
+ou absentes du bootstrap. L'exécution vérifie la surcharge réellement appelée
+et les mutations des référents. Les octets de code et données sont identiques
+en français et en anglais ; les images GsE sont reproductibles et n'ajoutent
+aucun import d'hôte. Leur génération machine reste effectuée par le backend C++.
+
+Les **24 corpus refusés bilingues** ajoutent 48 comparaisons et portent la
+matrice locale à **2 517 refus différentiels**, avec diagnostic, ligne,
+colonne et AST intact contrôlés. Ils couvrent égalités de score, référent
+constant ou temporaire incompatible, largeur ou niveau de pointeur incorrect,
+qualification retirée lors d'une conversion vers une base et accès privé.
+Les erreurs d'appel dans les champs par défaut, bases, membres et délégations
+sont comparées aux erreurs suivantes du corps ou des champs ; une arité
+incompatible reste prioritaire sur les arguments non visités dans ces cas.
+
+Cette couverture confirme les règles actuelles, pas celles du C++ : une
+référence et une valeur scalaire de même type peuvent être à égalité ; une
+référence mutable et une référence constante compatibles avec le même argument
+mutable peuvent également rendre l'appel ambigu. Aucune préférence automatique
+pour les méthodes ou les références n'est introduite.
+
+### Validation
+
+Les validations complètes des trois chaînes réussissent :
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne**, 22 nouveaux corpus bilingues exécutés et
+**2 517 refus différentiels** réussis dans les trois matrices sémantiques.
+Les trois versions générées indiquent `0.27.0-alpha.10`.
+
+Les trois `Frontend.GsE` sont identiques et inchangés : **450 255 octets**,
+SHA-256 `8B4929279E7ABDC1D08E51AEE0D40790D5F082051EC2B502CD28221839ED96AB`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. `ConteneursDynamiques.GsPP` reste inchangé,
+SHA-256 `4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+Le contrôle de style et `git diff --check` réussissent.
+
+Aucune nouvelle correction des analyseurs ou du backend n'est nécessaire pour
+ces cas. Version alpha.10, formats 1.0, ABI 1, AST public et diagnostics conservés.
+La tranche reste locale, non commitée et non poussée ; ses résultats ne sont
+pas inclus dans la CI de `c58874b` ni dans les paquets alpha.10 publiés. Elle
+ne constitue pas une validation exhaustive des conversions, du frontend 0.27
+complet ou d'un backend auto-hébergé.
+
+## Références des opérateurs mixtes et constructions — 6 octobre 2026
+
+### Contrats et couverture
+
+`TesterReferencesOperateursMixtesConstructions` étend la couverture des
+groupes mixtes aux opérateurs. Les **24 corpus valides bilingues**, soit
+48 exécutions natives, vérifient :
+
+- paramètres scalaires mutables et constants, éléments de tableaux et
+  scalaires déréférencés ; les mutations restent visibles dans le stockage original ;
+- références d'emplacements de pointeurs : changement de cible, identité de
+  la nouvelle cible, conservation de l'ancienne donnée et variante vers une
+  donnée constante ;
+- correspondance exacte avec une classe dérivée contre conversion vers sa base,
+  récepteurs constants ou volatiles, opérateurs binaires et unaires ;
+- appels imbriqués et successifs, champs par défaut, champs explicitement
+  initialisés, bases, membres et délégation entre constructeurs ;
+- opérateurs correctement analysés mais non exécutés dans les opérandes
+  ignorés de `&&` et `||` intégrés.
+
+Chaque sélection auto-hébergée est comparée à sa déclaration C++ : position,
+type de retour, statut méthode/fonction et nombre exact de sélections. Le
+comparateur parcourt les expressions imbriquées et les contextes de construction,
+et refuse une résolution omise, dupliquée ou absente du bootstrap.
+
+Une globale publique `Trace`, lue directement dans l'image chargée après
+exécution, sépare le typage de l'exécution. Elle contrôle la surcharge appelée,
+le nombre d'appels et leur ordre. Les deux corpus à appels successifs ou
+imbriqués enregistrent également leurs arguments distincts : une inversion
+change la trace. Les courts-circuits gardent une trace nulle et le référent
+inchangé, tout en conservant une résolution sémantique de l'opérateur ignoré.
+
+Les octets de code et données sont identiques en français et en anglais ;
+les images GsE sont reproductibles et n'ajoutent aucun import d'hôte. La
+génération machine reste effectuée par le backend C++.
+
+Les **24 corpus refusés bilingues** ajoutent 48 comparaisons et portent la
+matrice locale à **2 565 refus différentiels**, avec diagnostic, ligne,
+colonne et AST intact contrôlés. Les égalités de score, référents constants
+ou temporaires incompatibles, niveaux et qualifications de pointeurs et accès
+privés sont couverts. Les erreurs des expressions imbriquées sont confrontées
+à un nom inconnu avant ou après l'opérateur ; les erreurs des constructions
+sont confrontées à celles des corps. Les cibles d'affectation constantes ou
+de tableau restent prioritaires sur l'opérateur invalide de la valeur affectée.
+Un opérande ignoré à l'exécution reste refusé s'il est sémantiquement invalide.
+
+### Validation
+
+Les validations complètes des trois chaînes réussissent, avec les traces renforcées :
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne**, 24 nouveaux corpus bilingues exécutés et
+**2 565 refus différentiels** réussis dans les trois matrices sémantiques.
+Les trois versions générées indiquent `0.27.0-alpha.10`.
+
+Les trois `Frontend.GsE` sont identiques et inchangés : **450 255 octets**,
+SHA-256 `8B4929279E7ABDC1D08E51AEE0D40790D5F082051EC2B502CD28221839ED96AB`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. `ConteneursDynamiques.GsPP` reste inchangé,
+SHA-256 `4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+Le contrôle de style et `git diff --check` réussissent.
+
+Aucune nouvelle correction des analyseurs ou du backend n'est nécessaire pour
+ces cas. Version alpha.10, formats 1.0, ABI 1, AST public et diagnostics conservés.
+La tranche reste locale, non commitée et non poussée ; ses résultats ne sont
+pas inclus dans la CI de `c58874b` ni dans les paquets alpha.10 publiés. Elle
+ne constitue pas une validation exhaustive des opérateurs logiques surchargés,
+du frontend 0.27 complet ou d'un backend auto-hébergé.
+
+## Opérateurs des initialiseurs agrégés — 6 octobre 2026
+
+Cette tranche compose les opérateurs mixtes référencés avec les valeurs entre
+accolades. Elle vérifie l'analyseur Gs++ et l'exécution des images générées par
+le backend C++ ; elle ne constitue pas une migration du backend.
+
+### Corrections des affectations et retours
+
+Deux écarts sont reproduits contre le bootstrap : dans une affectation ou un
+retour, un agrégat de structure trop grand contenant aussi un opérateur invalide
+signalait d'abord l'opérateur dans l'analyseur Gs++, au lieu de l'excès d'éléments.
+Dans les reproductions, le bootstrap signale le code **43** en colonne **457**,
+contre le code **21** en colonne **464** avant correction, ligne 1.
+
+`ResoudreExpressionsSemantiques` reconnaît désormais ces agrégats et réutilise
+le validateur contextuel existant : il vérifie leur forme avant de résoudre
+leurs feuilles dans l'ordre, avec le type destination. Les descendants déjà
+résolus ne sont pas reparcourus par la visite générique. La cible d'affectation
+reste contrôlée avant sa valeur ; les conversions implicites et résolutions
+d'opérateurs restent publiées par les mécanismes existants.
+
+Aucun nouveau genre AST, diagnostic public ou contrat ABI n'est ajouté.
+Le bootstrap C++ n'est pas modifié par cette tranche.
+
+### Corpus et stockage vérifiés
+
+`TesterOperateursInitialiseursAgreges` ajoute **27 corpus valides**, chacun
+analysé et exécuté en français et en anglais :
+
+- scalaires entre accolades imbriquées, structures, unions, tableaux fixes
+  et multidimensionnels, tableaux de structures et structures contenant des tableaux ;
+- alignements de champs, éléments omis à zéro et copies indépendantes ;
+- affectations, arguments directs et de callbacks, retours de structures
+  par valeur de 8 et 16 octets ;
+- champs par défaut et explicites, bases, membres et délégations ;
+- références constantes sélectionnant la fonction libre compatible,
+  court-circuit logique intégré sans exécuter l'opérateur ignoré ;
+- lectures après mutation et capture de deux valeurs depuis le même référent :
+  le premier champ reste à 41, le deuxième reçoit 42, sans réécriture du premier ;
+- pointeurs retournés placés dans des champs mutables ou constants, avec
+  redirection des emplacements reçus sans altérer les anciennes données pointées.
+
+Chaque programme contrôle les champs ou éléments et les référents, pas seulement
+leur somme. La trace exportée vérifie l'ordre et le nombre d'appels. Le contrôle
+partagé `VerifierOperateursReferencesBilingues` parcourt désormais les agrégats ;
+il conserve également les 24 corpus de la tranche précédente. Déclarations
+sélectionnées, types de retour, drapeaux de méthode, octets bilingues et
+reproductibilité des images sont comparés ; les programmes de test n'ajoutent
+aucun import d'hôte.
+
+**42 refus bilingues**, soit **84 nouveaux refus**, portent la matrice locale
+de **2 565 à 2 649**. Ils couvrent les priorités de forme, de type et d'opérateur
+entre éléments, les références, l'affectation constante, les constantes hors
+plage, les champs et constructions, l'ambiguïté et l'arité des appels, ainsi que
+les affectations via pointeur ou membre et les retours scalaires, d'unions ou de
+structures contenant des tableaux. Code, ligne, colonne et AST intact sont vérifiés.
+
+### Validation
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ; le test différentiel ciblé a également réussi ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne** et **2 649 refus différentiels** réussis dans
+les trois matrices sémantiques. Les trois versions générées indiquent
+`0.27.0-alpha.10`.
+
+Les trois `Frontend.GsE` reconstruits sont identiques : **451 599 octets**,
+SHA-256 `AB0B4A84170ABB92FA23BFC59567FC4E7F33529619583EDBA3E6C4364F034CC7`.
+Ils diffèrent de la tranche précédente car l'analyseur Gs++ est corrigé.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. `ConteneursDynamiques.GsPP` reste inchangé,
+SHA-256 `4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+Le contrôle de style et `git diff --check` réussissent.
+
+Version alpha.10, formats 1.0, ABI 1 et contrats publics conservés. La tranche
+reste locale, non commitée et non poussée ; ses résultats ne sont pas inclus
+dans la CI de `c58874b` ni dans les paquets alpha.10 publiés. La couverture ne
+constitue pas une validation exhaustive du frontend 0.27 ou du backend
+auto-hébergé.
+
+## Interfaces préparées en mémoire — 6 octobre 2026
+
+### Entrée réelle d'analyse d'interface
+
+`AnalyserDeclarationsInterface` et son alias anglais
+`AnalyzeInterfaceDeclarations` sont maintenant exportés par `Frontend.GsE`,
+dans `GalacticShrine::GsPP::Autohebergement`. Ils partagent le parseur et la
+requête existante avec `AnalyserDeclarationsSource`, sans recopier le code ni
+garder de mode global entre les appels.
+
+La requête reste de 80 octets et les nœuds de 64 octets. L'interrogation de
+capacité, l'écriture du préfixe dans un tampon trop petit et le remplissage
+exact conservent leur protocole. Les structures publiques et anciens exports
+ne sont pas modifiés ; les deux nouveaux noms forment une extension additive.
+
+Le mode interface s'applique à tout le texte UTF-8 fourni :
+
+- fonctions et globales externes implicites, sans export public de définition ;
+- membres de classes externes, avec leur visibilité, qualifications et signatures ;
+- types, énumérations, champs, alias et utilisations d'espaces analysés normalement ;
+- refus des corps, globales initialisées et listes d'initialisation de
+  constructeurs externes ; refus d'une liste sur une fonction libre avec le
+  diagnostic du bootstrap, aussi en mode source.
+
+Les tests passent l'AST réellement produit par cette entrée à l'analyseur
+sémantique Gs++, sans le reconstruire ou en corriger les drapeaux côté hôte.
+Les anciens tests de contextes mixtes conservent leurs preuves historiques.
+
+### Couverture et limites
+
+`TesterInterfacesEnMemoire` vérifie **22 corpus bilingues syntaxiques et
+sémantiques** : signatures scalaires, pointeurs et références, structures et
+unions, énumérations, callbacks et retours référencés de callbacks, membres
+privés/protégés/publics, constructeurs et destructeurs, opérateurs libres et
+membres, héritage virtuel/remplacement, surcharges, alias, utilisations et noms
+qualifiés. Un corpus contrôle BOM UTF-8, noms accentués, CRLF et plusieurs lignes.
+
+**6 interfaces bilingues de types ou données** sont analysées syntaxiquement,
+dont une structure et une énumération seules dans leur propre contenu.
+L'analyse sémantique actuelle exige toujours au moins une fonction, comme
+le bootstrap : ces interfaces doivent être assemblées avec leurs consommateurs
+avant cette passe. Cette tranche ne supprime pas cette contrainte.
+
+**14 refus syntaxiques bilingues** comparent code, ligne et colonne. **15 refus
+sémantiques bilingues**, soit **30 nouveaux refus**, portent la matrice de
+**2 649 à 2 679**. Ils contrôlent types inconnus, signatures interdites, limites
+d'arité, tableaux paramètres, globales `vide`, alias, cycles par valeur,
+héritage, remplacements et arité d'opérateurs. Les champs par défaut requièrent
+toujours un constructeur défini : son seul prototype ne suffit pas.
+
+Les formes françaises/anglaises produisent la même structure d'AST. Les capacités
+exactes et partielles sont protégées par sentinelles, le préfixe est comparé,
+l'AST reste intact après validation ou refus sémantique, et les arènes sont
+libérées. Requêtes nulles ou incohérentes, interface vide et alternance
+source/interface sont aussi contrôlées. Les deux alias d'export renvoient
+exactement la même adresse.
+
+**Le contenu doit déjà être préparé.** Cette API ne lit pas de fichier et ne
+traite pas `#inclure` / `#include` ou `#pragma once`. Elle n'assemble pas les
+interfaces avec les sources et ne normalise pas les prototypes contre leurs
+définitions. L'AST compact ne porte pas d'identité de fichier ; les positions
+sont relatives au texte fourni. L'expansion et les origines restent assurées
+par le bootstrap hôte dans `gsppc`. Un flux mixte de jetons avec modes et
+origines, ainsi que l'assemblage des unités, restent à raccorder au frontend.
+
+### Validation
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ; le test différentiel ciblé a également réussi ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 natif sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis de `VisualStudio/Validation.vcxproj` avec MSBuild :
+  **construction et validation réussies**.
+
+Conformité **20/20 par chaîne** et **2 679 refus différentiels** réussis dans
+les trois matrices sémantiques. Les versions générées indiquent
+`0.27.0-alpha.10`. Style et `git diff --check` réussissent.
+
+Les trois `Frontend.GsE` sont identiques : **452 815 octets**, SHA-256
+`031577A2703317CC89FC3983898B61F727B1F6FE0AF53A2F8B243C2E1902A3CD`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports d'allocation/libération et **77 exports**, contre 75 précédemment.
+L'entrée mémoire n'ajoute aucun import de fichier.
+`ConteneursDynamiques.GsPP` reste inchangé, SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+
+Formats 1.0, ABI 1, alpha.10 et structures publiques conservés. Le bootstrap
+et le backend C++ ne sont pas modifiés par cette tranche. Les changements
+restent locaux, non commités et non poussés ; ils ne sont pas inclus dans
+la CI de `c58874b` ou les paquets alpha.10 publiés. Le frontend 0.27 complet
+et son alimentation autonome à partir des fichiers ne sont pas déclarés validés.
+
+## Assemblage préparé et origines des unités — 6 octobre 2026
+
+### Contrat mémoire et frontières de compilation
+
+`AssemblerDeclarationsPreparees`, également exporté sous
+`AssemblePreparedDeclarations`, reçoit une liste ordonnée de
+`UniteDeclarationsPreparee` : texte UTF-8, taille, mode source/interface
+numérique 0/1 et champ réservé nul. Chaque unité est analysée séparément par
+le parseur Gs++, avec son mode propre. Aucune lecture de fichier n'est ajoutée.
+
+La nouvelle `RequeteAssemblageDeclarations` de **128 octets** contient trois
+sorties appartenant à l'appelant : texte assemblé, AST et table d'origines.
+L'interrogation avec des tampons nuls retourne les trois tailles exactes et
+`CapaciteInsuffisante` (1). Toutes les unités sont validées avant ce résultat :
+un défaut syntaxique reste prioritaire sur une capacité insuffisante.
+Contrairement au préfixe permis par l'analyse d'une seule unité, **aucune des
+trois sorties n'est publiée en cas d'erreur ou de capacité insuffisante**.
+Les tampons doivent être distincts et ne pas recouvrir les entrées.
+
+Le texte conserve tous les octets, sauf le BOM UTF-8 initial de chaque unité.
+Un LF est ajouté après chaque unité, y compris la dernière et les unités
+vides ; il empêche notamment un commentaire `//` final d'absorber le début
+de l'unité suivante. Aucun terminateur nul n'est écrit. L'AST possède une
+seule racine ; les parents, positions de lignes et tranches des noms sont
+rebasés sur ce texte, sans modifier les entrées ni les drapeaux d'interface.
+
+Chaque `OrigineUniteDeclarations` de **32 octets** indique le début et la
+taille du contenu hors BOM et LF ajouté, sa première ligne synthétique, son
+nombre de lignes (`1 + nombre de LF`), la taille du BOM retiré et un champ
+réservé nul. Son rang est l'identité de l'unité ; le chemin reste une
+métadonnée de l'hôte. Les positions syntaxiques d'erreur sont déjà locales
+à l'unité, avec son rang, le code d'analyse des déclarations et le détail
+lexical éventuel. Hors diagnostic localisé, `IndexUniteErreur` vaut le nombre
+d'unités. La structure de résultat fait **64 octets**.
+
+Les contrôles rejettent les pointeurs/capacités incohérents, modes ou champs
+réservés invalides, plus d'un million d'unités et une taille brute cumulée
+supérieure à un milliard d'octets, séparateurs compris, avant de lire les
+textes. Le nombre de nœuds est également borné. Les refus d'allocation
+libèrent toutes les arènes sans publication partielle. `NombreOctetsArene`
+décrit le stockage de travail de l'assembleur, pas les arènes temporaires
+successives des analyses individuelles.
+
+### Sémantique par unité et diagnostics locaux
+
+`AnalyserSemantiqueUnites` / `AnalyzeUnitSemantics` ajoute une requête de
+**40 octets**, qui référence la `RequeteAnalyseSemantique` existante et la
+table d'origines. Elle valide la couverture exacte du texte, les bornes,
+LF séparateurs, nombres de lignes et champs réservés. Les anciens contrats
+de 80 octets pour les déclarations, 120 pour la sémantique et 64 pour les
+nœuds restent inchangés.
+
+La recherche des noms importés limite les `utilisant espace` directs et
+transitifs à leur **unité de compilation**, comme le bootstrap. Un import
+présent dans une unité d'interface séparée ne devient pas actif dans une
+autre source. Cela ne préjuge pas du futur flux d'une inclusion textuelle,
+qui appartiendra à l'unité de son consommateur. Les déclarations de types,
+fonctions et globales gardent leur visibilité habituelle dans le programme.
+
+Le résultat de l'analyse référencée conserve ligne/colonne synthétiques ;
+la nouvelle requête fournit aussi rang de l'unité, ligne et colonne locales.
+En l'absence de diagnostic localisé, le rang vaut le nombre d'origines et
+les positions locales sont nulles. L'AST, le texte et les origines restent
+intacts après la passe. L'ancienne entrée `AnalyserSemantique` conserve son
+comportement pour un texte unique ; il faut utiliser la nouvelle entrée
+pour un assemblage multi-unité.
+
+### Couverture et limites
+
+`TesterAssemblageDeclarationsPreparees` passe les AST réellement produits
+en Gs++ à la nouvelle entrée sémantique, après comparaison des analyses
+individuelles avec le bootstrap C++. **13 corpus bilingues valides** couvrent
+types et énumérations séparés, unions, alias, classes, références,
+callbacks, plusieurs interfaces/sources, alternance des modes, espaces,
+imports transitifs locaux, commentaires de fin, BOM multiples, noms accentués,
+CRLF et unités vides. **12 refus sémantiques bilingues**, soit **24 nouveaux
+refus**, comparent code et origine complète au bootstrap, dont quatre
+régressions d'isolation des imports. La matrice passe de **2 679 à 2 703**.
+
+**6 refus syntaxiques bilingues** contrôlent le diagnostic original sans
+sortie partielle. Sentinelles, chacune des trois capacités insuffisantes,
+échec injecté à chaque allocation, déterminisme, absence de fuite, tables
+d'origines altérées, source tronquée, séparateur absent, tailles excessives
+et requêtes incohérentes sont testés. Un corpus prototype/définition bilingue
+supplémentaire vérifie explicitement que les deux déclarations restent présentes.
+
+**L'assemblage est syntaxique, sans normalisation des déclarations.** La
+fusion des prototypes avec leurs définitions, le traitement des répétitions
+compatibles et la priorité des incompatibilités/doubles définitions restent
+à implémenter ; un assemblage qui les contient n'est donc pas encore une
+entrée sémantique générale exploitable. Lecture, expansion de `#inclure` /
+`#include`, `#pragma once` et origines internes aux inclusions restent du
+côté hôte. Le bootstrap et le backend C++ ne sont pas modifiés par cette tranche.
+
+### Validation
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ; le premier test différentiel ciblé a aussi réussi ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis `VisualStudio/Validation.vcxproj` : **réussies**.
+
+Conformité **20/20 par chaîne**, **2 703 refus différentiels** dans chacune
+des trois matrices. Les versions générées indiquent `0.27.0-alpha.10`.
+Style et `git diff --check` réussissent.
+
+Les trois `Frontend.GsE` sont identiques : **466 447 octets**, SHA-256
+`CECDC9583A9DB2C49E4A13D7AA0B183871060BC72B7B40499468198A6FDBE0AE`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports d'allocation/libération et **81 exports**, contre 77 précédemment.
+Les quatre noms ajoutés sont les deux nouvelles entrées et leurs alias anglais.
+`ConteneursDynamiques.GsPP` reste inchangé, SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+
+Formats 1.0, ABI 1, alpha.10 et structures publiques existantes conservés.
+Les changements restent locaux, non commités et non poussés ; ils ne sont
+inclus ni dans la CI de `c58874b` ni dans les paquets alpha.10 publiés.
+Le frontend 0.27 complet et la compilation autonome à partir des fichiers
+ne sont pas déclarés validés.
+
+## Normalisation préparée des déclarations libres — 6 octobre 2026
+
+### Entrée additive et règles de sélection
+
+`AssemblerDeclarationsNormalisees` / `AssembleNormalizedDeclarations` réutilise
+la requête d'assemblage de **128 octets** et ajoute une entrée distincte de
+l'assemblage brut. `AssemblerDeclarationsPreparees` conserve son comportement,
+notamment la présence simultanée d'un prototype et de sa définition.
+L'implémentation Gs++ se trouve dans
+`AutoHebergement/AnalyseurDeclarations/NormalisationDeclarations.GsPP` ;
+les constructions CMake et Visual Studio 2026 native l'intègrent explicitement.
+
+Cette première normalisation couvre les **fonctions libres, opérateurs libres,
+globales et alias racines**, dans les espaces qualifiés et imbriqués. Elle
+reprend les règles du bootstrap `NormaliserDeclarations` dans ce périmètre :
+
+- toutes les unités sont analysées avant la normalisation : une erreur
+  syntaxique dans une unité ultérieure reste prioritaire ;
+- fonctions libres d'abord, globales ensuite, alias enfin ; les conflits
+  de chaque famille sont visités dans l'ordre des déclarations d'entrée ;
+- clé d'une fonction : nom source complet et types de paramètres, avant
+  résolution des alias ; le nom des paramètres ne participe pas à la clé ;
+- un retour différent pour une même clé est incompatible ; deux définitions
+  sont refusées, même sans corps utile ;
+- les déclarations externes compatibles sont réunies ; une définition
+  remplace un prototype à la **place de la première déclaration** ; une
+  déclaration externe ultérieure ne remplace pas la définition ;
+- les globales de même nom doivent avoir le même type et au plus une
+  définition ; l'absence d'initialiseur ne rend pas une globale externe ;
+- les alias de même nom et cible nominale exacte sont réunis ; deux cibles
+  différentes restent incompatibles, même si une résolution future pourrait
+  les rendre équivalentes.
+
+Les noms qualifiés sont comparés composante par composante, sans les espaces
+de séparation. Les types sont encodés structurellement : mots-clés bilingues,
+qualifications indépendantes de leur ordre/répétition, noms nominaux exacts,
+indirections, références, dimensions numériques et callbacks récursifs.
+**Un hachage égal ne suffit jamais à fusionner deux déclarations.** Les
+régressions existantes de collisions de signatures nominales et de callbacks
+doivent donc atteindre la passe sémantique, et non devenir des doubles
+définitions artificielles au stade de la normalisation.
+
+Le texte assemblé et la table d'origines restent inchangés ; les nœuds de la
+déclaration choisie conservent leur position et leurs noms d'origine. Les
+sous-arbres sont recopiés intégralement avec leurs parents rebasés. Cette
+sélection conserve notamment l'ordre des fonctions pour leurs diagnostics
+de corps, même lorsque les définitions apparaissent dans l'ordre inverse
+des prototypes.
+
+### Diagnostics, capacités et sécurité mémoire
+
+Les codes d'assemblage 0 à 5 sont conservés. Les nouveaux codes sont :
+
+| Code | Diagnostic de normalisation |
+|---|---|
+| 6 | Fonction incompatible pour la même clé de surcharge |
+| 7 | Fonction définie plusieurs fois |
+| 8 | Globale incompatible |
+| 9 | Globale définie plusieurs fois |
+| 10 | Alias incompatible |
+
+L'erreur désigne l'unité et la position locale de la déclaration fautive,
+comme le bootstrap. Aucune sortie n'est publiée en cas de diagnostic.
+Les trois tailles de sortie ne sont définitives qu'après réussite de la
+normalisation : la capacité de l'AST est celle de l'AST normalisé, pas de
+l'assemblage brut. Une interrogation valide retourne 1 avec ces besoins
+exacts ; les erreurs de normalisation sont prioritaires sur ce résultat.
+
+Les entrées et sorties doivent être distinctes. Les trois sorties restent
+intactes en cas de capacité insuffisante ou de refus d'allocation, y compris
+pendant l'assemblage brut interne et la préparation des clés exactes.
+`NombreOctetsArene` décrit les allocations de travail du normaliseur, sans
+additionner les arènes temporaires des appels internes. Les anciens types
+publics, formats 1.0 et ABI 1 ne sont pas modifiés.
+
+### Preuves différentielles et limites
+
+`TesterNormalisationDeclarationsPreparees` appelle le **normaliseur C++ réel**
+pour choisir les déclarations, puis compare ces choix aux sous-arbres issus
+des analyses Gs++ réelles. **22 corpus bilingues valides** couvrent les deux
+ordres prototype/définition, externes répétés, surcharges, espaces équivalents,
+types séparés, références, qualifications, callbacks imbriqués, retours de
+callbacks, globales avec/sans initialiseur, tableaux, alias et opérateurs,
+BOM/CRLF et maintien d'une classe avec méthode unique.
+
+**15 conflits bilingues**, soit **30 refus différentiels de normalisation**,
+contrôlent les cinq codes, leur origine et la priorité entre familles.
+Un **refus syntaxique bilingue** contrôle la priorité de l'analyse de toutes
+les unités. **8 refus sémantiques bilingues**, soit **16 nouveaux refus**,
+vérifient ordre des corps après fusion, signatures interdites, alias de
+paramètres non fusionnés, collisions nominales/callbacks, type absent et
+isolation des imports. La matrice sémantique passe de **2 703 à 2 719** ;
+les 30 refus de normalisation sont comptés séparément.
+
+Les trois capacités partielles, tailles exactes, sentinelles, déterminisme,
+chaque point d'échec d'allocation jusqu'au succès, libération des arènes,
+requêtes invalides et unité vide sont testés. AST, texte et origines restent
+intacts pendant la sémantique.
+
+**Les membres de classes ne sont pas normalisés par cette entrée.** Les
+types et énumérations ne sont pas réunis non plus ; les interactions de
+priorité impliquant des membres et des déclarations libres restent hors
+du périmètre validé. L'entrée est une étape préparée, non le remplacement
+général de `NormaliserDeclarations` dans `gsppc`. Lecture, inclusions,
+`#pragma once` et origines internes aux inclusions restent côté hôte.
+Le bootstrap et le backend C++ sont inchangés par cette tranche.
+
+### Validation
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail
+  --parallel 6`, puis `ctest --preset windows-release --output-on-failure` :
+  **5/5 tests réussis** ; le test différentiel ciblé a également réussi ;
+- GNU/Linux sous Ubuntu/WSL : `cmake --build --preset linux-release --target
+  espace_travail --parallel 4`, puis `ctest --preset linux-release
+  --output-on-failure` : **6/6 tests réussis**, intégration comprise ;
+- Visual Studio 2026 sans CMake : construction Release/x64 de
+  `GsPlusPlus.slnx`, puis `VisualStudio/Validation.vcxproj` : **réussies**.
+
+Conformité **20/20 par chaîne**, **2 719 refus sémantiques différentiels**
+et **30 refus de normalisation** réussis dans chacune des trois matrices.
+Les versions générées indiquent `0.27.0-alpha.10`. Style et
+`git diff --check` réussissent.
+
+Les trois `Frontend.GsE` sont identiques : **490 623 octets**, SHA-256
+`B3DA8C8912BB3CFA2828D35DF5CAADFC6DF059B46EEF04617541A37DDE09B894`.
+Chaque image est acceptée par `gseverifier` : GsE 1.0, 3 segments, 8 sections,
+2 imports d'allocation/libération et **83 exports**, contre 81 précédemment.
+Les deux exports ajoutés désignent la normalisation et son alias anglais.
+`ConteneursDynamiques.GsPP` reste inchangé, SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`.
+
+Formats 1.0, ABI 1, alpha.10 et structures publiques existantes conservés.
+Les changements restent locaux, non commités et non poussés ; ils ne sont
+inclus ni dans la CI de `c58874b` ni dans les paquets alpha.10 publiés.
+Le frontend 0.27 complet n'est pas déclaré validé.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
+- étendre la normalisation aux membres et aux groupes mêlant membres et
+  fonctions libres, puis raccorder le flux mixte des inclusions et ses origines ;
 - compléter les autres familles sémantiques encore prises en charge par le
   bootstrap, notamment les contextes des constructions et opérateurs et les
   interactions de priorité entre passes non encore testées, dont les contrôles

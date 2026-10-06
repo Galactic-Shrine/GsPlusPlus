@@ -49,6 +49,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 NombreNoeuds;
         NoeudExpressionInterne* ExpressionsTravail;
         naturel64 NombreExpressions;
+        booléen EstInterface;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
 
@@ -1389,6 +1390,11 @@ espace GalacticShrine::GsPP::Autohebergement {
                 retourner faux;
         si (!AnalyserDimensionsDeclaration(etat, &typeRetour)) retourner faux;
         si (!EstJetonDeclaration(etat, 34)) {
+            si (etat->EstInterface) {
+
+                estPublique = faux;
+                estExterne = vrai;
+            }
             naturel32 drapeauxGlobale = 0;
             si (estPublique) drapeauxGlobale = drapeauxGlobale | 1;
             si (estExterne) drapeauxGlobale = drapeauxGlobale | 2;
@@ -1435,6 +1441,11 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
 
         naturel64 indexFonction = etat->NombreNoeuds;
+        si (etat->EstInterface) {
+
+            estPublique = faux;
+            estExterne = vrai;
+        }
         naturel32 drapeaux = 0;
         si (estPublique) drapeaux = drapeaux | 1;
         si (estExterne) drapeaux = drapeaux | 2;
@@ -1493,6 +1504,12 @@ espace GalacticShrine::GsPP::Autohebergement {
                 ErreurAnalyseDeclarations::ParentheseFermanteAttendue))
             retourner faux;
 
+        si (EstJetonDeclaration(etat, 73)) {
+
+            SignalerErreurDeclaration(etat, ErreurAnalyseDeclarations::ListeInitialisationInterdite,
+                position.Ligne, position.Colonne);
+            retourner faux;
+        }
         si (estExterne)
             retourner ExigerJetonDeclaration(
                 etat,
@@ -1595,6 +1612,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner faux;
 
         naturel32 drapeaux = contexte->Visibilite | 4;
+        si (etat->EstInterface) drapeaux = contexte->Visibilite | 2;
         si (estVirtuelle) drapeaux = drapeaux | 64;
         si (estRemplacement) drapeaux = drapeaux | 128;
         naturel64 indexMembre = etat->NombreNoeuds;
@@ -1778,6 +1796,17 @@ espace GalacticShrine::GsPP::Autohebergement {
                     && !AccepterJetonDeclaration(etat, 41))
                     continuerInitialiseurs = faux;
             }
+        }
+        si (etat->EstInterface) {
+
+            si ((drapeaux & (256 | 512 | 1024)) != 0) {
+
+                SignalerErreurDeclaration(etat, ErreurAnalyseDeclarations::InitialiseurExterneInterdit,
+                    position.Ligne, position.Colonne);
+                retourner faux;
+            }
+            etat->NoeudsTravail[indexMembre].Drapeaux = drapeaux;
+            retourner ExigerJetonDeclaration(etat, 40, ErreurAnalyseDeclarations::PointVirguleAttendu);
         }
         etat->NoeudsTravail[indexMembre].Drapeaux = drapeaux;
         ContexteInstructionDeclaration contexteCorps = {
@@ -2207,8 +2236,14 @@ espace GalacticShrine::GsPP::Autohebergement {
         resultat->Reserve = 0;
     }
 
-    publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
-        RequeteAnalyseDeclarations* requete) {
+    /**
+     * <résumé>Analyse un texte préparé sans changer le contrat mémoire des requêtes.</résumé>
+     * @Paramètre(RequeteAnalyseDeclarations*: requete) Source et stockage fournis par l'appelant.
+     * @Paramètre(booléen: estInterface) Prototypes externes implicites et absence de corps.
+     * @Retourner(ErreurAnalyseDeclarations) Premier diagnostic ou capacité exacte requise.
+     **/
+    ErreurAnalyseDeclarations AnalyserDeclarationsMode(
+        RequeteAnalyseDeclarations* requete, booléen estInterface) {
         si (!requete) retourner ErreurAnalyseDeclarations::ArgumentInvalide;
         InitialiserResultatDeclarations(&requete->Resultat);
         si ((!requete->Source && requete->Taille != 0)
@@ -2250,6 +2285,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.NombreNoeuds = 0;
         etat.ExpressionsTravail = NulExpressionsDeclarations;
         etat.NombreExpressions = 0;
+        etat.EstInterface = estInterface;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
 
         etat.Jetons = convertir<JetonLexe*>(
@@ -2321,5 +2357,202 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
         requete->Resultat.Erreur = ErreurAnalyseDeclarations::Reussite;
         retourner requete->Resultat.Erreur;
+    }
+
+    naturel32 NombreOctetsBomAssemblage(constante UniteDeclarationsPreparee* unite) {
+        si (unite->Taille >= 3
+            && convertir<octet>(unite->Source[0]) == 239
+            && convertir<octet>(unite->Source[1]) == 187
+            && convertir<octet>(unite->Source[2]) == 191) retourner 3;
+        retourner 0;
+    }
+
+    vide SignalerErreurUniteAssemblage(
+        RequeteAssemblageDeclarations* requete, naturel64 index,
+        ResultatAnalyseDeclarations* analyse) {
+        requete->Resultat.Erreur = ErreurAssemblageDeclarations::ErreurDeclaration;
+        si (analyse->Erreur == ErreurAnalyseDeclarations::AllocationImpossible)
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::AllocationImpossible;
+        requete->Resultat.IndexUniteErreur = index;
+        requete->Resultat.LigneErreur = analyse->LigneErreur;
+        requete->Resultat.ColonneErreur = analyse->ColonneErreur;
+        requete->Resultat.Detail = convertir<naturel32>(analyse->Erreur);
+        requete->Resultat.DetailLexical = analyse->Detail;
+    }
+
+    /**
+     * <résumé>Assemble les textes et AST sans modifier les entrées ni publier une sortie partielle.</résumé>
+     * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités préparées, stockage et tailles de sortie.
+     * @Retourner(ErreurAssemblageDeclarations) Résultat de l'assemblage syntaxique sans normalisation.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsPreparees(
+        RequeteAssemblageDeclarations* requete) {
+
+        si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
+        requete->Resultat = {};
+        requete->Resultat.IndexUniteErreur = requete->NombreUnites;
+        si (!requete->Unites || requete->NombreUnites == 0
+            || (!requete->SourceAssemblee && requete->CapaciteSource != 0)
+            || (!requete->Noeuds && requete->CapaciteNoeuds != 0)
+            || (!requete->Origines && requete->CapaciteOrigines != 0)) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::ArgumentInvalide;
+            retourner requete->Resultat.Erreur;
+        }
+        si (requete->NombreUnites > 1_000_000) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::TailleExcessive;
+            retourner requete->Resultat.Erreur;
+        }
+        naturel64 indexValidation = 0;
+        naturel64 totalBrut = 0;
+        tantque (indexValidation < requete->NombreUnites) {
+            constante UniteDeclarationsPreparee* uniteValidee = &requete->Unites[indexValidation];
+            si ((!uniteValidee->Source && uniteValidee->Taille != 0)
+                || uniteValidee->EstInterface > 1 || uniteValidee->Reserve != 0) {
+                requete->Resultat.Erreur = ErreurAssemblageDeclarations::ArgumentInvalide;
+                requete->Resultat.IndexUniteErreur = indexValidation;
+                retourner requete->Resultat.Erreur;
+            }
+            si (uniteValidee->Taille > 999_999_999
+                || totalBrut > 999_999_999 - uniteValidee->Taille) {
+                requete->Resultat.Erreur = ErreurAssemblageDeclarations::TailleExcessive;
+                requete->Resultat.IndexUniteErreur = indexValidation;
+                retourner requete->Resultat.Erreur;
+            }
+            totalBrut = totalBrut + uniteValidee->Taille + 1;
+            indexValidation = indexValidation + 1;
+        }
+
+        GalacticShrine::GsPP::Hebergee::AreneMemoire areneAssemblage;
+        GalacticShrine::GsPP::Hebergee::InitialiserArene(&areneAssemblage, 4096);
+        OrigineUniteDeclarations* originesTravail = convertir<OrigineUniteDeclarations*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(
+                &areneAssemblage, requete->NombreUnites * 32, 8));
+        si (!originesTravail) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::AllocationImpossible;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+            retourner requete->Resultat.Erreur;
+        }
+        naturel64 indexMesure = 0;
+        naturel64 nombreNoeuds = 1;
+        naturel64 maximumNoeudsUnite = 1;
+        naturel64 nombreOctets = 0;
+        naturel32 premiereLigne = 1;
+        tantque (indexMesure < requete->NombreUnites) {
+            constante UniteDeclarationsPreparee* uniteMesuree = &requete->Unites[indexMesure];
+            RequeteAnalyseDeclarations mesure = {
+                uniteMesuree->Source, uniteMesuree->Taille, NulNoeudsDeclarations, 0, {}};
+            ErreurAnalyseDeclarations codeMesure = AnalyserDeclarationsMode(
+                &mesure, uniteMesuree->EstInterface != 0);
+            si (codeMesure != ErreurAnalyseDeclarations::CapaciteInsuffisante) {
+                SignalerErreurUniteAssemblage(requete, indexMesure, &mesure.Resultat);
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+                retourner requete->Resultat.Erreur;
+            }
+            si (nombreNoeuds > 100_000_000 - mesure.Resultat.NombreNoeuds) {
+                requete->Resultat.Erreur = ErreurAssemblageDeclarations::TailleExcessive;
+                requete->Resultat.IndexUniteErreur = indexMesure;
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+                retourner requete->Resultat.Erreur;
+            }
+            nombreNoeuds = nombreNoeuds + mesure.Resultat.NombreNoeuds - 1;
+            si (maximumNoeudsUnite < mesure.Resultat.NombreNoeuds)
+                maximumNoeudsUnite = mesure.Resultat.NombreNoeuds;
+            naturel32 bom = NombreOctetsBomAssemblage(uniteMesuree);
+            naturel32 nombreLignes = 1;
+            naturel64 indexOctetMesure = convertir<naturel64>(bom);
+            tantque (indexOctetMesure < uniteMesuree->Taille) {
+                si (uniteMesuree->Source[indexOctetMesure] == 10) nombreLignes = nombreLignes + 1;
+                indexOctetMesure = indexOctetMesure + 1;
+            }
+            originesTravail[indexMesure] = {
+                nombreOctets, uniteMesuree->Taille - convertir<naturel64>(bom), premiereLigne, nombreLignes, bom, 0};
+            nombreOctets = nombreOctets + uniteMesuree->Taille - convertir<naturel64>(bom) + 1;
+            premiereLigne = premiereLigne + nombreLignes;
+            indexMesure = indexMesure + 1;
+        }
+        requete->Resultat.NombreNoeuds = nombreNoeuds;
+        requete->Resultat.NombreOctetsSource = nombreOctets;
+        requete->Resultat.NombreOrigines = requete->NombreUnites;
+        requete->Resultat.NombreOctetsArene = areneAssemblage.NombreOctets;
+        si (!requete->SourceAssemblee || requete->CapaciteSource < nombreOctets
+            || !requete->Noeuds || requete->CapaciteNoeuds < nombreNoeuds
+            || !requete->Origines || requete->CapaciteOrigines < requete->NombreUnites) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::CapaciteInsuffisante;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+            retourner requete->Resultat.Erreur;
+        }
+
+        NoeudDeclaration* noeudsTravail = convertir<NoeudDeclaration*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(&areneAssemblage, nombreNoeuds * 64, 8));
+        NoeudDeclaration* noeudsUnite = convertir<NoeudDeclaration*>(
+            GalacticShrine::GsPP::Hebergee::AllouerArene(&areneAssemblage, maximumNoeudsUnite * 64, 8));
+        requete->Resultat.NombreOctetsArene = areneAssemblage.NombreOctets;
+        si (!noeudsTravail || !noeudsUnite) {
+            requete->Resultat.Erreur = ErreurAssemblageDeclarations::AllocationImpossible;
+            GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+            retourner requete->Resultat.Erreur;
+        }
+        noeudsTravail[0] = {0, 1, 1, 0, 0, 0, 0, 0, HachageVideDeclaration(), 0};
+        naturel64 indexAnalyse = 0;
+        naturel64 prochainNoeud = 1;
+        tantque (indexAnalyse < requete->NombreUnites) {
+            constante UniteDeclarationsPreparee* uniteAnalysee = &requete->Unites[indexAnalyse];
+            RequeteAnalyseDeclarations analyse = {
+                uniteAnalysee->Source, uniteAnalysee->Taille, noeudsUnite, maximumNoeudsUnite, {}};
+            ErreurAnalyseDeclarations codeAnalyse = AnalyserDeclarationsMode(
+                &analyse, uniteAnalysee->EstInterface != 0);
+            si (codeAnalyse != ErreurAnalyseDeclarations::Reussite) {
+                SignalerErreurUniteAssemblage(requete, indexAnalyse, &analyse.Resultat);
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+                retourner requete->Resultat.Erreur;
+            }
+            naturel64 indexNoeudUnite = 1;
+            naturel64 baseNoeuds = prochainNoeud - 1;
+            tantque (indexNoeudUnite < analyse.Resultat.NombreNoeuds) {
+                NoeudDeclaration noeud = noeudsUnite[indexNoeudUnite];
+                si (noeud.Parent != 0) noeud.Parent = noeud.Parent + baseNoeuds;
+                noeud.Ligne = noeud.Ligne + originesTravail[indexAnalyse].PremiereLigne - 1;
+                si (noeud.TailleNom != 0)
+                    noeud.DebutNom = noeud.DebutNom - convertir<naturel64>(originesTravail[indexAnalyse].OctetsBom)
+                        + originesTravail[indexAnalyse].DebutOctets;
+                noeudsTravail[prochainNoeud] = noeud;
+                prochainNoeud = prochainNoeud + 1;
+                indexNoeudUnite = indexNoeudUnite + 1;
+            }
+            indexAnalyse = indexAnalyse + 1;
+        }
+
+        naturel64 indexPublication = 0;
+        tantque (indexPublication < requete->NombreUnites) {
+            OrigineUniteDeclarations origine = originesTravail[indexPublication];
+            naturel64 indexOctetCopie = 0;
+            tantque (indexOctetCopie < origine.TailleOctets) {
+                requete->SourceAssemblee[origine.DebutOctets + indexOctetCopie] =
+                    requete->Unites[indexPublication].Source[convertir<naturel64>(origine.OctetsBom) + indexOctetCopie];
+                indexOctetCopie = indexOctetCopie + 1;
+            }
+            requete->SourceAssemblee[origine.DebutOctets + origine.TailleOctets] = 10;
+            requete->Origines[indexPublication] = origine;
+            indexPublication = indexPublication + 1;
+        }
+        naturel64 indexCopieNoeud = 0;
+        tantque (indexCopieNoeud < nombreNoeuds) {
+            requete->Noeuds[indexCopieNoeud] = noeudsTravail[indexCopieNoeud];
+            indexCopieNoeud = indexCopieNoeud + 1;
+        }
+        GalacticShrine::GsPP::Hebergee::DetruireArene(&areneAssemblage);
+        retourner ErreurAssemblageDeclarations::Reussite;
+    }
+
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsSource(
+        RequeteAnalyseDeclarations* requete) {
+
+        retourner AnalyserDeclarationsMode(requete, faux);
+    }
+
+    publique ErreurAnalyseDeclarations AnalyserDeclarationsInterface(
+        RequeteAnalyseDeclarations* requete) {
+
+        retourner AnalyserDeclarationsMode(requete, vrai);
     }
 }

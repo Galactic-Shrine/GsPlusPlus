@@ -10,6 +10,424 @@
 
 # Journal des modifications
 
+## Normalisation préparée des déclarations libres — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `AssemblerDeclarationsNormalisees` / `AssembleNormalizedDeclarations`,
+  distinct de l'assemblage brut : normaliser les fonctions/opérateurs libres,
+  globales et alias racines préparés avec les règles du bootstrap dans ce périmètre ;
+- comparer les noms et types exacts avant résolution des alias, y compris
+  qualifications, références, tableaux et callbacks récursifs ; préférer la
+  définition à la place de la première déclaration et conserver son origine ;
+- refuser incompatibilités et doubles définitions dans l'ordre fonctions,
+  globales, alias, après analyse de toutes les unités ; nouveaux codes 6 à 10,
+  requête inchangée, trois capacités exactes, aucune sortie partielle ;
+- 22 corpus bilingues valides, 15 conflits bilingues (30 refus différentiels
+  de normalisation), un refus syntaxique bilingue et huit refus sémantiques
+  bilingues ; matrice sémantique portée de 2 703 à 2 719 ; sélections comparées
+  au normaliseur C++ réel, AST/origines intacts et chaque échec d'allocation testés ;
+- intégrer le nouveau fichier Gs++ aux constructions CMake et Visual Studio
+  2026 natives ; CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild
+  réussis ; conformité 20/20 par chaîne ; trois images identiques de 490 623
+  octets, 83 exports, deux imports inchangés, acceptées par `gseverifier` ;
+- membres et groupes mixtes non encore normalisés ; lecture/inclusions restent
+  côté hôte ; bootstrap/backend C++ inchangés par cette tranche ; formats 1.0,
+  ABI 1, alpha.10 et anciens contrats conservés ; changements locaux,
+  non commités/non poussés, absents des paquets publiés.
+
+### English
+
+- add `AssemblerDeclarationsNormalisees` / `AssembleNormalizedDeclarations`,
+  separate from raw assembly: normalize prepared free functions/operators,
+  globals and root aliases using the bootstrap rules within this scope;
+- compare exact names and types before alias resolution, including qualifiers,
+  references, arrays and recursive callbacks; prefer a definition at the first
+  declaration's slot while preserving its origin;
+- reject incompatibilities and double definitions in function/global/alias order
+  after parsing every unit; add codes 6 through 10, keeping the request layout,
+  exact output capacities and no partial publication;
+- 22 valid bilingual corpora, 15 bilingual conflicts (30 differential normalization
+  rejections), one bilingual syntax rejection and eight bilingual semantic rejections;
+  semantic matrix increased from 2,703 to 2,719; compare selections with the real C++
+  normalizer, preserve AST/origins and inject failure at every allocation;
+- integrate the new Gs++ file into CMake and native Visual Studio 2026 builds;
+  Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation passed;
+  conformance 20/20 per toolchain; three identical 490,623-byte images with 83 exports
+  and unchanged two imports, accepted by `gseverifier`;
+- member/mixed-group normalization remains open, file/include processing stays host-side;
+  this tranche leaves the C++ bootstrap/backend unchanged; retain format versions 1.0,
+  ABI 1, alpha.10 and existing contracts; changes remain local, uncommitted/unpushed
+  and absent from published packages.
+
+## Assemblage préparé et origines des unités — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `AssemblerDeclarationsPreparees` / `AssemblePreparedDeclarations` :
+  analyser séparément les unités source/interface, réunir texte et AST,
+  retirer les BOM initiaux, ajouter des LF frontières et conserver les origines ;
+  trois tailles interrogeables, aucune sortie partielle en cas d'erreur ;
+- ajouter `AnalyserSemantiqueUnites` / `AnalyzeUnitSemantics` : valider les
+  origines, isoler les imports d'espaces directs/transitifs par unité comme
+  le bootstrap et retourner l'origine locale des diagnostics ;
+- treize corpus bilingues valides, douze refus sémantiques bilingues et six
+  refus syntaxiques bilingues ; AST/entrées intacts, capacités/sentinelles,
+  échecs à chaque allocation et origines incohérentes vérifiés ; matrice
+  locale portée de 2 679 à 2 703 refus différentiels ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives
+  réussis ; conformité 20/20 par chaîne ; trois images identiques de
+  466 447 octets, 81 exports, deux imports inchangés, acceptées par `gseverifier` ;
+- préserver les anciens contrats mémoire, formats 1.0, ABI 1 et alpha.10 ;
+  la normalisation des prototypes/définitions et le flux d'inclusions restent
+  à implémenter ; bootstrap et backend C++ inchangés par cette tranche ;
+  changements locaux, non commités/non poussés, absents des paquets publiés.
+
+### English
+
+- add `AssemblerDeclarationsPreparees` / `AssemblePreparedDeclarations`:
+  parse source/interface units separately, assemble text and AST, remove
+  initial BOMs, append boundary LFs and preserve origins; query all three
+  sizes without publishing partial outputs on failure;
+- add `AnalyserSemantiqueUnites` / `AnalyzeUnitSemantics`: validate origins,
+  isolate direct/transitive namespace imports per unit like the bootstrap,
+  and report unit-local diagnostic origins;
+- thirteen valid bilingual corpora, twelve bilingual semantic rejections
+  and six bilingual syntax rejections; immutable AST/inputs, capacity guards,
+  failure at every allocation and invalid origins checked; local differential
+  matrix increased from 2,679 to 2,703 rejections;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation passed;
+  conformance 20/20 per toolchain; three identical 466,447-byte images with
+  81 exports and the same two imports, accepted by `gseverifier`;
+- keep existing memory contracts, format versions 1.0, ABI 1 and alpha.10;
+  prototype/definition normalization and include integration remain open;
+  this tranche does not change the C++ bootstrap or backend; changes remain
+  local, uncommitted/unpushed and absent from published packages.
+
+## Interfaces préparées en mémoire — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter l'export Gs++ `AnalyserDeclarationsInterface` et son alias anglais
+  `AnalyzeInterfaceDeclarations`, avec la requête et le protocole de capacité
+  existants ; partager le parseur avec le mode source sans état persistant ;
+- analyser les prototypes, globales externes implicites, membres avec leur
+  visibilité, types, alias et utilisations ; refuser corps, initialisation des
+  globales et listes d'initialisation externes ; aligner le diagnostic des
+  listes sur fonctions libres sur le bootstrap, aussi en mode source ;
+- 22 corpus bilingues syntaxiques/sémantiques, 6 interfaces de types/données,
+  14 refus syntaxiques et 15 refus sémantiques bilingues ; AST inchangé,
+  tampons protégés par sentinelles, capacités et alternance des modes vérifiées ;
+  matrice sémantique locale portée de 2 649 à 2 679 refus ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution
+  et validation MSBuild natives ; conformité 20/20 par chaîne ; trois images
+  identiques de 452 815 octets, acceptées par `gseverifier`, avec 77 exports
+  et les deux imports d'allocation/libération inchangés ;
+- ajout en mémoire uniquement : lecture et expansion des fichiers,
+  assemblage source/interface et origines des inclusions restent à raccorder ;
+  aucun changement de structures publiques, formats 1.0, ABI 1 ou alpha.10 ;
+  tranche locale non commitée/non poussée, absente des paquets publiés.
+
+### English
+
+- add the Gs++ `AnalyserDeclarationsInterface` export and its English alias
+  `AnalyzeInterfaceDeclarations`, using the existing request and capacity
+  protocol; share parsing with source mode without persistent state;
+- analyze prototypes, implicitly external globals, member visibility, types,
+  aliases and namespace imports; reject bodies, global initialization and
+  external constructor initializer lists; align free-function initializer-list
+  diagnostics with the bootstrap, including source mode;
+- 22 bilingual syntax/semantic corpora, 6 type/data interfaces, 14 bilingual
+  syntax rejections and 15 bilingual semantic rejections; unchanged AST,
+  sentinel-protected buffers, capacities and alternating modes verified;
+  raise the local semantic matrix from 2,649 to 2,679 rejections;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain; three identical
+  452,815-byte images accepted by `gseverifier`, with 77 exports and the same
+  two allocation/free imports;
+- memory-only addition: file reading and expansion, source/interface assembly
+  and include origins remain to be connected; no change to public structures,
+  formats 1.0, ABI 1 or alpha.10; local tranche, not committed, pushed or
+  included in published packages.
+
+## Opérateurs des initialiseurs agrégés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- corriger dans l'analyseur Gs++ la priorité des valeurs agrégées affectées et
+  retournées : contrôle de la forme avant les feuilles, puis visite typée des
+  éléments ; la cible d'affectation reste contrôlée en premier ; réutiliser
+  le validateur contextuel existant sans modifier l'AST ou l'ABI publics ;
+- ajouter 27 corpus bilingues exécutés : structures, unions, tableaux imbriqués,
+  éléments omis à zéro, copies indépendantes, affectations, arguments directs et
+  callbacks, retours de structures, champs, bases, membres et délégations ;
+  contrôler valeurs capturées, qualifications de pointeurs, mutations et trace
+  d'ordre, y compris deux éléments partageant un référent ;
+- ajouter 42 refus bilingues comparant code, ligne et colonne au bootstrap,
+  avec AST intact ; matrice locale portée de 2 565 à 2 649 refus ; factoriser
+  le contrôle des opérateurs et étendre son parcours aux éléments d'agrégats ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution
+  et validation MSBuild natives ; conformité 20/20 par chaîne ; trois images
+  identiques de 451 599 octets, acceptées par `gseverifier` ;
+- conserver alpha.10, formats 1.0 et ABI 1 ; le backend exécuté reste C++,
+  `ConteneursDynamiques.GsPP` reste inchangé ; tranche locale non commitée,
+  non poussée et absente des paquets publiés.
+
+### English
+
+- fix aggregate assignment and return diagnostic priority in the Gs++ analyzer:
+  check shape before leaves, then visit typed elements; assignment targets are
+  still checked first; reuse the existing contextual validator without changing
+  the public AST or ABI;
+- add 27 executed bilingual corpora: structures, unions, nested arrays,
+  zero-initialized omitted elements, independent copies, assignments, direct and
+  callback arguments, structure returns, fields, bases, members and delegation;
+  check captured values, pointer qualifiers, mutation and call-order traces,
+  including two elements sharing the same referent;
+- add 42 bilingual rejection cases comparing code, line and column with the
+  bootstrap while preserving the AST; raise the local matrix from 2,565 to
+  2,649 rejections; share operator checks and traverse aggregate elements;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain; three identical
+  451,599-byte images accepted by `gseverifier`;
+- retain alpha.10, formats 1.0 and ABI 1; executed machine code still uses the
+  C++ backend, `ConteneursDynamiques.GsPP` remains unchanged; local tranche,
+  not committed, pushed or included in published packages.
+
+## Références des opérateurs mixtes et constructions — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- vérifier les opérateurs mixtes recevant des références : scalaires, éléments
+  de tableaux, déréférencements, redirections de pointeurs et qualifications,
+  conversions de classes, récepteurs constants/volatiles et opérateurs unaires ;
+  24 corpus bilingues exécutés comparent les déclarations et les mutations ;
+- couvrir les expressions imbriquées et les champs par défaut, initialiseurs
+  explicites, bases, membres et délégations ; une trace exportée contrôle cibles,
+  ordre et nombre d'appels, avec arguments distincts pour les deux corpus à
+  appels multiples, et trace nulle pour les courts-circuits logiques intégrés ;
+- 24 refus bilingues vérifient ambiguïtés, référents incompatibles, accès privés,
+  priorités dans les expressions et constructions, cibles d'affectation et
+  analyse des opérandes non exécutés ; diagnostic/ligne/colonne et AST intact
+  contrôlés ; matrice locale portée à 2 565 refus ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives ; conformité 20/20 par chaîne ; trois images
+  identiques, inchangées à 450 255 octets et acceptées par `gseverifier` ;
+  aucune nouvelle correction du compilateur nécessaire, contrats publics,
+  formats, ABI et alpha.10 conservés, `ConteneursDynamiques.GsPP` inchangé ;
+  tranche locale sans nouveau commit, push ou release.
+
+### English
+
+- test mixed operators taking references: scalars, array elements, dereferences,
+  pointer retargeting and qualifiers, class conversions, constant/volatile
+  receivers and unary operators; 24 executed bilingual corpora compare selected
+  declarations and mutation;
+- cover nested expressions and default fields, explicit initializers, bases,
+  members and delegation; an exported trace checks targets, call order and count,
+  with distinct arguments in both multiple-call corpora, and a zero trace for
+  built-in logical short-circuits;
+- 24 bilingual rejection cases check ambiguity, incompatible referents, private
+  access, expression and construction priorities, assignment targets and analysis
+  of skipped operands; diagnostic/line/column and unchanged AST verified;
+  the local matrix reaches 2,565 rejections;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain; three identical
+  images, unchanged at 450,255 bytes and accepted by `gseverifier`; no new compiler
+  fix required, public contracts, formats, ABI and alpha.10 retained,
+  `ConteneursDynamiques.GsPP` unchanged; local tranche without another commit,
+  push or release.
+
+## Références des groupes mixtes et constructions — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- vérifier les références dans les groupes mêlant méthodes et fonctions libres :
+  qualifications scalaires et de pointeurs, récepteurs constants/volatiles,
+  alias, correspondances dérivées contre conversions vers une base ; 22 corpus
+  bilingues exécutés, déclarations sélectionnées et mutations contrôlées ;
+- couvrir les champs par défaut, initialiseurs explicites, bases, membres et
+  délégations ; 24 refus bilingues comparent ambiguïtés, absence de candidat,
+  accès privé et priorité sur les erreurs suivantes, avec diagnostic/ligne/colonne
+  et AST intact ; matrice locale portée à 2 517 refus ;
+- conserver les règles actuelles : égalité de score ambiguë, sans priorité
+  automatique des méthodes, références ou liaisons temporaires de style C++ ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution
+  et validation MSBuild natives ; conformité 20/20 par chaîne ; trois images
+  identiques, inchangées à 450 255 octets et acceptées par `gseverifier` ;
+  aucune nouvelle correction du compilateur nécessaire, contrats publics,
+  formats, ABI et alpha.10 conservés, `ConteneursDynamiques.GsPP` inchangé ;
+  tranche locale sans nouveau commit, push ou release.
+
+### English
+
+- test references in mixed method/free-function groups: scalar and pointer
+  qualifiers, constant/volatile receivers, aliases, exact derived matches versus
+  base conversions; 22 executed bilingual corpora check selected declarations
+  and referent mutation;
+- cover default fields, explicit initializers, bases, members and delegation;
+  24 bilingual rejection cases compare ambiguity, missing candidates, private
+  access and priority over subsequent errors, checking diagnostic/line/column
+  and unchanged AST; the local matrix reaches 2,517 rejections;
+- preserve current rules: tied scores are ambiguous, without automatic priority
+  for methods or references, or C++-style temporary-reference binding;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain; three identical
+  images, unchanged at 450,255 bytes and accepted by `gseverifier`; no new
+  compiler fix required, public contracts, formats, ABI and alpha.10 retained,
+  `ConteneursDynamiques.GsPP` unchanged; local tranche without another commit,
+  push or release.
+
+## Structures et pointeurs référencés des callbacks imbriqués — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- étendre la couverture des paramètres et retours référencés aux structures et
+  emplacements de pointeurs ; 24 corpus bilingues exécutés vérifient les adresses,
+  dispositions natives, copies indépendantes, champs, éléments, constructions,
+  redirections et traces exactes avant/après ;
+- distinguer emplacement du pointeur et donnée pointée : un pointeur vers une
+  donnée constante peut être redirigé sans rendre cette donnée modifiable ;
+  24 refus bilingues vérifient types, qualifications et priorités des diagnostics,
+  ligne/colonne et AST intact ; matrice locale portée à 2 469 refus ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives ; conformité 20/20 par chaîne ; trois images
+  identiques, inchangées à 450 255 octets et acceptées par `gseverifier` ;
+- aucune nouvelle correction du compilateur nécessaire pour ces cas ; backend,
+  AST public, diagnostics, formats, ABI et version alpha.10 conservés ;
+  `ConteneursDynamiques.GsPP` inchangé, sans nouveau commit, push ou release.
+
+### English
+
+- extend reference-parameter and reference-return coverage to structures and
+  pointer slots; 24 executed bilingual corpora check addresses, native layouts,
+  independent copies, fields, elements, construction, retargeting and exact
+  before/after traces;
+- distinguish pointer storage from pointed-to data: a pointer to constant data
+  may be retargeted without making that data mutable; 24 bilingual rejection
+  cases check types, qualifiers, diagnostic priority, line/column and unchanged
+  AST; the local matrix reaches 2,469 rejections;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain; three identical
+  images, unchanged at 450,255 bytes and accepted by `gseverifier`;
+- no new compiler fix required for these cases; backend, public AST, diagnostics,
+  formats, ABI and alpha.10 retained; `ConteneursDynamiques.GsPP` unchanged,
+  without another commit, push or release.
+
+## Arguments référencés des callbacks imbriqués — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- vérifier la composition de callbacks retournés par référence, paramètres
+  référencés et retours référencés : lecture, mutation, adresse, constructions,
+  agrégats, copies de callback et qualifications ; 24 corpus bilingues exécutés ;
+- contrôler les adresses exactes et les traces avant/après de chaque argument,
+  l'ordre des appels, les doubles mutations du même référent et les courts-circuits
+  sans évaluation du callback ; distinction entre callback constant et argument mutable ;
+- 20 refus bilingues ajoutent 40 comparaisons de diagnostic, ligne et colonne,
+  portant la matrice locale à 2 421 refus ; priorités des appels imbriqués,
+  champs par défaut, bases et délégations couvertes, AST intact ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives ; conformité 20/20 par chaîne ; trois images identiques,
+  inchangées à 450 255 octets et acceptées par `gseverifier` ; analyseurs, backend,
+  AST public, diagnostics, formats et ABI inchangés par cette tranche ; version
+  alpha.10 conservée, `ConteneursDynamiques.GsPP` inchangé, aucun commit, push ou
+  release supplémentaire.
+
+### English
+
+- test the composition of callbacks returned by reference, reference parameters
+  and reference returns: reads, mutation, addresses, construction, aggregates,
+  callback copies and qualifiers; 24 executed bilingual corpora;
+- check exact argument addresses and before/after traces, call ordering, repeated
+  mutation of the same referent and short-circuiting without callback evaluation;
+  distinguish constant callback storage from a mutable argument;
+- 20 bilingual rejection cases add 40 diagnostic/line/column comparisons,
+  bringing the local matrix to 2,421 rejections; nested-call, default-field,
+  base and delegation priorities covered, unchanged AST;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain; three identical
+  images, unchanged at 450,255 bytes and accepted by `gseverifier`; analyzers,
+  backend, public AST, diagnostics, formats and ABI unchanged by this tranche;
+  alpha.10 retained, `ConteneursDynamiques.GsPP` unchanged, without another
+  commit, push or release.
+
+## Références de callbacks paramétrés et stockage constant — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- vérifier les références vers des callbacks paramétrés : appels imbriqués,
+  liaisons, adresses, remplacement et copies indépendantes, agrégats et champs
+  par défaut ; 22 corpus bilingues exécutés avec cibles, lectures, appels et
+  argument reçu contrôlés séparément ;
+- corriger dans les deux analyseurs la mutation des callbacks constants,
+  auparavant confondus avec des pointeurs vers des données constantes ; préserver
+  leur lecture/appel et la réaffectation des pointeurs de données qualifiés ;
+  diagnostic 71 prioritaire sur la valeur affectée et les erreurs suivantes ;
+- 25 refus bilingues ajoutent 50 comparaisons avec AST intact, portant la matrice
+  locale à 2 381 refus ; huit refus unitaires et compilations positives de
+  non-régression du bootstrap ; backend, AST public, formats et ABI inchangés ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives ; conformité 20/20 par chaîne, trois images identiques
+  de 450 255 octets acceptées par `gseverifier`, `ConteneursDynamiques.GsPP` inchangé ;
+  version alpha.10 conservée, tranche locale non commitée/non poussée, sans release.
+
+### English
+
+- test references to callbacks with parameters: nested calls, bindings, addresses,
+  retargeting and independent copies, aggregates and default fields; 22 executed
+  bilingual corpora verify targets, reads, calls and the received argument separately;
+- fix constant callback mutation in both analyzers, previously confused with
+  pointers to constant data; preserve reading/calling and retargeting of qualified
+  data pointers; diagnostic 71 takes precedence over the assigned value and later errors;
+- 25 bilingual rejection cases add 50 comparisons with unchanged AST, bringing
+  the local matrix to 2,381 rejections; eight unit rejections and positive bootstrap
+  regression checks; backend, public AST, formats and ABI unchanged;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain, three identical
+  450,255-byte images accepted by `gseverifier`, `ConteneursDynamiques.GsPP` unchanged;
+  alpha.10 retained, local changes not committed/pushed, without a release.
+
+## Références de pointeurs des callbacks et cibles de tableaux — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- vérifier les emplacements de pointeurs retournés par référence : copie,
+  liaison, réaffectation, double indirection, référents constants, tableaux,
+  constructeurs, fonctions et champs par défaut ; vingt corpus bilingues exécutés
+  avec cibles des pointeurs, valeurs pointées et nombre d'appels vérifiés séparément ;
+- corriger le frontend Gs++ qui confondait le déréférencement d'un pointeur
+  extrait d'un tableau avec une affectation de tableau entier ; préserver le
+  diagnostic 72 pour les vrais tableaux/sous-tableaux et 73 pour les valeurs
+  affectées incompatibles ; bootstrap C++, backend et diagnostics inchangés ;
+- quinze refus bilingues ajoutent 30 comparaisons code/ligne/colonne avec AST
+  intact ; matrice locale de 2 331 refus, distincte des 2 301 du commit poussé
+  `c58874b`, dont la signature GitHub et les trois jobs CI sont vérifiés ;
+- validations complètes réussies : CTest Windows 5/5, GNU/Linux 6/6, solution et
+  validation MSBuild natives ; conformité 20/20 par chaîne, trois images identiques
+  de 449 983 octets acceptées par `gseverifier` ; version alpha.10 conservée et
+  `ConteneursDynamiques.GsPP` inchangé, nouvelle tranche locale sans seconde
+  publication ni release.
+
+### English
+
+- test pointer slots returned by reference: copying, binding, retargeting, double
+  indirection, const referents, arrays, constructors, functions and default fields;
+  twenty executed bilingual corpora verify pointer targets, pointed values and
+  call counts separately;
+- fix the Gs++ frontend confusing dereferencing an array-extracted pointer with
+  whole-array assignment; preserve diagnostic 72 for actual arrays/subarrays
+  and 73 for incompatible assigned values; C++ bootstrap, backend and diagnostic
+  codes unchanged;
+- fifteen bilingual rejection cases add 30 code/line/column comparisons with
+  unchanged AST; 2,331 local rejections, distinct from 2,301 in pushed commit
+  `c58874b`, whose GitHub signature and all three CI jobs are verified;
+- full validation successful: Windows CTest 5/5, GNU/Linux 6/6, native MSBuild
+  solution and validation; conformance 20/20 on each toolchain, three identical
+  449,983-byte images accepted by `gseverifier`; alpha.10 retained and
+  `ConteneursDynamiques.GsPP` unchanged, new tranche local without another
+  publication or release.
+
 ## Consolidation des tranches du frontend — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
 
 ### Français

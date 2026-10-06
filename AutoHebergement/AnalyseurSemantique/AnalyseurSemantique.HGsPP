@@ -276,6 +276,14 @@ espace GalacticShrine::GsPP::Autohebergement {
         UsedNamespaceNotFound = 120,
         NomImporteAmbigu = 121,
         AmbiguousImportedName = 121,
+        ConstructionExigeClasse = 122,
+        ConstructionRequiresClass = 122,
+        VariableLocaleVideInterdite = 123,
+        VoidLocalVariableForbidden = 123,
+        ReferenceLocaleNonInitialisee = 124,
+        UninitializedLocalReference = 124,
+        VariableLocaleConstanteNonInitialisee = 125,
+        UninitializedConstLocalVariable = 125,
     };
 
     /**

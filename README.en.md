@@ -172,6 +172,21 @@ compiler on those hosts and the existing Gs++ contract.
 The [product plan](Documentation/PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md) describes this
 work and its acceptance criteria.
 
+### Planned compiler / build-tool separation
+
+For milestone **0.28**, a dedicated tool is planned under the proposed name
+**GsBuild**, with the command `gsbuild`. It will handle XML `.GsPj`/`.GsProject`
+projects and `.GsPs` solutions, orchestrating compilation, library creation
+and linking. `gsppc` will focus exclusively on compiling Gs++ sources and
+interfaces into objects.
+
+**Not implemented yet:** the 0.27 toolchain retains the `gsppc` commands shown
+here. GsBuild will serve a role similar to MSBuild for Gs++ projects, without
+claiming MSBuild project compatibility. CMake and Visual Studio/MSBuild will
+remain options for building the toolchain itself. The
+[product plan](Documentation/PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md#séparer-compilation-et-construction--décision-du-5-octobre-2026)
+describes the intended separation and migration.
+
 ## Extensions
 
 | Purpose | Extensions |
@@ -336,7 +351,7 @@ All normative documentation is maintained in Markdown as its primary source.
   returns aligned with the bootstrap compiler;
 - structural and numeric constraints for declarations, enumerations, and global
   initializers and explicit casts aligned with the bootstrap compiler,
-  with **1,957 negative corpora** in development sources (**619** in the published
+  with **2,301 negative corpora** in development sources (**619** in the published
   alpha.10), whose code, line, and column are checked;
 - callback references, nested signatures and deeply indirect pointer arrays
   covered by development differential tests;
@@ -403,6 +418,44 @@ All normative documentation is maintained in Markdown as its primary source.
   without publishing extra steps; final plans retain canonical order and reuse
   selected field constructors, including `super()` for bases without their own
   constructor within the differential matrix;
+- validate local declarations when visited: types, duplicate names, `void`
+  variables, uninitialized references and constants, and class-only explicit
+  construction; compare diagnostic priority and unbraced branch scopes against
+  the bootstrap;
+- C++ machine generation for local names reused across disjoint scopes,
+  with per-declaration storage; ten bilingual corpora executed, covering
+  references, callbacks, arrays, branches, loops and destruction on early
+  returns, plus a bilingual integration example;
+- lexical name lookup through parent namespaces even without imports,
+  including class methods; types, aliases, enums, globals, callbacks and
+  operators, with nearer names hiding outer names; twelve bilingual corpora
+  executed with result 42;
+- start lookup at the class in methods, constructors and destructors,
+  including default field initializers; hide parent and imported functions,
+  preserving callbacks and explicit receivers; fourteen bilingual corpora
+  executed, with selected targets compared against the bootstrap;
+- operator scopes in methods, constructors, destructors and default fields:
+  mixed groups, private/protected access and per-constructor overload choices;
+  seventeen bilingual corpora executed with exact targets, result 42 and
+  reproducible images;
+- default-field casts resolved from the constructor's scope, including aliases
+  hiding parent/imported types and nested callback signatures; fifteen executed
+  bilingual corpora also cover references, bases, class fields and delegation,
+  with selected constructors compared against the bootstrap;
+- default-field callbacks re-evaluated for each constructor: callback calls,
+  dereferencing, indexing, nested signatures, references and aggregates;
+  ten executed bilingual corpora and one bilingual semantic-only check for
+  const/volatile callback references;
+- aggregate callback arguments evaluated using each constructor's signature,
+  in default fields, class-field and base initializers, and delegation; nine
+  additional executed bilingual corpora; preserve expression-internal diagnostics
+  separately from an incompatible final field value;
+- callback reference returns: reads, bindings, mutations, addresses, fields and
+  nested calls; twenty-five executed bilingual corpora using host-supplied C++
+  callbacks with verified call counts; constness preserved by the bootstrap and
+  `volatile`/`constant volatile` preserved for addressed fields/elements in the
+  Gs++ frontend, including arrow access; this does not add
+  reference returns to ordinary Gs++ functions;
 - fully validate each global initializer in source order, typing all its leaves
   before its constant-value pass; structural default-field check priority
   covered within the differential test scope;

@@ -75,6 +75,8 @@ namespace GsPP
             };
             CodeMachine* Machine = nullptr;
             std::unordered_map<std::string, EmplacementVariable> Variables;
+            std::unordered_map<const InstructionVariable*, EmplacementVariable> EmplacementsLocaux;
+            std::vector<std::string> NomsLocauxActifs;
             const std::unordered_set<std::string>* Fonctions = nullptr;
             const std::unordered_map<std::string, const Structure*>* Structures = nullptr;
             const std::unordered_map<const Expression*, std::string>* Chaines = nullptr;
@@ -109,7 +111,9 @@ namespace GsPP
             const Expression& expression,
             std::vector<const ExpressionChaine*>& chaines);
         static void GenererInstruction(const Instruction& instruction, ContexteFonction& contexte);
+        static void GenererInstructionDansPortee(const Instruction& instruction, ContexteFonction& contexte);
         static void GenererExpression(const Expression& expression, ContexteFonction& contexte);
+        static void GenererAppelExpression(const ExpressionAppel& appel, ContexteFonction& contexte);
         static void GenererAppel(
             const std::string& symbole,
             const Expression* cibleIndirecte,

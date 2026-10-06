@@ -579,4 +579,15 @@ do
         | grep -q "Code de retour : 42"
 done
 
+for source in Principal.GsPP Principal.en.GsPP
+do
+    "$compilateur" "$racine_source/Tests/Integration/PorteesLocales/$source" --format gse \
+        --point-entree GalacticShrine::GsPP::Tests::PorteesLocales::Principal \
+        --version-application "$version_gspp" \
+        -o "$repertoire_test/PorteesLocales-$source.GsE"
+    "$verificateur" "$repertoire_test/PorteesLocales-$source.GsE" | grep -q "GsE valide"
+    "$chargeur" "$repertoire_test/PorteesLocales-$source.GsE" --executer \
+        | grep -q "Code de retour : 42"
+done
+
 echo "Tests d’intégration Gs++ réussis."

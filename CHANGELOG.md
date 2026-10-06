@@ -10,6 +10,499 @@
 
 # Journal des modifications
 
+## Consolidation des tranches du frontend — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- regrouper les tranches validées de déclarations locales, portées du backend,
+  recherche lexicale des espaces parents, méthodes et opérateurs, constructions,
+  diagnostics de champs par défaut et retours par référence des callbacks ;
+- inclure les deux programmes d'intégration bilingues de portées locales et les
+  diagnostics publics bilingues 122 à 125, sans renuméroter les diagnostics ;
+- validation locale : CTest Windows 5/5, GNU/Linux 6/6, solution et validation
+  natives Visual Studio 2026 réussies, conformité 20/20 par chaîne, 2 301 refus
+  différentiels et trois `Frontend.GsE` identiques et vérifiés ;
+- version alpha.10 et paquets déjà publiés inchangés ; aucune nouvelle release ;
+  le résultat de CI distante doit être vérifié indépendamment après le push.
+
+### English
+
+- consolidate validated local declarations, backend scopes, parent namespace
+  lookup, method/operator contexts, construction, default-field diagnostics and
+  callback reference returns;
+- include both bilingual local-scope integration programs and bilingual public
+  diagnostics 122 through 125 without renumbering existing diagnostics;
+- local validation: Windows CTest 5/5, GNU/Linux 6/6, native Visual Studio 2026
+  solution and validation successful, conformance 20/20 per toolchain, 2,301
+  rejection comparisons and three identical, verified `Frontend.GsE` images;
+- alpha.10 and published packages unchanged; no new release; remote CI results
+  must be checked separately after pushing.
+
+## Qualifications des champs adressés via callbacks — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- conserver `volatile` et `constante volatile` hérités lors de la prise d'adresse
+  des champs et éléments de tableau, directement depuis une référence de callback
+  ou via un pointeur de structure ; ne pas qualifier le pointeur stocké d'un champ ;
+- partager la reconnaissance privée des types qualifiés ; signatures, AST public,
+  diagnostics, règles de conversion, bootstrap C++ et backend inchangés ;
+- dix nouveaux corpus bilingues exécutés avec stockage d'hôte et nombre d'appels
+  vérifiés ; huit nouveaux refus bilingues ajoutent 16 comparaisons de
+  code/ligne/colonne ; groupe cumulé de 25 corpus exécutés et 23 refus bilingues,
+  matrice locale complète de 2 301 refus différentiels ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives Visual Studio
+  2026 réussies ; conformité 20/20 par chaîne ; trois `Frontend.GsE` identiques
+  et vérifiés, de 449 439 octets ;
+- version alpha.10, formats 1.0, ABI 1 et `ConteneursDynamiques.GsPP` inchangés ;
+  aucune publication ; aucune garantie d'atomicité ajoutée à `volatile`.
+
+### English
+
+- preserve inherited `volatile` and `constant volatile` qualifiers when taking
+  field and array-element addresses, directly from callback references or through
+  a structure pointer; do not qualify the pointer stored in a field;
+- share private qualified-type recognition; signatures, public AST, diagnostics,
+  conversion rules, C++ bootstrap and backend unchanged;
+- ten additional executed bilingual corpora with verified host storage and call
+  counts; eight bilingual rejection cases add 16 code/line/column comparisons;
+  combined group of 25 executed and 23 rejection bilingual corpora, with 2,301
+  local rejection comparisons in total;
+- Windows CTest 5/5, GNU/Linux 6/6, native Visual Studio 2026 solution and
+  validation successful; conformance 20/20 per toolchain; three identical,
+  verified 449,439-byte `Frontend.GsE` images;
+- alpha.10, formats 1.0, ABI 1 and `ConteneursDynamiques.GsPP` unchanged;
+  no publication; no atomicity guarantee added to `volatile`.
+
+## Retours par référence des callbacks — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- corriger la lecture et l'adressage des retours de callbacks par référence
+  dans le backend x86-64 C++ ; conserver leur adresse de 64 bits et ne pas
+  utiliser le mécanisme de retour de structure par valeur ;
+- propager la constance des appels retournant une référence dans le bootstrap
+  C++ ; conserver les qualifications des champs/éléments adressés dans le
+  frontend Gs++, sans changer l'AST ni les diagnostics publics ;
+- quinze corpus bilingues exécutés avec callbacks C++ fournis par l'hôte :
+  résultat 42, stockage et nombre d'appels exacts, dispositions ABI concordantes,
+  paramètres complets et images reproductibles ; quinze refus bilingues ajoutent
+  30 comparaisons de code/ligne/colonne, portant la matrice locale à 2 285 ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives Visual Studio
+  2026 réussies ; conformité 20/20 dans les trois chaînes ; trois `Frontend.GsE`
+  identiques et vérifiés, de 448 159 octets ;
+- version alpha.10, formats 1.0, ABI 1 et `ConteneursDynamiques.GsPP` inchangés ;
+  aucune publication ; les fonctions ordinaires Gs++ retournant une référence
+  restent hors du sous-ensemble courant.
+
+### English
+
+- fix reading and addressing callback reference returns in the C++ x86-64
+  backend: preserve the 64-bit address and do not use by-value structure return
+  machinery;
+- propagate constness of reference-returning calls in the C++ bootstrap;
+  preserve addressed field/element qualifiers in the Gs++ frontend without
+  changing the public AST or diagnostic codes;
+- fifteen executed bilingual corpora with host-supplied C++ callbacks: result
+  42, exact storage changes and call counts, matching ABI layouts, complete
+  parameters and reproducible images; fifteen bilingual rejection cases add
+  30 code/line/column comparisons, bringing the local total to 2,285;
+- Windows CTest 5/5, GNU/Linux 6/6, native Visual Studio 2026 solution and
+  validation successful; conformance 20/20 across all three toolchains;
+  three identical and verified 448,159-byte `Frontend.GsE` images;
+- alpha.10, formats 1.0, ABI 1 and `ConteneursDynamiques.GsPP` unchanged;
+  no publication; ordinary reference-returning Gs++ functions remain outside
+  the current subset.
+
+## Arguments agrégés des callbacks et diagnostics des champs — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- corriger la propagation des diagnostics des champs par défaut : une erreur
+  interne d'argument agrégé conserve le diagnostic 45 et sa position ; réserver
+  le diagnostic 37 à l'incompatibilité finale entre l'expression valide et le champ ;
+- neuf corpus bilingues exécutés supplémentaires couvrant structures, tableaux,
+  callbacks imbriqués, pointeurs qualifiés, champs objets, bases, délégations et
+  retours booléens ; un nouveau corpus uniquement sémantique pour une signature
+  de callback retournant un callback par référence ;
+- vingt-deux nouveaux refus bilingues, soit 44 comparaisons supplémentaires de
+  code/ligne/colonne avec AST intact ; total local de 2 255 refus différentiels ;
+  le groupe cumulé comporte 19 corpus bilingues exécutés et deux sémantiques ;
+- bootstrap C++, diagnostics publics, exports, formats 1.0 et ABI 1 inchangés ;
+  CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives Visual Studio
+  2026 réussies ; conformité 20/20 dans les trois chaînes ;
+- trois `Frontend.GsE` reconstruits, identiques et vérifiés, de 447 375 octets ;
+  `ConteneursDynamiques.GsPP` et version alpha.10 inchangés ; aucune publication.
+
+### English
+
+- fix default-field diagnostic propagation: retain diagnostic 45 and its source
+  position for an invalid aggregate argument; reserve diagnostic 37 for final
+  incompatibility between a successfully analyzed expression and its field;
+- nine additional executed bilingual corpora covering structures, arrays, nested
+  callbacks, qualified pointers, class fields, bases, delegation and boolean
+  returns; one new semantic-only corpus for a callback signature returning a
+  callback by reference;
+- twenty-two additional bilingual rejection cases, adding 44 code/line/column
+  comparisons with unchanged AST; 2,255 local rejection comparisons in total;
+  the combined group has 19 executed and two semantic-only bilingual corpora;
+- C++ bootstrap, public diagnostic codes, exports, formats 1.0 and ABI 1 unchanged;
+  Windows CTest 5/5, GNU/Linux 6/6, native Visual Studio 2026 solution and validation
+  successful; conformance 20/20 across all three toolchains;
+- three rebuilt, identical and verified 447,375-byte `Frontend.GsE` images;
+  `ConteneursDynamiques.GsPP` and alpha.10 unchanged; no new publication.
+
+## Callbacks des champs par défaut par constructeur — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- étendre la matrice des callbacks évalués dans les champs par défaut :
+  signatures différentes par constructeur, références, pointeurs, indexation,
+  fabriques de callbacks, agrégats, tableaux et valeurs explicitement remplacées ;
+- dix corpus bilingues exécutés avec résultat 42, octets identiques, images
+  reproductibles et sans import d'hôte ; un corpus bilingue uniquement sémantique
+  pour les références de callbacks constantes/volatiles ; comparer les types et
+  positions exactes des paramètres retenus, sans omission ni résolution dupliquée ;
+- quatorze refus bilingues supplémentaires comparés sur code/ligne/colonne avec
+  AST intact, portant la matrice locale à 2 211 refus ; inclure les signatures
+  incompatibles du second constructeur et les priorités avant son corps ;
+- aucun nouvel écart sur ces corpus et aucune modification des algorithmes du
+  compilateur ; CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives
+  Visual Studio 2026 réussies ; conformité 20/20 dans les trois chaînes ;
+- trois `Frontend.GsE` identiques et vérifiés, de 447 263 octets ;
+  `ConteneursDynamiques.GsPP`, version alpha.10, formats 1.0 et ABI 1 inchangés ;
+  aucune nouvelle publication.
+
+### English
+
+- extend default-field callback coverage: per-constructor signatures, references,
+  pointers, indexing, callback factories, aggregates, arrays and explicitly
+  replaced defaults;
+- ten executed bilingual corpora with result 42, identical bytes, reproducible
+  images and no host imports; one bilingual semantic-only corpus for const/volatile
+  callback references; compare selected parameter types and exact positions,
+  without missing or duplicate resolutions;
+- fourteen additional bilingual rejection cases, checking code/line/column and
+  unchanged AST; 2,211 local rejection comparisons, including incompatible second
+  constructor signatures and diagnostic priority before the constructor body;
+- no new discrepancy on these corpora and no compiler algorithm changes;
+  Windows CTest 5/5, GNU/Linux 6/6, native Visual Studio 2026 solution and validation
+  successful; conformance 20/20 across all three toolchains;
+- three identical and verified 447,263-byte `Frontend.GsE` images;
+  `ConteneursDynamiques.GsPP`, alpha.10, formats 1.0 and ABI 1 unchanged;
+  no new publication.
+
+## Qualifications des constructions et conversions des champs par défaut — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- corriger le contexte des types de conversions des champs par défaut :
+  commencer à la portée du constructeur, même dans les agrégats et callbacks
+  imbriqués, pour ne pas sélectionner un alias parent/importé masqué ;
+- conserver la portée du type déclaré du champ, l'AST de l'appelant, les
+  valeurs par défaut non évaluées lorsqu'elles sont remplacées et la délégation ;
+- quinze corpus bilingues exécutés avec résultat 42, octets identiques,
+  images reproductibles et sans import d'hôte ; comparer les constructeurs
+  sélectionnés et contextes des bases, champs, délégations et objets locaux ;
+- seize refus bilingues supplémentaires couvrant qualifications, références,
+  héritage, arités, accès, agrégats, types masqués et priorités des diagnostics ;
+  total local de 2 183 refus comparés sur code/ligne/colonne avec AST intact ;
+- bootstrap C++ et diagnostics publics inchangés ; version alpha.10, formats
+  1.0 et ABI 1 conservés ; aucune nouvelle publication.
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies ; conformité 20/20 par chaîne ; trois `Frontend.GsE` identiques
+  et vérifiés, de 447 263 octets ; `ConteneursDynamiques.GsPP` inchangé.
+
+### English
+
+- fix type lookup in default-field casts: start at the constructor's scope,
+  including nested aggregates and callbacks, without selecting hidden
+  parent/imported aliases;
+- retain the declared field type's scope, the caller's AST, skipped defaults
+  when explicitly replaced, and constructor delegation;
+- fifteen bilingual corpora executed with result 42, identical bytes,
+  reproducible images and no host imports; compare selected constructors
+  and contexts for bases, fields, delegation and local objects;
+- sixteen additional bilingual rejection cases covering qualifications,
+  references, inheritance, arities, access, aggregates, hidden types and
+  diagnostic priority; 2,183 local code/line/column and unchanged-AST comparisons;
+- C++ bootstrap and public diagnostics unchanged; retain alpha.10, formats 1.0
+  and ABI 1; no new publication.
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation
+  successful; conformance 20/20 per toolchain; three identical and verified
+  447,263-byte `Frontend.GsE` images; `ConteneursDynamiques.GsPP` unchanged.
+
+## Portées des opérateurs dans les méthodes — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- ajouter dix-sept corpus bilingues exécutés couvrant les portées d'opérateurs
+  dans les méthodes, constructeurs, destructeurs et champs par défaut ;
+- vérifier les groupes mixtes, le masquage des espaces parents et importés,
+  la priorité du groupe associé au type de gauche et les accès privés/protégés ;
+- comparer les positions exactes des cibles, types de retour et drapeaux de
+  méthode au bootstrap, ainsi que toutes les résolutions d'un champ partagé
+  par plusieurs constructeurs : surcharges distinctes et alternance avec un
+  opérateur intrinsèque ;
+- vérifier le résultat 42, les octets bilingues identiques, la reproductibilité
+  des images et l'absence d'import d'hôte ; ajouter dix-sept refus bilingues,
+  portant le total à 2 151 comparaisons code/ligne/colonne avec AST intact ;
+- extension des tests sans changement des algorithmes du compilateur,
+  diagnostics publics, version, formats ou ABI ; aucune nouvelle publication.
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies ; conformité 20/20 par chaîne ; trois `Frontend.GsE` vérifiés,
+  identiques et inchangés à 446 927 octets.
+
+### English
+
+- add seventeen executed bilingual corpora covering operator scopes in methods,
+  constructors, destructors and default field initializers;
+- check mixed groups, hiding of parent/imported namespaces, precedence of the
+  left operand's type-associated group and private/protected access;
+- compare exact target positions, return types and method flags against the
+  bootstrap, including all resolutions of a field shared by multiple constructors:
+  distinct overloads and a switch to an intrinsic operator;
+- verify result 42, identical bilingual bytes, reproducible images and no host
+  imports; add seventeen bilingual rejection cases, bringing code/line/column
+  and unchanged-AST comparisons to 2,151;
+- extend tests without changing compiler algorithms, public diagnostics,
+  version, formats or ABI; no new publication.
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation
+  successful; conformance 20/20 per toolchain; three verified `Frontend.GsE`
+  images, identical and unchanged at 446,927 bytes.
+
+## Contexte lexical des noms dans les méthodes — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- corriger le frontend Gs++ pour démarrer la recherche des noms à la classe
+  de la méthode, du constructeur ou du destructeur, avant ses espaces parents ;
+  préserver l'espace public de l'AST et les paramètres/variables prioritaires ;
+- appliquer le même contexte aux champs par défaut évalués pour un constructeur ;
+  ne plus sélectionner une fonction parente ou importée lorsqu'une méthode
+  homonyme masque son nom ;
+- conserver le bootstrap C++, les récepteurs explicites des formes non liées,
+  les qualifications complètes, les contrôles d'accès et les diagnostics publics ;
+- quatorze nouveaux corpus bilingues exécutés avec résultat 42, codes et
+  données identiques, images reproductibles et absence d'import d'hôte ;
+  contrôler aussi les familles, classes/espaces, positions de déclarations
+  et types de retour sélectionnés par comparaison au bootstrap ;
+- couvrir appels directs, surcharges, groupe méthode/fonction de même nom
+  complet, callbacks, récursion, champs par défaut, initialiseurs explicites,
+  corps de constructeurs, destructeurs, imports et paramètres prioritaires ;
+- vingt cas de refus bilingues supplémentaires : récepteur manquant, types,
+  adresses surchargées, appels indirects, conversion, affectation, accès privé,
+  masquage des imports et priorité des diagnostics ; total de 2 117 refus
+  différentiels comparés sur code/ligne/colonne, avec AST intact ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies, conformité 20/20 par chaîne ; trois `Frontend.GsE` identiques et
+  vérifiés, de 446 927 octets ;
+- version alpha.10, formats 1.0 et ABI 1 conservés ; `ConteneursDynamiques.GsPP`
+  inchangé ; aucun commit, push, tag ou paquet publié pour cette tranche.
+
+### English
+
+- fix the Gs++ frontend to start name lookup at the method, constructor or
+  destructor's class before its parent namespaces; preserve the public AST's
+  namespace and the precedence of parameters/local variables;
+- use the same context for default fields evaluated for a constructor;
+  do not select parent or imported functions hidden by a same-named method;
+- retain the C++ bootstrap, explicit receivers for unbound forms, complete
+  qualifications, access checks and public diagnostics;
+- execute fourteen new bilingual corpora with result 42, identical code/data,
+  reproducible images and no host imports; compare selected declaration
+  families, class/namespace, positions and return types against the bootstrap;
+- cover direct calls, overloads, mixed method/free-function groups sharing a
+  complete name, callbacks, recursion, default fields, explicit initializers,
+  constructor bodies, destructors, imports and parameter precedence;
+- add twenty bilingual rejection cases covering missing receivers, types,
+  overloaded addresses, indirect calls, casts, assignments, private access,
+  import hiding and diagnostic priority; total 2,117 code/line/column
+  differential rejections, with the caller's AST unchanged;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation
+  successful, conformance 20/20 per toolchain; three identical, verified
+  `Frontend.GsE` images of 446,927 bytes;
+- retain alpha.10, format versions 1.0 and ABI 1; leave
+  `ConteneursDynamiques.GsPP` unchanged; no commit, push, tag or package
+  published for this tranche.
+
+## Recherche lexicale dans les espaces parents — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- remonter les espaces parents sans exiger une directive `utilisant espace`,
+  dans le bootstrap C++ et le frontend Gs++ ; couvrir les types nommés,
+  alias, valeurs d'énumération, globales, callbacks, fonctions, opérateurs
+  libres et bases de classes ;
+- permettre aux méthodes de classes d'utiliser les noms de leur espace
+  contenant ; indexer aussi leurs portées pour les signatures, sans rendre
+  les classes importables comme espaces ;
+- appliquer le masquage au premier niveau contenant un nom, sans repli sur
+  une surcharge externe incompatible ; conserver les noms complets qualifiés,
+  la visibilité des imports et le refus des valeurs d'énumération futures ;
+- adapter les régressions historiques de priorité racine à la règle lexicale,
+  en conservant les contrôles de types distincts, surcharges et bases invalides ;
+- douze corpus bilingues exécutés avec résultat 42, codes français/anglais
+  identiques et sorties reproductibles ; douze cas de refus bilingues
+  supplémentaires, portant la comparaison code/ligne/colonne à 2 077 refus ;
+- simplifier le destructeur de l'exemple de portées locales : `Trace` ne
+  nécessite plus son nom entièrement qualifié ; exemples construits, vérifiés
+  et exécutés sous les trois chaînes ;
+- CTest Windows 5/5, GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies, conformité 20/20 par chaîne ; trois `Frontend.GsE` identiques et
+  vérifiés, de 446 127 octets ;
+- alpha.10, diagnostics publics, formats 1.0 et ABI 1 inchangés ; aucun commit,
+  push, tag ou paquet publié pour cette tranche ; GsBuild reste prévu pour 0.28.
+
+### English
+
+- perform lexical lookup through parent namespaces without requiring a
+  `using namespace` directive, in both the C++ bootstrap and Gs++ frontend;
+  cover named types, aliases, enum values, globals, callbacks, functions,
+  free operators and class bases;
+- allow class methods to use names from their enclosing namespace; index
+  class scopes for method signatures without making classes importable;
+- stop at the nearest level containing a name, without falling back to an
+  outer incompatible overload; preserve complete qualified names, import
+  visibility and rejection of forward enum-value references;
+- update historical root-priority regressions to lexical lookup while
+  retaining distinct-type, overload and invalid-base checks;
+- execute twelve bilingual corpora with result 42, identical French/English
+  code and reproducible images; add twelve bilingual rejection cases,
+  increasing code/line/column differential coverage to 2,077 rejections;
+- use unqualified `Trace` in the local-scope example's destructor; build,
+  verify and execute both language variants on all three toolchains;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation
+  successful, conformance 20/20 per toolchain; three identical, verified
+  `Frontend.GsE` images of 446,127 bytes;
+- retain alpha.10, public diagnostics, format versions 1.0 and ABI 1; no
+  commit, push, tag or package published for this tranche; GsBuild remains
+  planned for 0.28.
+
+## Génération des variables locales par portée — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- réserver le stockage des variables locales par déclaration, indépendamment
+  des noms visibles ; activer un nom lors de sa déclaration et le retirer à
+  la fermeture de sa portée, après les destructions ;
+- accepter les noms réutilisés dans les blocs, branches et boucles distincts,
+  y compris sans accolades, avec types et tailles différents ; préserver les
+  conflits avec paramètres et portées ancêtres encore actifs ;
+- dix nouveaux corpus bilingues exécutés, avec résultat 42, code français/anglais
+  identique, images reproductibles, références, callbacks, tableaux et traces
+  de destruction après retour ; 14 corpus valides bilingues de déclarations
+  locales atteignant également la génération machine ;
+- exemple d'intégration bilingue construit, vérifié et exécuté sous les trois
+  chaînes, avec trace de destruction 122345 et résultat 42 ; ajout au test GNU ;
+- traduction différentielle des mots de contrôle `si`, `sinon` et `tantque`
+  sans altérer les noms qui contiennent ces séquences ;
+- CTest Windows 5/5 et GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies ; conformité 20/20 par construction, 2 053 refus différentiels
+  inchangés et trois `Frontend.GsE` reconstruits identiques de 448 959 octets ;
+- correction du backend C++ uniquement, pas un backend auto-hébergé ; alpha.10,
+  diagnostics, formats 1.0 et ABI 1 inchangés ; aucun commit, push ou release
+  créé pour cette tranche ; GsBuild reste prévu pour le jalon 0.28.
+
+### English
+
+- allocate local storage per declaration, independently of visible names;
+  activate names at their declaration and remove them at scope exit, after
+  emitting destructors;
+- support names reused across disjoint blocks, branches and loops, including
+  unbraced bodies and different types/sizes; preserve conflicts with active
+  parameters and ancestor scopes;
+- execute ten new bilingual corpora, checking result 42, identical French/English
+  code, reproducible images, references, callbacks, arrays and destruction traces
+  after returning; generate machine code for all 14 bilingual valid local
+  declaration corpora as well;
+- build, verify and execute the bilingual integration example on all three
+  toolchains, checking destruction trace 122345 and result 42; add it to GNU
+  integration tests;
+- translate the French control keywords `si`, `sinon` and `tantque` without
+  altering identifiers containing those sequences;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation
+  successful; conformance 20/20 per build, unchanged 2,053 differential rejections
+  and three rebuilt, identical 448,959-byte `Frontend.GsE` images;
+- C++ backend fix only, not a self-hosted backend; retain alpha.10, diagnostics,
+  formats 1.0 and ABI 1; no commit, push or release created for this tranche;
+  GsBuild remains planned for milestone 0.28.
+
+## Outil de construction dédié — décision pour le jalon 0.28 — 2026-10-05
+
+### Français
+
+- ajouter au plan produit un outil distinct de construction, proposé sous le
+  nom GsBuild (`gsbuild`), pour les projets XML et solutions Gs++ ;
+- lui confier l'orchestration des compilations, la création des bibliothèques
+  et l'édition de liens ; recentrer `gsppc` sur la compilation des sources et
+  interfaces Gs++ en objets ;
+- documenter la transition, les intégrations et tests requis, sans annoncer
+  de compatibilité MSBuild ni modifier le schéma XML 1.0, les formats ou l'ABI ;
+- décision documentaire uniquement : commandes et version 0.27 inchangées,
+  aucun exécutable GsBuild implémenté, aucun commit ou push effectué pour cet ajout.
+
+### English
+
+- plan a separate build tool, provisionally named GsBuild (`gsbuild`), for
+  Gs++ XML projects and solutions;
+- assign compilation orchestration, library creation and linking to it;
+  restrict `gsppc` to compiling Gs++ sources and interfaces into objects;
+- document migration, required integrations and tests, without claiming
+  MSBuild compatibility or changing the XML 1.0 schema, formats or ABI;
+- documentation-only decision: retain current 0.27 commands and version;
+  no GsBuild executable implemented, no commit or push performed for this addition.
+
+## Déclarations locales contextuelles — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
+
+### Français
+
+- validation des types et doublons locaux lors de la visite de leur déclaration,
+  avant son initialiseur, sans masquer une erreur précédente du corps ;
+- contrôle des paramètres répétés à l'entrée de chaque fonction ou constructeur,
+  y compris les prototypes, avant ses initialiseurs et son corps ;
+- diagnostics bilingues 122–125 : construction explicite exigeant une classe,
+  variable locale `vide`, référence et constante non-adresse sans initialiseur ;
+  diagnostics 0–121 et dispositions publiques conservés ;
+- visibilité et doublons des déclarations de branches/boucles sans accolades
+  alignés sur le bootstrap, avec noms réutilisés dans des portées distinctes ;
+- 14 corpus valides et 42 refus sémantiques bilingues, trois émissions valides
+  et six refus d'émission bilingues ; **2 053 refus différentiels** au total,
+  AST intact, positions comparées et sorties d'émission préservées ;
+- CTest Windows 5/5 et GNU/Linux 6/6, solution et validation MSBuild natives
+  réussies, conformité 20/20 par construction ; trois frontends identiques de
+  448 959 octets, chacun accepté par son vérificateur GsE ;
+- limite du générateur machine C++ documentée : les mêmes noms dans des portées
+  distinctes sont acceptés sémantiquement, mais pas encore à l'allocation locale ;
+- commit signé `5e816df` de la base à 1 957 refus poussé sur `main`, avec CI
+  Windows, Linux et MSBuild native réussie ; nouvelle tranche à 2 053 refus
+  encore locale, sans commit ni push ; alpha.10, formats 1.0 et ABI 1 conservés,
+  aucun nouveau tag, paquet ou release créé.
+
+### English
+
+- validate local types and duplicate names when each declaration is visited,
+  before its initializer, without masking an earlier body error;
+- check duplicate parameters at each function or constructor entry, including
+  prototypes, before its initializers and body;
+- append bilingual diagnostics 122–125: class-only explicit construction,
+  local `void` variables, and uninitialized references and non-address constants;
+  preserve diagnostics 0–121 and public layouts;
+- align unbraced branch/loop declaration visibility and duplicate checks with
+  the bootstrap, including names reused across disjoint scopes;
+- 14 valid and 42 rejected bilingual semantic corpora, three valid and six
+  rejected bilingual emission corpora; **2,053 differential rejections** in
+  total, preserving the input AST, diagnostic positions and emission buffers;
+- Windows CTest 5/5, GNU/Linux 6/6, native MSBuild solution and validation,
+  conformance 20/20 per build; three identical 448,959-byte frontends, each
+  accepted by its GsE verifier;
+- document the C++ machine generator's limitation: reusing names in disjoint
+  scopes passes semantic analysis but still fails local-slot allocation;
+- signed baseline commit `5e816df`, with 1,957 rejections, pushed to `main`;
+  Windows, Linux and native MSBuild CI successful; the new 2,053-rejection
+  tranche remains local, without a commit or push; retain alpha.10, formats 1.0
+  and ABI 1; no new tag, package or release created.
+
 ## Priorités des bases et champs — développement après Gs++ 0.27.0-alpha.10 — 2026-10-05
 
 ### Français

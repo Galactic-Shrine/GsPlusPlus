@@ -73,6 +73,53 @@ namespace
         return programme;
     }
 
+    void TesterVariablesLocalesParPortee()
+    {
+        const auto francais = Compiler(
+            "publique entier32 F(entier32 entree) { entier32 total = entree; "
+            "{ entier8 x = 11; total = total + convertir<entier32>(x); } "
+            "{ entier64 x = 31; total = total + convertir<entier32>(x); } "
+            "entier32 x = 0; retourner total + x; }");
+        const auto anglais = Compiler(
+            "public int32 F(int32 entree) { int32 total = entree; "
+            "{ int8 x = 11; total = total + cast<int32>(x); } "
+            "{ int64 x = 31; total = total + cast<int32>(x); } "
+            "int32 x = 0; return total + x; }");
+        Exiger(!francais.Texte.empty() && francais.Texte == anglais.Texte,
+            "les portées sœurs de types différents ne produisent pas le même code bilingue");
+        for (const auto& source : {
+                 "publique vide F(entier32 x) { entier32 x = 1; }",
+                 "public void F(int32 x) { int32 x = 1; }",
+                 "publique vide F() { entier32 x = 1; { entier32 x = 2; } }",
+                 "public void F() { int32 x = 1; { int32 x = 2; } }"})
+        {
+            bool refuse = false;
+            try { (void)Compiler(source); }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                const std::string message = erreur.what();
+                refuse = message.find("nom déjà déclaré : ") != std::string::npos
+                    || message.find("name already declared: ") != std::string::npos;
+            }
+            Exiger(refuse, "la prise en charge des portées sœurs autorise un doublon encore actif");
+        }
+    }
+
+    void TesterNomsDansEspacesParents()
+    {
+        const auto francais = Compiler(
+            "espace N { entier32 Valeur = 42; classe C { publique: "
+            "entier32 Lire() { retourner Valeur; } }; "
+            "espace Interne { publique entier32 Principal() { C c; retourner c.Lire(); } } }");
+        const auto anglais = Compiler(
+            "namespace N { int32 Valeur = 42; class C { public: "
+            "int32 Lire() { return Valeur; } }; "
+            "namespace Interne { public int32 Principal() { C c; return c.Lire(); } } }");
+        Exiger(!francais.Texte.empty() && francais.Texte == anglais.Texte
+                && francais.Donnees == anglais.Donnees,
+            "les noms de l'espace parent ne produisent pas le même code bilingue");
+    }
+
     void TesterChampsParDefautParConstructeur()
     {
         const std::string francais =
@@ -3487,6 +3534,8 @@ int main()
         TesterChainesEtLogique();
         TesterBitsEtIntrinseques();
         TesterVariablesControlesEtAppel();
+        TesterVariablesLocalesParPortee();
+        TesterNomsDansEspacesParents();
         TesterEspaceUnicode();
         TesterUtilisationEspaces();
         TesterInclusionsTextuelles();

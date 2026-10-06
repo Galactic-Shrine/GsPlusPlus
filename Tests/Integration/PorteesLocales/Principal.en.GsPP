@@ -1,0 +1,70 @@
+namespace GalacticShrine::GsPP::Tests::PorteesLocales {
+
+    public int32 Trace = 0;
+
+    class Objet {
+
+        int32 Id;
+
+        public:
+        /**
+         * <summary>Identifies a local declaration to track its destruction.</summary>
+         * @Parameter(int32: id) Digit to append to the trace.
+         **/
+        constructor(int32 id) {
+
+            this.Id = id;
+        }
+
+        /**
+         * <summary>Records each object's end of lifetime, including array elements.</summary>
+         **/
+        destructor() {
+
+            Trace = Trace * 10 + this.Id;
+        }
+    };
+
+    /**
+     * <summary>Reuses names across blocks, branches and loops, then in their following scope.</summary>
+     * @Return(int32) Sum of both local values, which is 42.
+     **/
+    int32 Executer() {
+
+        int32 total = 0;
+        {
+
+            int32 valeur = 11;
+            total = total + valeur;
+        }
+        {
+
+            int32 valeur = 31;
+            total = total + valeur;
+        }
+        {
+
+            Objet objet(1);
+        }
+        {
+
+            Objet objet[2](2);
+        }
+        if (total == 42) Objet objet(3);
+        else Objet objet(9);
+        while (Trace < 12_234) Objet objet(4);
+        Objet objet(5);
+        return total;
+    }
+
+    /**
+     * <summary>Checks the result and every scope's destruction, including the function return.</summary>
+     * @Return(int32) 42 if objects are destroyed in the expected order, otherwise 1.
+     **/
+    public int32 Principal() {
+
+        int32 resultat = Executer();
+        if (Trace != 122_345) return 1;
+        return resultat;
+    }
+}

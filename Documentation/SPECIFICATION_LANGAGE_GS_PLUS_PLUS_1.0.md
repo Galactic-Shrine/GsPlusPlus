@@ -129,6 +129,54 @@ espace GalacticShrine::GsPP::Application {
   déclarations du niveau le plus proche priment sur les niveaux externes ;
   les utilisations participent au niveau de l'ancêtre commun de leurs espaces.
 
+La recherche lexicale des noms non qualifiés remonte aussi les espaces parents
+**sans directive `utilisant`**. Une méthode de classe peut ainsi utiliser une
+globale déclarée dans l'espace contenant sa classe. Les types nommés, alias,
+valeurs d'énumération, fonctions et opérateurs libres suivent également cette
+remontée. Le premier niveau contenant un nom masque les niveaux externes :
+une surcharge incompatible à ce niveau ne fait pas essayer une fonction
+homonyme d'un espace plus éloigné. Les paramètres et variables locales restent
+prioritaires pour les expressions.
+
+Dans un corps de méthode, de constructeur ou de destructeur, la recherche
+commence à la portée de la classe avant de remonter ses espaces parents. Les
+champs par défaut évalués pour un constructeur suivent le même contexte ;
+ses paramètres restent prioritaires. Une méthode homonyme masque ainsi une
+fonction de l'espace parent ou importée. Les formes non liées conservent leur
+récepteur explicite `Classe&` : `Lire(soi)` ou `soi.Lire()` peuvent appeler une
+méthode sans autre argument, mais `Lire()` n'ajoute pas automatiquement `soi`.
+Une qualification comme `N::Lire()` reste disponible pour désigner la fonction
+de l'espace parent. Cette règle est comparée au bootstrap C++ dans la matrice
+des méthodes du frontend ; elle n'introduit pas de nouvelles règles d'appel.
+
+Pour une expression surchargée, le groupe associé au type de l'opérande gauche
+(ou de l'unique opérande unaire), y compris ses bases, est recherché avant le
+groupe lexical. À défaut, la recherche suit la portée de la classe appelante
+puis ses espaces parents et imports. Un groupe trouvé mais incompatible ne
+fait pas essayer un groupe parent. Les arguments de la surcharge restent les
+opérandes de l'expression : aucun récepteur de la classe appelante n'est ajouté.
+Les accès privés et protégés restent contrôlés. Un même champ par défaut peut
+sélectionner des surcharges différentes selon le type du paramètre de chaque
+constructeur ; ses résolutions ne sont pas réutilisées entre ces contextes.
+Ces règles existantes sont couvertes par la matrice des opérateurs dans les
+méthodes, y compris le passage d'un opérateur surchargé à une forme intrinsèque
+dans un autre constructeur.
+
+Les types écrits dans les conversions d'une valeur de champ par défaut suivent
+également le contexte du constructeur qui l'évalue. Un alias de cette portée
+peut donc masquer un alias d'un espace parent ou importé, y compris dans une
+signature de callback imbriquée. Cela ne change pas le contexte du type déclaré
+du champ. Un champ explicitement initialisé ne fait pas analyser sa valeur par
+défaut remplacée ; un constructeur délégué ne l'évalue pas une seconde fois.
+Les conversions des arguments de `parent(...)`, `soi(...)` et des initialiseurs
+de champs sont également comparées au bootstrap dans la matrice des constructions.
+
+La priorité existante d'un nom explicitement qualifié correspondant à un nom
+complet est conservée ; sinon sa qualification est recherchée relativement
+dans les espaces parents. Une classe n'est pas un espace importable par
+`utilisant espace`. Les valeurs d'énumération déclarées plus tard ne deviennent
+pas visibles dans les initialiseurs des valeurs précédentes.
+
 Les projets XML restent responsables des sources compilées, bibliothèques,
 sorties et options. Pour une interface donnée, choisir sa fourniture par XML
 ou son inclusion textuelle : ne pas ajouter aussi une entrée `<Interface>`
@@ -197,6 +245,27 @@ Sont inclus dans le périmètre candidat :
 - symboles publics compatibles entre unités uniquement si leur signature ABI
   est identique.
 
+Une signature de callback peut retourner une référence : son appel constitue
+alors une valeur gauche liée au stockage renvoyé, et non une copie temporaire.
+La lecture charge la valeur référencée ; la liaison, la prise d'adresse et
+l'affectation utilisent son adresse. Les qualifications `constante` interdisent
+les mutations et liaisons mutables correspondantes ; l'adresse d'un champ ou
+élément constant reste qualifiée. Une structure retournée par référence n'utilise
+pas le mécanisme de retour de structure par valeur.
+
+Lors de la prise d'adresse d'un champ ou élément, les qualifications `volatile`
+et `constante volatile` héritées de l'objet sont également conservées, y compris
+après un accès par flèche. Les champs de type pointeur ou callback conservent les
+qualifications de leur propre type déclaré, sans ajouter celles de leur objet
+contenant au pointeur stocké. `volatile` ne fournit pas de garantie d'atomicité
+ou de synchronisation ; les primitives atomiques restent distinctes.
+
+Ce fonctionnement est vérifié avec des callbacks C++ fournis par l'hôte dans
+la matrice de développement. Il n'autorise pas encore les fonctions ordinaires
+Gs++ à retourner une référence : leurs déclarations restent refusées dans le
+sous-ensemble courant. Le stockage de l'hôte doit rester valide durant son
+utilisation, sans prolongement automatique de sa durée de vie.
+
 ## Modèle objet
 
 Le périmètre candidat 1.0 actuellement validé comprend :
@@ -222,6 +291,14 @@ Le périmètre candidat 1.0 actuellement validé comprend :
 La convergence exécutable de ce modèle objet et de sa durée de vie est suivie
 dans le document du
 [`frontend auto-hébergé 0.27`](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md).
+
+Une valeur de champ par défaut est analysée dans le contexte du constructeur
+qui l'évalue. Les arguments agrégés de ses appels utilisent le type de la
+signature retenue dans ce contexte. Un refus interne à l'expression conserve
+son diagnostic et sa position ; le diagnostic d'incompatibilité avec le champ
+ne s'applique qu'après analyse réussie de l'expression, si sa valeur finale
+ne peut pas initialiser ce champ. Une valeur remplacée explicitement n'est
+pas évaluée.
 
 ## Durée de vie
 

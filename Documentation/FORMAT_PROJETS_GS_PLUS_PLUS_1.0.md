@@ -137,6 +137,25 @@ Construction/Bin/gsppc Tests/Integration/Separation/Compilation.GsPs
 
 ## Compatibilité
 
+### Outil de construction distinct prévu
+
+La décision du 5 octobre 2026 prévoit de confier les projets `.GsPj` et
+`.GsProject` et les solutions `.GsPs` à un outil dédié au jalon 0.28.
+Le nom proposé est **GsBuild**, avec la commande `gsbuild`. Il pilotera
+compilation, création de bibliothèques et édition de liens ; `gsppc` sera
+recentré sur la compilation des sources et interfaces Gs++ en objets.
+
+**Cette séparation n'est pas encore implémentée.** Les exemples `gsppc` de ce
+document restent les commandes exécutables en 0.27. La future invocation
+`gsbuild Compilation.GsPs` est indicative, pas une commande actuellement
+disponible. Le changement d'outil conserve le contrat XML 1.0, les chemins
+relatifs au fichier qui les contient et l'ordre des projets de solution.
+Aucun attribut, élément ou format de projet MSBuild n'est introduit ici.
+
+Le [plan produit](PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md#séparer-compilation-et-construction--décision-du-5-octobre-2026)
+décrit la transition et ses critères de vérification. Les intégrations et
+exemples ne basculeront vers GsBuild qu'avec son implémentation et ses tests.
+
 ### Sélection de cible prévue
 
 La décision produit du 19 septembre 2026 prévoit de déclarer la plateforme

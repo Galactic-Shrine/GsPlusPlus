@@ -8,14 +8,31 @@ entre instructions, dans les expressions, appels, abandons de candidats et
 arguments agrégés contextuels, conversions constantes lors de leur visite et
 initialiseurs locaux contextuels, champs par défaut par constructeur,
 constructions locales, plans de durée de vie et priorités des bases/champs couverts,
-émission des globales
-VALIDÉS dans le périmètre testé — 5 octobre 2026.**
+déclarations locales contextuelles, recherche lexicale des espaces parents
+et contexte des noms et opérateurs dans les méthodes, constructeurs et destructeurs
+et types de conversions, callbacks et arguments agrégés des constructions,
+diagnostics internes des champs par défaut, retours par référence des callbacks
+qualifications des champs/éléments adressés et émission des globales
+VALIDÉS dans le périmètre testé — 6 octobre 2026.**
+
+La génération machine C++ des noms locaux réutilisés dans des portées distinctes
+est également validée dans la tranche décrite plus bas ; elle ne constitue pas
+une migration du backend vers Gs++.
 
 Les sources actuelles annoncent `0.27.0-alpha.10`.
 La [matrice alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 regroupe les résultats de la publication, avec 619 refus différentiels.
-Le développement après alpha.10, décrit plus bas, en vérifie 1 957 ; ces tranches
-ne sont pas incluses dans les paquets alpha.10 publiés. Les sections de jalons ci-dessous conservent
+Le développement après alpha.10, décrit plus bas, en vérifie 2 301. Le commit
+signé [`5e816df`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/5e816df50bd13d633466fffc1845aa0283910960)
+a été poussé sur `main` le 5 octobre 2026 ; sa
+[CI Windows, Linux et MSBuild natif](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37356033613)
+réussit avec 1 957 refus. La consolidation du 6 octobre regroupe les tranches
+suivantes de déclarations et portées locales, recherche lexicale, contextes
+de méthodes et constructeurs, callbacks et qualifications des champs adressés.
+Elle est validée localement sous CMake/MSVC, GNU/Linux et MSBuild natif avec
+2 301 refus ; cette preuve locale ne vaut pas résultat de CI distante.
+Aucune de ces tranches n'est incluse dans les paquets alpha.10 publiés.
+Les sections de jalons ci-dessous conservent
 leurs versions, empreintes et limites au moment de chaque validation ; les
 mentions de `VERSION` resté à alpha.9 décrivent ces étapes historiques. Les
 mentions de tranches non commitées ou non publiées relatent également leur
@@ -2993,6 +3010,832 @@ qualifications et signatures non représentées dans la matrice restent à
 consolider. L'alimentation autonome par interfaces et le backend auto-hébergé
 ne sont pas ajoutés ; le passage à 0.28 n'est pas déclaré acquis.
 
+## Déclarations locales contextuelles — tranche locale du 5 octobre 2026
+
+**VALIDÉ dans le périmètre testé.** Les types locaux restent normalisés dans
+la copie privée de l'AST, mais leurs erreurs ne sont plus renvoyées avant la
+visite des instructions précédentes. Chaque déclaration contrôle son type,
+les tableaux de références, le type `vide`, les noms répétés et l'initialisation
+obligatoire avant d'analyser son initialiseur ou ses arguments de construction.
+Une erreur antérieure du corps ou d'une fonction précédente garde ainsi la
+priorité sur une déclaration invalide située plus loin, comme dans le bootstrap.
+
+Les paramètres répétés sont contrôlés à l'entrée de chaque fonction, méthode,
+constructeur ou prototype, avant ses initialiseurs et son corps. Les contrôles
+globaux des signatures et conflits de membres restent dans leurs passes dédiées.
+Les déclarations locales ne sont plus refusées dans la passe globale des conflits.
+
+Quatre diagnostics bilingues sont ajoutés à la fin de l'énumération existante :
+
+| Code | Français | English |
+|---|---|---|
+| 122 | `ConstructionExigeClasse` | `ConstructionRequiresClass` |
+| 123 | `VariableLocaleVideInterdite` | `VoidLocalVariableForbidden` |
+| 124 | `ReferenceLocaleNonInitialisee` | `UninitializedLocalReference` |
+| 125 | `VariableLocaleConstanteNonInitialisee` | `UninitializedConstLocalVariable` |
+
+La forme `entier32 valeur();` est refusée avant ses arguments : cette syntaxe
+de construction est réservée aux classes. Les structures continuent d'utiliser
+leur initialisation agrégée avec `=`. Une variable `vide`, une référence sans
+initialiseur et une constante non-adresse sans initialiseur sont refusées ;
+les pointeurs `vide*`, pointeurs constants et callbacks constants restent
+acceptés dans les cas autorisés par le bootstrap. Les diagnostics de type et
+de déclaration gardent la priorité sur les expressions de l'initialiseur.
+
+La recherche des noms et le contrôle des doublons utilisent la même limite
+de portée. Une variable déclarée directement dans une branche `si` / `if` ou
+un corps `tantque` / `while` sans bloc reste visible dans son propre initialiseur,
+mais pas dans l'autre branche ou après l'instruction. Les portées sœurs peuvent
+réutiliser un nom ; un paramètre ou une variable d'une portée ancêtre active
+reste un conflit, conformément au bootstrap actuel.
+
+### Régressions
+
+- **14 corpus valides bilingues**, soit 28 analyses : pointeurs, références,
+  constantes, callbacks, agrégats, alias importés, classes et tableaux, méthodes,
+  constructeurs, portées sœurs et branches/boucles sans accolades ;
+- **42 refus sémantiques bilingues**, soit 84 comparaisons : diagnostics 122–125,
+  doublons locaux et de paramètres, types absents ou importés ambigus,
+  tableaux de références, signatures de callbacks et priorités entre instructions,
+  fonctions, paramètres et corps ;
+- **trois corpus d'émission valides bilingues**, soit six comparaisons, et
+  **six refus d'émission bilingues**, soit 12 contrôles des sorties intactes ;
+- total différentiel : **2 053 refus**, soit 96 de plus que la tranche précédente ;
+  codes, lignes, colonnes, intégrité de l'AST et capacités de sortie contrôlés.
+
+### Constructions vérifiées
+
+```powershell
+cmake --build --preset windows-release --target espace_travail --parallel 6
+ctest --preset windows-release --output-on-failure
+wsl -d Ubuntu -- bash -lc 'cd /mnt/d/Langage-GsPlusPlus && cmake --build --preset linux-release --target espace_travail --parallel 4 && ctest --preset linux-release --output-on-failure'
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+```
+
+Résultats : CMake/MSVC et CTest **5/5**, CMake/GNU sous Ubuntu/WSL et CTest
+**6/6**, solution et validation MSBuild natives réussies. La conformité reste
+**20/20** dans chaque construction. Les contrôles de style et de projets natifs,
+les capacités d'analyse, les plans de durée de vie et l'intégration existante
+réussissent également.
+
+Les trois `Frontend.GsE` sont identiques : **448 959 octets**, trois segments,
+huit sections, 75 exports, deux imports ; SHA-256
+`056db58caa7a6aaf905edccc0ddeed01fd449c212926682d596f6c630b6e7bf0`.
+Les trois vérificateurs acceptent leur image comme GsE 1.0. Ces données
+remplacent les tailles et hachages précédents pour l'état local actuel.
+
+`VERSION` et les trois en-têtes Release générés restent à `0.27.0-alpha.10`.
+Les diagnostics 0–121 conservent leur valeur ; seuls les codes 122–125 sont
+ajoutés. Les dispositions publiques auto-hébergées, formats 1.0 et ABI 1
+sont inchangés. `ConteneursDynamiques.GsPP` reste inchangé.
+Cette nouvelle tranche n'est ni commitée ni poussée ; aucun tag, paquet ou
+release n'est créé.
+
+### Limite du générateur machine lors de cette première validation
+
+Les corpus réutilisant un nom local dans des portées distinctes passent les
+deux analyseurs sémantiques. Le générateur C++ `GenerateurX64` recense toutefois
+les variables dans une seule table de noms par fonction et refuse encore ces
+programmes lors de l'allocation des emplacements. Les corpus d'émission de cette
+première validation utilisaient donc des noms distincts ; leur validation ne
+prétendait pas corriger cette limite du backend. La tranche suivante lève cette
+limite et réintroduit les noms identiques dans le corpus d'émission concerné.
+
+Ces tests ne valident pas toutes les qualifications, signatures et interactions
+sémantiques de 0.27. L'alimentation autonome par interfaces et le backend
+auto-hébergé ne sont pas ajoutés ; le passage à 0.28 n'est pas déclaré acquis.
+
+## Génération des variables locales par portée — tranche locale du 5 octobre 2026
+
+**VALIDÉ dans le périmètre testé du backend C++.** La réservation des emplacements
+de pile utilise désormais l'identité de chaque `InstructionVariable`, et non
+son seul nom. Les paramètres sont actifs dès l'entrée de fonction ; chaque
+nom local est activé lorsque sa déclaration est générée. La fermeture d'un
+bloc, d'une branche ou d'un corps de boucle retire uniquement ses noms locaux,
+après l'émission des destructions, en conservant les paramètres et portées
+ancêtres. Le même traitement s'applique aux branches et boucles sans accolades.
+
+Le générateur accepte ainsi un même nom dans des portées distinctes, même avec
+des types ou tailles différents. Les déclarations dont les durées de visibilité
+se chevauchent restent refusées par les règles sémantiques existantes ; cette
+correction n'introduit pas le masquage d'un paramètre ou d'une variable locale
+ancêtre. Les emplacements ne sont pas réutilisés entre déclarations : l'ordre
+de réservation et les alignements existants sont conservés.
+
+La correction porte sur `Compiler/include/GsPP/GenerateurX64.hpp` et
+`Compiler/src/GenerateurX64.cpp`. Elle ne modifie pas l'AST public auto-hébergé,
+ses diagnostics, les formats binaires ou l'ABI, et ne constitue pas un backend
+auto-hébergé en Gs++.
+
+### Régressions et exécution
+
+- test unitaire de parité du code français/anglais, avec noms réutilisés pour
+  des types 8 et 64 bits et réutilisation après des blocs ; quatre refus
+  maintiennent les conflits avec un paramètre ou une portée ancêtre active ;
+- les **14 corpus valides bilingues** de déclarations locales atteignent
+  désormais aussi la génération machine C++, soit 28 générations ; le corpus
+  d'émission de branches sans accolades réutilise à nouveau le même nom ;
+- **dix nouveaux corpus bilingues**, soit **20 exécutions** de code généré,
+  après comparaison des deux analyseurs sémantiques : structures, références,
+  callbacks, globales, branches avec/sans blocs, boucles et tableaux ;
+- chaque programme retourne **42**, n'ajoute aucun import d'hôte et produit
+  une image GsE reproductible ; les codes et données des variantes française
+  et anglaise sont identiques ;
+- traces de destruction contrôlées après le retour : **123** pour les objets
+  successifs, **1122** pour les tableaux et **2131** pour les retours anticipés
+  dans les branches ;
+- nouveaux exemples `Tests/Integration/PorteesLocales/Principal.GsPP` et
+  `Principal.en.GsPP`, compilés en GsE, vérifiés et exécutés : résultat **42**
+  et trace **122345** contrôlée par le programme ; ajout au test d'intégration
+  GNU/Linux et vérification directe avec les deux constructions Windows ;
+- total des refus différentiels conservé à **2 053** : les nouvelles régressions
+  sont positives et ne sont pas ajoutées artificiellement à ce compteur.
+
+La traduction du corpus reconnaît maintenant aussi `si` / `if`, `sinon` /
+`else` et `tantque` / `while`, sans modifier les noms contenant ces séquences.
+L'exemple d'intégration utilise le nom complet de sa globale `Trace` depuis
+le destructeur ; il ne revendique pas de nouvelle recherche implicite des
+espaces de noms ancêtres.
+
+### Matrice reconstruite
+
+```powershell
+cmake --build --preset windows-release --target espace_travail --parallel 6
+ctest --preset windows-release --output-on-failure
+wsl -d Ubuntu -- bash -lc 'cd /mnt/d/Langage-GsPlusPlus && cmake --build --preset linux-release --target espace_travail --parallel 4 && ctest --preset linux-release --output-on-failure'
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+```
+
+Résultats finaux : CTest **5/5** sous MSVC, **6/6** sous GNU/Linux, solution
+et validation MSBuild natives réussies ; conformité **20/20** dans les trois
+constructions. Les dix corpus bilingues sont exécutés par chaque chaîne.
+Les deux exemples d'intégration retournent également 42 sous chaque chaîne.
+
+Les trois `Frontend.GsE` reconstruits restent identiques à ceux de la tranche
+précédente : **448 959 octets**, SHA-256
+`056db58caa7a6aaf905edccc0ddeed01fd449c212926682d596f6c630b6e7bf0`.
+Les vérificateurs GsE acceptent les images reconstruites. `VERSION` et les
+en-têtes Release restent à `0.27.0-alpha.10` ; formats 1.0 et ABI 1 conservés.
+`ConteneursDynamiques.GsPP` reste inchangé. Aucun commit, push, tag, paquet
+ou release n'est créé pour cette nouvelle tranche.
+
+La consolidation des qualifications et contextes sémantiques non couverts,
+l'alimentation autonome par interfaces et le backend auto-hébergé restent
+des travaux distincts. GsBuild reste prévu pour le jalon 0.28 et n'est pas
+implémenté par cette correction.
+
+## Recherche lexicale dans les espaces parents — 5 octobre 2026
+
+**VALIDÉ dans le périmètre testé :** la recherche des noms remonte les espaces
+parents sans exiger une directive `utilisant espace`, dans le bootstrap C++
+et dans le frontend Gs++. Cette tranche suit celle des portées locales.
+
+### Correction et règle de recherche
+
+Un test de méthode de classe dans un espace nommé reproduisait le refus
+bootstrap `variable ou fonction introuvable : Valeur`. La remontée lexicale
+existait dans la recherche des imports, mais cette passe était désactivée
+en l'absence d'une utilisation visible. Les replis historiques ne remontaient
+pas tous les parents et certains privilégiaient un homonyme à la racine.
+
+- La recherche des types nommés, alias, valeurs d'énumération, globales,
+  fonctions et opérateurs libres utilise désormais la remontée lexicale,
+  même sans import. Elle couvre les espaces imbriqués et les contextes de
+  méthodes, de signatures et de bases de classes.
+- Le premier niveau contenant un nom masque les niveaux externes. Une
+  surcharge incompatible à ce niveau produit son diagnostic sans essayer
+  une surcharge d'un espace plus éloigné. Une globale non appelable masque
+  de même une fonction externe.
+- Les paramètres et variables locales gardent leur priorité. Les directives
+  d'import continuent d'agir après leur déclaration dans leur unité et leur
+  espace, avec les règles existantes d'ancêtre commun et d'ambiguïté.
+- La priorité existante d'un nom explicitement qualifié correspondant à un
+  nom complet est conservée ; à défaut, les qualifications relatives remontent
+  les parents. Il ne s'agit pas d'une migration complète de la recherche C++.
+- L'index privé comprend les portées de classes utilisées pour les types de
+  signatures, mais `utilisant espace N::C` ne devient pas valide pour une
+  classe. Sa capacité tient compte des jetons et nœuds, avec garde arithmétique
+  avant allocation. L'AST public reste inchangé.
+- Les valeurs d'énumération futures restent invisibles dans les initialiseurs
+  des valeurs précédentes ; la nouvelle recherche n'élargit pas cette visibilité.
+
+Les anciennes régressions qui imposaient une priorité racine ont été adaptées
+à cette règle. Les contrôles de signatures distinctes, alias de surcharges,
+types non visibles dans des espaces frères et bases non-classes restent
+présents. Les résultats de ces anciennes sections sont des preuves historiques,
+pas une prescription de priorité racine pour la source actuelle.
+
+### Régressions et exécution
+
+Dans `Tests/AutoHebergement/AutoHebergement.cpp`,
+`TesterNomsDansEspacesParents` ajoute :
+
+- **12 corpus valides bilingues**, soit 24 exécutions par construction, avec
+  résultat 42, code/données français et anglais identiques, image reproduite
+  après une seconde génération et aucun import d'hôte ;
+- globales de méthodes, noms masqués à plusieurs niveaux, structures et enums,
+  alias de types/fonctions, signatures de callbacks, qualification relative,
+  variable locale prioritaire, destructeur et opérateur libre de l'espace parent ;
+- **12 cas de refus bilingues**, soit 24 comparaisons supplémentaires de
+  code/ligne/colonne, avec contrôle de l'AST intact ;
+- types et valeurs invisibles depuis un espace frère, surcharge proche
+  incompatible, globale non appelable et nom non-type masquant un type externe,
+  priorité des diagnostics du corps, classe non importable et énumérateurs futurs.
+
+Les régressions existantes de signatures nommées couvrent aussi le type de la
+classe dans sa propre méthode. Le test unitaire C++ vérifie un corps de méthode
+et un type de l'espace parent dans les deux syntaxes.
+
+Le destructeur de `Tests/Integration/PorteesLocales/Principal.GsPP` et de sa
+version anglaise utilise maintenant `Trace = Trace * 10 + soi.Id` / `this.Id`,
+sans préfixe complet. Les exemples conservent leur trace 122345 et résultat 42.
+Ils sont compilés, vérifiés et exécutés sous Windows/CMake, Windows/MSBuild et
+GNU/Linux ; les variantes GNU font partie de `gspp_integration`.
+
+### Validation finale de la source
+
+Les commandes de construction et de tests sont celles de la tranche précédente :
+`espace_travail` puis CTest avec les presets `windows-release` et
+`linux-release`, et `GsPlusPlus.slnx` puis `VisualStudio/Validation.vcxproj`
+avec MSBuild Visual Studio 2026, Release x64.
+
+Résultats finaux : CTest **5/5** sous MSVC, **6/6** sous GNU/Linux ; solution
+et validation MSBuild natives réussies, style conforme et conformité **20/20**
+par chaîne. Les suites comparent désormais **2 077 corpus négatifs** au
+bootstrap, contre 2 053 dans la tranche précédente.
+
+Les trois `Frontend.GsE` reconstruits et acceptés par les vérificateurs GsE
+sont identiques : **446 127 octets**, SHA-256
+`9d8695f036b985cf4a452782d9b210fd9ba9f8e0aaaeb23f147774b57326df4d`.
+La nouvelle image remplace la taille et l'empreinte précédentes pour la source
+actuelle ; les contrats publics, 75 exports, 2 imports, formats 1.0 et ABI 1
+restent inchangés. `VERSION` et les trois en-têtes Release générés indiquent
+toujours `0.27.0-alpha.10`. `ConteneursDynamiques.GsPP` n'a pas été modifié.
+
+Aucun commit, push, tag, paquet ni release n'est créé pour cette tranche.
+Les 1 957 refus de la dernière CI publiée et les 619 de la publication alpha.10
+ne sont pas présentés comme les résultats de ces nouvelles sources locales.
+L'alimentation autonome par interfaces, les autres combinaisons sémantiques
+non représentées et le backend auto-hébergé restent ouverts. GsBuild reste
+prévu pour 0.28, sans implémentation dans cette tranche.
+
+## Contexte lexical des noms dans les méthodes — 5 octobre 2026
+
+**VALIDÉ dans le périmètre testé :** le frontend Gs++ commence sa recherche
+des noms à la portée de la classe dans les méthodes, constructeurs et
+destructeurs, puis remonte les espaces parents comme le bootstrap C++.
+
+### Divergence reproduite et correction
+
+Un nouveau corpus déclarait `N::Lire()` et une méthode `N::C::Lire()`, puis
+appelait `Lire()` depuis une autre méthode de `C`. Le bootstrap refusait
+l'appel, faute du récepteur explicite requis par la méthode non liée ; le
+frontend Gs++ acceptait à tort la fonction `N::Lire()` de l'espace parent.
+La recherche utilisait l'espace public de l'AST compact, qui n'inclut pas la
+portée de la classe pour les expressions de son corps.
+
+`RechercheDepuisNoeudUtiliseSemantique` reconstruit désormais la portée
+effective à partir des ancêtres du nœud. Lors de l'évaluation des champs
+par défaut, il utilise aussi le constructeur actif. Cette correction garde
+l'AST public intact : la portée de recherche reste une donnée privée.
+
+Les paramètres et variables locales continuent à précéder cette recherche.
+Une méthode homonyme masque les fonctions parentes et importées, sans repli
+sur celles-ci lorsque sa signature ne convient pas. Une fonction libre de
+même nom complet dans un espace homonyme de la classe reste membre du groupe
+mixte existant, avec la sélection typée déjà définie par le bootstrap.
+
+Le bootstrap C++ n'est pas modifié par cette tranche. Les règles d'appel
+restent inchangées : la forme non liée `Lire(soi)` conserve son paramètre
+récepteur, `soi.Lire()` conserve sa syntaxe de membre et `Lire()` n'injecte
+pas automatiquement `soi`. Une qualification `N::Lire()` peut toujours
+désigner la fonction de l'espace parent. Les droits d'accès restent contrôlés.
+
+### Matrice et exécution
+
+`TesterNomsDansMethodesSemantiques` dans
+`Tests/AutoHebergement/AutoHebergement.cpp` ajoute :
+
+- **14 corpus valides bilingues**, soit 28 exécutions par construction ;
+  résultat 42, code/données français et anglais identiques, image reproduite
+  après une seconde génération et aucun import d'hôte ;
+- contrôles des cibles publiées : famille de déclaration, classe/espaces,
+  et, pour les fonctions, position de déclaration et type de retour choisis
+  par comparaison aux références du bootstrap après analyse ;
+- appels directs avec récepteur explicite, méthode privée appelée depuis sa
+  classe, surcharges, groupe mixte, callback de méthode, récursion, qualification
+  de la fonction parente, paramètres prioritaires et masquage d'une fonction
+  importée ;
+- champs par défaut, arguments d'initialiseur, corps de constructeurs et
+  destructeurs, ainsi qu'un callback paramètre de constructeur masquant une
+  méthode homonyme pendant l'initialisation d'un champ ;
+- **20 cas de refus bilingues**, soit 40 comparaisons code/ligne/colonne
+  supplémentaires, avec contrôle de l'AST intact ;
+- récepteurs manquants, types incompatibles, adresses de surcharges, appels
+  indirects, conversion de callback, cible d'affectation, accès privé depuis
+  une autre classe, imports masqués et diagnostic précédent/suivant dans un corps.
+
+La suite différentielle vérifie désormais **2 117 corpus négatifs**, contre
+2 077 dans la tranche précédente. Les matrices et résultats antérieurs
+restent des preuves historiques ; cette correction complète leur couverture.
+
+### Validation finale
+
+Commandes : `cmake --build --preset windows-release --target espace_travail
+--parallel 6` puis `ctest --preset windows-release --output-on-failure` ;
+équivalents `linux-release` sous WSL Ubuntu avec `--parallel 4` ; construction
+de `GsPlusPlus.slnx` puis validation `VisualStudio/Validation.vcxproj` avec
+MSBuild Visual Studio 2026, Release x64.
+
+Résultats : CTest **5/5** sous Windows/MSVC, **6/6** sous GNU/Linux,
+solution et validation MSBuild natives réussies ; style conforme et
+conformité **20/20** dans les trois constructions. Chaque chaîne exécute
+les 14 nouveaux corpus bilingues et les suites précédentes.
+
+Les trois `Frontend.GsE` reconstruits sont identiques et acceptés par leurs
+vérificateurs : **446 927 octets**, SHA-256
+`dc5760dee21d2bcced03d5cdbf5948b21d6b5cc77c898874f2d126c2a51ebe7c`.
+Cette taille et cette empreinte remplacent les valeurs de la tranche
+précédente pour la source actuelle. Les 75 exports, 2 imports et diagnostics
+publics, formats 1.0 et ABI 1 restent inchangés. `VERSION` et les trois
+en-têtes Release générés indiquent `0.27.0-alpha.10`.
+
+`ConteneursDynamiques.GsPP` reste inchangé. Aucun commit, push, tag, paquet
+ni release n'est créé pour cette tranche locale. Elle ne clôt pas toutes
+les qualifications ni les contextes sémantiques de 0.27 ; l'alimentation
+autonome par interfaces et le backend auto-hébergé restent ouverts. GsBuild
+reste prévu pour 0.28 et n'est pas implémenté ici.
+
+## Portées des opérateurs dans les méthodes — tranche locale du 5 octobre 2026
+
+**VALIDÉ dans le périmètre testé.** La correction du contexte de recherche
+décrite dans la tranche précédente couvre également les opérateurs. Cette
+tranche ajoute leurs tests de régression ; elle ne modifie aucun algorithme
+du bootstrap C++ ni du frontend Gs++, ni les diagnostics publics.
+
+### Contrat et couverture
+
+- le groupe associé au type de gauche, ou à l'opérande unaire, est prioritaire ;
+  son héritage et ses contrôles d'accès restent applicables ;
+- à défaut, le groupe lexical de la classe masque les espaces parents ou
+  importés, même s'il ne contient aucune surcharge compatible ; les groupes
+  mixtes méthode/fonction portant le même nom complet restent sélectionnables ;
+- les opérandes sont les arguments de la surcharge, sans ajout automatique
+  d'un récepteur de la classe appelante ;
+- **17 corpus valides bilingues**, soit 34 exécutions par construction :
+  méthodes, groupes mixtes binaires/unaires, espaces imbriqués et importés,
+  champ par défaut, initialiseur explicite, corps de constructeur, destructeur,
+  opérateur de l'objet passé en paramètre et accès protégé depuis une classe dérivée ;
+- deux corpus évaluent un même champ par défaut depuis plusieurs constructeurs :
+  surcharges distinctes pour deux types d'objets, puis opérateur surchargé sur
+  un objet et intrinsèque sur un booléen, sans réutilisation de la résolution précédente ;
+- les appels d'opérateurs du bootstrap sont comparés aux résolutions publiques
+  Gs++ : position exacte de la déclaration, type de retour et drapeau de méthode.
+  Les résolutions d'un même emplacement partagé par plusieurs constructeurs
+  sont comparées comme un multiensemble, sans omission ni duplication ;
+- chaque paire français/anglais produit les mêmes octets de code et données,
+  une image reproductible sans import d'hôte, et retourne 42 lors du chargement ;
+- **17 cas de refus bilingues**, soit 34 comparaisons code/ligne/colonne et AST
+  intact supplémentaires : masquage incompatible, accès privé, objet constant,
+  opérateur absent, opérande droite sans récepteur implicite, ordre des
+  instructions, champ par défaut sans constructeur et contexte incompatible
+  d'un second constructeur.
+
+La matrice locale vérifie désormais **2 151 corpus négatifs**, contre 2 117
+dans la tranche précédente. Les preuves antérieures restent historiques.
+La version reste `0.27.0-alpha.10`, avec les formats 1.0 et ABI 1.
+Cette tranche locale n'est ni commitée, ni poussée, ni publiée.
+
+### Validation finale
+
+Commandes : `cmake --build --preset windows-release --target espace_travail
+--parallel 6` puis `ctest --preset windows-release --output-on-failure` ;
+équivalents `linux-release` sous WSL Ubuntu avec `--parallel 4` ; construction
+de `GsPlusPlus.slnx` puis `VisualStudio/Validation.vcxproj` avec MSBuild
+Visual Studio 2026, Release x64.
+
+Résultats : CTest **5/5** sous Windows/MSVC et **6/6** sous GNU/Linux,
+solution et validation MSBuild natives réussies ; conformité **20/20** dans
+les trois constructions, style et cohérence des projets natifs conformes.
+Chaque chaîne exécute les 17 corpus bilingues et vérifie les 2 151 refus
+différentiels avec les suites précédentes.
+
+Les trois `Frontend.GsE` ont été vérifiés : **446 927 octets**, SHA-256
+`dc5760dee21d2bcced03d5cdbf5948b21d6b5cc77c898874f2d126c2a51ebe7c`.
+Leur identité avec la tranche précédente est attendue : seuls les tests et
+la documentation changent ici. Format GsE 1.0, 3 segments, 8 sections,
+2 imports et 75 exports. Les trois `VersionProduit.hpp` Release indiquent
+`0.27.0-alpha.10` ; `ConteneursDynamiques.GsPP` reste inchangé.
+
+## Qualifications des constructions et conversions des champs par défaut — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé.** Le frontend Gs++ conserve désormais le
+contexte de classe pour les types de conversions écrites dans une valeur de
+champ par défaut. Le bootstrap C++ n'est pas modifié par cette tranche.
+
+### Divergence reproduite et correction
+
+Dans le premier corpus de `TesterQualificationsConstructionsSemantiques`,
+`N::Vue` désigne `N::P`, tandis que `N::C::Vue` désigne `N::Q`. Le champ de
+`N::C` est un `constante Q*`, avec la valeur par défaut
+`convertir<constante Vue*>(p)` et un constructeur prenant `Q* p`.
+Le bootstrap choisit l'alias `N::C::Vue` ; avant correction, le frontend
+choisissait `N::Vue` et refusait ce programme valide avec le diagnostic
+**37**, ligne 1, colonne 113, au lieu de réussir.
+
+La canonicalisation privée des types donne maintenant aux conversions
+descendantes d'un champ de classe la portée du constructeur qui les évalue.
+Cette règle s'applique aussi aux conversions imbriquées dans des agrégats
+et aux types nommés de signatures de callbacks. Le type déclaré du champ
+conserve sa propre portée. L'AST fourni par l'appelant reste intact et les
+erreurs des conversions ne sont émises que si la valeur par défaut est
+effectivement visitée : remplacement explicite et délégation restent respectés.
+Aucun diagnostic public, export, format, ABI ou numéro de produit ne change.
+
+### Matrice et exécution
+
+- **15 corpus valides bilingues**, soit 30 exécutions par construction, tous
+  avec résultat 42, octets français/anglais identiques, images reproductibles
+  et absence d'import d'hôte ;
+- alias masquant un type parent ou importé dans une conversion de champ,
+  agrégat contenant cette conversion, callback avec type nommé imbriqué,
+  paramètres de plusieurs constructeurs et valeurs par défaut remplacées ;
+- surcharges de constructeurs portant des pointeurs ou références qualifiés,
+  champs objets, initialisation de base et délégation avec conversion explicite ;
+- conversions dérivée-vers-base par pointeur et référence depuis une classe
+  dérivée polymorphe, sans revendication d'une nouvelle disposition ABI ;
+- les cibles de constructions locales, de bases, de champs et de délégations
+  sont comparées aux choix du bootstrap : emplacement source, catégorie
+  d'initialisation, position exacte du constructeur et type de retour, sans
+  omission ni résolution dupliquée ; les plans de durée de vie restent distincts ;
+- **16 refus bilingues**, soit 32 comparaisons supplémentaires de code, ligne,
+  colonne et AST intact : types de conversion absents ou masqués par un non-type,
+  séparation entre portée du type du champ et portée de sa conversion,
+  perte de qualification, temporaire non adressable, slicing par valeur,
+  pointeurs d'héritage à deux niveaux, visibilité, arité, agrégats incompatibles
+  et contexte incompatible d'un second constructeur ;
+- priorité de la visibilité ou de l'arité de construction sur les expressions
+  suivantes, et d'un type de conversion absent dans le champ par défaut sur
+  une référence inconnue dans le corps du constructeur.
+
+La matrice locale atteint **2 183 corpus négatifs**, contre 2 151 dans la
+tranche précédente. La correction ne rend pas implicites de nouvelles
+conversions de qualifications : les ajouts de qualification aux pointeurs
+ordinaires des corpus passent par les conversions explicites déjà prises en
+charge. Elle ne complète pas tout le frontend 0.27.
+
+### Validation finale
+
+Commandes : `cmake --build --preset windows-release --target espace_travail
+--parallel 6` puis `ctest --preset windows-release --output-on-failure` ;
+équivalents `linux-release` sous WSL Ubuntu avec `--parallel 4` ; construction
+de `GsPlusPlus.slnx` puis `VisualStudio/Validation.vcxproj` avec MSBuild
+Visual Studio 2026, Release x64.
+
+Résultats : CTest **5/5** sous Windows/MSVC, **6/6** sous GNU/Linux,
+solution et validation MSBuild natives réussies ; conformité **20/20** dans
+les trois constructions, style et cohérence des projets natifs conformes.
+Chaque chaîne exécute les 15 nouveaux corpus bilingues et vérifie les
+2 183 refus différentiels avec toutes les suites précédentes.
+
+Les trois `Frontend.GsE` sont identiques et acceptés par leurs vérificateurs :
+**447 263 octets**, SHA-256
+`df4a1d390e5f87c3a9712c708d6d0e4a362759b177680f31dbbb66d05509f9ed`.
+Cette taille et cette empreinte remplacent celles de la tranche précédente
+pour la source actuelle. GsE 1.0, 3 segments, 8 sections, 2 imports et
+75 exports ; l'objet sémantique contient 333 941 octets de code, 294 symboles
+et 1 724 relocalisations ; l'image liée conserve 534 symboles avec
+2 595 relocalisations.
+
+`VERSION` et les trois `VersionProduit.hpp` Release indiquent
+`0.27.0-alpha.10`, les formats 1.0 et ABI 1 restent inchangés.
+`ConteneursDynamiques.GsPP` est inchangé. Aucun commit, push, tag, paquet
+ni release n'est créé pour cette tranche locale. GsBuild reste prévu pour
+0.28 et n'est pas implémenté ici.
+
+## Callbacks des champs par défaut par constructeur — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé.** La fonction de régression
+`TesterCallbacksChampsContextuelsSemantiques` complète les combinaisons de
+callbacks des valeurs par défaut évaluées depuis plusieurs constructeurs.
+Cette tranche étend les tests : elle ne modifie ni le bootstrap C++, ni les
+algorithmes du frontend Gs++, ni les diagnostics publics.
+
+### Matrice différentielle et exécution
+
+- **10 corpus valides bilingues exécutés**, soit 20 exécutions par construction,
+  avec résultat 42, octets français/anglais identiques, images reproductibles
+  et aucun import d'hôte ; la sémantique auto-hébergée est comparée au bootstrap,
+  tandis que le code machine exécuté est généré par le backend C++ ;
+- appels de callbacks par valeur ou référence, via pointeur déréférencé ou
+  indexation, signatures `entier32`/`entier64` différentes suivant le constructeur ;
+- fabriques retournant un callback ou un pointeur vers un callback, appels
+  imbriqués, callback recevant une référence avec mutation effectivement vérifiée,
+  stockage dans un agrégat et tableau de callbacks ;
+- pour chaque référence de callback dans un champ, comparaison de la position
+  exacte et de l'empreinte complète du type du paramètre choisi avec le bootstrap ;
+  chaque constructeur doit publier le nombre attendu de résolutions, sans
+  omissions, doublons ni réutilisation du paramètre d'un autre constructeur ;
+- valeur par défaut invalide non visitée quand elle est remplacée par un
+  initialiseur explicite via alias de champ, y compris après délégation ;
+- **1 corpus valide bilingue uniquement sémantique** contrôle les références de
+  callbacks `constante` et `volatile` dans deux constructeurs et leurs appelants ;
+  aucune exécution machine n'est revendiquée pour ce corpus ;
+- **14 refus bilingues**, soit 28 comparaisons supplémentaires de code, ligne,
+  colonne et AST intact : signature du second constructeur incompatible,
+  ordre inversé des constructeurs, retour non appelable, mauvaise arité,
+  pointeur non appelable, tableau de callbacks incompatible, argument de
+  référence non adressable ou perdant sa constance, conversion entre signatures,
+  paramètre absent et priorités des diagnostics avant le corps du constructeur.
+
+La matrice locale atteint **2 211 corpus négatifs**, contre 2 183 avant cette
+tranche. Le contrat des qualifications existantes est conservé : cette extension
+ne rend pas implicites de nouvelles conversions. Les fonctions Gs++ ordinaires
+ne peuvent toujours pas retourner une référence ; les fabriques exécutées
+retournent donc un callback par valeur ou un pointeur. Ni la complétude du
+frontend 0.27, ni un backend auto-hébergé, ni des sorties PE/ELF ne sont revendiqués.
+
+### Validation finale
+
+Commandes exécutées :
+
+```powershell
+cmake --build --preset windows-release --target espace_travail --parallel 6
+ctest --preset windows-release --output-on-failure
+wsl -d Ubuntu -- bash -lc 'cd /mnt/d/Langage-GsPlusPlus && cmake --build --preset linux-release --target espace_travail --parallel 4 && ctest --preset linux-release --output-on-failure'
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+& 'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe' VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+```
+
+Résultats : CTest **5/5** sous Windows/MSVC, **6/6** sous GNU/Linux,
+solution et validation MSBuild natives réussies. Conformité **20/20** dans
+chaque construction, style et cohérence des projets natifs conformes.
+Les trois chaînes vérifient les nouveaux corpus et les **2 211 refus** de la
+matrice différentielle ; les suites précédentes restent incluses.
+
+Les trois `Frontend.GsE` sont identiques et acceptés par leurs vérificateurs :
+**447 263 octets**, SHA-256
+`df4a1d390e5f87c3a9712c708d6d0e4a362759b177680f31dbbb66d05509f9ed`.
+L'image est inchangée depuis la correction précédente : GsE 1.0, 3 segments,
+8 sections, 2 imports et 75 exports. Cette tranche n'ajoute que des tests et
+leur documentation.
+
+`VERSION` et les trois `VersionProduit.hpp` Release restent à
+`0.27.0-alpha.10` ; formats 1.0 et ABI 1 inchangés.
+L'empreinte de `ConteneursDynamiques.GsPP` reste
+`4eb8f7384823beb1d9e2c9b073f67487afe5f4b3fc038c5387181c1e2c50ef67`.
+Aucun commit, push, tag, paquet ou release n'est créé pour cette tranche.
+GsBuild reste prévu pour 0.28, sans implémentation ici.
+
+## Arguments agrégés des callbacks et diagnostics des champs — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé.** La matrice
+`TesterCallbacksChampsContextuelsSemantiques` a révélé un écart dans la
+propagation des diagnostics des champs par défaut. Le nouveau refus d'indice
+14 passe `{42}` à un callback recevant `Q`, dont le champ est `booléen`.
+Le bootstrap refuse la feuille avec le diagnostic **45**, ligne 1, colonne
+91 ; avant correction, le frontend remplaçait ce refus par **37**, ligne 1,
+colonne 83, à l'appel englobant.
+
+### Correction
+
+Le diagnostic 37 d'incompatibilité avec un champ n'est plus obtenu en
+réécrivant tout diagnostic 45 retourné par son initialiseur. Un drapeau
+privé de la destination d'initialisation réserve désormais ce diagnostic
+au contrôle final de compatibilité avec le champ, après résolution réussie
+de l'expression. Les erreurs internes des arguments, appels imbriqués et
+conversions conservent ainsi leur code et leur position. Les initialiseurs
+entre accolades et les valeurs explicitement remplacées gardent leur
+comportement antérieur.
+
+Le bootstrap C++ est inchangé. Aucun diagnostic public n'est ajouté ou
+renuméroté ; les exports, formats et ABI ne changent pas, et l'AST fourni par
+l'appelant reste intact.
+
+### Matrice et périmètre
+
+- **9 nouveaux corpus bilingues exécutés**, soit 18 exécutions par construction,
+  avec résultat 42, octets français/anglais identiques, images reproductibles
+  et aucun import d'hôte ; la sémantique auto-hébergée est comparée au bootstrap,
+  et le code machine exécuté est généré par le backend C++ ;
+- arguments de structures différentes suivant le constructeur, tableaux de
+  champs imbriqués, fabriques retournant un callback, pointeurs qualifiés dans
+  les agrégats, tableaux de callbacks et champs manquants initialisés à zéro ;
+- appels agrégés dans les initialisations de champs objets, de bases et les
+  délégations, avec retours `entier32`/`entier64` et surcharges de construction ;
+- retour booléen compatible avec le champ, en plus des refus où un appel valide
+  produit une valeur incompatible : ces derniers gardent bien le diagnostic 37 ;
+- **1 nouveau corpus bilingue uniquement sémantique** vérifie les arguments
+  agrégés d'un callback obtenu par référence via une signature de callback ;
+  il ne définit pas une fonction ordinaire retournant une référence et ne
+  revendique pas son exécution machine ;
+- positions exactes et empreintes complètes des paramètres de callbacks des
+  champs toujours comparées au bootstrap, sans omissions ni résolutions dupliquées ;
+- **22 nouveaux refus bilingues**, soit 44 comparaisons supplémentaires de code,
+  ligne, colonne et AST intact : capacité des tableaux et structures, signatures
+  de deux constructeurs dans les deux ordres, références non adressables, perte
+  de qualification, conversions de callbacks, valeurs non appelables et priorités
+  entre appels agrégés, accès de construction, champs successifs et corps ;
+- régressions spécifiques des diagnostics internes dans un appel direct,
+  un appel indirect, une fabrique et une conversion englobante, avec maintien
+  de 37 pour les véritables incompatibilités finales de champs.
+
+Le groupe de tests cumulé comporte maintenant **19 corpus bilingues exécutés**
+et **2 corpus bilingues uniquement sémantiques**. La matrice locale complète
+atteint **2 255 corpus négatifs**, contre 2 211 avant cette tranche.
+
+### Validation finale
+
+Commandes : construction de `espace_travail` avec le preset `windows-release`
+et `--parallel 6`, puis `ctest --preset windows-release --output-on-failure` ;
+équivalents `linux-release` sous WSL Ubuntu avec `--parallel 4` ; construction
+de `GsPlusPlus.slnx` puis de `VisualStudio/Validation.vcxproj` avec MSBuild
+Visual Studio 2026, Release x64.
+
+Résultats : CTest **5/5** sous Windows/MSVC et **6/6** sous GNU/Linux,
+solution et validation natives réussies ; conformité **20/20** dans les trois
+constructions, style et cohérence des projets natifs conformes. Chaque chaîne
+exécute les **19 corpus bilingues** du groupe cumulé, contrôle ses deux corpus
+bilingues uniquement sémantiques et vérifie les **2 255 refus différentiels**.
+
+Les trois `Frontend.GsE` reconstruits sont identiques et acceptés par leurs
+vérificateurs : **447 375 octets**, SHA-256
+`67dfed60b339f2ffd2826c770573c521326417c62dfe96d33a3d88be08ad9a50`.
+Cette taille et cette empreinte remplacent celles de la tranche précédente
+pour la source actuelle. GsE 1.0, 3 segments, 8 sections, 2 imports, 75 exports.
+L'objet sémantique contient 334 059 octets de code, 294 symboles et 1 725
+relocalisations ; l'image liée conserve 534 symboles avec 2 596 relocalisations.
+
+`VERSION` et les trois `VersionProduit.hpp` Release restent à
+`0.27.0-alpha.10` ; formats 1.0, ABI 1 et `ConteneursDynamiques.GsPP` inchangés.
+Aucun commit, push, tag, paquet ni release n'est créé pour cette tranche locale.
+Ni le frontend 0.27 complet, ni un backend auto-hébergé, ni des sorties PE/ELF
+ne sont revendiqués. GsBuild reste prévu pour 0.28 et n'est pas implémenté ici.
+
+## Retours par référence des callbacks — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé.**
+`TesterRetoursReferencesCallbacks` confronte les signatures déjà reconnues par
+le frontend à leur utilisation effective dans le code x86-64. Les callbacks
+sont des fonctions C++ de test fournies par argument, respectant `GsAbi:x64-ms-v1`
+et renvoyant de véritables références vers le stockage de l'hôte. Aucune
+fonction ordinaire Gs++ retournant une référence n'est définie par ces corpus.
+
+### Défauts corrigés
+
+- Le backend traitait un retour `entier32&` comme un entier immédiat : le
+  premier corpus produisait la partie basse de l'adresse au lieu de lire la
+  valeur référencée. La génération conserve désormais l'adresse de 64 bits
+  à la sortie de l'appel, puis charge la valeur seulement si son consommateur
+  demande une valeur. Le chemin d'adressage accepte également ces appels.
+- Une structure retournée par référence ne doit pas être générée comme une
+  structure retournée par valeur : elle n'utilise ni temporaire de retour ni
+  argument caché d'adresse de destination. Les registres des arguments restent
+  ceux de sa signature réelle.
+- Le bootstrap C++ ne propageait pas la constance d'un appel retournant une
+  référence scalaire ou structurée. Il refuse désormais les liaisons et
+  affectations mutables interdites, comme le frontend Gs++ le faisait déjà.
+- Le frontend Gs++ perdait la constance héritée d'un champ ou élément lors de
+  sa prise d'adresse. Son calcul privé du type adressé conserve maintenant
+  cette qualification, sans qualifier implicitement le pointeur stocké ni
+  modifier l'AST public.
+
+### Matrice et contrôles
+
+Les **15 corpus bilingues exécutés** couvrent lecture scalaire, liaison de
+référence, affectation directe, prise d'adresse, passage à un constructeur,
+référence de structure, accès aux champs et tableaux, valeurs constantes et
+volatiles, référence de callback et invocation imbriquée, et valeur de champ
+par défaut évaluée depuis le constructeur. Les adresses de valeurs, champs et
+éléments constants sont également utilisées par des pointeurs constants.
+
+Pour chaque version française et anglaise, les tests vérifient :
+
+- résultat 42, modifications exactes des données de l'hôte et nombre exact
+  d'appels, pour détecter notamment une double évaluation lors de l'adressage ;
+- disposition identique de la structure de test dans Gs++ et C++ : taille
+  24 octets, alignement 8, champs aux offsets 0, 4 et 16 ;
+- empreintes complètes et positions de tous les paramètres, sans omission ;
+- octets de code et de données identiques entre syntaxes, image reproductible,
+  absence d'import statique ajouté par les callbacks passés en argument ;
+- requêtes de capacité et tampons partiels, avec AST public intact.
+
+L'absence d'import statique ne rend pas ces corpus indépendants de l'hôte :
+leur exécution utilise explicitement les callbacks C++ et le stockage de test.
+
+Les **15 refus bilingues** vérifient les liaisons incompatibles, références sur
+temporaires par valeur, suppression de constance, affectations interdites,
+arité avant arguments invalides, valeur non appelable, membre et type de
+conversion absents, et priorités avant une erreur ultérieure. Cela ajoute
+**30 comparaisons code/ligne/colonne**, avec AST intact, et porte la matrice
+locale à **2 285 refus différentiels**, contre 2 255 avant cette tranche.
+
+### Validation finale
+
+Commandes : `cmake --build --preset windows-release --target espace_travail
+--parallel 6`, puis `ctest --preset windows-release --output-on-failure` ;
+équivalents `linux-release` sous WSL Ubuntu avec `--parallel 4` ; construction
+de `GsPlusPlus.slnx`, puis `VisualStudio/Validation.vcxproj` avec MSBuild
+Visual Studio 2026, Release x64.
+
+Résultats : CTest **5/5** sous Windows/MSVC, **6/6** sous GNU/Linux, solution
+et validation natives réussies ; conformité **20/20** dans les trois chaînes,
+style et cohérence des projets natifs conformes. Chaque chaîne exécute les
+**15 corpus bilingues** de cette tranche et les **2 285 refus différentiels**.
+
+Les trois `Frontend.GsE` sont identiques et acceptés par leurs vérificateurs :
+**448 159 octets**, SHA-256
+`7261e97651c701ec039159ca83d0fbc46867db67d838858875409bee16ef6982`.
+Cette empreinte remplace celle de la tranche précédente pour les sources
+actuelles. GsE 1.0, 3 segments, 8 sections, 2 imports, 75 exports inchangés.
+L'objet sémantique contient 334 838 octets de code, 295 symboles et 1 736
+relocalisations ; l'image liée comporte 535 symboles et 2 607 relocalisations.
+`VERSION` et les trois `VersionProduit.hpp` Release restent à
+`0.27.0-alpha.10` ; `ConteneursDynamiques.GsPP` conserve son empreinte.
+
+Les fonctions ordinaires Gs++ retournant une référence restent refusées dans
+le sous-ensemble courant. Le stockage référencé par l'hôte doit rester valide
+durant son utilisation ; aucun prolongement de durée de vie n'est ajouté.
+Version alpha.10, formats 1.0 et ABI 1 conservés ; aucun commit, push ou release.
+Le backend demeure C++ et les sorties natives PE/ELF ne sont pas ajoutées ici.
+
+## Qualifications des champs adressés via callbacks — 6 octobre 2026
+
+**VALIDÉ dans le périmètre testé.**
+Cette extension de `TesterRetoursReferencesCallbacks` couvre les qualifications
+`volatile` et `constante volatile` héritées par un champ ou élément de tableau
+avant sa prise d'adresse, y compris après un accès par pointeur.
+
+### Écart reproduit et correction
+
+Le bootstrap accepte `volatile entier32* adresse = &lire(donnees).X` lorsque
+le callback retourne `volatile P&`. Le frontend Gs++ refusait pourtant cet
+initialiseur avec le diagnostic 45 à la position 1:190 du premier corpus de
+régression, car le type adressé perdait `volatile`. L'ancien correctif pour
+les valeurs constantes ne traitait pas cette qualification, et pouvait aussi
+perdre `volatile` lorsque `constante` était présent simultanément.
+
+Le calcul privé du type adressé recueille maintenant les bits `constante` et
+`volatile` du type réel, des déclarations et des objets des accès membres ou
+indexations. Il les conserve lors de la formation de l'adresse. La reconnaissance
+des types qualifiés est partagée sans modifier les signatures, l'AST public ou
+les diagnostics. Les champs pointeurs/callbacks gardent les qualifications de
+leur type déclaré : celles de leur objet contenant ne sont pas ajoutées au
+type du pointeur stocké. Les règles de conversion restent celles du bootstrap.
+
+### Matrice complémentaire
+
+Les **10 nouveaux corpus bilingues exécutés** vérifient :
+
+- adresse d'une référence scalaire `volatile` ou `constante volatile` ;
+- adresse d'un champ ou élément de tableau d'une référence de structure
+  `volatile` ou `constante volatile`, avec lecture et mutations permises ;
+- accès par flèche après liaison à un pointeur de structure qualifié ;
+- copie et invocation d'un champ callback depuis les deux formes de structure
+  qualifiée, pour vérifier qu'aucun qualificateur ne modifie sa signature.
+
+Les contrôles du groupe précédent restent appliqués : résultat 42, stockage
+exact de l'hôte, nombre exact d'appels, disposition mémoire concordante,
+empreintes complètes et positions des paramètres, octets bilingues identiques,
+images reproductibles, requêtes de capacité et AST intact. Ces corpus utilisent
+des callbacks C++ fournis par l'hôte et ne sont donc pas indépendants de celui-ci.
+
+Les **8 nouveaux refus bilingues**, soit 16 comparaisons de code/ligne/colonne,
+couvrent les qualifications de pointeurs incompatibles ou supprimées, dont une
+priorité sur une expression inconnue ultérieure. Le groupe cumulé comporte
+**25 corpus bilingues exécutés** et **23 refus bilingues** ; la matrice locale
+complète atteint **2 301 refus différentiels**, contre 2 285 avant cette tranche.
+
+### Validation finale
+
+Commandes : construction de `espace_travail` avec le preset `windows-release`
+et `--parallel 6`, puis `ctest --preset windows-release --output-on-failure` ;
+équivalents `linux-release` sous WSL Ubuntu avec `--parallel 4` ; construction
+de `GsPlusPlus.slnx`, puis `VisualStudio/Validation.vcxproj` avec MSBuild
+Visual Studio 2026, Release x64.
+
+Résultats : CTest **5/5** sous Windows/MSVC et **6/6** sous GNU/Linux, solution
+et validation natives réussies ; conformité **20/20** dans les trois chaînes,
+style et cohérence des projets natifs conformes. Chaque chaîne exécute les
+**25 corpus bilingues** du groupe cumulé et les **2 301 refus différentiels**.
+
+Les trois `Frontend.GsE` sont identiques et acceptés par leurs vérificateurs :
+**449 439 octets**, SHA-256
+`ee318f7b8f3b006d9f2744201d813a0d45faff3235769463f33c7e64710343b9`.
+Cette taille et cette empreinte remplacent celles de la tranche précédente
+pour les sources actuelles. GsE 1.0, 3 segments, 8 sections, 2 imports et
+75 exports inchangés. L'objet sémantique contient 336 120 octets de code,
+297 symboles et 1 744 relocalisations ; l'image liée comporte 537 symboles
+et 2 615 relocalisations. Les trois `VersionProduit.hpp` Release annoncent
+`0.27.0-alpha.10` ; `ConteneursDynamiques.GsPP` conserve son empreinte.
+
+Cette correction ne modifie pas le bootstrap C++ ni le backend. Elle n'ajoute
+pas les retours par référence aux fonctions ordinaires Gs++, ni de garantie
+d'atomicité, de synchronisation ou de barrière mémoire à `volatile`.
+Version alpha.10, formats 1.0 et ABI 1 conservés ; aucun commit, push ou release.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
@@ -3001,8 +3844,8 @@ ne sont pas ajoutés ; le passage à 0.28 n'est pas déclaré acquis.
   bootstrap, notamment les contextes des constructions et opérateurs et les
   interactions de priorité entre passes non encore testées, dont les contrôles
   non couverts d'initialiseurs globaux et les interactions avec les constructions
-  locales non couvertes, contrôles de déclaration et constructions explicites
-  de types non-classes, ainsi que les contextes de bases/champs non représentés
+  locales non couvertes, qualifications et signatures locales non représentées,
+  ainsi que les contextes de bases/champs non représentés
   dans la matrice,
   et les combinaisons de conversions
   non encore couvertes ; le

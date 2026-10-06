@@ -310,7 +310,8 @@ namespace GsPP
         std::vector<const Expression*>& expressions)
     {
         if ((expression.Genre == GenreExpression::Appel
-                && expression.TypeSemantique.EstStructure())
+                && expression.TypeSemantique.EstStructure()
+                && !static_cast<const ExpressionAppel&>(expression).RetourneReference)
             || (expression.Genre == GenreExpression::Unaire
                 && expression.TypeSemantique.EstStructure()
                 && !static_cast<const ExpressionUnaire&>(expression)
@@ -679,6 +680,7 @@ namespace GsPP
         std::vector<std::uint8_t>& code)
     {
         if (type.EstAdresse()
+            || type.EstReference
             || type.EstStructure()
             || type.EstTableau()
             || type.EstVide()
@@ -792,6 +794,12 @@ namespace GsPP
                 GenererExpression(*unaire.Operande, contexte);
                 return;
             }
+        }
+        if (expression.Genre == GenreExpression::Appel
+            && static_cast<const ExpressionAppel&>(expression).RetourneReference)
+        {
+            GenererAppelExpression(static_cast<const ExpressionAppel&>(expression), contexte);
+            return;
         }
         throw std::runtime_error("expression non adressable dans le backend");
     }
@@ -982,6 +990,33 @@ namespace GsPP
             Ajouter32(code, temporaireRetour);
         }
         else NormaliserValeur(typeRetour, code);
+    }
+
+    /**
+     * Un retour par référence transmet une adresse de 64 bits, même si le type
+     * de l'expression est un entier étroit ou une structure. Le consommateur
+     * décide ensuite de conserver cette adresse ou de charger sa valeur.
+     **/
+    void GenerateurX64::GenererAppelExpression(
+        const ExpressionAppel& appel, ContexteFonction& contexte)
+    {
+        std::vector<const Expression*> arguments;
+        arguments.reserve(appel.Arguments.size());
+        for (const auto& argument : appel.Arguments)
+            arguments.push_back(argument.get());
+        auto typeRetour = appel.TypeSemantique;
+        typeRetour.EstReference = appel.RetourneReference;
+        GenererAppel(
+            appel.NomDirect,
+            appel.EstIndirect ? appel.Cible.get() : nullptr,
+            arguments,
+            appel.ArgumentsParReference,
+            typeRetour,
+            &appel,
+            appel.EstIntrinseque,
+            appel.EstVirtuel,
+            appel.IndexVirtuel,
+            contexte);
     }
 
     void GenerateurX64::GenererDestruction(
@@ -1237,21 +1272,9 @@ namespace GsPP
             case GenreExpression::Appel:
             {
                 const auto& appel = static_cast<const ExpressionAppel&>(expression);
-                std::vector<const Expression*> arguments;
-                arguments.reserve(appel.Arguments.size());
-                for (const auto& argument : appel.Arguments)
-                    arguments.push_back(argument.get());
-                GenererAppel(
-                    appel.NomDirect,
-                    appel.EstIndirect ? appel.Cible.get() : nullptr,
-                    arguments,
-                    appel.ArgumentsParReference,
-                    expression.TypeSemantique,
-                    &expression,
-                    appel.EstIntrinseque,
-                    appel.EstVirtuel,
-                    appel.IndexVirtuel,
-                    contexte);
+                GenererAppelExpression(appel, contexte);
+                if (appel.RetourneReference)
+                    ChargerDepuisAdresse(expression.TypeSemantique, code);
                 return;
             }
             case GenreExpression::Conversion:
@@ -1285,23 +1308,42 @@ namespace GsPP
         }
     }
 
+    /**
+     * <résumé>Génère une portée et ferme ses durées de vie avant de retirer ses noms locaux.</résumé>
+     * @Paramètre(const Instruction&: instruction) Bloc, branche ou corps de boucle à générer.
+     * @Paramètre(ContexteFonction&: contexte) Emplacements privés et liaisons de noms actives.
+     * @etc. Les paramètres et noms des portées ancêtres restent disponibles après la fermeture.
+     **/
+    void GenerateurX64::GenererInstructionDansPortee(
+        const Instruction& instruction, ContexteFonction& contexte)
+    {
+        const auto profondeurVariables = contexte.NomsLocauxActifs.size();
+        const auto profondeurDestructions = contexte.DestructionsActives.size();
+        if (instruction.Genre == GenreInstruction::Bloc)
+        {
+            for (const auto& enfant : static_cast<const InstructionBloc&>(instruction).Instructions)
+                GenererInstruction(*enfant, contexte);
+        }
+        else GenererInstruction(instruction, contexte);
+        for (std::size_t index = contexte.DestructionsActives.size();
+             index > profondeurDestructions; --index)
+            GenererDestruction(contexte.DestructionsActives[index - 1], contexte);
+        contexte.DestructionsActives.resize(profondeurDestructions);
+        while (contexte.NomsLocauxActifs.size() > profondeurVariables)
+        {
+            contexte.Variables.erase(contexte.NomsLocauxActifs.back());
+            contexte.NomsLocauxActifs.pop_back();
+        }
+    }
+
     void GenerateurX64::GenererInstruction(const Instruction& instruction, ContexteFonction& contexte)
     {
         auto& code = contexte.Machine->Texte;
         switch (instruction.Genre)
         {
             case GenreInstruction::Bloc:
-            {
-                const auto profondeur = contexte.DestructionsActives.size();
-                for (const auto& enfant : static_cast<const InstructionBloc&>(instruction).Instructions)
-                    GenererInstruction(*enfant, contexte);
-                for (std::size_t index = contexte.DestructionsActives.size();
-                     index > profondeur; --index)
-                    GenererDestruction(
-                        contexte.DestructionsActives[index - 1], contexte);
-                contexte.DestructionsActives.resize(profondeur);
+                GenererInstructionDansPortee(instruction, contexte);
                 return;
-            }
             case GenreInstruction::Retour:
             {
                 const auto& retour = static_cast<const InstructionRetour&>(instruction);
@@ -1362,6 +1404,10 @@ namespace GsPP
             case GenreInstruction::Variable:
             {
                 const auto& variable = static_cast<const InstructionVariable&>(instruction);
+                if (!contexte.Variables.emplace(
+                        variable.Nom, contexte.EmplacementsLocaux.at(&variable)).second)
+                    throw std::runtime_error("variable ou paramètre déclaré plusieurs fois : " + variable.Nom);
+                contexte.NomsLocauxActifs.push_back(variable.Nom);
                 ExpressionVariable cible(variable.Nom, variable.Position);
                 cible.TypeSemantique = variable.Type;
                 if (variable.Type.EstReference)
@@ -1529,28 +1575,14 @@ namespace GsPP
                 Ajouter(code, {0x48, 0x85, 0xC0, 0x0F, 0x84});
                 const auto sautSinon = code.size();
                 Ajouter32(code, 0);
-                const auto profondeurAlors =
-                    contexte.DestructionsActives.size();
-                GenererInstruction(*valeur.Alors, contexte);
-                for (std::size_t index = contexte.DestructionsActives.size();
-                     index > profondeurAlors; --index)
-                    GenererDestruction(
-                        contexte.DestructionsActives[index - 1], contexte);
-                contexte.DestructionsActives.resize(profondeurAlors);
+                GenererInstructionDansPortee(*valeur.Alors, contexte);
                 if (valeur.Sinon)
                 {
                     Ajouter(code, {0xE9});
                     const auto sautFin = code.size();
                     Ajouter32(code, 0);
                     CorrigerRelatif32(code, sautSinon, code.size());
-                    const auto profondeurSinon =
-                        contexte.DestructionsActives.size();
-                    GenererInstruction(*valeur.Sinon, contexte);
-                    for (std::size_t index = contexte.DestructionsActives.size();
-                         index > profondeurSinon; --index)
-                        GenererDestruction(
-                            contexte.DestructionsActives[index - 1], contexte);
-                    contexte.DestructionsActives.resize(profondeurSinon);
+                    GenererInstructionDansPortee(*valeur.Sinon, contexte);
                     CorrigerRelatif32(code, sautFin, code.size());
                 }
                 else CorrigerRelatif32(code, sautSinon, code.size());
@@ -1564,14 +1596,7 @@ namespace GsPP
                 Ajouter(code, {0x48, 0x85, 0xC0, 0x0F, 0x84});
                 const auto sautFin = code.size();
                 Ajouter32(code, 0);
-                const auto profondeurCorps =
-                    contexte.DestructionsActives.size();
-                GenererInstruction(*valeur.Corps, contexte);
-                for (std::size_t index = contexte.DestructionsActives.size();
-                     index > profondeurCorps; --index)
-                    GenererDestruction(
-                        contexte.DestructionsActives[index - 1], contexte);
-                contexte.DestructionsActives.resize(profondeurCorps);
+                GenererInstructionDansPortee(*valeur.Corps, contexte);
                 Ajouter(code, {0xE9});
                 const auto sautDebut = code.size();
                 Ajouter32(code, 0);
@@ -1803,19 +1828,18 @@ namespace GsPP
                 contexte.DecalageRetourStructure =
                     -static_cast<std::int32_t>(curseur);
             }
-            auto allouer = [&](const std::string& nom, const TypeGs& type)
+            auto allouer = [&](const TypeGs& type)
             {
-                if (contexte.Variables.contains(nom))
-                    throw std::runtime_error("variable ou paramètre déclaré plusieurs fois : " + nom);
                 const auto alignement = AlignementType(type, structures);
                 curseur = Aligner(curseur, alignement);
                 curseur += TailleType(type, structures);
-                contexte.Variables.emplace(
-                    nom,
-                    ContexteFonction::EmplacementVariable{-static_cast<std::int32_t>(curseur), type});
+                return ContexteFonction::EmplacementVariable{-static_cast<std::int32_t>(curseur), type};
             };
-            for (const auto& parametre : fonction.Parametres) allouer(parametre.Nom, parametre.Type);
-            for (const auto* locale : locales) allouer(locale->Nom, locale->Type);
+            for (const auto& parametre : fonction.Parametres)
+                if (!contexte.Variables.emplace(parametre.Nom, allouer(parametre.Type)).second)
+                    throw std::runtime_error("variable ou paramètre déclaré plusieurs fois : " + parametre.Nom);
+            for (const auto* locale : locales)
+                contexte.EmplacementsLocaux.emplace(locale, allouer(locale->Type));
             std::vector<const Expression*> temporaires;
             RecenserTemporaires(*fonction.Corps, temporaires);
             for (const auto& argument :

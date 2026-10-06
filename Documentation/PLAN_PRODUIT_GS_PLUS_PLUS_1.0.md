@@ -65,6 +65,53 @@ ne démontre pas encore la production automatique de PE/ELF pour ces systèmes.
 La sélection de cible, les sorties natives et les SDK associés font désormais
 partie des travaux de convergence ci-dessous.
 
+### Séparer compilation et construction — décision du 5 octobre 2026
+
+**DÉCIDÉ — PRÉVU POUR LE JALON 0.28, NON IMPLÉMENTÉ.** Un outil de construction
+distinct prend en charge les projets et solutions. Le nom proposé est
+**GsBuild**, avec la commande `gsbuild` (`gsbuild.exe` sous Windows).
+`GsConstruction` reste une alternative de nom ; `GsConstructeur` est évité
+pour ne pas confondre l'outil avec les constructeurs du langage.
+
+La séparation visée est la suivante :
+
+| Composant | Responsabilité prévue |
+| --- | --- |
+| `gsppc` | Compiler les sources et interfaces Gs++ en objets ; fournir les diagnostics, vues de jetons et d'AST et options de compilation. |
+| GsBuild / `gsbuild` | Lire les projets `.GsPj`/`.GsProject` et solutions `.GsPs`, sélectionner les unités, ordonner leur construction et piloter compilation, création des bibliothèques et édition de liens. |
+| Services d'archivage et de liaison | Produire les bibliothèques et exécutables à partir des objets, sous le contrôle de GsBuild ; ne pas réintroduire l'orchestration dans `gsppc`. |
+
+GsBuild reprend le rôle d'un moteur de construction pour les projets Gs++,
+analogue au rôle de MSBuild, sans annoncer une compatibilité avec ses fichiers
+de projets, tâches ou options. CMake et MSBuild restent utilisables pour
+construire la toolchain elle-même, notamment le bootstrap C++ et la solution
+Visual Studio 2026 native ; ils ne deviennent pas des dépendances obligatoires
+pour construire un projet Gs++ avec GsBuild.
+
+Le premier périmètre reprend le contrat XML 1.0 et les comportements existants :
+chemins relatifs au projet, ordre des projets de solution, modes séparé/agrégé,
+interfaces, bibliothèques, sorties, cartes de liens et métadonnées. La future
+sélection de cible doit respecter les mêmes priorités que la compilation :
+ligne de commande, puis projet XML, puis cible native prise en charge. Le seul
+changement d'outil ne modifie ni les formats binaires, ni le schéma XML, ni l'ABI.
+Les reconstructions incrémentales et la planification parallèle seront des
+extensions à spécifier et tester, pas des capacités réputées disponibles.
+
+La migration doit :
+
+1. extraire l'orchestration existante de `ConstructeurProjet` vers GsBuild,
+   en réutilisant les services de compilation et liaison sans les dupliquer ;
+2. adapter les scripts, intégrations CMake/MSBuild, exemples, documentation,
+   conformité et paquets à la nouvelle commande ;
+3. vérifier sous Windows et GNU/Linux les projets et solutions, les deux modes
+   de compilation, les diagnostics et la reproductibilité des sorties ;
+4. retirer de `gsppc` les entrées de projets/solutions et les modes de création
+   d'archives et de liaison, avec diagnostic de migration vers GsBuild.
+
+**État actuel :** la version 0.27 conserve ses commandes `gsppc` existantes.
+Aucun exécutable GsBuild n'est livré par cette décision ; sa disponibilité doit
+être établie par l'implémentation, les tests et la distribution du jalon futur.
+
 ## Point de départ vérifié
 
 Gs++ 0.26.0 constitue le jalon candidat actuel. Il conserve le contrat
@@ -366,13 +413,74 @@ elle ne clôt pas le frontend 0.27.
   sélection commune des arguments des bases, champs et délégations, avec
   plan final canonique et réutilisation des choix explicites, dans le périmètre
   testé du 5 octobre 2026 ;
+  puis contrôles de déclarations locales lors de leur visite : types, doublons,
+  variables `vide`, références et constantes sans initialiseur, constructions
+  explicites de types non-classes ; paramètres répétés contrôlés à l'entrée de
+  chaque fonction et visibilité des branches sans accolades, diagnostics
+  bilingues 122–125 et positions comparés au bootstrap dans la matrice locale
+  du 5 octobre 2026 ; puis correction de la génération machine C++ des noms
+  locaux réutilisés dans des portées distinctes, avec emplacements par déclaration
+  et noms activés à la visite puis retirés après les destructions ; dix corpus
+  bilingues exécutés et exemple d'intégration bilingue, dans le périmètre testé
+  du 5 octobre 2026 ; cette correction ne migre pas le backend vers Gs++ ;
+  puis recherche lexicale dans les espaces parents sans import, depuis les
+  espaces imbriqués et les méthodes de classes : types nommés, alias, valeurs
+  d'énumération, globales, callbacks, bases de classes et opérateurs ; masquage
+  au premier niveau contenant un nom, douze corpus bilingues exécutés et
+  2 077 refus différentiels dans la matrice locale du 5 octobre 2026 ;
+  puis contexte lexical effectif de classe dans les méthodes, constructeurs,
+  destructeurs et champs par défaut : masquage des fonctions parentes et
+  importées, paramètres prioritaires et récepteurs explicites inchangés ;
+  quatorze corpus bilingues exécutés, déclarations et types de retour choisis
+  comparés au bootstrap, et 2 117 refus différentiels dans la matrice locale
+  du 5 octobre 2026 ; le bootstrap C++ n'est pas modifié par cette tranche ;
+  puis portées d'opérateurs dans les méthodes et la durée de vie : groupes
+  mixtes de la classe avant les espaces parents, priorité du groupe associé
+  à l'opérande gauche, accès privés/protégés, surcharges différentes pour un
+  même champ évalué par plusieurs constructeurs et alternance surchargé/intrinsèque ;
+  dix-sept corpus bilingues exécutés et 2 151 refus différentiels dans la matrice
+  locale du 5 octobre 2026 ; cette extension des tests ne modifie pas les
+  algorithmes du compilateur ni les diagnostics publics ;
+  puis correction du contexte des types de conversions dans les champs par défaut,
+  y compris agrégats et signatures de callbacks : portée du constructeur et alias
+  masquant les espaces parents/importés, sans modifier le type déclaré du champ
+  ni analyser les valeurs remplacées ; quinze corpus bilingues exécutés avec
+  constructeurs effectivement choisis comparés au bootstrap, et 2 183 refus
+  différentiels dans la matrice locale du 6 octobre 2026 ; le bootstrap et les
+  diagnostics publics restent inchangés ;
+  puis callbacks dans les champs par défaut partagés par plusieurs constructeurs :
+  paramètres et signatures comparés au bootstrap, appels imbriqués, pointeurs,
+  références, agrégats et valeurs remplacées ; dix corpus bilingues exécutés et
+  un corpus bilingue uniquement sémantique pour les références constantes/volatiles,
+  avec 2 211 refus différentiels dans la matrice locale du 6 octobre 2026 ; cette
+  extension des tests ne modifie pas les algorithmes du compilateur ;
+  puis arguments agrégés des callbacks et constructions : neuf corpus bilingues
+  exécutés supplémentaires et un corpus uniquement sémantique pour les retours
+  de callbacks par référence dans des signatures ; préserver les diagnostics
+  internes des expressions au lieu de les remplacer par une incompatibilité du
+  champ ; 2 255 refus différentiels dans la matrice locale du 6 octobre 2026,
+  sans modifier le bootstrap ni ajouter de diagnostic public ;
+  puis retours par référence des callbacks : lecture/adressage et retours de
+  structures corrigés dans le backend C++, constance des appels propagée par le
+  bootstrap et qualifications des champs/éléments adressés conservées par Gs++ ;
+  quinze corpus bilingues exécutés avec callbacks C++ fournis par l'hôte,
+  stockage et nombre d'appels vérifiés, et 2 285 refus différentiels locaux ;
+  CTest Windows 5/5, GNU/Linux 6/6, solution et validation natives réussis,
+  conformité 20/20 par chaîne et trois images reconstruites identiques ;
+  aucun retour par référence de fonction ordinaire Gs++ n'est ajouté ;
+  puis qualifications `volatile` et `constante volatile` des champs/éléments
+  adressés via callbacks, directement ou par flèche, sans qualifier les callbacks
+  stockés dans les champs ; dix corpus bilingues exécutés et huit refus bilingues
+  supplémentaires, portant la matrice locale à 2 301 refus ; CTest Windows 5/5,
+  GNU/Linux 6/6, solution et validation natives réussis, conformité 20/20 par
+  chaîne ; trois images identiques et vérifiées, bootstrap et backend inchangés ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
   familles sémantiques, notamment les contextes des constructions et les
   interactions de priorité entre passes non encore testées, dont les
-  combinaisons non couvertes d'initialiseurs globaux, les interactions entre
-  contrôles de déclarations locales et constructions explicites de types
-  non-classes, les contextes non couverts de bases/champs et les
-  combinaisons de conversions non encore couvertes ;
+  combinaisons non couvertes d'initialiseurs globaux, les qualifications et
+  signatures locales non représentées dans la matrice, les contextes non
+  couverts de bases/champs et les combinaisons de conversions non encore
+  couvertes ;
   raccorder les données émises aux futurs écrivains
   d’objets auto-hébergés dans le jalon backend ;
 - **EN COURS** : comparer systématiquement les résultats au bootstrap C++.
@@ -421,7 +529,10 @@ une nouvelle release alpha.10 ni l'ouverture de 0.28.
   conserver `.GsE` pour les exécutables. Décision du 21 septembre 2026, prévue
   et non encore implémentée : 0.27 continue d'utiliser `.GsA`. Le nom réservé
   `.GdLib` ne constitue pas une annonce de support dynamique déjà disponible ;
-- migrer l’orchestration de projets ;
+- introduire GsBuild (nom proposé, commande `gsbuild`) et y migrer
+  l'orchestration des projets et solutions, l'archivage et la liaison ;
+  recentrer `gsppc` sur la compilation des sources/interfaces Gs++ en objets,
+  selon la décision du 5 octobre 2026 ;
 - introduire la description de cible et sa sélection commune en ligne de
   commande et dans les projets XML, avec défaut natif et diagnostic des
   configurations non prises en charge ;
@@ -453,6 +564,8 @@ ci-dessous sont satisfaits.
 - [ ] ABI 1 documentée et couverte par des tests inter-unités ;
 - [ ] bibliothèques système et hébergée suffisantes pour le compilateur ;
 - [ ] compilateur principalement maintenu en Gs++ ;
+- [ ] séparation `gsppc` / GsBuild livrée et testée sous Windows et GNU/Linux,
+  avec exemples, intégrations et paquets utilisant la nouvelle commande ;
 - [ ] génération N+1 capable de produire une génération N+2 fonctionnelle ;
 - [ ] comparaison N+1/N+2 conforme à la règle de reproductibilité ;
 - [ ] suite de conformité entièrement réussie sous MSVC et GNU ;

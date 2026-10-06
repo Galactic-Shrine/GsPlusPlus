@@ -357,11 +357,7 @@ namespace GsPP
                 || _Surcharges.contains(candidat) || _Aliases.contains(candidat);
         };
         if (nom.find("::") != std::string::npos && existe(nom)) return nom;
-        // Sans directive visible, les règles historiques de Gs++ restent inchangées.
-        if (std::none_of(_Programme->Utilisations.begin(), _Programme->Utilisations.end(),
-            [&](const auto& utilisation) { return active(utilisation) && contient(utilisation.Espace, espace); }))
-            return nom;
-
+        // La recherche lexicale remonte toujours les espaces parents, même sans import.
         auto niveau = espace;
         for (;;)
         {
@@ -1086,6 +1082,10 @@ namespace GsPP
         appel.TypeSemantique = cible.TypeRetour.EstReference
             ? SansReference(cible.TypeRetour)
             : cible.TypeRetour;
+        appel.EstValeurConstante = appel.RetourneReference
+            && appel.TypeSemantique.EstConstante
+            && !appel.TypeSemantique.EstAdresse()
+            && !appel.TypeSemantique.EstTableau();
     }
 
     void AnalyseurSemantique::IndexerFonctions(Programme& programme)
@@ -2150,6 +2150,10 @@ namespace GsPP
                 expression.TypeSemantique = appel.RetourneReference
                     ? SansReference(*typeCible.RetourFonction)
                     : *typeCible.RetourFonction;
+                expression.EstValeurConstante = appel.RetourneReference
+                    && expression.TypeSemantique.EstConstante
+                    && !expression.TypeSemantique.EstAdresse()
+                    && !expression.TypeSemantique.EstTableau();
                 break;
             }
             case GenreExpression::Conversion:

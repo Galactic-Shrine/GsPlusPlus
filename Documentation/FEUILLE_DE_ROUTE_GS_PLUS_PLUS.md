@@ -10,6 +10,84 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
+### Ajout local du 6 octobre 2026 — qualifications des champs adressés via callbacks
+
+**VALIDÉ dans le périmètre testé.** Le frontend
+Gs++ conserve `volatile` et `constante volatile` lors de la prise d'adresse
+des champs et éléments, directement ou par flèche, sans modifier le type des
+callbacks stockés dans des champs qualifiés. Dix corpus bilingues exécutés
+supplémentaires et huit refus bilingues portent la matrice locale à **2 301** ;
+le groupe cumulé compte 25 corpus exécutés. CTest Windows 5/5, GNU/Linux 6/6,
+solution et validation natives réussis, conformité 20/20 par chaîne ; trois
+images identiques et vérifiées. Bootstrap C++, backend, formats et ABI inchangés ;
+version alpha.10 conservée, aucune publication. Les preuves
+figurent dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#qualifications-des-champs-adressés-via-callbacks--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — retours par référence des callbacks
+
+**VALIDÉ dans le périmètre testé.** Le backend
+C++ conserve l'adresse retournée et distingue lecture et adressage, sans traiter
+une référence de structure comme un retour par valeur. Le bootstrap propage la
+constance des appels ; le frontend Gs++ conserve celle des champs et éléments
+adressés. Quinze corpus bilingues exécutés avec callbacks C++ fournis par l'hôte
+vérifient le stockage et le nombre d'appels ; quinze refus bilingues portent la
+matrice locale à **2 285**. CTest Windows 5/5, GNU/Linux 6/6, solution et validation
+natives Visual Studio 2026 réussis ; conformité 20/20 par chaîne, trois images
+reconstruites identiques et vérifiées. Aucun retour par référence de fonction
+ordinaire Gs++ n'est ajouté, aucune publication. Les preuves figurent dans le
+[bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#retours-par-référence-des-callbacks--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — arguments agrégés des callbacks et diagnostics
+
+**VALIDÉ dans le périmètre testé.** Les diagnostics internes des appels agrégés
+ne sont plus remplacés par une incompatibilité du champ par défaut. Neuf corpus
+bilingues exécutés supplémentaires couvrent les structures et tableaux, signatures
+imbriquées, champs objets, bases, délégations et retours booléens ; un corpus
+supplémentaire est uniquement sémantique. Vingt-deux refus bilingues portent la
+matrice locale à **2 255**. CTest Windows 5/5, GNU/Linux 6/6, solution et validation
+natives Visual Studio 2026 réussis ; conformité 20/20 par chaîne, trois images
+reconstruites identiques et vérifiées. Version alpha.10 conservée, tranche locale
+non publiée. Les preuves figurent dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#arguments-agrégés-des-callbacks-et-diagnostics-des-champs--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — callbacks des champs par défaut
+
+**VALIDÉ dans le périmètre testé.** Dix corpus bilingues exécutés couvrent les
+callbacks partagés par plusieurs constructeurs, signatures imbriquées, références,
+pointeurs, indexations, agrégats, tableaux et valeurs remplacées. Un corpus bilingue
+contrôle uniquement la sémantique des références de callbacks constantes/volatiles.
+Les types et positions exactes des paramètres retenus sont comparés au bootstrap ;
+quatorze refus bilingues portent le total local à **2 211**. CTest Windows 5/5,
+GNU/Linux 6/6, solution et validation natives Visual Studio 2026 réussis ; conformité
+20/20 par chaîne. Cette extension des tests ne change ni les algorithmes du
+compilateur ni la version alpha.10 et reste non publiée. Les preuves figurent
+dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#callbacks-des-champs-par-défaut-par-constructeur--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — qualifications des constructions
+
+**VALIDÉ dans le périmètre testé.** Les types des conversions dans les valeurs
+de champs par défaut sont résolus depuis la classe du constructeur, y compris
+dans des agrégats et signatures de callbacks. Les alias parents/importés masqués
+ne sont plus sélectionnés à tort ; le type déclaré du champ et les valeurs par
+défaut non évaluées restent préservés. Quinze corpus bilingues exécutés comparent
+les cibles de constructions locales, bases, champs et délégations au bootstrap ;
+seize refus bilingues portent le total local à **2 183**. CTest Windows 5/5,
+GNU/Linux 6/6 et validation native Visual Studio 2026 réussis, conformité 20/20
+par chaîne. Version alpha.10 conservée, tranche locale non publiée. Les preuves
+figurent dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#qualifications-des-constructions-et-conversions-des-champs-par-défaut--6-octobre-2026).
+
+### Ajout local du 5 octobre 2026 — portées des opérateurs dans les méthodes
+
+**VALIDÉ dans le périmètre testé.** La recherche lexicale des opérateurs depuis
+les méthodes, constructeurs, destructeurs et champs par défaut est couverte
+par 17 nouveaux corpus bilingues exécutés et 17 refus bilingues. Les groupes
+mixtes, masquages, accès, priorité du type de gauche et choix différents pour
+un même champ évalué par plusieurs constructeurs sont comparés au bootstrap.
+Le total local est de **2 151 refus différentiels** ; CTest Windows 5/5,
+GNU/Linux 6/6 et validation native Visual Studio 2026 réussis, conformité
+20/20 par chaîne. Cette extension des tests ne change ni les algorithmes du
+compilateur ni la version alpha.10 et reste non publiée. Les preuves figurent
+dans le [bilan du frontend](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#portées-des-opérateurs-dans-les-méthodes--tranche-locale-du-5-octobre-2026).
+
 ### Ajout local du 5 octobre 2026 — priorités des bases, champs et initialiseurs
 
 **VALIDÉ dans le périmètre testé.** Les constructions récursives implicites
@@ -362,10 +440,25 @@ Les prochains jalons sont donc réservés à Gs++ :
    ou explicite, sorties Windows PE et Linux ELF et conservation de GsE pour
    la cible Galactic-Shrine ; remplacement de `.GsA` par `.Glib` pour les
    bibliothèques statiques à partir de 0.28.0, `.GdLib` réservé aux éventuelles
-   bibliothèques dynamiques, `.GsE` conservé pour les exécutables ;
+   bibliothèques dynamiques, `.GsE` conservé pour les exécutables ; séparation
+   de la compilation `gsppc` et de la construction des projets/solutions dans
+   GsBuild (nom proposé, commande `gsbuild`), avec archivage et liaison pilotés
+   par l'outil de construction ;
 6. 0.29 — durcissement, reproductibilité, SDK et distribution, exécution sur
    les systèmes cibles et validation des combinaisons de compilation croisée ;
 7. 1.0.0 — sortie produit après satisfaction de tous les critères.
+
+**Décision du 5 octobre 2026 — prévue pour le jalon 0.28, non implémentée :**
+introduire un outil dédié de construction des projets `.GsPj`/`.GsProject` et
+solutions `.GsPs`, proposé sous le nom **GsBuild** (`gsbuild`). Il pilote les
+compilations, la création de bibliothèques et l'édition de liens ; `gsppc` se
+limite à compiler les sources et interfaces Gs++ en objets. La séparation
+reprend le rôle d'un moteur de construction comme MSBuild, sans promettre la
+compatibilité avec ses projets ou tâches. CMake et MSBuild restent des moyens
+de construire la toolchain. Les commandes 0.27 restent inchangées jusqu'à une
+migration implémentée, testée et documentée ; aucun GsBuild n'est encore livré.
+Le [plan produit](PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md#séparer-compilation-et-construction--décision-du-5-octobre-2026)
+définit les responsabilités et la transition.
 
 **Décision du 21 septembre 2026 — prévue pour 0.28.0, non implémentée :**
 les extensions de bibliothèques deviennent `.Glib` (statique, remplacement de

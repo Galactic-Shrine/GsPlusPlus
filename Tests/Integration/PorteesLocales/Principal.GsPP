@@ -1,0 +1,70 @@
+espace GalacticShrine::GsPP::Tests::PorteesLocales {
+
+    publique entier32 Trace = 0;
+
+    classe Objet {
+
+        entier32 Id;
+
+        publique:
+        /**
+         * <résumé>Identifie une déclaration locale pour suivre sa destruction.</résumé>
+         * @Paramètre(entier32: id) Chiffre à ajouter à la trace.
+         **/
+        constructeur(entier32 id) {
+
+            soi.Id = id;
+        }
+
+        /**
+         * <résumé>Enregistre la fin de vie de chaque objet, y compris les éléments de tableaux.</résumé>
+         **/
+        destructeur() {
+
+            Trace = Trace * 10 + soi.Id;
+        }
+    };
+
+    /**
+     * <résumé>Réutilise des noms dans les blocs, branches et boucles, puis dans leur portée suivante.</résumé>
+     * @Retourner(entier32) Somme des deux valeurs locales, soit 42.
+     **/
+    entier32 Executer() {
+
+        entier32 total = 0;
+        {
+
+            entier32 valeur = 11;
+            total = total + valeur;
+        }
+        {
+
+            entier32 valeur = 31;
+            total = total + valeur;
+        }
+        {
+
+            Objet objet(1);
+        }
+        {
+
+            Objet objet[2](2);
+        }
+        si (total == 42) Objet objet(3);
+        sinon Objet objet(9);
+        tantque (Trace < 12_234) Objet objet(4);
+        Objet objet(5);
+        retourner total;
+    }
+
+    /**
+     * <résumé>Vérifie le résultat et la destruction de chaque portée, dont le retour de la fonction.</résumé>
+     * @Retourner(entier32) 42 si les objets sont détruits dans l'ordre attendu, sinon 1.
+     **/
+    publique entier32 Principal() {
+
+        entier32 resultat = Executer();
+        si (Trace != 122_345) retourner 1;
+        retourner resultat;
+    }
+}

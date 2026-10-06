@@ -179,6 +179,21 @@ valident le compilateur sur ces hôtes et le contrat Gs++ existant.
 Le [plan produit](Documentation/PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md) décrit cette
 évolution et ses critères de validation.
 
+### Séparation compilation / construction prévue
+
+Pour le jalon **0.28**, un outil dédié est prévu sous le nom proposé
+**GsBuild**, avec la commande `gsbuild`. Il prendra en charge les projets XML
+`.GsPj`/`.GsProject` et les solutions `.GsPs`, puis pilotera les compilations,
+la création des bibliothèques et l'édition de liens. `gsppc` se concentrera
+uniquement sur la compilation des sources et interfaces Gs++ en objets.
+
+**Non implémenté actuellement :** la chaîne 0.27 conserve les commandes
+`gsppc` présentées ici. GsBuild aura un rôle analogue à celui de MSBuild pour
+les projets Gs++, sans annoncer une compatibilité avec les projets MSBuild.
+CMake et Visual Studio/MSBuild resteront utilisables pour construire la
+toolchain elle-même. Le [plan produit](Documentation/PLAN_PRODUIT_GS_PLUS_PLUS_1.0.md#séparer-compilation-et-construction--décision-du-5-octobre-2026)
+décrit cette séparation et la migration prévue.
+
 ## Extensions
 
 | Usage | Extensions |
@@ -347,7 +362,7 @@ principale.
   retours alignés sur le bootstrap ;
 - contraintes structurelles et numériques des déclarations, énumérations et
   initialiseurs globaux et conversions explicites alignées sur le bootstrap,
-  avec **1 957 corpus négatifs** dans les sources de développement (**619** dans
+  avec **2 301 corpus négatifs** dans les sources de développement (**619** dans
   l'alpha.10 publiée), dont le code, la ligne et la colonne sont contrôlés ;
 - références de callbacks, signatures imbriquées et tableaux de pointeurs à
   indirections profondes couverts par les tests différentiels de développement ;
@@ -416,6 +431,45 @@ principale.
   suivant, sans publier d'étapes supplémentaires ; plan final dans l'ordre
   canonique, choix des champs réutilisés et `parent()` sans constructeur propre
   pris en charge dans la matrice différentielle ;
+- déclarations locales contrôlées lors de leur visite : types, noms répétés,
+  variables `vide`, références et constantes sans initialiseur, construction
+  explicite réservée aux classes ; priorité des diagnostics et portées des
+  branches sans accolades comparées au bootstrap ;
+- génération machine C++ des noms locaux réutilisés dans des portées distinctes,
+  avec emplacements propres aux déclarations ; dix corpus bilingues exécutés,
+  références, callbacks, tableaux, branches, boucles et destructions lors des
+  retours anticipés, ainsi qu'un exemple d'intégration bilingue ;
+- recherche lexicale des noms dans les espaces parents même sans import,
+  notamment depuis les méthodes de classes ; types, alias, énumérations,
+  globales, callbacks et opérateurs, avec masquage des homonymes externes ;
+  douze corpus bilingues exécutés avec résultat 42 ;
+- recherche démarrant à la classe dans les méthodes, constructeurs et
+  destructeurs, y compris les champs par défaut ; masquage des fonctions
+  parentes et importées, callbacks et récepteurs explicites ; quatorze corpus
+  bilingues exécutés, cibles choisies comparées au bootstrap ;
+- portées d'opérateurs dans les méthodes, constructeurs, destructeurs et champs
+  par défaut : groupes mixtes, accès privés/protégés et choix de surcharge par
+  constructeur ; dix-sept corpus bilingues exécutés avec cibles exactes,
+  résultat 42 et images reproductibles ;
+- conversions des champs par défaut résolues depuis la portée du constructeur,
+  y compris les alias masquant les types parents/importés et les signatures
+  de callbacks imbriquées ; quinze corpus bilingues exécutés couvrent aussi
+  références, bases, champs objets et délégations, avec constructeurs choisis
+  comparés au bootstrap ;
+- callbacks des champs par défaut réévalués selon chaque constructeur : appels
+  directs via callback, déréférencement, indexation, signatures imbriquées,
+  références et agrégats ; dix corpus bilingues exécutés et un contrôle
+  sémantique bilingue des références de callbacks constantes/volatiles ;
+- arguments agrégés des callbacks évalués avec la signature de chaque constructeur,
+  dans les champs par défaut et les initialisations de champs objets, bases et
+  délégations ; neuf corpus bilingues exécutés supplémentaires ; les diagnostics
+  internes des expressions restent distincts de l'incompatibilité avec le champ ;
+- retours par référence des callbacks : lectures, liaisons, mutations, adresses,
+  champs et appels imbriqués ; vingt-cinq corpus bilingues exécutés avec callbacks
+  C++ fournis par l'hôte et nombre d'appels vérifié ; constance conservée par le
+  bootstrap, qualifications `volatile` et `constante volatile` conservées pour
+  les champs/éléments adressés par le frontend Gs++, y compris par flèche ; cela
+  n'ajoute pas les retours par référence aux fonctions ordinaires Gs++ ;
 - initialiseurs globaux contrôlés entièrement dans l'ordre source, avec typage
   de toutes les feuilles avant leur passe constante ; priorité des contrôles
   structurels des champs par défaut, dans le périmètre différentiel testé ;

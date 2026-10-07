@@ -12471,6 +12471,9 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             {22, 15, "classe C { virtuel virtuel constructeur() {} };", "class C { virtual virtual constructor() {} };"}
         };
         std::filesystem::create_directories(repertoire);
+        // Un littéral étroit dépend de la page de codes Windows ; l'inclusion est toujours UTF-8.
+        const auto etoile = repertoire / std::filesystem::path(u8"Étoile.GsPP");
+        Exiger(etoile.filename().generic_u8string() == u8"Étoile.GsPP", "nom physique Unicode altéré");
         auto ecrire = [&](const std::filesystem::path& chemin, const std::string& contenu)
         {
             std::ofstream sortie(chemin, std::ios::binary);
@@ -12497,11 +12500,14 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                     const std::string nomVirtuel = cas.Interface ? "diagnostic-virtuel.HGsPP" : "diagnostic-virtuel.GsPP";
                     ecrire(root, "#include \"Milieu.GsPP\"\n");
                     ecrire(repertoire / "Milieu.GsPP", "#include \"Étoile.GsPP\"\n");
-                    ecrire(repertoire / "Étoile.GsPP", "\xEF\xBB\xBF\r\n" + std::string(anglais ? cas.Anglais : cas.Francais) + "\r\n");
+                    ecrire(etoile, "\xEF\xBB\xBF\r\n" + std::string(anglais ? cas.Anglais : cas.Francais) + "\r\n");
                     std::optional<GsPP::ErreurCompilation> oracle;
                     try { (void)GsPP::AnalyseurSyntaxique(GsPP::PreparerJetonsSource(root, nomVirtuel), nomVirtuel, cas.Interface).Analyser(); }
                     catch (const GsPP::ErreurCompilation& erreur) { oracle = erreur; }
                     Exiger(oracle.has_value(), "corpus syntaxique accepté par le bootstrap");
+                    Exiger(std::filesystem::is_regular_file(etoile)
+                        && oracle->Message(GsPP::LangueDiagnostic::Anglais) != "included file not found",
+                        "le corpus Unicode n'atteint pas le diagnostic syntaxique du fichier inclus");
                     const auto preparation = GsPP::PreparerFichierAvecReprise({root, cas.Interface, nomVirtuel}, image.Developper(),
                         {}, {}, comparaisons % 2 == 0, comparaisons % 3 == 0);
                     const auto refus = GsPP::AnalyserDeclarationsPreparees(preparation, AnalyseurDeclarationsDelegue);
@@ -12510,7 +12516,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                         "code/détail syntaxique incorrect : corpus=" + std::to_string(comparaisons)
                         + ", code=" + std::to_string(refus.Resultat.Erreur) + ", détail=" + std::to_string(refus.Resultat.Detail));
                     // Le diagnostic ne dépend ni d'une nouvelle lecture ni des sources développées supprimées.
-                    ecrire(repertoire / "Étoile.GsPP", "@");
+                    ecrire(etoile, "@");
                     std::optional<GsPP::ErreurCompilation> diagnostic;
                     try { refus.ExigerValide(); }
                     catch (const GsPP::ErreurCompilation& erreur) { diagnostic = erreur; }

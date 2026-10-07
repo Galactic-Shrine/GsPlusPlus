@@ -10,13 +10,17 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
-Le commit signé [`fbbf443`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/fbbf4436d03358e3ee95d06472b61e552cd0f934)
-publie les tranches jusqu'au catalogue anticipé de fichiers et aux origines, à 2 751
-refus sémantiques. Sa signature est vérifiée et sa
-[CI à trois chaînes](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37520062256)
-réussit. Les mentions locales des jalons historiques décrivent leur état au
-moment de validation ; aucune nouvelle release ni mise à jour des paquets
-alpha.10 n'est réalisée.
+Le commit signé [`fefd44a`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/fefd44a34d900feb4d23d923b215a835b073f2c3)
+publie les tranches jusqu'aux diagnostics syntaxiques possédés, à 2 751 refus
+sémantiques. GitHub confirme sa signature vérifiée. Sa
+[première CI distante](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37581180270)
+réussit sous Linux mais échoue sur les deux chaînes Windows : le corpus de test
+crée `Étoile.GsPP` avec une conversion dépendante de la page de codes système.
+Le correctif utilise un chemin explicitement UTF-8 et conserve les comparaisons
+bilingues ; il ne modifie pas le comportement des inclusions du compilateur.
+Les mentions locales des jalons historiques décrivent leur état au moment de
+validation ; aucune nouvelle release ni mise à jour des paquets alpha.10
+n'est réalisée.
 
 ### Ajout local du 7 octobre 2026 — diagnostics syntaxiques possédés
 

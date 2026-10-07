@@ -10,6 +10,30 @@
 
 # Journal des modifications
 
+## Portabilité du corpus Unicode Windows — 2026-10-07
+
+### Français
+
+- corriger la création du fichier de test `Étoile.GsPP` : utiliser un chemin
+  explicitement UTF-8 au lieu d'un littéral étroit interprété selon la page de
+  codes Windows. Les deux validations Windows distantes du commit `fefd44a`
+  refusaient ce fichier comme introuvable ; Linux réussissait ;
+- vérifier le nom physique Unicode et que chaque cas atteint son diagnostic
+  syntaxique, sans changer les 67 corpus bilingues / 134 refus ni affaiblir les
+  comparaisons de messages et de positions. Aucun changement du compilateur,
+  du format, de l'ABI ou de la version du produit.
+
+### English
+
+- fix creation of the `Étoile.GsPP` test fixture: use an explicitly UTF-8 path
+  instead of a narrow literal interpreted through the Windows code page. Both
+  remote Windows validations of commit `fefd44a` reported the file missing;
+  Linux passed;
+- check the physical Unicode name and that each case reaches its syntax
+  diagnostic, preserving all 67 bilingual corpora / 134 rejections and exact
+  message/position comparisons. No compiler, format, ABI or product-version
+  change.
+
 ## Diagnostics syntaxiques possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
 
 ### Français

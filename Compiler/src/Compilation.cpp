@@ -3,14 +3,13 @@
 #include "GsPP/AnalyseurSemantique.hpp"
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
+#include "GsPP/FichiersSource.hpp"
 #include "GsPP/Lexeur.hpp"
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
 #include <iterator>
 #include <ostream>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -21,17 +20,6 @@ namespace GsPP
 {
     namespace
     {
-        std::string LireFichier(const std::filesystem::path& chemin)
-        {
-            std::ifstream flux(chemin, std::ios::binary);
-            if (!flux)
-                throw std::runtime_error(
-                    "impossible d’ouvrir le fichier source : " + chemin.string());
-            std::ostringstream contenu;
-            contenu << flux.rdbuf();
-            return contenu.str();
-        }
-
         std::string ExtensionMinuscule(const std::filesystem::path& chemin)
         {
             auto extension = chemin.extension().string();
@@ -220,8 +208,17 @@ namespace GsPP
         const std::vector<UniteSource>& unites,
         std::ostream* sortieJetons)
     {
+        return AnalyserUnitesAvecPreparation(unites, [](const UniteSource& unite)
+        { return PreparerJetonsSource(unite.Chemin, unite.NomDiagnostic); }, sortieJetons);
+    }
+
+    Programme AnalyserUnitesAvecPreparation(
+        const std::vector<UniteSource>& unites, const PreparateurJetonsUnite& preparer,
+        std::ostream* sortieJetons)
+    {
         if (unites.empty())
             throw std::runtime_error("aucune unité source indiquée");
+        if (!preparer) throw std::invalid_argument("préparateur de jetons absent");
 
         Programme programme;
         for (const auto& unite : unites)
@@ -245,7 +242,9 @@ namespace GsPP
                     ".HeaderGsPlusPlus : " + unite.Chemin.string());
             const auto nomDiagnostic = unite.NomDiagnostic.empty()
                 ? unite.Chemin.string() : unite.NomDiagnostic;
-            auto jetons = PreparerJetonsSource(unite.Chemin, nomDiagnostic);
+            auto jetons = preparer(unite);
+            if (jetons.empty() || jetons.back().Genre != GenreJeton::Fin)
+                throw std::runtime_error("préparation sans jeton de fin");
             if (sortieJetons)
             {
                 *sortieJetons << "== " << nomDiagnostic << " ==\n";
@@ -278,28 +277,15 @@ namespace GsPP
         std::unordered_set<std::string> actifs;
         std::vector<Jeton> resultat;
         Jeton finPrincipale{GenreJeton::Fin, "", 1, 1};
-        const auto identifier = [](const std::filesystem::path& fichier)
-        {
-            const auto utf8 = std::filesystem::weakly_canonical(fichier).generic_u8string();
-            std::string cle(utf8.begin(), utf8.end());
-#if defined(_WIN32)
-            std::transform(cle.begin(), cle.end(), cle.begin(), [](unsigned char valeur)
-            {
-                return valeur >= 'A' && valeur <= 'Z' ? static_cast<char>(valeur + ('a' - 'A'))
-                    : static_cast<char>(valeur);
-            });
-#endif
-            return cle;
-        };
         std::function<void(const std::filesystem::path&, const std::string&)> inclure;
         inclure = [&](const std::filesystem::path& fichier, const std::string& diagnostic)
         {
-            const auto canonique = identifier(fichier);
+            const auto canonique = IdentifierFichierSource(fichier);
             if (uneFois.contains(canonique)) return;
             if (actifs.size() >= 128 || !actifs.insert(canonique).second)
                 throw ErreurCompilation("cycle ou profondeur excessive d'inclusion : " + fichier.string(),
                     "include cycle or excessive depth: " + fichier.string(), 1, 1, diagnostic);
-            auto jetons = Lexeur(LireFichier(fichier), diagnostic).Analyser();
+            auto jetons = Lexeur(LireFichierSource(fichier), diagnostic).Analyser();
             if (fichier == chemin) { finPrincipale = jetons.back(); finPrincipale.Fichier = diagnostic; }
             for (std::size_t index = 0; index + 1 < jetons.size(); ++index)
             {
@@ -337,11 +323,11 @@ namespace GsPP
                     erreur("chemin d'inclusion entre guillemets attendu", "expected quoted include path");
                 const std::u8string cheminUtf8(argument.Texte.begin(), argument.Texte.end());
                 const auto cible = fichier.parent_path() / std::filesystem::path(cheminUtf8);
-                if (!std::filesystem::is_regular_file(cible))
+                if (!EstFichierSourceRegulier(cible))
                     erreur("fichier inclus introuvable", "included file not found");
                 if (EstExtensionGsSharp(cible) || EstExtensionObsolete(cible))
                     erreur("extension d'inclusion incompatible avec Gs++", "include extension is incompatible with Gs++");
-                const auto canoniqueCible = identifier(cible);
+                const auto canoniqueCible = IdentifierFichierSource(cible);
                 if (actifs.contains(canoniqueCible) && !uneFois.contains(canoniqueCible))
                     erreur("cycle d'inclusion détecté", "include cycle detected");
                 inclure(cible, cible.string());

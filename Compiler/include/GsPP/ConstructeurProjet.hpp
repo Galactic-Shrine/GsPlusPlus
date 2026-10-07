@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GsPP/Compilation.hpp"
+
 #include <cstddef>
 #include <filesystem>
 #include <iosfwd>
@@ -17,6 +19,11 @@ namespace GsPP
     {
         std::filesystem::path Sortie;
         std::filesystem::path RepertoireObjets;
+        /**
+         * <résumé>Préparation facultative partagée par les interfaces et sources du projet.</résumé>
+         * @etc. Vide : bootstrap. Le propriétaire des ressources capturées doit vivre jusqu'à la fin de la construction.
+         **/
+        PreparateurJetonsUnite PreparerJetons;
     };
 
     class ConstructeurProjet final
@@ -28,6 +35,7 @@ namespace GsPP
             const OptionsConstructionProjet& options = {}) const;
         [[nodiscard]] std::vector<ResultatConstructionProjet> ConstruireSolution(
             const std::filesystem::path& cheminSolution,
-            std::ostream& journal) const;
+            std::ostream& journal,
+            const PreparateurJetonsUnite& preparerJetons = {}) const;
     };
 }

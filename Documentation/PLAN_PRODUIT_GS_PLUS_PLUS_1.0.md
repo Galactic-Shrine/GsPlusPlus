@@ -635,6 +635,131 @@ elle ne clôt pas le frontend 0.27.
   20/20 par chaîne ; images identiques vérifiées, 542 527 octets et 99 exports,
   total sémantique 2 751 inchangé ; alpha.10, formats 1.0 et ABI 1 conservés,
   travail local sans commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : entrée additive d'expansion à la demande,
+  requête de 56 octets, demande de 40 octets et codes de suspension 15/16 ;
+  validation des directives avant résolution, once/cycle/profondeur avant lecture,
+  sorties intactes et arène libérée sur suspension. `PreparerFichierAvecOrigines`
+  répond aux demandes sans découverte des directives par le lexeur C++ ;
+  instantané propriétaire et fichiers non visités non lus. Reprises par relance
+  du parcours, optimisation et parité exhaustive des E/S encore ouvertes ;
+  CTest Windows 5/5, GNU/Linux 6/6 et validation native réussis, conformité
+  20/20 par chaîne ; trois images identiques vérifiées de 545 295 octets,
+  101 exports et deux imports, total sémantique 2 751 inchangé. Alpha.10,
+  formats 1.0, ABI 1 et pilote par défaut inchangés ; tranche locale non
+  commitée/non poussée, distincte de `fbbf443` publié et de sa CI ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : cache lexical facultatif des
+  reprises à la demande, requête de session de 40 octets, caches privés et
+  libération explicite/automatique côté produit, aussi sur exception.
+  `PreparerFichierAvecOriginesEnSession` partage les demandes et les bornes avec
+  l'adaptateur sans cache. Les 41 corpus bilingues et les matrices d'origines
+  comparent leurs sorties jusqu'à la sémantique. Sur 32 fichiers : 1 056 lexages
+  sans conservation contre 32 avec cache, 1 024 réutilisations et 65 appels,
+  E/S/sorties identiques ; aucune performance globale revendiquée. Sources
+  immuables pendant la session ; parcours/validations et préparation finale
+  encore rejoués. Alpha.10, formats 1.0, ABI 1, pilote et fichier utilisateur
+  inchangés ; CTest Windows 5/5, GNU/Linux 6/6 et validation native VS 2026
+  réussis, conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés ;
+  trois images identiques vérifiées de 549 583 octets, 103 exports et deux
+  imports ; travail local sans nouveau commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : reprise persistante facultative,
+  requête de 48 octets, pile/once/actifs et fragments conservés, instantanés
+  contrôlés entre appels ; sources lues, métadonnées observées et liens fournis
+  immuables, catalogue croissant et tableaux déplaçables. Mesure/publication sans
+  nouveau parcours ni allocation de sélection ; reprise après allocation impossible,
+  sessions indépendantes et libération automatique sur exception côté produit.
+  `PreparerFichierAvecReprise` partage le dialogue avec les variantes précédentes.
+  Les 41 corpus bilingues et les matrices d'origines comparent les sorties jusqu'à
+  la sémantique. Profil de 32 fichiers : 10 398 jetons engagés, 32 lexages, 65 appels,
+  32 lectures et 31 résolutions ; aucune performance globale linéaire revendiquée,
+  validations/copies du catalogue et relexage final encore présents.
+  CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+  réussis, conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés ; trois
+  images identiques vérifiées de 564 751 octets, 105 exports et deux imports.
+  Alpha.10, formats 1.0, ABI 1, pilote et fichier utilisateur inchangés ; parité
+  exhaustive des E/S et raccord au pilote ouverts. Travail local sans nouveau
+  commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : primitives de fichiers hôtes
+  partagées entre bootstrap, catalogue anticipé et trois adaptateurs ; lecture
+  contrôlée sans texte partiel après panne, erreurs hôtes structurées avec
+  opération/chemin/code système et messages français/anglais. Quinze corpus
+  bilingues, frontières de blocs/EOF, pannes de flux et incidents après résolution,
+  verrou exclusif Windows et libération sur exception vérifiés ; quatre contrôles
+  CLI de langue/protection d'une sortie existante dans le cas de conformité actuel.
+  CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+  réussis, conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés ; trois
+  images identiques vérifiées de 564 751 octets, 105 exports et deux imports.
+  Alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur inchangés ;
+  sélection du pilote toujours au bootstrap, raccord à préparer, couverture
+  non exhaustive des ACL/liens symboliques/volumes distants/courses concurrentes.
+  Pas de garantie atomique statut/ouverture ni de relance automatique sur E/S.
+  Travail local sans nouveau commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : option d'expansion Gs++ dans
+  le pilote des sources/interfaces directes, image de confiance chargée avec
+  durée de vie possédée, deux imports, exports FR/EN cohérents et protections
+  W^X/RX, sans appel du point d'entrée ni bac à sable. Reprise distincte par
+  unité, pont contrôlé vers les jetons C++, origines et diagnostics bilingues
+  conservés ; bootstrap par défaut, aucun repli silencieux. Onze corpus dans
+  les deux syntaxes et 41 corpus bilingues d'expansion, 13 sorties/six contrats
+  d'image altérés, six paires CLI COFF/GsObj/GsE et six paires d'extensions,
+  images exécutées avec retour 42 et 18 refus CLI avec sortie conservée.
+  CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+  réussis ; conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés.
+  Trois images identiques vérifiées, 564 751 octets et 105 exports ; alpha.10,
+  formats 1.0, ABI 1, backend et fichier utilisateur conservés. Lors de cette
+  première tranche, projets/solutions refusaient l'option et les raccords restaient
+  ouverts,
+  sans changement du chemin par défaut, frontend complet ni gain global annoncé.
+  Travail local sans nouveau commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : raccord de l'expansion Gs++
+  facultative aux projets XML et solutions, en modes séparé/agrégé. Une image
+  de confiance possédée par commande, préparateur transmis à chaque projet,
+  interface et source, reprises/once indépendants ; bootstrap par défaut,
+  schéma XML 1.0, chemins, ordre de solution et liaison inchangés.
+  Test API des rappels, journaux, origines et exceptions ; huit scénarios
+  XML/source FR/EN, 48 comparaisons de constructions et de toutes leurs sorties,
+  exécutables retournant 42, 56 refus différentiels et quatre images refusées
+  avant construction. Remplacements de projet, arrêt de solution sans retour
+  arrière global et nouvelle invocation après correction vérifiés.
+  CTest Windows 5/5, GNU/Linux 6/6, construction/validation native VS 2026 et
+  conformité 20/20 par chaîne réussis ; 2 751 refus sémantiques inchangés.
+  Exemple réel de projet Directives vérifié/exécuté sous MSVC et GNU, retour 42.
+  Trois Frontend identiques vérifiés, en-têtes alpha.10, formats 1.0, ABI 1,
+  backend et fichier utilisateur conservés. Les AST/passes Gs++ restent à
+  raccorder ; aucun frontend complet, changement du chemin par défaut ou gain
+  global de performances annoncé. Travail local sans nouveau commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ** : adaptateur hôte d'AST
+  syntaxique possédé après expansion, sans analyse syntaxique C++ ni nouvelle
+  lecture des sources ; contrats ABI centralisés, exports syntaxiques contrôlés
+  à la demande sans rendre l'expansion dépendante de leur présence.
+  Texte/noms/nœuds et origines restent disponibles après déchargement de
+  l'image et destruction du catalogue ; instantanés privés, bornes et absence
+  d'arbre partiel sur refus. Vingt corpus bilingues valides et sept refus
+  syntaxiques bilingues comparés au bootstrap, 45 contrats altérés,
+  cinq préparations et sept exports altérés refusés ; allocations et
+  exceptions vérifiées. CTest Windows 5/5, GNU/Linux 6/6, construction/validation
+  native VS 2026 et conformité 20/20 par chaîne réussis ; 2 751 refus sémantiques
+  inchangés. API de bibliothèque uniquement : pas de remplacement de
+  `Programme`, de messages syntaxiques du pilote ni de raccord aux passes
+  suivantes. Bootstrap et CLI inchangés, alpha.10, formats 1.0, ABI 1,
+  backend et fichier utilisateur conservés. Travail local sans nouveau
+  commit/push/release ;
+- **VALIDÉ LOCALEMENT DANS LE PÉRIMÈTRE TESTÉ SUR LES TROIS CHAÎNES** : traduction
+  des refus syntaxiques possédés par `DeclarationsPreparees::ExigerValide()`
+  en `ErreurCompilation` française/anglaise et position originale. Quarante-trois
+  contextes additifs dans le champ `Detail` existant, sans changer les codes,
+  tailles ABI ni exports ; détails inconnus/incompatibles refusés comme contrats
+  hôtes, 0 conserve la catégorie générique historique.
+  Soixante-sept corpus bilingues, 134 refus comparés exactement au bootstrap
+  pour les messages et le rendu GS1001/positions, dont quatre combinaisons de
+  priorité ; inclusions imbriquées, Unicode/BOM/CRLF, nom virtuel, EOF,
+  interface, instantanés et durée de vie. Deux détails de rappel et cinq
+  résultats altérés refusés ; succès sans exception et détail nul vérifiés.
+  CTest Windows 5/5, GNU/Linux 6/6, construction/validation native VS 2026 et
+  conformité 20/20 par chaîne réussis ; 2 751 refus sémantiques inchangés.
+  Trois images identiques vérifiées de 566 495 octets et 105 exports ; alpha.10,
+  formats 1.0, ABI 1, backend et fichier utilisateur conservés.
+  API uniquement, pas d'activation dans le pilote, de frontend complet ou de
+  parité exhaustive. Travail local sans nouveau commit/push/release ;
 - **EN COURS** : compléter la matrice des conversions et qualifications et les autres
   familles sémantiques, notamment les contextes des constructions et les
   interactions de priorité entre passes non encore testées, dont les
@@ -651,8 +776,10 @@ Le contrat et les preuves intermédiaires du lexeur et de l’AST sont décrits 
 
 Le passage au jalon 0.28 n'est pas encore validé. Les prochaines tranches
 portent sur les interactions sémantiques restantes, les autres combinaisons de
-constructions, la lecture/résolution à la demande du catalogue et l'intégration
-du chemin préparé avec origines au pilote de compilation de fichiers, puis sur
+constructions, la consolidation des reprises/erreurs d'E/S à la demande et
+le raccord de l'AST possédé à l'assemblage/normalisation multi-unités, aux
+passes suivantes et au backend, avec connexion des diagnostics possédés au pilote
+et vérification avant tout changement du chemin par défaut, puis sur
 la consolidation de la conformité et des
 benchmarks du frontend 0.27. Le nombre de corpus réussis n'est ni un pourcentage
 d'achèvement ni un déclencheur automatique de changement de version.

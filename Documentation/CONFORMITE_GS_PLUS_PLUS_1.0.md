@@ -50,6 +50,35 @@ des exigences ; il ne remplace ni le manifeste ni les contrats de format.
 Les fichiers Gs# ne possèdent aucun fichier d’en-tête et ne sont jamais
 interprétés par `gsppc`.
 
+### Extension locale des contrôles de projets
+
+Dans les sources de développement après alpha.10, `CONF-PROJ-001` vérifie aussi
+le choix explicite de l'expansion Gs++ par `--expanseur-inclusions` /
+`--include-expander`, sans ajouter d'exigence au manifeste : le total reste 20.
+La matrice croise les modes séparé/agrégé, les vocabulaires XML français/anglais
+et les mots-clés source français/anglais, soit **huit scénarios**.
+
+Pour chacun, les deux alias sont utilisés sur le projet bibliothèque, le projet
+exécutable et la solution : **48 comparaisons** d'objets, archive, image et carte
+avec le bootstrap. Les journaux de solution et l'ordre des projets sont comparés ;
+les exécutables sont vérifiés et retournent 42. Le chemin de l'image est relatif
+au processus et contient des espaces, tandis que les chemins XML restent relatifs
+aux projets. Les remplacements de sortie et de répertoire d'objets sont vérifiés
+sur un projet indépendant.
+
+**56 refus différentiels** couvrent directives, lexage d'un fichier inclus,
+corps interdit dans une interface, sémantique, inclusion absente, nom virtuel
+d'une interface racine et source physique absente : deux modes, deux langues de
+diagnostics et deux entrées (projet/solution). Codes et messages sont identiques
+au bootstrap, et les sorties préexistantes sont conservées pour ces refus avant
+le premier objet. Quatre images invalides/absentes sont refusées avant la
+construction. Un échec du second projet vérifie séparément l'arrêt de la
+solution sans annulation du premier, puis la réussite d'une nouvelle invocation.
+
+Ces vérifications ne certifient ni l'authenticité d'une image native, ni une
+transaction globale de construction, ni les passes auto-hébergées suivantes.
+Elles n'actualisent pas les paquets alpha.10 déjà publiés.
+
 ## Exécution par CMake
 
 La suite est enregistrée dans CTest sous le nom `gspp_conformite`. Elle utilise

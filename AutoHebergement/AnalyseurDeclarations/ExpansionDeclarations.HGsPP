@@ -48,6 +48,10 @@ espace GalacticShrine::GsPP::Autohebergement {
         ExcessiveDepth = 13,
         TailleExcessive = 14,
         ExcessiveSize = 14,
+        ResolutionRequise = 15,
+        ResolutionRequired = 15,
+        LectureRequise = 16,
+        ReadRequired = 16,
     };
 
     structure ResultatExpansionDeclarations {
@@ -88,9 +92,90 @@ espace GalacticShrine::GsPP::Autohebergement {
      **/
     publique ErreurExpansionDeclarations DevelopperInclusionsDeclarations(RequeteExpansionDeclarations* requete);
 
+    /** <résumé>Demande hôte : opération 1 résolution, 2 lecture ; plage brute de l'argument entre guillemets pour 1.</résumé> **/
+    structure DemandeExpansionDeclarations {
+        naturel32 Operation;
+        naturel32 Reserve;
+        naturel64 IndexFichier;
+        naturel64 DebutDirective;
+        naturel64 DebutArgument;
+        naturel64 TailleArgument;
+    };
+
+    structure RequeteExpansionDeclarationsADemande {
+        RequeteExpansionDeclarations* Expansion;
+        constante naturel32* Disponibles;
+        DemandeExpansionDeclarations Demande;
+    };
+
+    /**
+     * <résumé>Suspend l'expansion avant une résolution ou lecture nécessaire, sans publier les sorties.</résumé>
+     * @Paramètre(RequeteExpansionDeclarationsADemande*: requete) Catalogue partiel et disponibilités 0/1, une par fichier.
+     * @Retourner(ErreurExpansionDeclarations) Codes habituels, ou 15/16 avec demande ; l'hôte complète puis rappelle.
+     * @etc. Les fichiers indisponibles ont Source nulle et Taille zéro, mais identité et mode déjà résolus.
+     * @etc. La résolution suit la validation grammaticale ; la lecture suit once, cycles et profondeur.
+     * @etc. Aucun état ne survit à l'appel ; chaque reprise relance le parcours sur l'instantané complété.
+     * @etc. L'entrée historique et son contrat ne sont pas modifiés ; demandes et sorties sont des zones distinctes.
+     **/
+    publique ErreurExpansionDeclarations DevelopperInclusionsADemande(RequeteExpansionDeclarationsADemande* requete);
+
+    structure RequeteExpansionDeclarationsEnSession {
+        RequeteExpansionDeclarationsADemande* Expansion;
+        octet* Memoire;
+        naturel32 Operation;
+        naturel32 Reserve;
+        naturel64 NombreLexages;
+        naturel64 NombreReutilisations;
+    };
+
+    /**
+     * <résumé>Conserve les jetons des fichiers déjà lexés entre les suspensions, sans conserver le parcours.</résumé>
+     * @Paramètre(RequeteExpansionDeclarationsEnSession*: requete) Initialiser à zéro ; opération 0 développer, 1 libérer.
+     * @Retourner(ErreurExpansionDeclarations) Même protocole de demande ; la libération renvoie zéro et vide la session.
+     * @etc. Memoire appartient au frontend : ne pas copier, modifier, partager ni libérer ce pointeur côté hôte.
+     * @etc. Les indices déjà lexés, leurs adresses et leurs contenus restent immuables jusqu'à la libération.
+     * @etc. Le catalogue peut grandir ; ses tableaux et les sorties peuvent changer d'adresse entre deux appels.
+     * @etc. Changer l'adresse ou la taille d'une source déjà lexée est refusé ; une mutation en place viole le contrat.
+     * @etc. Libérer même après refus, allocation impossible ou exception hôte, avant de décharger l'image.
+     * @etc. Les compteurs cumulent fichiers lexés et réutilisations ; le parcours est encore rejoué à chaque appel.
+     **/
+    publique ErreurExpansionDeclarations DevelopperInclusionsEnSession(RequeteExpansionDeclarationsEnSession* requete);
+
+    structure RequeteExpansionDeclarationsAvecReprise {
+        RequeteExpansionDeclarationsADemande* Expansion;
+        octet* Memoire;
+        naturel32 Operation;
+        naturel32 Reserve;
+        naturel64 NombreLexages;
+        naturel64 NombreReutilisations;
+        naturel64 NombreJetonsParcourus;
+    };
+
+    /**
+     * <résumé>Reprend au point suspendu, avec pile, once, jetons et fragments conservés.</résumé>
+     * @Paramètre(RequeteExpansionDeclarationsAvecReprise*: requete) Initialiser à zéro ; opération 0 poursuivre, 1 libérer.
+     * @Retourner(ErreurExpansionDeclarations) Demandes 15/16, capacités exactes ou premier diagnostic, sorties transactionnelles.
+     * @etc. Memoire est opaque, non copiable et propre à une seule expansion ; libérer avant de décharger l'image.
+     * @etc. Racine et modes BOM/CRLF sont fixes ; fichiers et liens peuvent être ajoutés, jamais retirés.
+     * @etc. Sources lues, métadonnées déjà observées et liens déjà fournis restent immuables.
+     * @etc. Une cible en attente de lecture conserve son identité et son mode ; tableaux et sorties peuvent se déplacer.
+     * @etc. Mutation de contenu en place interdite ; la validation contrôle adresses, tailles, métadonnées et liens.
+     * @etc. Mesure et publications répétées ne reparcourent pas le graphe ; la préparation finale relexe les fragments.
+     * @etc. NombreJetonsParcourus compte les jetons engagés dans le parcours, arguments et EOF inclus, pas les essais suspendus.
+     * @etc. Toute mémoire survit aux suspensions/refus jusqu'à la libération, y compris après allocation impossible.
+     **/
+    publique ErreurExpansionDeclarations DevelopperInclusionsAvecReprise(RequeteExpansionDeclarationsAvecReprise* requete);
+
     alias InclusionSourceFile = FichierInclusionDeclarations;
     alias ResolvedInclusionLink = LienInclusionDeclarations;
     alias InclusionExpansionResult = ResultatExpansionDeclarations;
     alias InclusionExpansionRequest = RequeteExpansionDeclarations;
     alias ExpandDeclarationIncludes = DevelopperInclusionsDeclarations;
+    alias InclusionExpansionDemand = DemandeExpansionDeclarations;
+    alias OnDemandInclusionExpansionRequest = RequeteExpansionDeclarationsADemande;
+    alias ExpandDeclarationIncludesOnDemand = DevelopperInclusionsADemande;
+    alias SessionInclusionExpansionRequest = RequeteExpansionDeclarationsEnSession;
+    alias ExpandDeclarationIncludesInSession = DevelopperInclusionsEnSession;
+    alias ResumableInclusionExpansionRequest = RequeteExpansionDeclarationsAvecReprise;
+    alias ResumeDeclarationIncludes = DevelopperInclusionsAvecReprise;
 }

@@ -1,20 +1,28 @@
 #include "GsPP/ChargeurGsE.hpp"
 #include "GsPP/Compilation.hpp"
+#include "GsPP/ConstructeurProjet.hpp"
 #include "GsPP/CatalogueInclusions.hpp"
+#include "GsPP/DeclarationsPreparees.hpp"
 #include "GsPP/AnalyseurSemantique.hpp"
 #include "GsPP/AnalyseurSyntaxique.hpp"
 #include "GsPP/ErreurCompilation.hpp"
+#include "GsPP/ExpanseurInclusions.hpp"
+#include "GsPP/FichiersSource.hpp"
 #include "GsPP/EcrivainGsE.hpp"
 #include "GsPP/Lexeur.hpp"
 #include "GsPP/GenerateurX64.hpp"
+#include "GsPP/ObjetGsO.hpp"
+#include "GsPP/VerificateurGsE.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cctype>
 #include <cstdint>
+#include <chrono>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -23,6 +31,7 @@
 #include <numeric>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -107,40 +116,9 @@ namespace
         ResultatLexageHote Resultat;
     };
 
-    struct NoeudDeclarationHote
-    {
-        std::uint32_t Genre;
-        std::uint32_t Ligne;
-        std::uint32_t Colonne;
-        std::uint32_t Drapeaux;
-        std::uint64_t Parent;
-        std::uint64_t DebutNom;
-        std::uint64_t TailleNom;
-        std::uint64_t HachageNom;
-        std::uint64_t HachageEspace;
-        std::uint64_t HachageType;
-    };
-
-    struct ResultatAnalyseDeclarationsHote
-    {
-        std::uint32_t Erreur;
-        std::uint32_t LigneErreur;
-        std::uint32_t ColonneErreur;
-        std::uint32_t Detail;
-        std::uint64_t NombreNoeuds;
-        std::uint64_t CapaciteRequise;
-        std::uint64_t NombreOctetsArene;
-        std::uint64_t Reserve;
-    };
-
-    struct RequeteAnalyseDeclarationsHote
-    {
-        const char* Source;
-        std::uint64_t Taille;
-        NoeudDeclarationHote* Noeuds;
-        std::uint64_t Capacite;
-        ResultatAnalyseDeclarationsHote Resultat;
-    };
+    using GsPP::NoeudDeclarationHote;
+    using GsPP::ResultatAnalyseDeclarationsHote;
+    using GsPP::RequeteAnalyseDeclarationsHote;
 
     struct UniteDeclarationsPrepareeHote
     {
@@ -151,13 +129,7 @@ namespace
 
     using GsPP::OrigineJetonDeclarationsHote;
 
-    struct RequeteDeclarationsAvecOriginesHote
-    {
-        RequeteAnalyseDeclarationsHote* Analyse;
-        const OrigineJetonDeclarationsHote* Origines;
-        std::uint64_t NombreOrigines, NombreFichiers, IndexFichierErreur;
-        std::uint32_t LigneLocaleErreur, ColonneLocaleErreur, EstInterface, Reserve;
-    };
+    using GsPP::RequeteDeclarationsAvecOriginesHote;
 
     struct FragmentJetonDeclarationsHote
     {
@@ -11543,7 +11515,9 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
     /** <résumé>Raccorde l'expansion Gs++ aux matrices existantes et garde la sélection C++ comme oracle indépendant.</résumé> **/
     std::pair<std::string, std::vector<OrigineJetonDeclarationsHote>> PreparerFragmentsInclus(
         PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer, const std::vector<GsPP::Jeton>& originaux,
-        std::vector<std::string>& fichiers, bool bom, bool crlf, ExpanseurDeclarationsAutoHeberge developper)
+        std::vector<std::string>& fichiers, bool bom, bool crlf, ExpanseurDeclarationsAutoHeberge developper,
+        GsPP::ExpanseurInclusionsADemandeHote aDemande, GsPP::ExpanseurInclusionsEnSessionHote enSession,
+        GsPP::ExpanseurInclusionsAvecRepriseHote reprendre)
     {
         auto reference = PreparerFragmentsInclusReference(preparer, lexer, originaux, fichiers, bom, crlf);
         auto catalogue = CreerCatalogueExpansion(std::filesystem::path(originaux.back().Fichier), fichiers);
@@ -11552,12 +11526,1499 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             && std::memcmp(preparee.Origines.data(), reference.second.data(), preparee.Origines.size() * sizeof(preparee.Origines.front())) == 0,
             "texte ou origines développés différents de la sélection du bootstrap");
         Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations, "fuite de l'expansion raccordée");
-        return {std::move(preparee.Source), std::move(preparee.Origines)};
+        std::vector<GsPP::UniteSource> connus;
+        for (const auto& nom : fichiers) connus.push_back({std::filesystem::path(nom), false, nom});
+        auto paresseuse = GsPP::PreparerFichierAvecOrigines({std::filesystem::path(originaux.back().Fichier), false, {}},
+            aDemande, connus, {}, bom, crlf);
+        Exiger(paresseuse.Preparation.Resultat.Erreur == 0 && paresseuse.Preparation.Source == preparee.Source
+            && paresseuse.Preparation.Origines.size() == preparee.Origines.size()
+            && std::memcmp(paresseuse.Preparation.Origines.data(), preparee.Origines.data(), preparee.Origines.size() * sizeof(preparee.Origines.front())) == 0,
+            "préparation à la demande différente du texte/origines de référence");
+        auto conservee = GsPP::PreparerFichierAvecOriginesEnSession({std::filesystem::path(originaux.back().Fichier), false, {}},
+            enSession, connus, {}, bom, crlf);
+        Exiger(conservee.Preparation.Resultat.Erreur == 0 && conservee.Preparation.Source == paresseuse.Preparation.Source
+            && conservee.Catalogue.NomsFichiers() == paresseuse.Catalogue.NomsFichiers()
+            && conservee.Preparation.Origines.size() == paresseuse.Preparation.Origines.size()
+            && std::memcmp(conservee.Preparation.Origines.data(), paresseuse.Preparation.Origines.data(),
+                conservee.Preparation.Origines.size() * sizeof(preparee.Origines.front())) == 0
+            && AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+            "session différente de l'expansion sans cache ou non libérée");
+        auto reprise = GsPP::PreparerFichierAvecReprise({std::filesystem::path(originaux.back().Fichier), false, {}}, reprendre, connus, {}, bom, crlf);
+        Exiger(reprise.Preparation.Resultat.Erreur == 0 && reprise.Preparation.Source == conservee.Preparation.Source
+            && reprise.Catalogue.NomsFichiers() == conservee.Catalogue.NomsFichiers()
+            && reprise.Preparation.Origines.size() == conservee.Preparation.Origines.size()
+            && std::memcmp(reprise.Preparation.Origines.data(), conservee.Preparation.Origines.data(),
+                reprise.Preparation.Origines.size() * sizeof(preparee.Origines.front())) == 0
+            && AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+            "reprise différente de la sélection en session ou non libérée");
+        fichiers = reprise.Catalogue.NomsFichiers();
+        return {std::move(reprise.Preparation.Source), std::move(reprise.Preparation.Origines)};
+    }
+
+    void TesterExpansionADemande(GsPP::ExpanseurInclusionsADemandeHote developper, ExpanseurDeclarationsAutoHeberge historique,
+        const std::filesystem::path& repertoire)
+    {
+        std::filesystem::create_directories(repertoire);
+        const auto root = repertoire / "Root.GsPP";
+        const auto ecrire = [&](const std::string& nom, const std::string& source)
+        {
+            std::ofstream flux(repertoire / nom, std::ios::binary);
+            flux.write(source.data(), static_cast<std::streamsize>(source.size())); Exiger(static_cast<bool>(flux), "fixture à la demande non écrite");
+        };
+        for (bool anglais : {false, true})
+        {
+            const std::string inclure = anglais ? "#include" : "#inclure";
+            ecrire("Grand.HGsPP", std::string(1024, ' '));
+            const GsPP::UniteSource unite{root, false, "virtuel/Root"};
+            const GsPP::LimitesCatalogueInclusions limites{4096, 1000, 256, 64 * 1024};
+            for (const auto& [source, code, resolutions] : std::vector<std::tuple<std::string, std::uint32_t, std::uint64_t>>{
+                {"#pragma autre\n" + inclure + " \"Grand.HGsPP\"", 8, 0},
+                {inclure + " \"Grand.HGsPP\" suite", 7, 0},
+                {"#pragma once\n" + inclure + " \"Grand.HGsPP\"\n\xC3", 4, 0},
+                {inclure + " \"Introuvable.HGsPP\"\n" + inclure + " \"Grand.HGsPP\"", 10, 1}})
+            {
+                ecrire("Root.GsPP", source);
+                std::optional<GsPP::ErreurCompilation> oracle;
+                try { (void)GsPP::PreparerJetonsSource(root, unite.NomDiagnostic); }
+                catch (const GsPP::ErreurCompilation& erreur) { oracle = erreur; }
+                const auto resultat = GsPP::PreparerFichierAvecOrigines(unite, developper, {}, limites);
+                const auto& diagnostic = resultat.Preparation.Resultat;
+                Exiger(oracle && diagnostic.Erreur == code && resultat.NombreLectures == 1 && resultat.NombreResolutions == resolutions
+                    && resultat.Catalogue.NomsFichiers().at(diagnostic.IndexFichierErreur) == oracle->Fichier()
+                    && diagnostic.LigneErreur == oracle->Ligne() && diagnostic.ColonneErreur == oracle->Colonne()
+                    && resultat.Preparation.Source.empty() && resultat.Preparation.Origines.empty(), "lecture anticipée ou priorité de diagnostic perdue");
+            }
+            ecrire("A.HGsPP", "#pragma once\nint32 F();");
+            ecrire("Root.GsPP", inclure + " \"A.HGsPP\"\n" + inclure + " \"./A.HGsPP\"");
+            const auto once = GsPP::PreparerFichierAvecOrigines(unite, developper,
+                {{repertoire / "NonVisite.HGsPP", false, "virtuel/non-visité"}}, limites, true, true);
+            Exiger(once.Preparation.Resultat.Erreur == 0 && once.NombreLectures == 2 && once.NombreResolutions == 2
+                && once.Catalogue.Disponibles()[0] == 0 && once.Catalogue.Disponibles().back() == 0
+                && once.Catalogue.Fichiers().back().Identite == once.Catalogue.Fichiers()[2].Identite,
+                "fichier connu non visité ou alias once lu anticipativement");
+            bool partielRefuse = false;
+            try { (void)GsPP::PreparerSourceAvecOrigines(once.Catalogue, historique); }
+            catch (const std::invalid_argument&) { partielRefuse = true; }
+            Exiger(partielRefuse, "catalogue partiel accepté par l'adaptateur historique");
+            ecrire("Root.GsPP", inclure + " \"./Root.GsPP\"");
+            const auto cycle = GsPP::PreparerFichierAvecOrigines(unite, developper, {}, limites);
+            Exiger(cycle.Preparation.Resultat.Erreur == 12 && cycle.NombreLectures == 1 && cycle.NombreResolutions == 1,
+                "alias cyclique lu avant le contrôle de cycle");
+            ecrire("Root.GsPP", "");
+            const auto vide = GsPP::PreparerFichierAvecOrigines(unite, developper, {}, {1, 0, 0, 0}, false, false, 0, 1);
+            Exiger(vide.Preparation.Resultat.Erreur == 0 && vide.Preparation.Source.empty() && vide.Preparation.Origines.size() == 1
+                && vide.NombreLectures == 1 && vide.NombreResolutions == 0, "fichier vide/bornes zéro refusés");
+            ecrire("Root.GsPP", inclure + " \"Grand.HGsPP\"");
+            bool limiteLecture = false;
+            try { (void)GsPP::PreparerFichierAvecOrigines(unite, developper, {}, limites); }
+            catch (const std::length_error&) { limiteLecture = true; }
+            Exiger(limiteLecture, "fichier réellement visité échappe à la limite de lecture");
+        }
+        for (std::size_t i = 0; i < 129; ++i)
+            ecrire("D" + std::to_string(i) + ".HGsPP", i < 128 ? "#include \"D" + std::to_string(i + 1) + ".HGsPP\"" : std::string(1024, ' '));
+        const auto profond = GsPP::PreparerFichierAvecOrigines({repertoire / "D0.HGsPP", false, {}}, developper, {}, {129, 128, 64, 8192});
+        Exiger(profond.Preparation.Resultat.Erreur == 13 && profond.NombreLectures == 128 && profond.NombreResolutions == 128
+            && profond.Catalogue.Disponibles().back() == 0, "fichier profond lu avant le refus de profondeur");
+        Exiger(developper(nullptr) == 2, "requête à la demande nulle acceptée");
+        const std::string source = "#include \"A.HGsPP\"";
+        const std::string enfant = "int32 F();";
+        std::array<GsPP::FichierInclusionDeclarationsHote, 2> fichiers{{{nullptr, 0, 0, 0, 0}, {nullptr, 0, 1, 1, 0}}};
+        std::array<std::uint32_t, 2> disponibles{0, 0};
+        std::array<char, 128> texte; texte.fill('#');
+        std::array<OrigineJetonDeclarationsHote, 32> origines{};
+        const auto originesAvant = origines;
+        RequeteExpansionDeclarationsHote expansion{fichiers.data(), 2, nullptr, 0, 0, texte.data(), texte.size(), origines.data(), origines.size(), 0, 0, {}};
+        GsPP::RequeteExpansionDeclarationsADemandeHote requete{&expansion, disponibles.data(), {}};
+        auto intact = [&]()
+        {
+            Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; })
+                && std::memcmp(origines.data(), originesAvant.data(), sizeof(origines)) == 0
+                && AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+                "sorties/arène partiellement publiées sur suspension/refus");
+        };
+        Exiger(developper(&requete) == 16 && requete.Demande.Operation == 2 && requete.Demande.IndexFichier == 0
+            && expansion.Resultat.NombreOctetsSource == 0 && expansion.Resultat.IndexFichierErreur == 2, "demande initiale de lecture invalide"); intact();
+        fichiers[0].Source = source.data(); fichiers[0].Taille = source.size(); disponibles[0] = 1;
+        Exiger(developper(&requete) == 15 && requete.Demande.Operation == 1 && requete.Demande.IndexFichier == 0
+            && requete.Demande.DebutDirective == 0 && requete.Demande.DebutArgument == 9 && requete.Demande.TailleArgument == 9,
+            "plage d'argument de résolution incorrecte"); intact();
+        LienInclusionDeclarationsHote lien{0, 0, 1, 0, 0}; expansion.Liens = &lien; expansion.NombreLiens = 1;
+        Exiger(developper(&requete) == 16 && requete.Demande.Operation == 2 && requete.Demande.IndexFichier == 1, "demande de lecture enfant absente"); intact();
+        disponibles[1] = 2; Exiger(developper(&requete) == 2 && requete.Demande.Operation == 0, "disponibilité invalide acceptée"); intact();
+        disponibles[1] = 0; fichiers[1].Source = enfant.data(); fichiers[1].Taille = enfant.size();
+        Exiger(developper(&requete) == 2, "texte publié comme indisponible accepté"); intact();
+        disponibles[1] = 1;
+        LimiteAllocationsAssemblage = NombreAllocations;
+        Exiger(developper(&requete) == 3, "échec d'allocation à la demande mal propagé"); LimiteAllocationsAssemblage.reset(); intact();
+        requete.Disponibles = nullptr; Exiger(developper(&requete) == 2, "table de disponibilités nulle acceptée"); intact();
+        requete.Disponibles = disponibles.data();
+        expansion.CapaciteSource = 0; expansion.CapaciteOrigines = 0;
+        Exiger(developper(&requete) == 1 && requete.Demande.Operation == 0, "mesure finale à la demande incorrecte"); intact();
+        expansion.CapaciteSource = texte.size(); expansion.CapaciteOrigines = origines.size();
+        Exiger(developper(&requete) == 0 && requete.Demande.Operation == 0, "publication après résolution complète échouée");
+        requete.Expansion = nullptr; Exiger(developper(&requete) == 2, "expansion imbriquée nulle acceptée");
+        std::cout << "Expansion à la demande : priorité des diagnostics FR/EN, lectures ciblées, once/cycles/profondeur, suspensions transactionnelles et erreurs vérifiés.\n";
+    }
+
+    // Instrumentation de test : détruire la session après chaque appel reproduit le relexage sans conservation.
+    // Les chronométrages utilisent séparément l'API historique à la demande, sans cette instrumentation.
+    GsPP::ExpanseurInclusionsEnSessionHote ExpanseurProfilageSession = nullptr;
+    std::uint64_t LexagesProfilageSansCache = 0;
+
+    std::uint32_t GS_ABI_HOTE DevelopperProfilageSansCache(GsPP::RequeteExpansionDeclarationsADemandeHote* demande)
+    {
+        GsPP::RequeteExpansionDeclarationsEnSessionHote session{demande, nullptr, 0, 0, 0, 0};
+        const auto code = ExpanseurProfilageSession(&session);
+        LexagesProfilageSansCache += session.NombreLexages;
+        session.Expansion = nullptr; session.Operation = 1; ExpanseurProfilageSession(&session);
+        return code;
+    }
+
+    void TesterExpansionEnSession(GsPP::ExpanseurInclusionsEnSessionHote developper,
+        GsPP::ExpanseurInclusionsADemandeHote sansCache, const std::filesystem::path& repertoire)
+    {
+        using RequeteSession = GsPP::RequeteExpansionDeclarationsEnSessionHote;
+        auto liberee = [&]()
+        {
+            Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+                "mémoire de session non libérée ou libération invalide");
+        };
+        auto liberer = [&](RequeteSession& session)
+        {
+            session.Expansion = nullptr; session.Operation = 1;
+            Exiger(developper(&session) == 0 && !session.Memoire && !session.NombreLexages && !session.NombreReutilisations,
+                "libération de session incomplète");
+        };
+        Exiger(developper(nullptr) == 2, "session nulle acceptée");
+        RequeteSession session{};
+        Exiger(developper(&session) == 2 && !session.Memoire, "requête imbriquée nulle acceptée");
+        session.Operation = 2; Exiger(developper(&session) == 2, "opération de session invalide acceptée");
+        session.Operation = 1; session.Reserve = 1; Exiger(developper(&session) == 2, "réserve de session ignorée");
+        session.Reserve = 0; liberer(session); liberer(session); liberee();
+        const std::string source = "#include \"A.HGsPP\"";
+        const std::string enfant = "int32 F();";
+        std::array<GsPP::FichierInclusionDeclarationsHote, 2> fichiers{{{source.data(), source.size(), 0, 0, 0}, {nullptr, 0, 1, 1, 0}}};
+        std::array<std::uint32_t, 2> disponibles{1, 0};
+        std::array<char, 128> texte; texte.fill('#');
+        std::array<OrigineJetonDeclarationsHote, 32> origines{};
+        const auto gardesOrigines = origines;
+        RequeteExpansionDeclarationsHote expansion{fichiers.data(), 2, nullptr, 0, 0,
+            texte.data(), texte.size(), origines.data(), origines.size(), 0, 0, {}};
+        GsPP::RequeteExpansionDeclarationsADemandeHote demande{&expansion, disponibles.data(), {}};
+        session = {&demande, nullptr, 0, 0, 0, 0};
+        auto intacte = [&]()
+        {
+            Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; })
+                && std::memcmp(origines.data(), gardesOrigines.data(), sizeof(origines)) == 0,
+                "sorties de session publiées avant réussite");
+        };
+        Exiger(developper(&session) == 15 && session.NombreLexages == 1 && session.NombreReutilisations == 0
+            && session.Memoire && !AllocationsActives.empty(), "lexage initial de session incorrect"); intacte();
+        Exiger(developper(&session) == 15 && session.NombreLexages == 1 && session.NombreReutilisations == 1,
+            "fichier racine relexé sur demande inchangée"); intacte();
+        LienInclusionDeclarationsHote lien{0, 0, 1, 0, 0}; expansion.Liens = &lien; expansion.NombreLiens = 1;
+        Exiger(developper(&session) == 16 && demande.Demande.IndexFichier == 1 && session.NombreLexages == 1,
+            "cache ou priorité de lecture enfant incorrects"); intacte();
+        // Déplacer les tableaux de catalogue est permis, contrairement au déplacement des contenus.
+        auto fichiersDeplaces = fichiers; expansion.Fichiers = fichiersDeplaces.data();
+        fichiersDeplaces[1].Source = enfant.data(); fichiersDeplaces[1].Taille = enfant.size(); disponibles[1] = 1;
+        expansion.CapaciteSource = 0; expansion.CapaciteOrigines = 0;
+        Exiger(developper(&session) == 1 && session.NombreLexages == 2 && demande.Demande.Operation == 0,
+            "croissance du catalogue ou mesure en session incorrecte"); intacte();
+        const std::string sourceDeplacee = source;
+        fichiersDeplaces[0].Source = sourceDeplacee.data();
+        Exiger(developper(&session) == 2 && expansion.Resultat.IndexFichierErreur == 2
+            && expansion.Resultat.NombreOctetsSource == 0, "adresse modifiée d'une source cachée acceptée"); intacte();
+        fichiersDeplaces[0].Source = source.data(); --fichiersDeplaces[0].Taille;
+        Exiger(developper(&session) == 2, "taille modifiée d'une source cachée acceptée"); intacte();
+        ++fichiersDeplaces[0].Taille;
+        fichiersDeplaces[0].Source = nullptr; fichiersDeplaces[0].Taille = 0; disponibles[0] = 0;
+        Exiger(developper(&session) == 2 && demande.Demande.Operation == 0,
+            "source déjà cachée redevenue indisponible relue ou utilisée"); intacte();
+        fichiersDeplaces[0].Source = source.data(); fichiersDeplaces[0].Taille = source.size(); disponibles[0] = 1;
+        LimiteAllocationsAssemblage = NombreAllocations;
+        Exiger(developper(&session) == 3, "allocation transitoire impossible ignorée");
+        LimiteAllocationsAssemblage.reset(); intacte();
+        Exiger(developper(&session) == 1 && session.NombreLexages == 2, "reprise après allocation impossible échouée"); intacte();
+        expansion.CapaciteSource = texte.size(); expansion.CapaciteOrigines = origines.size();
+        Exiger(developper(&session) == 0 && session.NombreLexages == 2, "publication en session échouée ou relexée");
+        RequeteSession autre{&demande, nullptr, 0, 0, 0, 0};
+        Exiger(developper(&autre) == 0 && autre.NombreLexages == 2, "deux sessions partagent leurs caches");
+        liberer(session); Exiger(!AllocationsActives.empty() && developper(&autre) == 0 && autre.NombreLexages == 2,
+            "libération d'une session corrompt une autre session"); liberer(autre); liberee();
+        bool succes = false;
+        for (std::uint64_t budget = 0; budget < 64; ++budget)
+        {
+            texte.fill('#'); origines = gardesOrigines; session = {&demande, nullptr, 0, 0, 0, 0};
+            LimiteAllocationsAssemblage = NombreAllocations + budget;
+            const auto code = developper(&session); LimiteAllocationsAssemblage.reset();
+            if (code != 0)
+            {
+                Exiger(code == 3 && expansion.Resultat.NombreOctetsSource == 0 && expansion.Resultat.NombreOrigines == 0
+                    && expansion.Resultat.IndexFichierErreur == 2, "échec d'allocation en session mal propagé"); intacte();
+            }
+            liberer(session); liberee();
+            if (code == 0) { succes = true; break; }
+        }
+        Exiger(succes, "aucun budget d'allocation ne permet la publication en session");
+
+        std::filesystem::create_directories(repertoire);
+        auto ecrire = [&](const std::string& nom, const std::string& contenu)
+        {
+            std::ofstream flux(repertoire / nom, std::ios::binary); flux << contenu;
+            Exiger(static_cast<bool>(flux), "fixture de session non écrite");
+        };
+        for (bool anglais : {false, true})
+        {
+            const std::string inclure = anglais ? "#include" : "#inclure";
+            ecrire("Root.GsPP", inclure + " \"Grand.HGsPP\""); ecrire("Grand.HGsPP", std::string(1024, ' '));
+            const GsPP::UniteSource racine{repertoire / "Root.GsPP", false, "session/root"};
+            bool exces = false;
+            try { (void)GsPP::PreparerFichierAvecOriginesEnSession(racine, developper, {}, {10, 10, 64, 4096}); }
+            catch (const std::length_error&) { exces = true; }
+            Exiger(exces, "limite de lecture en session ignorée"); liberee();
+            ecrire("Root.GsPP", "#pragma autre\n" + inclure + " \"Grand.HGsPP\"");
+            const auto priorite = GsPP::PreparerFichierAvecOriginesEnSession(racine, developper, {}, {10, 10, 64, 4096});
+            Exiger(priorite.Preparation.Resultat.Erreur == 8 && priorite.NombreLectures == 1 && priorite.NombreLexages == 1,
+                "lexage mémorisé modifie la priorité avant une lecture excessive"); liberee();
+            ecrire("Root.GsPP", inclure + " \"Lex.HGsPP\""); ecrire("Lex.HGsPP", "\xC3");
+            const auto lexical = GsPP::PreparerFichierAvecOriginesEnSession(racine, developper);
+            Exiger(lexical.Preparation.Resultat.Erreur == 4 && lexical.Preparation.Resultat.DetailLexical == 2
+                && lexical.NombreLexages == 1 && lexical.Preparation.Source.empty(), "refus lexical en session perdu"); liberee();
+            ecrire("Root.GsPP", "int32 F();");
+            exces = false;
+            try { (void)GsPP::PreparerFichierAvecOriginesEnSession(racine, developper, {}, {}, false, false, 0, 0); }
+            catch (const std::length_error&) { exces = true; }
+            Exiger(exces, "limite des sorties en session ignorée"); liberee();
+            for (std::uint64_t budget = 0; budget < 16; ++budget)
+            {
+                LimiteAllocationsAssemblage = NombreAllocations + budget;
+                const auto refuse = GsPP::PreparerFichierAvecOriginesEnSession(racine, developper);
+                LimiteAllocationsAssemblage.reset();
+                Exiger(refuse.Preparation.Resultat.Erreur == 0 || refuse.Preparation.Resultat.Erreur == 3,
+                    "adaptateur en session perd un refus d'allocation"); liberee();
+            }
+        }
+        // Profil ciblé : mêmes fichiers, mêmes E/S, mêmes demandes ; seul le cache lexical varie.
+        constexpr std::uint64_t nombre = 32;
+        for (std::uint64_t i = 0; i < nombre; ++i)
+        {
+            std::string contenu = "#pragma once\n";
+            if (i + 1 < nombre) contenu += "#include \"P" + std::to_string(i + 1) + ".HGsPP\"\n";
+            for (int n = 0; n < 64; ++n) contenu += "int32 F" + std::to_string(n) + "();\n";
+            ecrire("P" + std::to_string(i) + ".HGsPP", contenu);
+        }
+        const GsPP::UniteSource racine{repertoire / "P0.HGsPP", false, {}};
+        ExpanseurProfilageSession = developper; LexagesProfilageSansCache = 0;
+        const auto instrumente = GsPP::PreparerFichierAvecOrigines(racine, DevelopperProfilageSansCache);
+        ExpanseurProfilageSession = nullptr;
+        const auto debutSans = std::chrono::steady_clock::now();
+        const auto simple = GsPP::PreparerFichierAvecOrigines(racine, sansCache);
+        const auto debutAvec = std::chrono::steady_clock::now();
+        const auto conserve = GsPP::PreparerFichierAvecOriginesEnSession(racine, developper);
+        const auto fin = std::chrono::steady_clock::now();
+        Exiger(conserve.Preparation.Resultat.Erreur == 0 && conserve.Preparation.Source == simple.Preparation.Source
+            && conserve.Preparation.Source == instrumente.Preparation.Source
+            && conserve.Preparation.Origines.size() == simple.Preparation.Origines.size()
+            && std::memcmp(conserve.Preparation.Origines.data(), simple.Preparation.Origines.data(),
+                conserve.Preparation.Origines.size() * sizeof(OrigineJetonDeclarationsHote)) == 0
+            && conserve.NombreLectures == nombre && conserve.NombreLectures == simple.NombreLectures
+            && conserve.NombreResolutions == nombre - 1 && conserve.NombreResolutions == simple.NombreResolutions
+            && conserve.NombreAppels == 2 * nombre + 1 && conserve.NombreAppels == simple.NombreAppels
+            && conserve.NombreLexages == nombre && LexagesProfilageSansCache == nombre * (nombre + 1)
+            && conserve.NombreReutilisations == nombre * nombre, "cache lexical sans réduction mesurée ou comportement modifié : lexages="
+                + std::to_string(LexagesProfilageSansCache) + "/" + std::to_string(conserve.NombreLexages)
+                + ", réutilisations=" + std::to_string(conserve.NombreReutilisations) + ", appels=" + std::to_string(conserve.NombreAppels)); liberee();
+        std::cout << "Session d'expansion : FR/EN, sessions séparées, gardes, déplacements, budgets, reprises et libération sur exception vérifiés.\n"
+            << "Profil ciblé 32 fichiers : lexages sans conservation=" << LexagesProfilageSansCache << ", avec=" << conserve.NombreLexages
+            << ", réutilisations=" << conserve.NombreReutilisations << ", appels=" << conserve.NombreAppels
+            << "; temps sans cache=" << std::chrono::duration<double, std::milli>(debutAvec - debutSans).count()
+            << " ms, avec cache=" << std::chrono::duration<double, std::milli>(fin - debutAvec).count() << " ms (indicatifs, non bloquants).\n";
+    }
+
+    // Incidents déclenchés après une demande Gs++, avant la réponse de lecture/résolution de l'hôte.
+    // Les wrappers gardent la convention ms_abi et ne déclenchent rien pendant la libération.
+    GsPP::ExpanseurInclusionsADemandeHote ExpansionIncident = nullptr;
+    GsPP::ExpanseurInclusionsEnSessionHote SessionIncident = nullptr;
+    GsPP::ExpanseurInclusionsAvecRepriseHote RepriseIncident = nullptr;
+    std::function<void(std::uint32_t, const GsPP::DemandeExpansionDeclarationsHote&)> ActionIncident;
+
+    std::uint32_t GS_ABI_HOTE DevelopperAvecIncident(GsPP::RequeteExpansionDeclarationsADemandeHote* requete)
+    {
+        const auto code = ExpansionIncident(requete);
+        if (ActionIncident) ActionIncident(code, requete->Demande);
+        return code;
+    }
+
+    std::uint32_t GS_ABI_HOTE DevelopperSessionAvecIncident(GsPP::RequeteExpansionDeclarationsEnSessionHote* requete)
+    {
+        const auto code = SessionIncident(requete);
+        if (requete->Operation == 0 && ActionIncident) ActionIncident(code, requete->Expansion->Demande);
+        return code;
+    }
+
+    std::uint32_t GS_ABI_HOTE DevelopperRepriseAvecIncident(GsPP::RequeteExpansionDeclarationsAvecRepriseHote* requete)
+    {
+        const auto code = RepriseIncident(requete);
+        if (requete->Operation == 0 && ActionIncident) ActionIncident(code, requete->Expansion->Demande);
+        return code;
+    }
+
+    /** <résumé>Compare les E/S réelles et injectées sans remplacer les erreurs hôtes par des diagnostics de langue.</résumé> **/
+    void TesterEntreesSortiesInclusions(GsPP::ExpanseurInclusionsADemandeHote developper,
+        GsPP::ExpanseurInclusionsEnSessionHote enSession, GsPP::ExpanseurInclusionsAvecRepriseHote reprendre,
+        const std::filesystem::path& repertoire)
+    {
+        using Operation = GsPP::OperationFichierSource;
+        ExpansionIncident = developper; SessionIncident = enSession; RepriseIncident = reprendre;
+        struct NettoyerIncident
+        {
+            ~NettoyerIncident() { ActionIncident = {}; }
+        } nettoyage;
+        auto liberee = [&]()
+        {
+            Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+                "E/S d'inclusions : mémoire privée non libérée");
+        };
+        auto memeErreur = [&](const GsPP::ErreurFichierSource& a, const GsPP::ErreurFichierSource& b)
+        {
+            Exiger(a.Operation() == b.Operation() && a.Chemin() == b.Chemin() && a.CodeSysteme() == b.CodeSysteme()
+                && a.CodeSysteme() && a.Message(GsPP::LangueDiagnostic::Francais) == b.Message(GsPP::LangueDiagnostic::Francais)
+                && a.Message(GsPP::LangueDiagnostic::Anglais) == b.Message(GsPP::LangueDiagnostic::Anglais)
+                && a.Message(GsPP::LangueDiagnostic::Francais) != a.Message(GsPP::LangueDiagnostic::Anglais),
+                "erreur hôte d'inclusions différente du lecteur partagé");
+        };
+        auto preparer = [&](const GsPP::UniteSource& root, int variante, const GsPP::LimitesCatalogueInclusions& limites = GsPP::LimitesCatalogueInclusions{})
+        {
+            if (variante == 0) return GsPP::PreparerFichierAvecOrigines(root, DevelopperAvecIncident, {}, limites);
+            if (variante == 1) return GsPP::PreparerFichierAvecOriginesEnSession(root, DevelopperSessionAvecIncident, {}, limites);
+            return GsPP::PreparerFichierAvecReprise(root, DevelopperRepriseAvecIncident, {}, limites);
+        };
+        auto ecrire = [](const std::filesystem::path& chemin, const std::string& source)
+        {
+            std::filesystem::create_directories(chemin.parent_path());
+            std::ofstream flux(chemin, std::ios::binary);
+            flux.write(source.data(), static_cast<std::streamsize>(source.size()));
+            Exiger(static_cast<bool>(flux), "fixture E/S non écrite");
+        };
+        std::filesystem::create_directories(repertoire);
+
+        // EOF, limites et panne après un bloc entier : aucune dépendance aux ACL ou aux privilèges de l'utilisateur.
+        const auto fichierFlux = repertoire / "Flux.HGsPP";
+        for (const std::size_t taille : {0U, 1U, 8191U, 8192U, 8193U, 16384U})
+        {
+            std::string source(taille, ' ');
+            if (taille) source.back() = '\0';
+            ecrire(fichierFlux, source);
+            Exiger(GsPP::LireFichierSource(fichierFlux, taille) == source, "lecture binaire ou limite exacte incorrecte");
+            for (bool exceptions : {false, true})
+            {
+                std::istringstream flux(source);
+                if (exceptions) flux.exceptions(std::ios::badbit | std::ios::failbit);
+                Exiger(GsPP::LireFluxSource(flux, fichierFlux, taille) == source, "EOF normal pris pour une panne");
+            }
+            if (taille)
+            {
+                bool refuse = false;
+                try { (void)GsPP::LireFichierSource(fichierFlux, taille - 1); }
+                catch (const std::length_error&) { refuse = true; }
+                Exiger(refuse, "limite binaire dépassée sans refus");
+            }
+        }
+        struct BlocPuisPanne : std::streambuf
+        {
+            unsigned Lectures = 0;
+            std::streamsize xsgetn(char* destination, std::streamsize taille) override
+            {
+                if (Lectures++ == 0) { std::fill_n(destination, taille, ' '); return taille; }
+                throw std::ios_base::failure("panne de test après un bloc");
+            }
+        };
+        for (bool exceptions : {false, true})
+        {
+            BlocPuisPanne bloc;
+            std::istream flux(&bloc);
+            if (exceptions) flux.exceptions(std::ios::badbit | std::ios::failbit);
+            bool refuse = false;
+            try { (void)GsPP::LireFluxSource(flux, fichierFlux); }
+            catch (const GsPP::ErreurFichierSource& erreur)
+            {
+                refuse = erreur.Operation() == Operation::Lecture && erreur.Chemin() == fichierFlux && erreur.CodeSysteme();
+            }
+            Exiger(refuse && bloc.Lectures == 2, "flux défectueux transformé en source partielle");
+        }
+        for (const auto etat : {std::ios::badbit, std::ios::failbit})
+        {
+            std::istringstream flux("int32 F();"); flux.setstate(etat);
+            bool refuse = false;
+            try { (void)GsPP::LireFluxSource(flux, fichierFlux); }
+            catch (const GsPP::ErreurFichierSource& erreur) { refuse = erreur.Operation() == Operation::Lecture; }
+            Exiger(refuse, "état de flux défectueux accepté");
+        }
+
+        struct Corpus
+        {
+            const char* Nom;
+            std::string Source;
+            std::uint32_t ErreurLangue;
+            bool RacineAbsente = false, RacineRepertoire = false, ErreurHote = false;
+        };
+        const std::string tropLong(300, 'L');
+        // MSVC/NTFS peut classer ce nom comme absent ; GNU signale ENAMETOOLONG.
+        // Conserver le classement réel de l'hôte, sans imposer un code système d'un autre OS.
+        bool statutLongEnErreur = false;
+        try { (void)GsPP::EstFichierSourceRegulier(repertoire / (tropLong + ".HGsPP")); }
+        catch (const GsPP::ErreurFichierSource& erreur)
+        {
+            Exiger(erreur.Operation() == Operation::Statut, "phase de contrôle du nom long incorrecte");
+            statutLongEnErreur = true;
+        }
+        std::size_t nombreCorpus = 0;
+        for (bool anglais : {false, true})
+        {
+            const std::string inclure = anglais ? "#include" : "#inclure";
+            const std::vector<Corpus> corpus{
+                {"RacineAbsente", "", 0, true, false, true},
+                {"RacineRepertoire", "", 0, false, true, true},
+                {"InclusionAbsente", inclure + " \"Absent.HGsPP\"", 10},
+                {"InclusionRepertoire", inclure + " \"Dossier.HGsPP\"", 10},
+                {"ParentNonRepertoire", inclure + " \"A.HGsPP/Absent.HGsPP\"", 10},
+                {"AbsenceImbriquee", inclure + " \"Sous/Enfant.HGsPP\"", 10},
+                {"StatutLong", inclure + " \"" + tropLong + ".HGsPP\"", statutLongEnErreur ? 0U : 10U, false, false, statutLongEnErreur},
+                {"GrammaireAvantStatut", "#pragma autre\n" + inclure + " \"" + tropLong + ".HGsPP\"", 8},
+                {"LexageAvantStatut", inclure + " \"" + tropLong + ".HGsPP\"\n\xC3", 4},
+                {"ExtensionIncompatible", inclure + " \"Ancien.GsO\"", 11},
+                {"AbsenceAvantStatut", inclure + " \"Absent.HGsPP\"\n" + inclure + " \"" + tropLong + ".HGsPP\"", 10},
+                {"RacineVide", "", 0},
+                {"InclusionVide", inclure + " \"Vide.HGsPP\"", 0},
+                {"BlocsMultiples", inclure + " \"Grand.HGsPP\"", 0},
+                {"AliasOnce", inclure + " \"A.HGsPP\"\n" + inclure + " \"./A.HGsPP\"", 0}};
+            for (const auto& cas : corpus)
+            {
+                const auto dossier = repertoire / (std::string(cas.Nom) + (anglais ? "-EN" : "-FR"));
+                const GsPP::UniteSource root{dossier / "Root.GsPP", false, "virtuel/E-S/Root"};
+                std::filesystem::create_directories(dossier);
+                std::filesystem::create_directories(dossier / "Dossier.HGsPP");
+                ecrire(dossier / "A.HGsPP", "#pragma once\nint32 A();");
+                ecrire(dossier / "Vide.HGsPP", ""); ecrire(dossier / "Ancien.GsO", "");
+                ecrire(dossier / "Grand.HGsPP", std::string(16384, ' ') + "int32 Grand();");
+                ecrire(dossier / "Sous/Enfant.HGsPP", "\n" + inclure + " \"Absent.HGsPP\"");
+                if (cas.RacineRepertoire) std::filesystem::create_directories(root.Chemin);
+                else if (!cas.RacineAbsente) ecrire(root.Chemin, cas.Source);
+                std::optional<GsPP::ErreurFichierSource> hote;
+                std::optional<GsPP::ErreurCompilation> langue;
+                std::vector<GsPP::Jeton> oracle;
+                try { oracle = GsPP::PreparerJetonsSource(root.Chemin, root.NomDiagnostic); }
+                catch (const GsPP::ErreurFichierSource& erreur) { hote = erreur; }
+                catch (const GsPP::ErreurCompilation& erreur) { langue = erreur; }
+                Exiger(hote.has_value() == cas.ErreurHote && langue.has_value() == (cas.ErreurLangue != 0),
+                    "classement E/S du bootstrap incorrect : " + std::string(cas.Nom));
+                for (int variante = 0; variante < 3; ++variante)
+                {
+                    std::optional<GsPP::ErreurFichierSource> erreurHote;
+                    std::optional<GsPP::ResultatPreparationFichier> resultat;
+                    try { resultat = preparer(root, variante); }
+                    catch (const GsPP::ErreurFichierSource& erreur) { erreurHote = erreur; }
+                    Exiger(erreurHote.has_value() == hote.has_value(), "classement E/S différent : " + std::string(cas.Nom));
+                    if (hote) memeErreur(*hote, *erreurHote);
+                    else
+                    {
+                        const auto& preparation = resultat->Preparation;
+                        const auto& diagnostic = preparation.Resultat;
+                        Exiger(diagnostic.Erreur == cas.ErreurLangue, "code de langue E/S différent : " + std::string(cas.Nom));
+                        if (langue)
+                        {
+                            Exiger(preparation.Source.empty() && preparation.Origines.empty()
+                                && resultat->Catalogue.NomsFichiers().at(diagnostic.IndexFichierErreur) == langue->Fichier()
+                                && diagnostic.LigneErreur == langue->Ligne() && diagnostic.ColonneErreur == langue->Colonne(),
+                                "origine du diagnostic E/S différente du bootstrap");
+                        }
+                        else
+                        {
+                            const auto jetons = GsPP::Lexeur(preparation.Source).Analyser();
+                            Exiger(jetons.size() == oracle.size() && preparation.Origines.size() == oracle.size(), "sélection E/S différente");
+                            for (std::size_t i = 0; i < oracle.size(); ++i)
+                            {
+                                const auto& origine = preparation.Origines[i];
+                                Exiger(jetons[i].Genre == oracle[i].Genre && jetons[i].Texte == oracle[i].Texte
+                                    && resultat->Catalogue.NomsFichiers().at(origine.IndexFichier) == oracle[i].Fichier
+                                    && origine.Ligne == oracle[i].Ligne && origine.Colonne == oracle[i].Colonne,
+                                    "jeton ou origine E/S différent du bootstrap");
+                            }
+                        }
+                    }
+                    liberee();
+                }
+                ++nombreCorpus;
+            }
+
+            // Retrait/remplacement après résolution : le diagnostic est une ouverture/lecture de la cible physique,
+            // pas une inclusion absente située artificiellement dans le fichier parent.
+            const auto dossier = repertoire / (anglais ? "Incidents-EN" : "Incidents-FR");
+            const GsPP::UniteSource root{dossier / "Root.GsPP", false, "virtuel/E-S/incidents"};
+            const auto cible = dossier / "A.HGsPP";
+            const auto secours = dossier / "A.deplace";
+            for (bool remplacerParRepertoire : {false, true}) for (int variante = 0; variante < 3; ++variante)
+            {
+                ecrire(root.Chemin, inclure + " \"A.HGsPP\""); ecrire(cible, "int32 A();");
+                struct RestaurerFichier
+                {
+                    std::filesystem::path Cible, Secours;
+                    bool Deplace = false, Repertoire = false;
+                    ~RestaurerFichier()
+                    {
+                        std::error_code code;
+                        if (Repertoire) std::filesystem::remove(Cible, code);
+                        if (Deplace) std::filesystem::rename(Secours, Cible, code);
+                    }
+                } restauration{cible, secours};
+                std::optional<GsPP::ErreurFichierSource> attendu;
+                ActionIncident = [&](std::uint32_t code, const auto& demande)
+                {
+                    if (code != 16 || demande.IndexFichier != 1 || restauration.Deplace) return;
+                    Exiger(!std::filesystem::exists(secours), "secours E/S déjà présent, ne pas l'écraser");
+                    std::filesystem::rename(cible, secours); restauration.Deplace = true;
+                    if (remplacerParRepertoire) { std::filesystem::create_directory(cible); restauration.Repertoire = true; }
+                    try { (void)GsPP::LireFichierSource(cible); }
+                    catch (const GsPP::ErreurFichierSource& erreur) { attendu = erreur; }
+                };
+                std::optional<GsPP::ErreurFichierSource> obtenu;
+                try { (void)preparer(root, variante); }
+                catch (const GsPP::ErreurFichierSource& erreur) { obtenu = erreur; }
+                ActionIncident = {};
+                Exiger(attendu && obtenu && (obtenu->Operation() == Operation::Ouverture || obtenu->Operation() == Operation::Lecture),
+                    "cible retirée/remplacée après résolution mal classée");
+                memeErreur(*attendu, *obtenu); liberee();
+            }
+
+            // Même une exception pendant la réponse hôte doit libérer la session.
+            ecrire(root.Chemin, inclure + " \"A.HGsPP\"");
+            for (int variante = 0; variante < 3; ++variante)
+            {
+                ActionIncident = [&](std::uint32_t code, const auto&)
+                {
+                    if (code != 15) return;
+                    BlocPuisPanne bloc; std::istream flux(&bloc); (void)GsPP::LireFluxSource(flux, cible);
+                };
+                bool refuse = false;
+                try { (void)preparer(root, variante); }
+                catch (const GsPP::ErreurFichierSource& erreur) { refuse = erreur.Operation() == Operation::Lecture; }
+                ActionIncident = {};
+                Exiger(refuse, "exception de réponse hôte perdue"); liberee();
+            }
+
+#if defined(_WIN32)
+            // Un verrou exclusif produit un vrai échec d'ouverture sans modifier les ACL.
+            struct FermerVerrou
+            {
+                HANDLE Valeur = INVALID_HANDLE_VALUE;
+                ~FermerVerrou() { if (Valeur != INVALID_HANDLE_VALUE) CloseHandle(Valeur); }
+            } verrou{CreateFileW(cible.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+            Exiger(verrou.Valeur != INVALID_HANDLE_VALUE, "verrou E/S Windows non créé");
+            std::optional<GsPP::ErreurFichierSource> oracle;
+            try { (void)GsPP::PreparerJetonsSource(root.Chemin, root.NomDiagnostic); }
+            catch (const GsPP::ErreurFichierSource& erreur) { oracle = erreur; }
+            Exiger(oracle && oracle->Operation() == Operation::Ouverture && oracle->Chemin() == cible,
+                "verrou Windows mal classé par le bootstrap");
+            for (int variante = 0; variante < 3; ++variante)
+            {
+                std::optional<GsPP::ErreurFichierSource> obtenu;
+                try { (void)preparer(root, variante); }
+                catch (const GsPP::ErreurFichierSource& erreur) { obtenu = erreur; }
+                Exiger(obtenu.has_value(), "fichier verrouillé lu par l'adaptateur"); memeErreur(*oracle, *obtenu); liberee();
+            }
+#endif
+        }
+        Exiger(nombreCorpus == 30, "matrice E/S bilingue incomplète");
+        std::cout << "E/S des inclusions : 15 corpus bilingues, 3 adaptateurs, flux défectueux/EOF/limites, incidents après résolution et libération sur exception vérifiés.\n";
+    }
+
+    void TesterRepriseInclusions(GsPP::ExpanseurInclusionsAvecRepriseHote reprendre,
+        GsPP::ExpanseurInclusionsEnSessionHote cached, const std::filesystem::path& repertoire)
+    {
+        using Reprise = GsPP::RequeteExpansionDeclarationsAvecRepriseHote;
+        auto liberee = [&]() { Exiger(AllocationsActives.empty() && !LiberationInvalide && NombreAllocations == NombreLiberations,
+            "mémoire de reprise non libérée"); };
+        auto liberer = [&](Reprise& r)
+        {
+            r.Operation = 1; r.Expansion = nullptr;
+            Exiger(reprendre(&r) == 0 && !r.Memoire && !r.NombreLexages && !r.NombreReutilisations && !r.NombreJetonsParcourus,
+                "libération de reprise incomplète");
+        };
+        Exiger(reprendre(nullptr) == 2, "reprise nulle acceptée");
+        Reprise r{}; Exiger(reprendre(&r) == 2 && !r.Memoire, "expansion de reprise nulle acceptée");
+        r.Operation = 2; Exiger(reprendre(&r) == 2, "opération de reprise invalide acceptée");
+        r.Operation = 1; r.Reserve = 1; Exiger(reprendre(&r) == 2, "réserve de reprise ignorée");
+        r.Reserve = 0; liberer(r); liberer(r); liberee();
+        const std::string avant = "int32 Avant();\n";
+        const std::string source = avant + "#include \"A.HGsPP\"\nint32 Apres();";
+        const std::string enfant = "int32 Enfant();";
+        std::array<GsPP::FichierInclusionDeclarationsHote, 33> fichiers{};
+        std::array<std::uint32_t, 33> disponibles{};
+        for (std::size_t i = 0; i < fichiers.size(); ++i) fichiers[i] = {nullptr, 0, i, i ? 1U : 0U, 0};
+        std::array<char, 128> texte; texte.fill('#');
+        std::array<OrigineJetonDeclarationsHote, 32> origines{}; const auto gardes = origines;
+        RequeteExpansionDeclarationsHote expansion{fichiers.data(), 2, nullptr, 0, 0,
+            texte.data(), 0, origines.data(), 0, 0, 0, {}};
+        GsPP::RequeteExpansionDeclarationsADemandeHote demande{&expansion, disponibles.data(), {}};
+        r = {&demande, nullptr, 0, 0, 0, 0, 0};
+        auto intacte = [&]() { Exiger(std::all_of(texte.begin(), texte.end(), [](char c) { return c == '#'; })
+            && std::memcmp(origines.data(), gardes.data(), sizeof(origines)) == 0, "reprise partiellement publiée"); };
+        Exiger(reprendre(&r) == 16 && r.NombreJetonsParcourus == 0, "lecture racine de reprise incorrecte"); intacte();
+        Exiger(reprendre(&r) == 16 && r.NombreJetonsParcourus == 0, "demande racine inchangée consommée"); intacte();
+        fichiers[0].Source = source.data(); fichiers[0].Taille = source.size(); disponibles[0] = 1;
+        Exiger(reprendre(&r) == 15 && r.NombreJetonsParcourus == 5 && r.NombreLexages == 1,
+            "préfixe de reprise non conservé"); intacte();
+        Exiger(reprendre(&r) == 15 && r.NombreJetonsParcourus == 5, "préfixe reconsommé sur demande inchangée"); intacte();
+        LienInclusionDeclarationsHote lien{0, avant.size(), 1, 0, 0}; expansion.Liens = &lien; expansion.NombreLiens = 1;
+        Exiger(reprendre(&r) == 16 && demande.Demande.IndexFichier == 1 && r.NombreJetonsParcourus == 5,
+            "directive consommée avant la lecture cible"); intacte();
+        fichiers[1].Identite = 0; Exiger(reprendre(&r) == 2 && demande.Demande.Operation == 0,
+            "identité de cible en attente changée"); fichiers[1].Identite = 1; intacte();
+        fichiers[1].Source = enfant.data(); fichiers[1].Taille = enfant.size(); disponibles[1] = 1;
+        auto deplaces = fichiers; expansion.Fichiers = deplaces.data();
+        Exiger(reprendre(&r) == 1 && r.NombreJetonsParcourus == 19 && r.NombreLexages == 2,
+            "mesure de reprise reconsomme ou perd des jetons"); intacte();
+        Exiger(reprendre(&r) == 1 && r.NombreJetonsParcourus == 19, "mesure répétée reparcourt le graphe"); intacte();
+        auto invalide = [&]() { Exiger(reprendre(&r) == 2 && expansion.Resultat.IndexFichierErreur == expansion.NombreFichiers
+            && expansion.Resultat.NombreOctetsSource == 0 && demande.Demande.Operation == 0,
+            "instantané de reprise modifié accepté ou faussement localisé"); intacte(); };
+        expansion.IndexRacine = 1; invalide(); expansion.IndexRacine = 0;
+        expansion.MarqueUtf8 = 1; invalide(); expansion.MarqueUtf8 = 0;
+        expansion.FinLigneCrlf = 1; invalide(); expansion.FinLigneCrlf = 0;
+        const std::string autreSource = source; deplaces[0].Source = autreSource.data(); invalide(); deplaces[0].Source = source.data();
+        --deplaces[0].Taille; invalide(); ++deplaces[0].Taille;
+        deplaces[0].EstInterface = 1; invalide(); deplaces[0].EstInterface = 0;
+        deplaces[0].Identite = 1; invalide(); deplaces[0].Identite = 0;
+        deplaces[0].Source = nullptr; deplaces[0].Taille = 0; disponibles[0] = 0; invalide();
+        deplaces[0].Source = source.data(); deplaces[0].Taille = source.size(); disponibles[0] = 1;
+        expansion.NombreFichiers = 1; invalide(); expansion.NombreFichiers = 2;
+        expansion.NombreLiens = 0; invalide(); expansion.NombreLiens = 1;
+        lien.IndexCible = 0; invalide(); lien.IndexCible = 1;
+        ++lien.DebutDirective; invalide(); --lien.DebutDirective;
+        expansion.CapaciteSource = texte.size(); expansion.CapaciteOrigines = origines.size();
+        LimiteAllocationsAssemblage = NombreAllocations;
+        Exiger(reprendre(&r) == 0 && r.NombreJetonsParcourus == 19 && r.NombreLexages == 2,
+            "publication de reprise alloue ou reparcourt"); LimiteAllocationsAssemblage.reset();
+        const auto sortie = texte;
+        Exiger(reprendre(&r) == 0 && texte == sortie && r.NombreJetonsParcourus == 19, "publication répétée incohérente");
+        Reprise autre{&demande, nullptr, 0, 0, 0, 0, 0};
+        Exiger(reprendre(&autre) == 0 && autre.NombreJetonsParcourus == 19, "reprises partageant leurs états");
+        liberer(r); Exiger(reprendre(&autre) == 0, "libération d'une autre reprise corruptrice"); liberer(autre); liberee();
+
+        // Les répertoires fichiers/liens grandissent ensemble ; vérifier les reprises après chaque budget d'allocation.
+        std::array<LienInclusionDeclarationsHote, 33> liens{};
+        for (std::size_t i = 0; i < liens.size(); ++i) liens[i] = {0, i, 1, 0, 0};
+        bool allocationRefusee = false;
+        for (std::uint64_t budget = 0; budget < 24; ++budget)
+        {
+            texte.fill('#'); origines = gardes; expansion.Fichiers = fichiers.data();
+            expansion.NombreFichiers = 2; expansion.Liens = &lien; expansion.NombreLiens = 1;
+            expansion.CapaciteSource = 0; expansion.CapaciteOrigines = 0;
+            fichiers[1].Source = nullptr; fichiers[1].Taille = 0; disponibles[1] = 0;
+            r = {&demande, nullptr, 0, 0, 0, 0, 0};
+            Exiger(reprendre(&r) == 16 && r.NombreJetonsParcourus == 5, "préparation du budget de croissance échouée");
+            expansion.NombreFichiers = 33; expansion.Liens = liens.data(); expansion.NombreLiens = 33;
+            LimiteAllocationsAssemblage = NombreAllocations + budget;
+            const auto code = reprendre(&r); LimiteAllocationsAssemblage.reset();
+            Exiger((code == 3 || code == 16) && r.NombreJetonsParcourus == 5, "croissance non transactionnelle du parcours"); intacte();
+            if (code == 3)
+            {
+                allocationRefusee = true; fichiers[1].Identite = 0;
+                Exiger(reprendre(&r) == 2, "allocation échouée perd le gel de la cible en attente"); fichiers[1].Identite = 1;
+            }
+            Exiger(reprendre(&r) == 16 && r.NombreJetonsParcourus == 5, "reprise après croissance échouée perd l'instantané");
+            fichiers[1].Source = enfant.data(); fichiers[1].Taille = enfant.size(); disponibles[1] = 1;
+            Exiger(reprendre(&r) == 1 && r.NombreJetonsParcourus == 19, "reprise après croissance incorrecte"); intacte();
+            liberer(r); liberee();
+        }
+        Exiger(allocationRefusee, "budgets de croissance sans aucun échec injecté");
+
+        // Une identité ignorée par once a été observée même si son contenu n'a jamais été demandé.
+        const std::string sourceAlias = "#include \"A.HGsPP\"\n#include \"./A.HGsPP\"\n#include \"B.HGsPP\"";
+        const std::string sourceOnce = "#pragma once\nint32 F();";
+        std::array<GsPP::FichierInclusionDeclarationsHote, 4> aliases{{
+            {sourceAlias.data(), sourceAlias.size(), 0, 0, 0}, {sourceOnce.data(), sourceOnce.size(), 1, 1, 0},
+            {nullptr, 0, 1, 1, 0}, {nullptr, 0, 3, 1, 0}}};
+        std::array<std::uint32_t, 4> lus{1, 1, 0, 0};
+        std::array<LienInclusionDeclarationsHote, 2> liensAlias{{{0, 0, 1, 0, 0}, {0, sourceAlias.find('\n') + 1, 2, 0, 0}}};
+        expansion.Fichiers = aliases.data(); expansion.NombreFichiers = 4;
+        expansion.Liens = liensAlias.data(); expansion.NombreLiens = 2; demande.Disponibles = lus.data();
+        r = {&demande, nullptr, 0, 0, 0, 0, 0};
+        Exiger(reprendre(&r) == 15 && demande.Demande.IndexFichier == 0 && r.NombreLexages == 2,
+            "alias once lu pendant la reprise"); intacte();
+        aliases[2].Identite = 2; Exiger(reprendre(&r) == 2, "identité once ignorée non gelée"); aliases[2].Identite = 1; intacte();
+        aliases[2].EstInterface = 0; Exiger(reprendre(&r) == 2, "mode once ignoré non gelé"); aliases[2].EstInterface = 1; intacte();
+        Exiger(reprendre(&r) == 15 && r.NombreLexages == 2, "restauration des métadonnées once perd le parcours");
+        liberer(r); liberee();
+
+        std::filesystem::create_directories(repertoire);
+        auto ecrire = [&](const std::string& nom, const std::string& contenu) { std::ofstream f(repertoire / nom, std::ios::binary);
+            f << contenu; Exiger(static_cast<bool>(f), "fixture de reprise non écrite"); };
+        for (bool anglais : {false, true})
+        {
+            const std::string inclure = anglais ? "#include" : "#inclure";
+            const GsPP::UniteSource root{repertoire / "Root.GsPP", false, "reprise/root"};
+            ecrire("Grand.HGsPP", std::string(1024, ' '));
+            ecrire("Root.GsPP", "#pragma autre\n" + inclure + " \"Grand.HGsPP\"");
+            const auto priorite = GsPP::PreparerFichierAvecReprise(root, reprendre, {}, {64, 64, 256, 4096});
+            Exiger(priorite.Preparation.Resultat.Erreur == 8 && priorite.NombreLectures == 1, "priorité de diagnostic de reprise perdue"); liberee();
+            ecrire("Root.GsPP", inclure + " \"Grand.HGsPP\"");
+            bool exces = false;
+            try { (void)GsPP::PreparerFichierAvecReprise(root, reprendre, {}, {64, 64, 256, 4096}); }
+            catch (const std::length_error&) { exces = true; }
+            Exiger(exces, "limite de lecture de reprise ignorée"); liberee();
+            ecrire("Root.GsPP", "int32 F();");
+            exces = false;
+            try { (void)GsPP::PreparerFichierAvecReprise(root, reprendre, {}, {}, true, true, 0, 0); }
+            catch (const std::length_error&) { exces = true; }
+            Exiger(exces, "limite des sorties de reprise ignorée"); liberee();
+            bool succes = false;
+            for (std::uint64_t budget = 0; budget < 64; ++budget)
+            {
+                LimiteAllocationsAssemblage = NombreAllocations + budget;
+                const auto resultat = GsPP::PreparerFichierAvecReprise(root, reprendre); LimiteAllocationsAssemblage.reset();
+                Exiger(resultat.Preparation.Resultat.Erreur == 0 || resultat.Preparation.Resultat.Erreur == 3,
+                    "refus d'allocation de reprise perdu"); liberee();
+                if (resultat.Preparation.Resultat.Erreur == 0) { succes = true; break; }
+            }
+            Exiger(succes, "aucun budget de reprise ne réussit");
+            ecrire("A.HGsPP", "#pragma once\n" + inclure + " \"C.HGsPP\"\nint32 A();"); ecrire("C.HGsPP", "int32 C();");
+            ecrire("B.HGsPP", "int32 B();");
+            ecrire("Root.GsPP", inclure + " \"A.HGsPP\"\n" + inclure + " \"./A.HGsPP\"\n" + inclure + " \"B.HGsPP\"");
+            const auto reference = GsPP::PreparerFichierAvecOriginesEnSession(root, cached, {}, {}, true, true);
+            const auto reprise = GsPP::PreparerFichierAvecReprise(root, reprendre, {}, {}, true, true);
+            Exiger(reprise.Preparation.Resultat.Erreur == 0 && reprise.NombreLectures == 4 && reprise.NombreResolutions == 4
+                && reprise.Preparation.Source == reference.Preparation.Source && reprise.Preparation.Origines.size() == reference.Preparation.Origines.size()
+                && std::memcmp(reprise.Preparation.Origines.data(), reference.Preparation.Origines.data(),
+                    reprise.Preparation.Origines.size() * sizeof(OrigineJetonDeclarationsHote)) == 0,
+                "once, insertion intermédiaire de liens ou retour de pile de reprise incorrects"); liberee();
+        }
+        std::uint64_t nombreJetons = 0;
+        for (int i = 0; i < 32; ++i)
+        {
+            std::string contenu = "#pragma once\n";
+            if (i + 1 < 32) contenu += "#include \"P" + std::to_string(i + 1) + ".HGsPP\"\n";
+            for (int n = 0; n < 64; ++n) contenu += "int32 F" + std::to_string(n) + "();\n";
+            nombreJetons += GsPP::Lexeur(contenu).Analyser().size(); ecrire("P" + std::to_string(i) + ".HGsPP", contenu);
+        }
+        const GsPP::UniteSource root{repertoire / "P0.HGsPP", false, {}};
+        const auto debut = std::chrono::steady_clock::now();
+        const auto reference = GsPP::PreparerFichierAvecOriginesEnSession(root, cached);
+        const auto milieu = std::chrono::steady_clock::now();
+        const auto reprise = GsPP::PreparerFichierAvecReprise(root, reprendre);
+        const auto fin = std::chrono::steady_clock::now();
+        Exiger(reprise.Preparation.Resultat.Erreur == 0 && reprise.NombreJetonsParcourus == nombreJetons && nombreJetons == 10398
+            && reprise.NombreLexages == 32 && reprise.NombreLectures == 32 && reprise.NombreResolutions == 31 && reprise.NombreAppels == 65
+            && reprise.NombreAppels == reference.NombreAppels && reprise.Preparation.Source == reference.Preparation.Source
+            && reprise.Preparation.Origines.size() == reference.Preparation.Origines.size()
+            && std::memcmp(reprise.Preparation.Origines.data(), reference.Preparation.Origines.data(),
+                reprise.Preparation.Origines.size() * sizeof(OrigineJetonDeclarationsHote)) == 0,
+            "parcours de reprise non unique ou sélection différente"); liberee();
+        std::cout << "Reprise d'inclusions : préfixes, pile/once, catalogue croissant, gel des instantanés, budgets et sorties transactionnelles vérifiés.\n"
+            << "Profil reprise 32 fichiers : " << reprise.NombreJetonsParcourus << " jetons engagés, " << reprise.NombreLexages
+            << " lexages, " << reprise.NombreAppels << " appels ; cache seul=" << std::chrono::duration<double, std::milli>(milieu - debut).count()
+            << " ms, reprise=" << std::chrono::duration<double, std::milli>(fin - milieu).count() << " ms (indicatifs, non bloquants).\n";
+    }
+
+    /** <résumé>Vérifie la propagation du préparateur emprunté à chaque unité et projet, sans toucher au schéma XML.</résumé> **/
+    GsPP::AnalyseurDeclarationsAvecOriginesHote AnalyseurDeclarationsDelegue = nullptr;
+    unsigned MutationDeclarationsPreparees = 0;
+    std::size_t NombreAppelsDeclarationsPreparees = 0;
+
+    /** <résumé>Altère un contrat après l'appel réel, pour exercer les gardes de l'adaptateur de production.</résumé> **/
+    std::uint32_t GS_ABI_HOTE AnalyserDeclarationsAlterees(RequeteDeclarationsAvecOriginesHote* requete)
+    {
+        ++NombreAppelsDeclarationsPreparees;
+        auto* analyse = requete->Analyse;
+        const auto code = AnalyseurDeclarationsDelegue(requete);
+        const bool publication = analyse->Noeuds != nullptr;
+        switch (MutationDeclarationsPreparees)
+        {
+        case 0: return code + 1;
+        case 1: analyse->Resultat.Reserve = 1; break;
+        case 2: requete->Reserve = 1; break;
+        case 3: analyse->Source = nullptr; break;
+        case 4: ++analyse->Taille; break;
+        case 5: if (publication) analyse->Noeuds = nullptr; break;
+        case 6: ++analyse->Capacite; break;
+        case 7: requete->Analyse = nullptr; break;
+        case 8: requete->Origines = nullptr; break;
+        case 9: ++requete->NombreOrigines; break;
+        case 10: ++requete->NombreFichiers; break;
+        case 11: requete->EstInterface ^= 1; break;
+        case 12: requete->IndexFichierErreur = 0; break;
+        case 13: requete->LigneLocaleErreur = 1; break;
+        case 14: analyse->Resultat.NombreNoeuds = requete->NombreOrigines + 1;
+            analyse->Resultat.CapaciteRequise = analyse->Resultat.NombreNoeuds; break;
+        case 15: ++analyse->Resultat.CapaciteRequise; break;
+        case 16: analyse->Resultat.Erreur = 31; return 31;
+        case 17: if (!publication) { analyse->Resultat.Erreur = 0; return 0; } break;
+        case 18: analyse->Resultat.Erreur = 3; return 3;
+        case 19: analyse->Resultat.Erreur = 2; return 2;
+        case 20: if (publication) analyse->Noeuds[1].Genre = 37; break;
+        case 21: if (publication) analyse->Noeuds[1].Drapeaux = 0x20000; break;
+        case 22: if (publication) analyse->Noeuds[1].Parent = 1; break;
+        case 23: if (publication) analyse->Noeuds[1].Parent = analyse->Capacite; break;
+        case 24: if (publication) analyse->Noeuds[1].DebutNom = analyse->Taille + 1; break;
+        case 25: if (publication) analyse->Noeuds[1].TailleNom = analyse->Taille + 1; break;
+        case 26: if (publication) analyse->Noeuds[0].Parent = 1; break;
+        case 27: if (publication) analyse->Noeuds[0].Genre = 1; break;
+        case 28: if (publication) analyse->Noeuds[0].Ligne = 2; break;
+        case 29: if (publication) analyse->Noeuds[0].Drapeaux = 1; break;
+        case 30: if (publication) analyse->Noeuds[1].Ligne = 0; break;
+        case 31: if (publication) ++analyse->Noeuds[1].Colonne; break;
+        case 32: if (publication) analyse->Noeuds[analyse->Capacite].Drapeaux = 0; break;
+        case 33: if (publication) { analyse->Resultat.Erreur = 1; return 1; } break;
+        case 34: if (publication) { --analyse->Resultat.NombreNoeuds; --analyse->Resultat.CapaciteRequise; } break;
+        case 35: if (publication) ++analyse->Resultat.NombreOctetsArene; break;
+        case 36: const_cast<char*>(analyse->Source)[0] = '@'; break;
+        case 37: const_cast<OrigineJetonDeclarationsHote*>(requete->Origines)[0].Reserve = 1; break;
+        case 38: if (publication) analyse->Noeuds[0].HachageType = 1; break;
+        case 39: if (publication) analyse->Noeuds[0].HachageNom = 1; break;
+        case 40: if (publication) analyse->Noeuds[0].TailleNom = 1; break;
+        case 41: analyse->Resultat.Erreur = 4; return 4;
+        case 42: if (publication) { analyse->Resultat.Erreur = 4; return 4; } break;
+        case 43: throw std::runtime_error("exception du rappel syntaxique");
+        case 44: requete->IndexFichierErreur = requete->NombreFichiers; break;
+        case 45: ++requete->LigneLocaleErreur; break;
+        case 46: ++requete->ColonneLocaleErreur; break;
+        case 47: ++analyse->Resultat.ColonneErreur; break;
+        case 48: analyse->Resultat.Detail = UINT32_MAX; break;
+        case 49: analyse->Resultat.Detail = 3; break;
+        }
+        return code;
+    }
+
+    /** <résumé>Compare les messages syntaxiques possédés aux refus bilingues du bootstrap.</résumé> **/
+    void TesterDiagnosticsDeclarationsPreparees(const std::string& cheminImage, const std::filesystem::path& repertoire)
+    {
+        struct Cas
+        {
+            std::uint32_t Code, Detail;
+            const char* Francais;
+            const char* Anglais;
+            bool Interface = false;
+        };
+        const std::vector<Cas> corpus{
+            {5, 1, "espace N:: { }", "namespace N:: { }"},
+            {5, 2, "entier32 ;", "int32 ;"},
+            {6, 3, "pointeur_fonction entier32()> F;", "function_pointer int32()> F;"},
+            {7, 4, "pointeur_fonction<entier32> F;", "function_pointer<int32> F;"},
+            {8, 5, "pointeur_fonction<entier32(entier32> F;", "function_pointer<int32(int32> F;"},
+            {6, 6, "pointeur_fonction<entier32() F;", "function_pointer<int32() F;"},
+            {13, 7, "entier32 X[];", "int32 X[];"},
+            {5, 8, "structure {};", "struct {};"},
+            {19, 9, "classe C { publique entier32 X; };", "class C { public int32 X; };"},
+            {5, 10, "structure P { alias = X; };", "struct P { alias = X; };"},
+            {5, 11, "structure P { alias Y = ; };", "struct P { alias Y = ; };"},
+            {5, 12, "entier32 F() { retourner x.; }", "int32 F() { return x.; }"},
+            {5, 13, "structure P { entier32 ; };", "struct P { int32 ; };"},
+            {11, 14, "structure P {}", "struct P {}"},
+            {22, 15, "classe C { virtuel virtuel entier32 F() {} };", "class C { virtual virtual int32 F() {} };"},
+            {22, 16, "classe C { remplacer remplacer entier32 F() {} };", "class C { override override int32 F() {} };"},
+            {5, 17, "énumération {};", "enum {};"},
+            {5, 18, "énumération E { = 0 };", "enum E { = 0 };"},
+            {11, 19, "énumération E {}", "enum E {}"},
+            {12, 20, "entier32 F[1]() {}", "int32 F[1]() {}"},
+            {5, 21, "externe entier32 F(entier32);", "extern int32 F(int32);"},
+            {26, 22, "classe C { constructeur() : X(1), soi() {} };", "class C { constructor() : X(1), this() {} };"},
+            {26, 23, "classe C { constructeur() : soi(), X(1) {} };", "class C { constructor() : this(), X(1) {} };"},
+            {26, 24, "classe C { constructeur() : X(1), parent() {} };", "class C { constructor() : X(1), super() {} };"},
+            {5, 25, "classe C { constructeur() : +() {} };", "class C { constructor() : +() {} };"},
+            {11, 26, "externe entier32 F() {}", "extern int32 F() {}"},
+            {7, 27, "classe C { constructeur() : soi {} };", "class C { constructor() : this {} };"},
+            {8, 28, "classe C { constructeur() : soi(1 {} };", "class C { constructor() : this(1 {} };"},
+            {7, 29, "classe C { constructeur() : parent {} };", "class C { constructor() : super {} };"},
+            {8, 30, "classe C { constructeur() : parent(1 {} };", "class C { constructor() : super(1 {} };"},
+            {7, 31, "classe C { constructeur() : X {} };", "class C { constructor() : X {} };"},
+            {8, 32, "classe C { constructeur() : X(1 {} };", "class C { constructor() : X(1 {} };"},
+            {15, 33, "classe C { constructeur() : X(1); };", "class C { constructor() : X(1); };", true},
+            {7, 34, "entier32 F() { si vrai retourner 0; }", "int32 F() { if true return 0; }"},
+            {7, 35, "entier32 F() { tantque vrai retourner 0; }", "int32 F() { while true return 0; }"},
+            {5, 36, "entier32 F() { entier32 ; }", "int32 F() { int32 ; }"},
+            {10, 37, "entier32 X = {1 ;", "int32 X = {1 ;"},
+            {18, 38, "alias A B;", "alias A B;"},
+            {11, 39, "alias A = B", "alias A = B"},
+            {11, 40, "utilisant espace N", "using namespace N"},
+            {6, 41, "}", "}"},
+            {10, 42, "structure P {", "struct P {"},
+            {5, 43, "classe C { entier32 ; };", "class C { int32 ; };"},
+            {5, 0, "utilisant espace ;", "using namespace ;"},
+            {6, 0, ";", ";"},
+            {7, 0, "classe C { constructeur {} };", "class C { constructor {} };"},
+            {8, 0, "externe entier32 F(entier32 X;", "extern int32 F(int32 X;"},
+            {9, 0, "structure P entier32 X;", "struct P int32 X;"},
+            {10, 0, "espace N {", "namespace N {"},
+            {11, 0, "entier32 X = 1", "int32 X = 1"},
+            {13, 0, "entier32 X[0];", "int32 X[0];"},
+            {14, 0, "entier32 X = ;", "int32 X = ;"},
+            {15, 0, "externe entier32 X = 1;", "extern int32 X = 1;"},
+            {17, 0, "entier32 X[1;", "int32 X[1;"},
+            {20, 0, "structure P { entier32 X = 1; };", "struct P { int32 X = 1; };"},
+            {21, 0, "entier32 opérateur=();", "int32 operator=();"},
+            {23, 0, "classe C { virtuel constructeur() {} };", "class C { virtual constructor() {} };"},
+            {24, 0, "classe C { destructeur(entier32 X) {} };", "class C { destructor(int32 X) {} };"},
+            {25, 0, "entier32 F() : X(1) {}", "int32 F() : X(1) {}"},
+            {27, 0, "entier32 F() { retourner convertir entier32(1); }", "int32 F() { return cast int32(1); }"},
+            {28, 0, "entier32 F() { retourner convertir<entier32(1); }", "int32 F() { return cast<int32(1); }"},
+            {29, 0, "entier32 X = 18446744073709551616;", "int32 X = 18446744073709551616;"},
+            {30, 0, "utilisant N;", "using N;"},
+            // Plusieurs refus possibles : le premier contexte de la passe reste déterminant.
+            {5, 21, "entier32 F(entier32) { retourner +; }", "int32 F(int32) { return +; }"},
+            {19, 9, "classe C { publique entier32 ; };", "class C { public int32 ; };"},
+            {26, 23, "classe C { constructeur() : soi(), +() {} };", "class C { constructor() : this(), +() {} };"},
+            {22, 15, "classe C { virtuel virtuel constructeur() {} };", "class C { virtual virtual constructor() {} };"}
+        };
+        std::filesystem::create_directories(repertoire);
+        auto ecrire = [&](const std::filesystem::path& chemin, const std::string& contenu)
+        {
+            std::ofstream sortie(chemin, std::ios::binary);
+            sortie.write(contenu.data(), static_cast<std::streamsize>(contenu.size()));
+            Exiger(static_cast<bool>(sortie), "fixture des diagnostics non écrite");
+        };
+        auto rendre = [](const GsPP::ErreurCompilation& erreur, GsPP::LangueDiagnostic langue)
+        {
+            std::ostringstream flux;
+            flux << erreur.Fichier() << ':' << erreur.Ligne() << ':' << erreur.Colonne()
+                << " GS1001 : " << erreur.Message(langue) << '\n';
+            return flux.str();
+        };
+        GsPP::DeclarationsPreparees survivant;
+        std::optional<GsPP::ErreurCompilation> erreurSurvivante;
+        std::size_t comparaisons = 0;
+        {
+            GsPP::ExpanseurInclusionsCharge image(cheminImage);
+            AnalyseurDeclarationsDelegue = image.AnalyseurDeclarations();
+            for (const auto& cas : corpus)
+                for (const bool anglais : {false, true})
+                {
+                    const auto root = repertoire / (cas.Interface ? "Root.HGsPP" : "Root.GsPP");
+                    const std::string nomVirtuel = cas.Interface ? "diagnostic-virtuel.HGsPP" : "diagnostic-virtuel.GsPP";
+                    ecrire(root, "#include \"Milieu.GsPP\"\n");
+                    ecrire(repertoire / "Milieu.GsPP", "#include \"Étoile.GsPP\"\n");
+                    ecrire(repertoire / "Étoile.GsPP", "\xEF\xBB\xBF\r\n" + std::string(anglais ? cas.Anglais : cas.Francais) + "\r\n");
+                    std::optional<GsPP::ErreurCompilation> oracle;
+                    try { (void)GsPP::AnalyseurSyntaxique(GsPP::PreparerJetonsSource(root, nomVirtuel), nomVirtuel, cas.Interface).Analyser(); }
+                    catch (const GsPP::ErreurCompilation& erreur) { oracle = erreur; }
+                    Exiger(oracle.has_value(), "corpus syntaxique accepté par le bootstrap");
+                    const auto preparation = GsPP::PreparerFichierAvecReprise({root, cas.Interface, nomVirtuel}, image.Developper(),
+                        {}, {}, comparaisons % 2 == 0, comparaisons % 3 == 0);
+                    const auto refus = GsPP::AnalyserDeclarationsPreparees(preparation, AnalyseurDeclarationsDelegue);
+                    Exiger(refus.Resultat.Erreur == cas.Code && refus.Resultat.Detail == cas.Detail && refus.PositionErreur
+                        && refus.Source.empty() && refus.Noeuds.empty() && refus.Origines.empty(),
+                        "code/détail syntaxique incorrect : corpus=" + std::to_string(comparaisons)
+                        + ", code=" + std::to_string(refus.Resultat.Erreur) + ", détail=" + std::to_string(refus.Resultat.Detail));
+                    // Le diagnostic ne dépend ni d'une nouvelle lecture ni des sources développées supprimées.
+                    ecrire(repertoire / "Étoile.GsPP", "@");
+                    std::optional<GsPP::ErreurCompilation> diagnostic;
+                    try { refus.ExigerValide(); }
+                    catch (const GsPP::ErreurCompilation& erreur) { diagnostic = erreur; }
+                    Exiger(diagnostic.has_value(), "refus numérique non traduit en ErreurCompilation");
+                    for (const auto langue : {GsPP::LangueDiagnostic::Francais, GsPP::LangueDiagnostic::Anglais})
+                        Exiger(rendre(*diagnostic, langue) == rendre(*oracle, langue),
+                            "message/position syntaxique différents : corpus=" + std::to_string(comparaisons)
+                            + ", attendu=" + rendre(*oracle, langue) + ", obtenu=" + rendre(*diagnostic, langue));
+                    if (cas.Detail == 13) { survivant = refus; erreurSurvivante = diagnostic; }
+                    ++comparaisons;
+                }
+            ecrire(repertoire / "Root.GsPP", "int32 F() { return 42; }");
+            const auto valide = GsPP::PreparerFichierAvecReprise({repertoire / "Root.GsPP", false, {}}, image.Developper());
+            GsPP::AnalyserDeclarationsPreparees(valide, AnalyseurDeclarationsDelegue).ExigerValide();
+            ecrire(repertoire / "Root.GsPP", "struct P { int32 ; };");
+            const auto invalide = GsPP::PreparerFichierAvecReprise({repertoire / "Root.GsPP", false, {}}, image.Developper());
+            for (MutationDeclarationsPreparees = 48; MutationDeclarationsPreparees < 50; ++MutationDeclarationsPreparees)
+            {
+                bool refuse = false;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(invalide, AnalyserDeclarationsAlterees); }
+                catch (const GsPP::ErreurCompilation&) { throw std::runtime_error("détail incohérent devenu diagnostic de langue"); }
+                catch (const std::runtime_error&) { refuse = true; }
+                Exiger(refuse, "détail syntaxique inconnu ou incompatible accepté");
+            }
+            MutationDeclarationsPreparees = UINT32_MAX;
+        }
+        const auto copie = survivant;
+        auto deplace = std::move(survivant);
+        for (const auto* refus : std::array<const GsPP::DeclarationsPreparees*, 2>{&copie, &deplace})
+        {
+            try { refus->ExigerValide(); Exiger(false, "diagnostic perdu après déchargement"); }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                Exiger(erreurSurvivante && rendre(erreur, GsPP::LangueDiagnostic::Francais)
+                    == rendre(*erreurSurvivante, GsPP::LangueDiagnostic::Francais)
+                    && rendre(erreur, GsPP::LangueDiagnostic::Anglais) == rendre(*erreurSurvivante, GsPP::LangueDiagnostic::Anglais),
+                    "diagnostic copié/déplacé dépendant de l'image");
+            }
+        }
+        auto historique = copie;
+        historique.Resultat.Detail = 0;
+        try { historique.ExigerValide(); Exiger(false, "catégorie historique non traduite"); }
+        catch (const GsPP::ErreurCompilation& erreur)
+        {
+            Exiger(erreur.Message(GsPP::LangueDiagnostic::Francais) == "identifiant attendu"
+                && erreur.Message(GsPP::LangueDiagnostic::Anglais) == "expected identifier", "détail nul historique incompatible");
+        }
+        for (int mutation = 0; mutation < 5; ++mutation)
+        {
+            auto faux = copie;
+            if (mutation == 0) faux.Resultat.Erreur = 31;
+            if (mutation == 1) faux.Resultat.Detail = UINT32_MAX;
+            if (mutation == 2) faux.PositionErreur.reset();
+            if (mutation == 3) faux.PositionErreur->Ligne = 0;
+            if (mutation == 4) faux.Resultat.Reserve = 1;
+            bool refuse = false;
+            try { faux.ExigerValide(); }
+            catch (const GsPP::ErreurCompilation&) { throw std::runtime_error("résultat incohérent devenu diagnostic de langue"); }
+            catch (const std::runtime_error&) { refuse = true; }
+            Exiger(refuse, "résultat de diagnostic altéré accepté");
+        }
+        std::cout << "Diagnostics syntaxiques possédés : " << corpus.size() << " corpus bilingues, " << comparaisons
+            << " refus comparés (messages FR/EN, GS1001 et positions), 43 contextes, priorités, durée de vie et détails altérés vérifiés.\n";
+    }
+
+    /** <résumé>Exerce le chargement syntaxique facultatif, la propriété des AST et les refus de contrat.</résumé> **/
+    void TesterAdaptateurDeclarationsPreparees(const std::string& cheminImage, const std::filesystem::path& repertoire)
+    {
+        std::filesystem::create_directories(repertoire);
+        auto ecrire = [&](const std::string& nom, const std::string& contenu)
+        {
+            std::ofstream sortie(repertoire / nom, std::ios::binary);
+            sortie.write(contenu.data(), static_cast<std::streamsize>(contenu.size()));
+            Exiger(static_cast<bool>(sortie), "fixture de l'adaptateur syntaxique non écrite");
+        };
+        ecrire("Types.HGsPP", "#pragma once\nstructure P { entier32 X; };\n");
+        const std::string source = "#inclure \"Types.HGsPP\"\npublique entier32 Principal() { P p = {42}; retourner p.X; }\n";
+        ecrire("Root.GsPP", source);
+        GsPP::DeclarationsPreparees survivant;
+        {
+            GsPP::ExpanseurInclusionsCharge image(cheminImage);
+            AnalyseurDeclarationsDelegue = image.AnalyseurDeclarations();
+            auto preparation = GsPP::PreparerFichierAvecReprise(
+                {repertoire / "Root.GsPP", false, "racine-virtuelle.GsPP"}, image.Developper());
+            const auto texteAvant = preparation.Preparation.Source;
+            const auto originesAvant = preparation.Preparation.Origines;
+            survivant = GsPP::AnalyserDeclarationsPreparees(preparation, AnalyseurDeclarationsDelegue);
+            Exiger(!survivant.PositionErreur && survivant.Resultat.Erreur == 0
+                && survivant.Noeuds.size() == survivant.Origines.size() && survivant.Nom(1) == "P"
+                && survivant.Origines[1].Position.Fichier == (repertoire / "Types.HGsPP").string()
+                && survivant.Origines[1].Position.Ligne == 2 && survivant.Origines[1].EstInterface,
+                "AST possédé ou origine d'interface incorrects");
+            ecrire("Root.GsPP", "@"); ecrire("Types.HGsPP", "@");
+            const auto gele = GsPP::AnalyserDeclarationsPreparees(preparation, AnalyseurDeclarationsDelegue);
+            Exiger(gele.Source == survivant.Source && gele.Noeuds.size() == survivant.Noeuds.size()
+                && std::memcmp(gele.Noeuds.data(), survivant.Noeuds.data(), gele.Noeuds.size() * sizeof(NoeudDeclarationHote)) == 0,
+                "relecture du disque après préparation syntaxique");
+            ecrire("Root.GsPP", source); ecrire("Types.HGsPP", "#pragma once\nstructure P { entier32 X; };\n");
+            for (MutationDeclarationsPreparees = 0; MutationDeclarationsPreparees < 41; ++MutationDeclarationsPreparees)
+            {
+                bool refuse = false;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(preparation, AnalyserDeclarationsAlterees); }
+                catch (const std::runtime_error& erreur)
+                { refuse = std::string(erreur.what()).find("contrat d'AST préparé") != std::string::npos; }
+                Exiger(refuse, "contrat syntaxique altéré accepté : " + std::to_string(MutationDeclarationsPreparees));
+                Exiger(preparation.Preparation.Source == texteAvant && std::memcmp(preparation.Preparation.Origines.data(),
+                    originesAvant.data(), originesAvant.size() * sizeof(OrigineJetonDeclarationsHote)) == 0,
+                    "instantané original modifié par un rappel syntaxique défectueux");
+            }
+            for (MutationDeclarationsPreparees = 41; MutationDeclarationsPreparees < 44; ++MutationDeclarationsPreparees)
+            {
+                bool refuse = false;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(preparation, AnalyserDeclarationsAlterees); }
+                catch (const std::bad_alloc&) { refuse = MutationDeclarationsPreparees < 43; }
+                catch (const std::runtime_error& erreur)
+                { refuse = MutationDeclarationsPreparees == 43 && std::string(erreur.what()) == "exception du rappel syntaxique"; }
+                Exiger(refuse, "allocation/exception syntaxique non propagée");
+            }
+            auto verifierLimite = [&](GsPP::LimitesDeclarationsPreparees limites, bool avantAppel)
+            {
+                bool refuse = false; NombreAppelsDeclarationsPreparees = 0; MutationDeclarationsPreparees = 100;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(preparation, AnalyserDeclarationsAlterees, false, limites); }
+                catch (const std::length_error&) { refuse = true; }
+                Exiger(refuse && NombreAppelsDeclarationsPreparees == (avantAppel ? 0U : 1U), "borne de l'AST préparé ignorée");
+            };
+            GsPP::LimitesDeclarationsPreparees limites;
+            limites.MaximumOctets = texteAvant.size() - 1; verifierLimite(limites, true);
+            limites = {}; limites.MaximumJetons = originesAvant.size() - 1; verifierLimite(limites, true);
+            limites = {}; limites.MaximumNoeuds = 1; verifierLimite(limites, false);
+            for (unsigned invalidite = 0; invalidite < 4; ++invalidite)
+            {
+                limites = {}; NombreAppelsDeclarationsPreparees = 0; bool refuse = false;
+                if (invalidite == 0) limites.MaximumOctets = 0;
+                if (invalidite == 1) limites.MaximumJetons = 100'000'001;
+                if (invalidite == 2) limites.MaximumNoeuds = 0;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(preparation,
+                    invalidite == 3 ? nullptr : AnalyserDeclarationsAlterees, false, limites); }
+                catch (const std::invalid_argument&) { refuse = true; }
+                Exiger(refuse && !NombreAppelsDeclarationsPreparees, "argument syntaxique invalide accepté ou rappel appelé");
+            }
+            const auto preparationAvant = preparation.Preparation;
+            for (unsigned mutation = 0; mutation < 5; ++mutation)
+            {
+                preparation.Preparation = preparationAvant; NombreAppelsDeclarationsPreparees = 0;
+                if (mutation == 0) preparation.Preparation.Origines[0].Reserve = 1;
+                if (mutation == 1) preparation.Preparation.Origines.back().IndexFichier = preparation.Catalogue.Fichiers().size();
+                if (mutation == 2) ++preparation.Preparation.Resultat.NombreOctetsSource;
+                if (mutation == 3) preparation.Preparation.Source[0] = '@';
+                if (mutation == 4) preparation.Preparation.Origines.pop_back();
+                bool refuse = false;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(preparation, AnalyserDeclarationsAlterees); }
+                catch (const std::runtime_error&) { refuse = true; }
+                Exiger(refuse && !NombreAppelsDeclarationsPreparees, "préparation altérée transmise à l'analyseur natif");
+            }
+            preparation.Preparation = preparationAvant;
+            ecrire("Types.HGsPP", "structure P { entier32 ; };\n");
+            auto erronee = GsPP::PreparerFichierAvecReprise({repertoire / "Root.GsPP", false, "racine-virtuelle.GsPP"}, image.Developper());
+            const auto refus = GsPP::AnalyserDeclarationsPreparees(erronee, AnalyseurDeclarationsDelegue);
+            Exiger(refus.Resultat.Erreur == 5 && refus.PositionErreur && refus.Source.empty()
+                && refus.Noeuds.empty() && refus.Origines.empty()
+                && refus.PositionErreur->Fichier == (repertoire / "Types.HGsPP").string(), "refus syntaxique partiellement publié ou origine perdue");
+            for (MutationDeclarationsPreparees = 44; MutationDeclarationsPreparees < 48; ++MutationDeclarationsPreparees)
+            {
+                bool rejete = false;
+                try { (void)GsPP::AnalyserDeclarationsPreparees(erronee, AnalyserDeclarationsAlterees); }
+                catch (const std::runtime_error& erreur)
+                { rejete = std::string(erreur.what()).find("contrat d'AST préparé") != std::string::npos; }
+                Exiger(rejete, "diagnostic syntaxique altéré accepté");
+            }
+            ecrire("Types.HGsPP", "#pragma once\nstructure P { entier32 X; };\n");
+            ecrire("Api.HGsPP", "entier32 F();\n");
+            const auto interface = GsPP::PreparerFichierAvecReprise({repertoire / "Api.HGsPP", true, "interface-virtuelle.HGsPP"}, image.Developper());
+            const auto astInterface = GsPP::AnalyserDeclarationsPreparees(interface, AnalyseurDeclarationsDelegue);
+            Exiger(!astInterface.Resultat.Erreur && astInterface.Origines[1].EstInterface
+                && (astInterface.Noeuds[1].Drapeaux & 2U), "mode global d'interface non transmis");
+            ecrire("Vide.GsPP", "");
+            const auto vide = GsPP::PreparerFichierAvecReprise({repertoire / "Vide.GsPP", false, {}}, image.Developper(), {}, {}, true, true);
+            Exiger(GsPP::AnalyserDeclarationsPreparees(vide, AnalyseurDeclarationsDelegue).Noeuds.size() == 1, "AST de source vide/BOM invalide");
+
+            // L'expansion reste utilisable si le contrat syntaxique facultatif manque ou est incorrect.
+            const auto contenu = LireFichier(cheminImage);
+            auto lire32 = [&](std::size_t p)
+            {
+                std::uint32_t valeur = 0;
+                for (unsigned i = 0; i < 4; ++i) valeur |= std::uint32_t(contenu.at(p + i)) << (8 * i);
+                return valeur;
+            };
+            auto trouverNom = [&](const std::string& nom)
+            {
+                const auto trouve = std::search(contenu.begin(), contenu.end(), nom.begin(), nom.end());
+                Exiger(trouve != contenu.end(), "nom syntaxique absent de la fixture");
+                return static_cast<std::size_t>(trouve - contenu.begin());
+            };
+            const auto nomFr = trouverNom("GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsAvecOrigines");
+            const auto nomEn = trouverNom("GalacticShrine::GsPP::Autohebergement::AnalyzeOriginAwareDeclarations");
+            std::size_t exports = 0, chaines = 0; std::uint32_t nombreExports = 0;
+            for (std::uint32_t i = 0; i < lire32(28); ++i)
+            {
+                const auto p = static_cast<std::size_t>(Lire64(contenu, 64)) + 64 * i;
+                if (lire32(p + 16) == 5) { exports = static_cast<std::size_t>(Lire64(contenu, p + 24)); nombreExports = lire32(p + 60); }
+                if (lire32(p + 16) == 8) chaines = static_cast<std::size_t>(Lire64(contenu, p + 24));
+            }
+            std::size_t entreeFr = 0, entreeEn = 0;
+            for (std::uint32_t i = 0; i < nombreExports; ++i)
+            {
+                const auto p = exports + 32 * i;
+                if (chaines + lire32(p) == nomFr) entreeFr = p;
+                if (chaines + lire32(p) == nomEn) entreeEn = p;
+            }
+            Exiger(entreeFr && entreeEn, "entrées des exports syntaxiques absentes");
+            std::uint64_t rvaDonnees = 0;
+            for (std::uint32_t i = 0; i < lire32(24); ++i)
+            {
+                const auto p = static_cast<std::size_t>(Lire64(contenu, 56)) + 64 * i;
+                if (!(lire32(p + 4) & 4U) && Lire64(contenu, p + 32)) rvaDonnees = Lire64(contenu, p + 24);
+            }
+            Exiger(rvaDonnees, "segment non exécutable absent de la fixture");
+            for (unsigned mutation = 0; mutation < 7; ++mutation)
+            {
+                auto modifie = contenu;
+                auto ecrire64 = [&](std::size_t p, std::uint64_t valeur)
+                { for (unsigned i = 0; i < 8; ++i) modifie.at(p + i) = static_cast<std::uint8_t>(valeur >> (8 * i)); };
+                if (mutation == 0) modifie[nomFr] = 'X';
+                if (mutation == 1) ecrire64(entreeEn + 8, Lire64(contenu, entreeEn + 8) + 1);
+                if (mutation == 2) modifie[entreeFr + 22] = 2;
+                if (mutation == 3) modifie[entreeFr + 20] = 1;
+                if (mutation == 4) std::fill_n(modifie.begin() + entreeFr + 16, 4, std::uint8_t{0});
+                if (mutation == 5) std::fill_n(modifie.begin() + entreeFr + 16, 4, std::uint8_t{255});
+                if (mutation == 6) { ecrire64(entreeFr + 8, rvaDonnees); ecrire64(entreeEn + 8, rvaDonnees); }
+                Exiger(GsPP::VerificateurGsE().Verifier(modifie).Valide, "altération syntaxique non valide au niveau du format GsE");
+                ecrire("SansAnalyseur.GsE", std::string(modifie.begin(), modifie.end()));
+                GsPP::ExpanseurInclusionsCharge sansAnalyseur(repertoire / "SansAnalyseur.GsE");
+                Exiger(!GsPP::PreparerFichierAvecReprise({repertoire / "Root.GsPP", false, {}}, sansAnalyseur.Developper()).Preparation.Resultat.Erreur,
+                    "nouvelle dépendance syntaxique introduite dans l'expansion seule");
+                bool absentRefuse = false;
+                try { (void)sansAnalyseur.AnalyseurDeclarations(); }
+                catch (const std::runtime_error&) { absentRefuse = true; }
+                Exiger(absentRefuse, "contrat d'export syntaxique altéré accepté");
+            }
+            AnalyseurDeclarationsDelegue = nullptr;
+        }
+        auto copie = survivant;
+        auto deplace = std::move(copie);
+        Exiger(survivant.Nom(1) == "P" && deplace.Nom(1) == "P" && deplace.Origines[1].EstInterface,
+            "AST/noms invalidés après destruction du catalogue/image, copie ou déplacement");
+        std::cout << "Adaptateur d'AST préparé : propriété, origines, instantanés gelés, 45 contrats altérés, "
+            "allocations/exceptions, bornes, cinq préparations et sept exports altérés, interface/vide/BOM vérifiés.\n";
+    }
+
+    void TesterProjetsAvecPreparation(const std::string& cheminImage, const std::filesystem::path& repertoire)
+    {
+        GsPP::ExpanseurInclusionsCharge expanseur(cheminImage);
+        for (bool agrege : {false, true})
+        {
+            const auto dossier = repertoire / (agrege ? "Agrege" : "Separe");
+            std::filesystem::create_directories(dossier);
+            auto ecrire = [&](const std::string& nom, const std::string& contenu)
+            {
+                std::ofstream sortie(dossier / nom, std::ios::binary);
+                sortie.write(contenu.data(), static_cast<std::streamsize>(contenu.size()));
+                Exiger(static_cast<bool>(sortie), "fixture API de projet non écrite");
+            };
+            ecrire("Proto.HGsPP", "#pragma once\nespace Demo { publique entier32 F(); publique entier32 G(); }\n");
+            ecrire("Api.HGsPP", "#inclure \"Proto.HGsPP\"\n");
+            ecrire("A.GsPP", "#inclure \"Proto.HGsPP\"\nespace Demo { publique entier32 F() { retourner 40; } }\n");
+            ecrire("B.GsPP", "#include \"Proto.HGsPP\"\nespace Demo { publique entier32 G() { retourner 2; } }\n");
+            ecrire("Principal.GsPP", "#inclure \"Proto.HGsPP\"\nutilisant espace Demo;\npublique entier32 Principal() { retourner F() + G(); }\n");
+            const std::string mode = agrege ? "agregee" : "separee";
+            ecrire("Lib.GsPj", "<GsProjet Version=\"1.0\" Type=\"bibliotheque\" ModeCompilation=\"" + mode + "\">"
+                "<Interface Chemin=\"Api.HGsPP\"/><Source Chemin=\"A.GsPP\"/><Source Chemin=\"B.GsPP\"/>"
+                "<Construction RepertoireObjets=\"ObjLib\" Sortie=\"Lib.GsA\"/></GsProjet>");
+            ecrire("App.GsProject", "<GsProject Version=\"1.0\" Name=\"App\">"
+                "<Interface Path=\"Api.HGsPP\"/><Source Path=\"Principal.GsPP\"/><Library Path=\"Lib.GsA\"/>"
+                "<Build ObjectDirectory=\"ObjApp\" Output=\"App.GsE\" Map=\"App.map\"/></GsProject>");
+            ecrire("Solution.GsPs", "<GsSolution Version=\"1.0\"><Projet Chemin=\"Lib.GsPj\"/>"
+                "<Project Path=\"App.GsProject\"/></GsSolution>");
+            auto instantane = [&]()
+            {
+                std::map<std::string, std::vector<std::uint8_t>> contenu;
+                for (const auto& nom : {"Lib.GsA", "App.GsE", "App.map"})
+                    contenu[nom] = LireFichier((dossier / nom).string());
+                for (const auto& nom : {"ObjLib", "ObjApp"})
+                    for (const auto& fichier : std::filesystem::directory_iterator(dossier / nom))
+                        contenu[std::string(nom) + '/' + fichier.path().filename().string()] = LireFichier(fichier.path().string());
+                return contenu;
+            };
+            std::ostringstream journalBootstrap, journalGs;
+            const auto reference = GsPP::ConstructeurProjet().ConstruireSolution(dossier / "Solution.GsPs", journalBootstrap);
+            const auto avant = instantane();
+            std::vector<std::pair<std::string, bool>> visites;
+            GsPP::PreparateurJetonsUnite preparer = [&](const GsPP::UniteSource& unite)
+            {
+                Exiger(unite.Chemin.is_absolute() && unite.Chemin.parent_path() == dossier
+                    && unite.NomDiagnostic == unite.Chemin.filename().generic_string(), "chemin physique/nom diagnostic du projet perdu");
+                visites.emplace_back(unite.NomDiagnostic, unite.EstInterface);
+                return GsPP::PreparerJetonsAvecReprise(unite, expanseur.Developper());
+            };
+            const auto resultat = GsPP::ConstructeurProjet().ConstruireSolution(dossier / "Solution.GsPs", journalGs, preparer);
+            const std::vector<std::pair<std::string, bool>> attendues = agrege
+                ? std::vector<std::pair<std::string, bool>>{{"Api.HGsPP", true}, {"A.GsPP", false}, {"B.GsPP", false}, {"Api.HGsPP", true}, {"Principal.GsPP", false}}
+                : std::vector<std::pair<std::string, bool>>{{"Api.HGsPP", true}, {"A.GsPP", false}, {"Api.HGsPP", true}, {"B.GsPP", false}, {"Api.HGsPP", true}, {"Principal.GsPP", false}};
+            Exiger(visites == attendues && resultat.size() == 2 && reference.size() == 2
+                && resultat[0].NombreUnites == 2 && resultat[1].NombreUnites == 1
+                && instantane() == avant && journalGs.str() == journalBootstrap.str(),
+                "préparation de solution différente du bootstrap ou non transmise à toutes les unités");
+            GsPP::OptionsConstructionProjet options;
+            options.PreparerJetons = [](const GsPP::UniteSource&) -> std::vector<GsPP::Jeton>
+            { throw std::runtime_error("refus du préparateur de test"); };
+            bool refuse = false;
+            try { (void)GsPP::ConstructeurProjet().Construire(dossier / "Lib.GsPj", journalGs, options); }
+            catch (const std::runtime_error& erreur) { refuse = std::string(erreur.what()) == "refus du préparateur de test"; }
+            Exiger(refuse && instantane() == avant, "refus du préparateur perdu ou sorties existantes écrasées");
+        }
+        std::cout << "API projets avec préparation : propagation par unité/projet, noms physiques/diagnostics, "
+            << "modes séparé/agrégé, objets/archives/images/cartes et journaux identiques, exceptions propagées.\n";
+    }
+
+    /** <résumé>Exerce le chargement de production et le pipeline réel, pas seulement l'ABI en mémoire.</résumé> **/
+    void TesterPiloteInclusions(const std::string& cheminImage, const std::filesystem::path& repertoire)
+    {
+        std::filesystem::create_directories(repertoire);
+        auto ecrire = [&](const std::string& nom, const std::string& texte)
+        {
+            std::ofstream sortie(repertoire / nom, std::ios::binary);
+            sortie.write(texte.data(), static_cast<std::streamsize>(texte.size()));
+            Exiger(static_cast<bool>(sortie), "fixture du pilote d'inclusions non écrite");
+        };
+        struct Cas { std::string Entete, Source, Autre; bool Refus; };
+        const std::vector<Cas> cas{
+            {"#pragma once\nnamespace N { struct V {}; enum E { X = 42 }; int32 F(); }",
+                "#include \"Types.HGsPP\"\n#include \"Types.HGsPP\"\nnamespace N { int32 F() { return 42; } }\nusing namespace N;\npublic int32 Principal() { return F(); }", "", false},
+            {"#pragma once\nint32 F();", "#include \"Types.HGsPP\"\nint32 F() { return 42; }\npublic int32 Principal() { return F(); }",
+                "#include \"Types.HGsPP\"\nint32 Autre() { return F(); }", false},
+            {"", "public const char* Texte = \"é\\n\\t\\0\\\"\\\\\";\npublic int32 Principal() { return 42; }", "", true},
+            {"", "public int32 Principal() { const char* texte = \"é\\n\\t\\0\\\"\\\\\"; return 42; }", "", false},
+            {"#pragma once\nint32 F() { return 42; }", "#include \"Types.HGsPP\"\npublic int32 Principal() { return 42; }", "", true},
+            {"struct V { inconnu x; };", "#include \"Types.HGsPP\"\npublic int32 Principal() { return 42; }", "", true},
+            {"int32 F();", "#include \"Types.HGsPP\"\npublic int32 Principal() { return Absent; }", "", true},
+            {"", "public int32 Principal() { return 42; }", "public int32 Principal() { return 7; }", true},
+            {"#pragma once\nenum E { X = 42 };", "#include \"Types.HGsPP\"\npublic int32 Principal() { return 42; }",
+                "#include \"Types.HGsPP\"\nint32 Autre() { return 7; }", true},
+            {"#pragma once\nnamespace N { int32 F(); }", "#include \"Types.HGsPP\"\nusing namespace N;\nnamespace N { int32 F() { return 42; } }\npublic int32 Principal() { return F(); }",
+                "#include \"Types.HGsPP\"\nint32 Autre() { return F(); }", true},
+            {"", "#include \"Absent.HGsPP\"\npublic int32 Principal() { return 42; }", "", true},
+        };
+        std::size_t verifies = 0;
+        GsPP::ExpanseurInclusionsCharge expanseur(cheminImage);
+        for (const auto& c : cas) for (bool anglais : {false, true})
+        {
+            // Traduction locale des mots-clés anglais vers leurs formes canoniques françaises.
+            auto versFrancais = [&](std::string source)
+            {
+                if (anglais) return source;
+                for (const auto& [en, fr] : std::vector<std::pair<std::string, std::string>>{
+                    {"namespace", "espace"}, {"struct", "structure"}, {"enum", "énumération"},
+                    {"int32", "entier32"}, {"return", "retourner"}, {"public", "publique"}, {"using", "utilisant"},
+                    {"const ", "constante "}, {"char", "caractère"}, {"#include", "#inclure"}})
+                    for (std::size_t p = 0; (p = source.find(en, p)) != std::string::npos; p += fr.size()) source.replace(p, en.size(), fr);
+                return source;
+            };
+            ecrire("Types.HGsPP", versFrancais(c.Entete)); ecrire("Root.GsPP", versFrancais(c.Source));
+            ecrire("Autre.GsPP", versFrancais(c.Autre));
+            std::vector<GsPP::UniteSource> unites{{repertoire / "Root.GsPP", false, "racine-virtuelle.GsPP"}};
+            if (!c.Autre.empty()) unites.push_back({repertoire / "Autre.GsPP", false, "autre-virtuelle.GsPP"});
+            std::optional<GsPP::ErreurCompilation> refus;
+            std::optional<GsPP::Programme> oracle;
+            std::ostringstream jetonsBootstrap, jetonsGs;
+            try { oracle = GsPP::AnalyserUnites(unites, &jetonsBootstrap); }
+            catch (const GsPP::ErreurCompilation& erreur) { refus = erreur; }
+            Exiger(refus.has_value() == c.Refus, "classement inattendu du corpus pilote : " + std::to_string(verifies)
+                + (refus ? " : " + refus->Message(GsPP::LangueDiagnostic::Francais) : " : aucun refus"));
+            try
+            {
+                auto programme = GsPP::AnalyserUnitesAvecPreparation(unites, [&](const GsPP::UniteSource& unite)
+                { return GsPP::PreparerJetonsAvecReprise(unite, expanseur.Developper()); }, &jetonsGs);
+                Exiger(oracle.has_value() && !refus && jetonsGs.str() == jetonsBootstrap.str(), "jetons du pipeline différents");
+                const auto a = GsPP::GenerateurX64().Generer(*oracle);
+                const auto b = GsPP::GenerateurX64().Generer(programme);
+                Exiger(GsPP::EcrivainGsO().Construire(a) == GsPP::EcrivainGsO().Construire(b)
+                    && GsPP::EcrivainGsE().Construire(a, "Principal") == GsPP::EcrivainGsE().Construire(b, "Principal"),
+                    "objets/images du pipeline différents du bootstrap");
+            }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                Exiger(refus && erreur.Fichier() == refus->Fichier() && erreur.Ligne() == refus->Ligne()
+                    && erreur.Colonne() == refus->Colonne()
+                    && erreur.Message(GsPP::LangueDiagnostic::Francais) == refus->Message(GsPP::LangueDiagnostic::Francais)
+                    && erreur.Message(GsPP::LangueDiagnostic::Anglais) == refus->Message(GsPP::LangueDiagnostic::Anglais),
+                    "diagnostic du pipeline différent du bootstrap");
+            }
+            ++verifies;
+        }
+        ecrire("Types.HGsPP", "#pragma once\nstruct V {};\n");
+        ecrire("Root.GsPP", "\xEF\xBB\xBF#include \"Types.HGsPP\"\r\npublic int32 Principal() { return 42; }\r\n");
+        const GsPP::UniteSource root{repertoire / "Root.GsPP", false, "virtuel.GsPP"};
+        const auto oracle = GsPP::PreparerJetonsSource(root.Chemin, root.NomDiagnostic);
+        auto preparation = GsPP::PreparerFichierAvecReprise(root, expanseur.Developper(), {}, {}, true, true);
+        auto jetons = GsPP::ConvertirPreparationEnJetons(preparation);
+        Exiger(jetons.size() == oracle.size() && jetons.back().Fichier == root.NomDiagnostic
+            && jetons.back().Ligne == oracle.back().Ligne && jetons.back().Colonne == oracle.back().Colonne,
+            "EOF/BOM/CRLF du pilote incorrect");
+        const auto sauvegarde = preparation.Preparation;
+        std::size_t alterations = 0;
+        for (unsigned mutation = 0; mutation < 13; ++mutation)
+        {
+            preparation.Preparation = sauvegarde;
+            auto& p = preparation.Preparation;
+            switch (mutation)
+            {
+            case 0: p.Origines[0].Reserve = 1; break;
+            case 1: p.Origines[0].IndexFichier = preparation.Catalogue.Fichiers().size(); break;
+            case 2: p.Origines[0].Ligne = 0; break;
+            case 3: p.Origines[0].Colonne = 0; break;
+            case 4: p.Origines[0].EstInterface = 0; break;
+            case 5: p.Origines[0].TailleOctets = p.Source.size() + 1; break;
+            case 6: p.Origines[1].DebutOctets = 0; break;
+            case 7: p.Origines.back().TailleOctets = 1; break;
+            case 8: p.Origines.back().IndexFichier = 1; break;
+            case 9: ++p.Resultat.NombreOrigines; break;
+            case 10: ++p.Resultat.NombreOctetsSource; break;
+            case 11: p.Source[static_cast<std::size_t>(p.Origines[0].DebutOctets)] = '@'; break;
+            case 12: ++p.Origines[0].DebutOctets; --p.Origines[0].TailleOctets; break;
+            }
+            bool rejete = false;
+            try { (void)GsPP::ConvertirPreparationEnJetons(preparation); }
+            catch (const std::runtime_error& erreur)
+            { rejete = std::string(erreur.what()).find("incompatibles avec le pipeline") != std::string::npos; }
+            Exiger(rejete, "sortie ABI altérée acceptée : " + std::to_string(mutation)); ++alterations;
+        }
+        // Les jetons possèdent leurs textes/noms ; aucune vue ne survit dans une image déchargée.
+        std::vector<GsPP::Jeton> survivants;
+        {
+            GsPP::ExpanseurInclusionsCharge seconde(cheminImage);
+            survivants = GsPP::PreparerJetonsAvecReprise(root, seconde.Developper());
+        }
+        Exiger(survivants.size() == oracle.size() && survivants.back().Fichier == root.NomDiagnostic, "jetons invalidés au déchargement");
+        bool invalide = false;
+        ecrire("Invalide.GsE", "image invalide");
+        try { GsPP::ExpanseurInclusionsCharge image(repertoire / "Invalide.GsE"); }
+        catch (const std::runtime_error&) { invalide = true; }
+        Exiger(invalide, "image GsE invalide acceptée");
+        const auto imageOriginale = LireFichier(cheminImage);
+        auto lire32 = [&](std::size_t p)
+        {
+            std::uint32_t v = 0;
+            for (unsigned i = 0; i < 4; ++i) v |= std::uint32_t(imageOriginale.at(p + i)) << (i * 8);
+            return v;
+        };
+        auto chercherNom = [&](const std::string& nom)
+        {
+            const auto debut = std::search(imageOriginale.begin(), imageOriginale.end(), nom.begin(), nom.end());
+            Exiger(debut != imageOriginale.end(), "nom requis absent de la fixture GsE");
+            return static_cast<std::size_t>(debut - imageOriginale.begin());
+        };
+        const auto nomFr = chercherNom("GalacticShrine::GsPP::Autohebergement::DevelopperInclusionsAvecReprise");
+        const auto nomImport = chercherNom("GalacticShrine::GsPP::Hote::AllouerMemoire");
+        const auto sections = static_cast<std::size_t>(Lire64(imageOriginale, 64));
+        std::size_t exports = 0, chaines = 0; std::uint32_t nombreExports = 0;
+        for (std::uint32_t i = 0; i < lire32(28); ++i)
+        {
+            const auto p = sections + 64 * i;
+            if (lire32(p + 16) == 5) { exports = static_cast<std::size_t>(Lire64(imageOriginale, p + 24)); nombreExports = lire32(p + 60); }
+            if (lire32(p + 16) == 8) chaines = static_cast<std::size_t>(Lire64(imageOriginale, p + 24));
+        }
+        std::size_t entreeFr = 0, entreeEn = 0;
+        const auto nomEn = chercherNom("GalacticShrine::GsPP::Autohebergement::ResumeDeclarationIncludes");
+        for (std::uint32_t i = 0; i < nombreExports; ++i)
+        {
+            const auto p = exports + 32 * i;
+            if (chaines + lire32(p) == nomFr) entreeFr = p;
+            if (chaines + lire32(p) == nomEn) entreeEn = p;
+        }
+        Exiger(entreeFr && entreeEn, "entrées des exports de reprise absentes de la fixture");
+        for (unsigned mutation = 0; mutation < 6; ++mutation)
+        {
+            auto image = imageOriginale;
+            auto ecrire64 = [&](std::size_t p, std::uint64_t v)
+            { for (unsigned i = 0; i < 8; ++i) image.at(p + i) = static_cast<std::uint8_t>(v >> (8 * i)); };
+            switch (mutation)
+            {
+            case 0: image[nomFr] = 'X'; break;
+            case 1: ecrire64(entreeEn + 8, Lire64(imageOriginale, entreeEn + 8) + 1); break;
+            case 2: image[entreeFr + 22] = 2; break;
+            case 3: image[nomImport] = 'X'; break;
+            case 4: image[static_cast<std::size_t>(Lire64(imageOriginale, 56)) + 4] = 7; break;
+            case 5: ecrire64(48, 1024ULL * 1024 * 1024 + 4096); break;
+            }
+            if (mutation != 4) Exiger(GsPP::VerificateurGsE().Verifier(image).Valide,
+                "la mutation ne teste pas le refus propre au chargeur d'expansion : " + std::to_string(mutation));
+            ecrire("ContratInvalide.GsE", std::string(image.begin(), image.end()));
+            bool rejete = false;
+            try { GsPP::ExpanseurInclusionsCharge charge(repertoire / "ContratInvalide.GsE"); }
+            catch (const std::exception&) { rejete = true; }
+            Exiger(rejete, "contrat d'image altéré accepté : " + std::to_string(mutation));
+        }
+        bool callbackAppelee = false;
+        try { (void)GsPP::AnalyserUnitesAvecPreparation({{repertoire / "Autre.GsS", false, {}}},
+            [&](const GsPP::UniteSource&) { callbackAppelee = true; return survivants; }); }
+        catch (const std::runtime_error&) {}
+        Exiger(!callbackAppelee, "validation d'extension contournée par le pipeline");
+        std::cout << "Pilote d'inclusions : " << verifies << " corpus FR/EN, objets/images identiques, diagnostics originaux, "
+            << alterations << " sorties et six contrats d'image altérés refusés, BOM/CRLF et déchargement vérifiés.\n";
     }
 
     /** <résumé>Compare l'expansion en mémoire aux inclusions réelles du bootstrap, diagnostics et garanties mémoire compris.</résumé> **/
-    void TesterExpansionDeclarations(ExpanseurDeclarationsAutoHeberge developper,
-        PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer, const std::filesystem::path& repertoire)
+    void TesterExpansionDeclarations(ExpanseurDeclarationsAutoHeberge developper, GsPP::ExpanseurInclusionsADemandeHote aDemande,
+        GsPP::ExpanseurInclusionsEnSessionHote enSession, GsPP::ExpanseurInclusionsAvecRepriseHote reprendre, PreparateurDeclarationsAutoHeberge preparer,
+        LexeurAutoHeberge lexer, const std::filesystem::path& repertoire)
     {
         struct Corpus { std::map<std::string, std::string> Fichiers; std::uint32_t Erreur = 0, Lexicale = 0; bool VerifierCasse = false; };
         std::vector<Corpus> corpus{
@@ -11636,11 +13097,85 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             const auto erreurAttendue = cas.VerifierCasse && !std::filesystem::is_regular_file(dossier / "a.hgspp") ? 10U : cas.Erreur;
             std::vector<GsPP::Jeton> oracle;
             std::optional<std::tuple<std::string, std::uint32_t, std::uint32_t>> diagnostic;
+            std::optional<GsPP::ErreurCompilation> diagnosticComplet;
             try { oracle = GsPP::PreparerJetonsSource(root); }
-            catch (const GsPP::ErreurCompilation& erreur) { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())};
+                diagnosticComplet = erreur;
+            }
             Exiger(diagnostic.has_value() == (erreurAttendue != 0), "classement bootstrap incorrect dans la matrice d'expansion : " + std::to_string(numero));
             std::vector<std::string> noms;
             auto catalogue = CreerCatalogueExpansion(root, noms);
+            const auto paresseux = GsPP::PreparerFichierAvecOrigines({root, false, {}}, aDemande);
+            Exiger(paresseux.Preparation.Resultat.Erreur == erreurAttendue,
+                "classement de l'expansion à la demande incorrect : " + std::to_string(numero));
+            if (diagnostic)
+            {
+                const auto& resultat = paresseux.Preparation.Resultat;
+                Exiger(paresseux.Preparation.Source.empty() && paresseux.Preparation.Origines.empty()
+                    && paresseux.Catalogue.NomsFichiers().at(resultat.IndexFichierErreur) == std::get<0>(*diagnostic)
+                    && resultat.LigneErreur == std::get<1>(*diagnostic) && resultat.ColonneErreur == std::get<2>(*diagnostic)
+                    && resultat.DetailLexical == cas.Lexicale, "diagnostic à la demande différent du bootstrap");
+            }
+            else
+            {
+                const auto jetons = GsPP::Lexeur(paresseux.Preparation.Source).Analyser();
+                Exiger(jetons.size() == oracle.size() && paresseux.Preparation.Origines.size() == oracle.size(), "sélection à la demande différente");
+                for (std::size_t i = 0; i < oracle.size(); ++i)
+                {
+                    const auto& origine = paresseux.Preparation.Origines[i];
+                    Exiger(jetons[i].Genre == oracle[i].Genre && jetons[i].Texte == oracle[i].Texte
+                        && paresseux.Catalogue.NomsFichiers().at(origine.IndexFichier) == oracle[i].Fichier
+                        && origine.Ligne == oracle[i].Ligne && origine.Colonne == oracle[i].Colonne
+                        && origine.EstInterface == (oracle[i].EstInterface ? 1U : 0U), "origines à la demande différentes du bootstrap");
+                }
+            }
+            const auto conserve = GsPP::PreparerFichierAvecOriginesEnSession({root, false, {}}, enSession);
+            const auto& conserveDiagnostic = conserve.Preparation.Resultat;
+            const auto& sansCacheDiagnostic = paresseux.Preparation.Resultat;
+            Exiger(conserveDiagnostic.Erreur == sansCacheDiagnostic.Erreur
+                && conserveDiagnostic.DetailLexical == sansCacheDiagnostic.DetailLexical
+                && conserveDiagnostic.IndexFichierErreur == sansCacheDiagnostic.IndexFichierErreur
+                && conserveDiagnostic.LigneErreur == sansCacheDiagnostic.LigneErreur
+                && conserveDiagnostic.ColonneErreur == sansCacheDiagnostic.ColonneErreur
+                && conserve.Catalogue.NomsFichiers() == paresseux.Catalogue.NomsFichiers()
+                && conserve.NombreLectures == paresseux.NombreLectures && conserve.NombreResolutions == paresseux.NombreResolutions
+                && conserve.NombreAppels == paresseux.NombreAppels
+                && conserve.Preparation.Source == paresseux.Preparation.Source
+                && conserve.Preparation.Origines.size() == paresseux.Preparation.Origines.size()
+                && (conserve.Preparation.Origines.empty() || std::memcmp(conserve.Preparation.Origines.data(),
+                    paresseux.Preparation.Origines.data(), conserve.Preparation.Origines.size() * sizeof(garde)) == 0)
+                && AllocationsActives.empty(), "expansion en session différente du protocole sans cache : " + std::to_string(numero));
+            const auto reprise = GsPP::PreparerFichierAvecReprise({root, false, {}}, reprendre);
+            const auto& d = reprise.Preparation.Resultat;
+            Exiger(d.Erreur == conserveDiagnostic.Erreur && d.DetailLexical == conserveDiagnostic.DetailLexical
+                && d.IndexFichierErreur == conserveDiagnostic.IndexFichierErreur && d.LigneErreur == conserveDiagnostic.LigneErreur
+                && d.ColonneErreur == conserveDiagnostic.ColonneErreur && reprise.Catalogue.NomsFichiers() == conserve.Catalogue.NomsFichiers()
+                && reprise.NombreAppels == conserve.NombreAppels && reprise.NombreLectures == conserve.NombreLectures
+                && reprise.NombreResolutions == conserve.NombreResolutions && reprise.Preparation.Source == conserve.Preparation.Source
+                && reprise.Preparation.Origines.size() == conserve.Preparation.Origines.size()
+                && (reprise.Preparation.Origines.empty() || std::memcmp(reprise.Preparation.Origines.data(),
+                    conserve.Preparation.Origines.data(), reprise.Preparation.Origines.size() * sizeof(garde)) == 0)
+                && AllocationsActives.empty(), "reprise différente du bootstrap et des anciennes entrées : " + std::to_string(numero));
+            try
+            {
+                const auto convertis = GsPP::ConvertirPreparationEnJetons(reprise);
+                Exiger(!diagnosticComplet && convertis.size() == oracle.size(), "pont de jetons avec mauvais classement");
+                for (std::size_t i = 0; i < oracle.size(); ++i)
+                    Exiger(convertis[i].Genre == oracle[i].Genre && convertis[i].Texte == oracle[i].Texte
+                        && convertis[i].Fichier == oracle[i].Fichier && convertis[i].Ligne == oracle[i].Ligne
+                        && convertis[i].Colonne == oracle[i].Colonne && convertis[i].EstInterface == oracle[i].EstInterface,
+                        "pont de jetons différent du bootstrap : " + std::to_string(numero));
+            }
+            catch (const GsPP::ErreurCompilation& erreur)
+            {
+                Exiger(diagnosticComplet && erreur.Fichier() == diagnosticComplet->Fichier()
+                    && erreur.Ligne() == diagnosticComplet->Ligne() && erreur.Colonne() == diagnosticComplet->Colonne()
+                    && erreur.Message(GsPP::LangueDiagnostic::Francais) == diagnosticComplet->Message(GsPP::LangueDiagnostic::Francais)
+                    && erreur.Message(GsPP::LangueDiagnostic::Anglais) == diagnosticComplet->Message(GsPP::LangueDiagnostic::Anglais),
+                    "diagnostic bilingue du pont différent du bootstrap : " + std::to_string(numero));
+            }
             const auto fichiersAvant = catalogue.Fichiers(); const auto liensAvant = catalogue.Liens();
             std::vector<std::string> contenusAvant;
             for (const auto& f : catalogue.Fichiers()) contenusAvant.emplace_back(f.Source, f.Taille);
@@ -11787,7 +13322,8 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         AnalyseurDeclarationsOriginesAutoHeberge analyser, LocaliseurDeclarationsAutoHeberge localiser,
         AnalyseurDeclarationsAutoHeberge historique, AnalyseurSemantiqueAutoHeberge semantique,
         const std::filesystem::path& repertoire, PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer,
-        ExpanseurDeclarationsAutoHeberge developper)
+        ExpanseurDeclarationsAutoHeberge developper, GsPP::ExpanseurInclusionsADemandeHote aDemande,
+        GsPP::ExpanseurInclusionsEnSessionHote enSession, GsPP::ExpanseurInclusionsAvecRepriseHote reprendre)
     {
         struct Corpus
         {
@@ -11843,7 +13379,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             const auto principal = dossier / "Principal.GsPP";
             const auto originaux = GsPP::PreparerJetonsSource(principal);
             std::vector<std::string> fichiers;
-            auto [texteDeveloppe, origines] = PreparerFragmentsInclus(preparer, lexer, originaux, fichiers, numero % 2 == 0, numero % 3 == 0, developper);
+            auto [texteDeveloppe, origines] = PreparerFragmentsInclus(preparer, lexer, originaux, fichiers, numero % 2 == 0, numero % 3 == 0, developper, aDemande, enSession, reprendre);
             const auto texteAvant = texteDeveloppe;
             const auto originesAvant = origines;
             auto jetons = GsPP::Lexeur(texteDeveloppe, principal.string()).Analyser();
@@ -11863,6 +13399,9 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             try { (void)GsPP::AnalyseurSyntaxique(originaux, principal.string(), cas.InterfaceGlobale).Analyser(); }
             catch (const GsPP::ErreurCompilation& erreur) { diagnostic = {erreur.Fichier(), static_cast<std::uint32_t>(erreur.Ligne()), static_cast<std::uint32_t>(erreur.Colonne())}; }
             if (!diagnostic) reference = GsPP::AnalyseurSyntaxique(jetons, principal.string(), cas.InterfaceGlobale).Analyser();
+            const auto preparationProduction = GsPP::PreparerFichierAvecReprise({principal, false, {}}, reprendre,
+                {}, {}, numero % 2 == 0, numero % 3 == 0);
+            const auto astProduction = GsPP::AnalyserDeclarationsPreparees(preparationProduction, analyser, cas.InterfaceGlobale);
             const auto code = analyser(&requete);
             Exiger(std::memcmp(&noeudGarde, &garde, sizeof(garde)) == 0, "AST publié pendant mesure ou refus syntaxique développé");
             auto verifierDiagnostic = [&]()
@@ -11875,6 +13414,12 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             if (cas.ErreurSyntaxique != 0)
             {
                 Exiger(code == cas.ErreurSyntaxique, "diagnostic syntaxique développé incorrect : " + std::to_string(numero) + ", code=" + std::to_string(code));
+                Exiger(diagnostic && astProduction.Resultat.Erreur == code && astProduction.PositionErreur
+                    && astProduction.PositionErreur->Fichier == std::get<0>(*diagnostic)
+                    && astProduction.PositionErreur->Ligne == std::get<1>(*diagnostic)
+                    && astProduction.PositionErreur->Colonne == std::get<2>(*diagnostic)
+                    && astProduction.Source.empty() && astProduction.Noeuds.empty() && astProduction.Origines.empty(),
+                    "refus de l'adaptateur d'AST différent du bootstrap");
                 verifierDiagnostic(); ++nombreSyntaxiques;
             }
             else
@@ -11882,6 +13427,25 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
                 Exiger(reference && code == 1 && analyse.Resultat.NombreNoeuds != 0 && requete.IndexFichierErreur == fichiers.size(), "mesure de l'AST développé incorrecte : " + std::to_string(numero));
                 const auto attendus = ConstruireDeclarationsReference(*reference);
                 Exiger(attendus.size() == analyse.Resultat.NombreNoeuds, "taille AST développé différente");
+                Exiger(astProduction.Resultat.Erreur == 0 && !astProduction.PositionErreur
+                    && astProduction.Source == texteDeveloppe && astProduction.Noeuds.size() == attendus.size()
+                    && astProduction.Origines.size() == attendus.size(), "taille/texte de l'AST de production différents");
+                for (std::size_t i = 0; i < attendus.size(); ++i)
+                {
+                    const auto& noeud = astProduction.Noeuds[i];
+                    Exiger(MemeStructureDeclaration(noeud, attendus[i]) && noeud.Ligne == attendus[i].Ligne
+                        && noeud.Colonne == attendus[i].Colonne, "AST de production différent du bootstrap");
+                    if (!i) continue;
+                    const auto trouve = std::find_if(jetons.begin(), jetons.end(), [&](const auto& jeton)
+                    { return jeton.Ligne == noeud.Ligne && jeton.Colonne == noeud.Colonne; });
+                    Exiger(trouve != jetons.end(), "position de nœud sans jeton de référence");
+                    const auto index = static_cast<std::size_t>(trouve - jetons.begin());
+                    const auto& origine = astProduction.Origines[i];
+                    Exiger(origine.Position.Fichier == originaux[index].Fichier && origine.Position.Ligne == originaux[index].Ligne
+                        && origine.Position.Colonne == originaux[index].Colonne
+                        && origine.EstInterface == (cas.InterfaceGlobale || originaux[index].EstInterface),
+                        "origine de nœud de production différente du bootstrap");
+                }
                 std::vector<NoeudDeclarationHote> noeuds(attendus.size() + 1, garde);
                 analyse.Noeuds = noeuds.data(); analyse.Capacite = attendus.size();
                 Exiger(analyser(&requete) == 0, "analyse développée impossible");
@@ -12010,7 +13574,8 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         AssembleurOriginesAutoHeberge assembler, AssembleurOriginesAutoHeberge normaliser,
         LocaliseurAssemblageAutoHeberge localiser, SemantiqueOriginesAutoHeberge semantique,
         const std::filesystem::path& repertoire, PreparateurDeclarationsAutoHeberge preparer, LexeurAutoHeberge lexer,
-        ExpanseurDeclarationsAutoHeberge developper)
+        ExpanseurDeclarationsAutoHeberge developper, GsPP::ExpanseurInclusionsADemandeHote aDemande,
+        GsPP::ExpanseurInclusionsEnSessionHote enSession, GsPP::ExpanseurInclusionsAvecRepriseHote reprendre)
     {
         struct Corpus
         {
@@ -12073,7 +13638,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             {
                 const auto principal = dossier / nom;
                 auto jetons = GsPP::PreparerJetonsSource(principal);
-                auto [texte, table] = PreparerFragmentsInclus(preparer, lexer, jetons, fichiers, numero % 2 == 0, numero % 3 == 0, developper);
+                auto [texte, table] = PreparerFragmentsInclus(preparer, lexer, jetons, fichiers, numero % 2 == 0, numero % 3 == 0, developper, aDemande, enSession, reprendre);
                 auto nouveaux = GsPP::Lexeur(texte, principal.string()).Analyser();
                 Exiger(nouveaux.size() == jetons.size(), "nombre de jetons d'assemblage développé différent");
                 for (std::size_t index = 0; index < jetons.size(); ++index)
@@ -12524,9 +14089,29 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
         const auto aliasExpansion = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::ExpandDeclarationIncludes");
         Exiger(exportExpansion && exportExpansion == aliasExpansion, "exports d'expansion français/anglais absents ou différents");
         const auto developper = reinterpret_cast<ExpanseurDeclarationsAutoHeberge>(*exportExpansion);
+        const auto exportADemande = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::DevelopperInclusionsADemande");
+        const auto aliasADemande = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::ExpandDeclarationIncludesOnDemand");
+        Exiger(exportADemande && exportADemande == aliasADemande, "exports d'expansion à la demande absents ou différents");
+        const auto aDemande = reinterpret_cast<GsPP::ExpanseurInclusionsADemandeHote>(*exportADemande);
+        const auto exportSession = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::DevelopperInclusionsEnSession");
+        const auto aliasSession = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::ExpandDeclarationIncludesInSession");
+        Exiger(exportSession && exportSession == aliasSession, "exports d'expansion en session absents ou différents");
+        const auto enSession = reinterpret_cast<GsPP::ExpanseurInclusionsEnSessionHote>(*exportSession);
+        const auto exportReprise = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::DevelopperInclusionsAvecReprise");
+        const auto aliasReprise = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::ResumeDeclarationIncludes");
+        Exiger(exportReprise && exportReprise == aliasReprise, "exports de reprise absents ou différents");
+        const auto reprendre = reinterpret_cast<GsPP::ExpanseurInclusionsAvecRepriseHote>(*exportReprise);
+        TesterEntreesSortiesInclusions(aDemande, enSession, reprendre,
+            std::filesystem::absolute(std::filesystem::path(cheminSyntaxe).parent_path() / "TestsEntreesSortiesInclusions"));
+        TesterRepriseInclusions(reprendre, enSession,
+            std::filesystem::absolute(std::filesystem::path(cheminSyntaxe).parent_path() / "TestsRepriseInclusions"));
+        TesterExpansionEnSession(enSession, aDemande,
+            std::filesystem::absolute(std::filesystem::path(cheminSyntaxe).parent_path() / "TestsExpansionEnSession"));
+        TesterExpansionADemande(aDemande, developper,
+            std::filesystem::absolute(std::filesystem::path(cheminSyntaxe).parent_path() / "TestsExpansionADemande"));
         TesterCatalogueInclusionsProduit(developper,
             std::filesystem::absolute(std::filesystem::path(cheminSyntaxe).parent_path() / "TestsCatalogueProduit"));
-        TesterExpansionDeclarations(developper, preparer, lexerOrigines,
+        TesterExpansionDeclarations(developper, aDemande, enSession, reprendre, preparer, lexerOrigines,
             std::filesystem::path(cheminSyntaxe).parent_path() / "TestsExpansionInclusions");
         const auto exportOrigines = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsAvecOrigines");
         const auto aliasOrigines = imageSyntaxe.ChercherExport("GalacticShrine::GsPP::Autohebergement::AnalyzeOriginAwareDeclarations");
@@ -12536,7 +14121,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             "exports d'origines françaises/anglaises absents ou différents");
         TesterDeclarationsAvecOrigines(reinterpret_cast<AnalyseurDeclarationsOriginesAutoHeberge>(*exportOrigines),
             reinterpret_cast<LocaliseurDeclarationsAutoHeberge>(*exportLocalisation), syntaxe, semantique,
-            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsSourcesPreparees", preparer, lexerOrigines, developper);
+            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsSourcesPreparees", preparer, lexerOrigines, developper, aDemande, enSession, reprendre);
         const auto exportAssemblage = imageSyntaxe.ChercherExport(
             "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsPreparees");
         const auto aliasAssemblage = imageSyntaxe.ChercherExport(
@@ -12569,7 +14154,7 @@ naturel64 Maximum = convertir<naturel64>(18446744073709551615);
             reinterpret_cast<AssembleurOriginesAutoHeberge>(exportOriginesRequis(imageSyntaxe, "AssemblerDeclarationsNormaliseesAvecOrigines", "AssembleNormalizedOriginAwareDeclarations")),
             reinterpret_cast<LocaliseurAssemblageAutoHeberge>(exportOriginesRequis(imageSyntaxe, "LocaliserOrigineAssemblagePrepare", "LocatePreparedAssemblyOrigin")),
             reinterpret_cast<SemantiqueOriginesAutoHeberge>(exportOriginesRequis(image, "AnalyserSemantiqueUnitesAvecOrigines", "AnalyzeOriginAwareUnitSemantics")),
-            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsAssemblageInclusions", preparer, lexerOrigines, developper);
+            std::filesystem::path(cheminSyntaxe).parent_path() / "TestsAssemblageInclusions", preparer, lexerOrigines, developper, aDemande, enSession, reprendre);
         TesterNormalisationDeclarationsPreparees(reinterpret_cast<AssembleurDeclarationsAutoHeberge>(*exportNormalisation), syntaxe, interface,
             reinterpret_cast<AnalyseurSemantiqueUnitesAutoHeberge>(*exportSemantiqueUnites));
         const auto adresseEmission = image.ChercherExport(
@@ -15581,6 +17166,10 @@ int main(int argc, char** argv)
         if (argc != 3)
             throw std::runtime_error(
                 "Frontend.GsE et l’image GsE de test sont attendus");
+        TesterPiloteInclusions(argv[1], std::filesystem::absolute(std::filesystem::path(argv[1]).parent_path() / "TestsPiloteInclusions"));
+        TesterProjetsAvecPreparation(argv[1], std::filesystem::absolute(std::filesystem::path(argv[1]).parent_path() / "TestsProjetsAvecPreparation"));
+        TesterAdaptateurDeclarationsPreparees(argv[1], std::filesystem::absolute(std::filesystem::path(argv[1]).parent_path() / "TestsAdaptateurDeclarations"));
+        TesterDiagnosticsDeclarationsPreparees(argv[1], std::filesystem::absolute(std::filesystem::path(argv[1]).parent_path() / "TestsDiagnosticsDeclarations"));
         TesterClassificateur(argv[1]);
         TesterLexeur(argv[1]);
         TesterAnalyseurDeclarations(argv[1]);

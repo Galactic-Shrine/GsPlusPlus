@@ -135,6 +135,45 @@ application peut ainsi lier une bibliothèque produite par le projet précédent
 Construction/Bin/gsppc Tests/Integration/Separation/Compilation.GsPs
 ```
 
+## Expansion Gs++ facultative en ligne de commande
+
+Les sources de développement après `0.27.0-alpha.10` permettent de choisir
+l'expansion des inclusions par une image native Gs++ de confiance :
+
+```bash
+gsppc Bibliotheque.GsPj --expanseur-inclusions Frontend.GsE
+gsppc Compilation.GsPs --include-expander Frontend.GsE
+```
+
+Les deux options sont des alias. Sans cette option, le bootstrap C++ reste
+utilisé ; aucune image n'est chargée automatiquement et aucun repli silencieux
+n'est effectué. Une seule image est chargée pour toute la commande, avant
+d'écrire des objets, puis son préparateur est transmis à chaque projet,
+interface et source. Les reprises et catalogues sont indépendants par unité,
+dans les modes séparé et agrégé. Les passes suivantes et le backend restent C++.
+
+Le chemin de l'image fourni en ligne de commande est relatif au **répertoire
+du processus** ; les chemins contenus dans le XML restent relatifs au fichier
+qui les contient. L'image exécute du code natif dans le compilateur, sans bac
+à sable : elle doit être de confiance. Le schéma XML 1.0 n'ajoute aucun élément
+ni attribut pour demander un chargement d'image native.
+
+Les remplacements `-o` et `--object-directory` restent possibles pour un seul
+projet et refusés pour une solution. Le format, la carte et le point d'entrée
+sont définis par le XML. L'ordre des projets, les noms des objets intermédiaires
+et la liaison restent inchangés. Les options ne s'appliquent pas aux entrées
+binaires `.GsObj` / `.GsA`.
+
+Une erreur arrête la construction au premier échec, sans poursuivre les projets
+suivants. La construction n'est pas transactionnelle : les objets et projets
+déjà construits ne sont pas annulés. Un refus avant le premier objet conserve
+les sorties existantes ; un échec du second projet peut laisser la nouvelle
+bibliothèque du premier et l'ancien exécutable du second.
+
+Le [contrat du pilote](SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#expansion-gs-facultative-dans-le-pilote-de-fichiers)
+précise le chargement, les limites et la conservation des diagnostics.
+Les paquets alpha.10 publiés ne sont pas mis à jour par cet ajout local.
+
 ## Compatibilité
 
 ### Outil de construction distinct prévu

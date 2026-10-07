@@ -10,16 +10,93 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 Position;
     };
 
+    structure CacheSessionExpansion {
+        constante caractère* Source;
+        naturel64 Taille;
+        JetonLexe* Jetons;
+        naturel64 NombreJetons;
+    };
+
+    structure SessionExpansionDeclarations {
+        GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
+        CacheSessionExpansion* Caches;
+        naturel64 Capacite;
+        naturel64 NombreLexages;
+        naturel64 NombreReutilisations;
+    };
+
     structure EtatExpansionDeclarations {
         RequeteExpansionDeclarations* Requete;
+        RequeteExpansionDeclarationsADemande* Demande;
+        SessionExpansionDeclarations* Session;
         CacheFichierExpansion* Caches;
         naturel32* UneFois;
         naturel32* Actifs;
+        naturel32* Observes;
         FragmentJetonDeclarations* Fragments;
         naturel64 NombreFragments;
         naturel64 NombreOctets;
+        naturel64* CompteurJetons;
+        naturel64* CapaciteFragments;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
     };
+
+    structure RepriseExpansionDeclarations {
+        SessionExpansionDeclarations Lexicale;
+        EtatExpansionDeclarations Etat;
+        CadreExpansionDeclarations* Cadres;
+        naturel64 Profondeur;
+        naturel64 CapaciteFichiers;
+        FichierInclusionDeclarations* Fichiers;
+        naturel32* Disponibles;
+        naturel64 NombreFichiers;
+        LienInclusionDeclarations* Liens;
+        naturel64 CapaciteLiens;
+        naturel64 NombreLiens;
+        naturel64 CapaciteFragments;
+        naturel64 NombreJetonsParcourus;
+        naturel64 IndexRacine;
+        naturel32 MarqueUtf8;
+        naturel32 FinLigneCrlf;
+        naturel32 Phase;
+        naturel32 Reserve;
+        DemandeExpansionDeclarations Attente;
+    };
+
+    RequeteExpansionDeclarationsADemande* NulleDemandeExpansion;
+    SessionExpansionDeclarations* NulleSessionExpansion;
+    octet* NulleMemoireSessionExpansion;
+
+    booléen ReserverCachesSessionExpansion(SessionExpansionDeclarations* session, naturel64 nombre) {
+        si (nombre <= session->Capacite) retourner vrai;
+        naturel64 capacite = 16;
+        tantque (capacite < nombre) capacite = capacite * 2;
+        CacheSessionExpansion* caches = convertir<CacheSessionExpansion*>(GalacticShrine::GsPP::Hebergee::AllouerArene(
+            &session->Arene, capacite * 32, 8));
+        si (!caches) retourner faux;
+        naturel64 index = 0;
+        tantque (index < capacite) {
+            caches[index] = {};
+            si (index < session->Capacite) caches[index] = session->Caches[index];
+            index = index + 1;
+        }
+        session->Caches = caches;
+        session->Capacite = capacite;
+        retourner vrai;
+    }
+
+    ErreurExpansionDeclarations DemanderLectureExpansion(EtatExpansionDeclarations* etat, naturel64 fichier) {
+        etat->Demande->Demande = {2, 0, fichier, 0, 0, 0};
+        etat->Requete->Resultat.Erreur = ErreurExpansionDeclarations::LectureRequise;
+        retourner etat->Requete->Resultat.Erreur;
+    }
+
+    ErreurExpansionDeclarations DemanderLienExpansion(
+        EtatExpansionDeclarations* etat, naturel64 fichier, JetonLexe* directive, JetonLexe* argument) {
+        etat->Demande->Demande = {1, 0, fichier, directive->Debut, argument->Debut, argument->TailleSource};
+        etat->Requete->Resultat.Erreur = ErreurExpansionDeclarations::ResolutionRequise;
+        retourner etat->Requete->Resultat.Erreur;
+    }
 
     ErreurExpansionDeclarations RefuserExpansionDeclarations(
         EtatExpansionDeclarations* etat, ErreurExpansionDeclarations erreur, naturel64 fichier, JetonLexe* jeton) {
@@ -33,8 +110,24 @@ espace GalacticShrine::GsPP::Autohebergement {
     }
 
     ErreurExpansionDeclarations LexerFichierExpansion(EtatExpansionDeclarations* etat, naturel64 indexFichier) {
-        si (etat->Caches[indexFichier].Jetons) retourner ErreurExpansionDeclarations::Reussite;
         constante FichierInclusionDeclarations* fichierLexe = &etat->Requete->Fichiers[indexFichier];
+        si (etat->Session && etat->Session->Caches[indexFichier].Jetons) {
+            CacheSessionExpansion* conserveValide = &etat->Session->Caches[indexFichier];
+            si (conserveValide->Source != fichierLexe->Source || conserveValide->Taille != fichierLexe->Taille
+                || (etat->Demande && etat->Demande->Disponibles[indexFichier] == 0))
+                retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ArgumentInvalide, indexFichier, NulJetonsDeclarations);
+        }
+        si (etat->Demande && etat->Demande->Disponibles[indexFichier] == 0)
+            retourner DemanderLectureExpansion(etat, indexFichier);
+        si (etat->Caches[indexFichier].Jetons) retourner ErreurExpansionDeclarations::Reussite;
+        si (etat->Session && etat->Session->Caches[indexFichier].Jetons) {
+            CacheSessionExpansion* conserve = &etat->Session->Caches[indexFichier];
+            etat->Caches[indexFichier] = {conserve->Jetons, conserve->NombreJetons};
+            etat->Session->NombreReutilisations = etat->Session->NombreReutilisations + 1;
+            retourner ErreurExpansionDeclarations::Reussite;
+        }
+        GalacticShrine::GsPP::Hebergee::AreneMemoire* areneJetons = &etat->Arene;
+        si (etat->Session) areneJetons = &etat->Session->Arene;
         RequeteLexage lexage = {fichierLexe->Source, fichierLexe->Taille, NulJetonsDeclarations, 0, {}};
         ErreurLexage erreurLexage = AnalyserSource(&lexage);
         si (erreurLexage != ErreurLexage::CapaciteInsuffisante) {
@@ -47,12 +140,17 @@ espace GalacticShrine::GsPP::Autohebergement {
         CacheFichierExpansion* cacheLexical = &etat->Caches[indexFichier];
         cacheLexical->NombreJetons = lexage.Resultat.NombreJetons;
         cacheLexical->Jetons = convertir<JetonLexe*>(GalacticShrine::GsPP::Hebergee::AllouerArene(
-            &etat->Arene, cacheLexical->NombreJetons * 48, 8));
+            areneJetons, cacheLexical->NombreJetons * 48, 8));
         si (!cacheLexical->Jetons)
             retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::AllocationImpossible, indexFichier, NulJetonsDeclarations);
         lexage.Jetons = cacheLexical->Jetons;
         lexage.Capacite = cacheLexical->NombreJetons;
         AnalyserSource(&lexage);
+        si (etat->Session) {
+            etat->Session->Caches[indexFichier] = {
+                fichierLexe->Source, fichierLexe->Taille, cacheLexical->Jetons, cacheLexical->NombreJetons};
+            etat->Session->NombreLexages = etat->Session->NombreLexages + 1;
+        }
         retourner ErreurExpansionDeclarations::Reussite;
     }
 
@@ -88,6 +186,24 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner vrai;
     }
 
+    booléen ReserverFragmentsExpansion(EtatExpansionDeclarations* etat) {
+        si (etat->NombreFragments < etat->CapaciteFragments[0]) retourner vrai;
+        naturel64 capacite = 16;
+        si (etat->CapaciteFragments[0] != 0) capacite = etat->CapaciteFragments[0] * 2;
+        si (capacite > 100_000_000) capacite = 100_000_000;
+        FragmentJetonDeclarations* fragments = convertir<FragmentJetonDeclarations*>(GalacticShrine::GsPP::Hebergee::AllouerArene(
+            &etat->Arene, capacite * 40, 8));
+        si (!fragments) retourner faux;
+        naturel64 index = 0;
+        tantque (index < etat->NombreFragments) {
+            fragments[index] = etat->Fragments[index];
+            index = index + 1;
+        }
+        etat->Fragments = fragments;
+        etat->CapaciteFragments[0] = capacite;
+        retourner vrai;
+    }
+
     ErreurExpansionDeclarations AjouterFragmentExpansion(
         EtatExpansionDeclarations* etat, naturel64 indexFichier, JetonLexe* jeton, booléen fin) {
         naturel64 separation = 1 + convertir<naturel64>(etat->Requete->FinLigneCrlf);
@@ -96,6 +212,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             || jeton->TailleSource > 1_000_000_000 - separation - etat->NombreOctets)
             retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::TailleExcessive, indexFichier, jeton);
         constante FichierInclusionDeclarations* fichierFragment = &etat->Requete->Fichiers[indexFichier];
+        si (etat->CapaciteFragments && !ReserverFragmentsExpansion(etat))
+            retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::AllocationImpossible, indexFichier, NulJetonsDeclarations);
         si (etat->Fragments) {
             constante caractère* sourceFragment = fichierFragment->Source;
             si (jeton->TailleSource != 0) sourceFragment = &fichierFragment->Source[jeton->Debut];
@@ -107,6 +225,82 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat->NombreFragments = etat->NombreFragments + 1;
         etat->NombreOctets = etat->NombreOctets + jeton->TailleSource + separation;
         retourner ErreurExpansionDeclarations::Reussite;
+    }
+
+    ErreurExpansionDeclarations ContinuerParcoursExpansion(
+        EtatExpansionDeclarations* etat, CadreExpansionDeclarations* cadres, naturel64* profondeur) {
+        RequeteExpansionDeclarations* requete = etat->Requete;
+        tantque (profondeur[0] != 0) {
+            CadreExpansionDeclarations* cadre = &cadres[profondeur[0] - 1];
+            naturel64 indexFichier = cadre->IndexFichier;
+            si (!etat->Caches[indexFichier].Jetons) {
+                ErreurExpansionDeclarations erreurFichier = LexerFichierExpansion(etat, indexFichier);
+                si (erreurFichier != ErreurExpansionDeclarations::Reussite) retourner erreurFichier;
+            }
+            constante FichierInclusionDeclarations* fichier = &requete->Fichiers[indexFichier];
+            CacheFichierExpansion* cache = &etat->Caches[indexFichier];
+            JetonLexe* jeton = &cache->Jetons[cadre->Position];
+            si (jeton->Genre == 0) {
+                etat->Actifs[fichier->Identite] = 0;
+                profondeur[0] = profondeur[0] - 1;
+                si (etat->CompteurJetons) etat->CompteurJetons[0] = etat->CompteurJetons[0] + 1;
+            }
+            sinon si (jeton->Genre != 77 && jeton->Genre != 78) {
+                ErreurExpansionDeclarations erreurFragment = AjouterFragmentExpansion(etat, indexFichier, jeton, faux);
+                si (erreurFragment != ErreurExpansionDeclarations::Reussite) retourner erreurFragment;
+                cadre->Position = cadre->Position + 1;
+                si (etat->CompteurJetons) etat->CompteurJetons[0] = etat->CompteurJetons[0] + 1;
+            }
+            sinon {
+                si (cadre->Position != 0 && cache->Jetons[cadre->Position - 1].Ligne == jeton->Ligne)
+                    retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::DirectiveHorsDebutLigne, indexFichier, jeton);
+                JetonLexe* argument = &cache->Jetons[cadre->Position + 1];
+                si (argument->Genre == 0 || argument->Ligne != jeton->Ligne)
+                    retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ArgumentDirectiveAttendu, indexFichier, jeton);
+                si (cache->Jetons[cadre->Position + 2].Genre != 0 && cache->Jetons[cadre->Position + 2].Ligne == jeton->Ligne)
+                    retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::TexteApresDirective, indexFichier, jeton);
+                si (jeton->Genre == 78) {
+                    si (argument->Genre != 1 || !GalacticShrine::GsPP::Hebergee::VuesTexteEgales(
+                        GalacticShrine::GsPP::Hebergee::CreerVueTexte(&fichier->Source[argument->Debut], argument->TailleSource),
+                        GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee("once")))
+                        retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::PragmaNonPrisEnCharge, indexFichier, jeton);
+                    etat->UneFois[fichier->Identite] = 1;
+                    cadre->Position = cadre->Position + 2;
+                }
+                sinon {
+                    si (!CheminValideExpansion(fichier, argument))
+                        retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::CheminInclusionAttendu, indexFichier, jeton);
+                    naturel64 indexLien = ChercherLienExpansion(requete, indexFichier, jeton->Debut);
+                    si (indexLien == requete->NombreLiens) {
+                        si (etat->Demande) retourner DemanderLienExpansion(etat, indexFichier, jeton, argument);
+                        retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ArgumentInvalide, indexFichier, NulJetonsDeclarations);
+                    }
+                    constante LienInclusionDeclarations* lien = &requete->Liens[indexLien];
+                    si (lien->Etat == 1) retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::FichierIntrouvable, indexFichier, jeton);
+                    si (lien->Etat == 2) retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ExtensionIncompatible, indexFichier, jeton);
+                    naturel64 identiteCible = requete->Fichiers[lien->IndexCible].Identite;
+                    si (etat->Observes) etat->Observes[lien->IndexCible] = 1;
+                    si (etat->UneFois[identiteCible] == 0) {
+                        si (etat->Actifs[identiteCible] != 0)
+                            retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::CycleInclusion, indexFichier, jeton);
+                        si (profondeur[0] >= 128) {
+                            JetonLexe diagnosticProfondeur = {0, 1, 1, 0, 0, 0, 0, 0};
+                            retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ProfondeurExcessive, lien->IndexCible, &diagnosticProfondeur);
+                        }
+                        ErreurExpansionDeclarations erreurCible = LexerFichierExpansion(etat, lien->IndexCible);
+                        si (erreurCible != ErreurExpansionDeclarations::Reussite) retourner erreurCible;
+                        etat->Actifs[identiteCible] = 1;
+                        cadre->Position = cadre->Position + 2;
+                        cadres[profondeur[0]] = {lien->IndexCible, 0};
+                        profondeur[0] = profondeur[0] + 1;
+                    }
+                    sinon cadre->Position = cadre->Position + 2;
+                }
+                si (etat->CompteurJetons) etat->CompteurJetons[0] = etat->CompteurJetons[0] + 2;
+            }
+        }
+        CacheFichierExpansion* cacheRacine = &etat->Caches[requete->IndexRacine];
+        retourner AjouterFragmentExpansion(etat, requete->IndexRacine, &cacheRacine->Jetons[cacheRacine->NombreJetons - 1], vrai);
     }
 
     ErreurExpansionDeclarations ParcourirExpansionDeclarations(EtatExpansionDeclarations* etat) {
@@ -123,67 +317,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         cadres[0] = {requete->IndexRacine, 0};
         naturel64 profondeur = 1;
         etat->Actifs[requete->Fichiers[requete->IndexRacine].Identite] = 1;
-        ErreurExpansionDeclarations erreurRacine = LexerFichierExpansion(etat, requete->IndexRacine);
-        si (erreurRacine != ErreurExpansionDeclarations::Reussite) retourner erreurRacine;
-        tantque (profondeur != 0) {
-            CadreExpansionDeclarations* cadre = &cadres[profondeur - 1];
-            naturel64 indexFichier = cadre->IndexFichier;
-            constante FichierInclusionDeclarations* fichier = &requete->Fichiers[indexFichier];
-            CacheFichierExpansion* cache = &etat->Caches[indexFichier];
-            JetonLexe* jeton = &cache->Jetons[cadre->Position];
-            si (jeton->Genre == 0) {
-                etat->Actifs[fichier->Identite] = 0;
-                profondeur = profondeur - 1;
-            }
-            sinon si (jeton->Genre != 77 && jeton->Genre != 78) {
-                ErreurExpansionDeclarations erreurFragment = AjouterFragmentExpansion(etat, indexFichier, jeton, faux);
-                si (erreurFragment != ErreurExpansionDeclarations::Reussite) retourner erreurFragment;
-                cadre->Position = cadre->Position + 1;
-            }
-            sinon {
-                si (cadre->Position != 0 && cache->Jetons[cadre->Position - 1].Ligne == jeton->Ligne)
-                    retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::DirectiveHorsDebutLigne, indexFichier, jeton);
-                JetonLexe* argument = &cache->Jetons[cadre->Position + 1];
-                si (argument->Genre == 0 || argument->Ligne != jeton->Ligne)
-                    retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ArgumentDirectiveAttendu, indexFichier, jeton);
-                si (cache->Jetons[cadre->Position + 2].Genre != 0 && cache->Jetons[cadre->Position + 2].Ligne == jeton->Ligne)
-                    retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::TexteApresDirective, indexFichier, jeton);
-                cadre->Position = cadre->Position + 2;
-                si (jeton->Genre == 78) {
-                    si (argument->Genre != 1 || !GalacticShrine::GsPP::Hebergee::VuesTexteEgales(
-                        GalacticShrine::GsPP::Hebergee::CreerVueTexte(&fichier->Source[argument->Debut], argument->TailleSource),
-                        GalacticShrine::GsPP::Hebergee::CreerVueTexteTerminee("once")))
-                        retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::PragmaNonPrisEnCharge, indexFichier, jeton);
-                    etat->UneFois[fichier->Identite] = 1;
-                }
-                sinon {
-                    si (!CheminValideExpansion(fichier, argument))
-                        retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::CheminInclusionAttendu, indexFichier, jeton);
-                    naturel64 indexLien = ChercherLienExpansion(requete, indexFichier, jeton->Debut);
-                    si (indexLien == requete->NombreLiens)
-                        retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ArgumentInvalide, indexFichier, NulJetonsDeclarations);
-                    constante LienInclusionDeclarations* lien = &requete->Liens[indexLien];
-                    si (lien->Etat == 1) retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::FichierIntrouvable, indexFichier, jeton);
-                    si (lien->Etat == 2) retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ExtensionIncompatible, indexFichier, jeton);
-                    naturel64 identiteCible = requete->Fichiers[lien->IndexCible].Identite;
-                    si (etat->UneFois[identiteCible] == 0) {
-                        si (etat->Actifs[identiteCible] != 0)
-                            retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::CycleInclusion, indexFichier, jeton);
-                        si (profondeur >= 128) {
-                            JetonLexe diagnosticProfondeur = {0, 1, 1, 0, 0, 0, 0, 0};
-                            retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ProfondeurExcessive, lien->IndexCible, &diagnosticProfondeur);
-                        }
-                        ErreurExpansionDeclarations erreurCible = LexerFichierExpansion(etat, lien->IndexCible);
-                        si (erreurCible != ErreurExpansionDeclarations::Reussite) retourner erreurCible;
-                        etat->Actifs[identiteCible] = 1;
-                        cadres[profondeur] = {lien->IndexCible, 0};
-                        profondeur = profondeur + 1;
-                    }
-                }
-            }
-        }
-        CacheFichierExpansion* cacheRacine = &etat->Caches[requete->IndexRacine];
-        retourner AjouterFragmentExpansion(etat, requete->IndexRacine, &cacheRacine->Jetons[cacheRacine->NombreJetons - 1], vrai);
+        retourner ContinuerParcoursExpansion(etat, &cadres[0], &profondeur);
     }
 
     booléen ValiderCatalogueExpansion(RequeteExpansionDeclarations* requete) {
@@ -251,7 +385,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner ErreurExpansionDeclarations::Reussite;
     }
 
-    publique ErreurExpansionDeclarations DevelopperInclusionsDeclarations(RequeteExpansionDeclarations* requete) {
+    ErreurExpansionDeclarations DevelopperInclusionsInterne(
+        RequeteExpansionDeclarations* requete, RequeteExpansionDeclarationsADemande* demande, SessionExpansionDeclarations* session) {
         si (!requete) retourner ErreurExpansionDeclarations::ArgumentInvalide;
         requete->Resultat = {};
         requete->Resultat.IndexFichierErreur = requete->NombreFichiers;
@@ -261,6 +396,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
         EtatExpansionDeclarations etat = {};
         etat.Requete = requete;
+        etat.Demande = demande;
+        etat.Session = session;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
         ErreurExpansionDeclarations erreur = ExecuterExpansionDeclarations(&etat);
         requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
@@ -268,6 +405,264 @@ espace GalacticShrine::GsPP::Autohebergement {
         si (erreur != ErreurExpansionDeclarations::Reussite && erreur != ErreurExpansionDeclarations::CapaciteInsuffisante) {
             requete->Resultat.NombreOctetsSource = 0;
             requete->Resultat.NombreOrigines = 0;
+        }
+        retourner erreur;
+    }
+
+    publique ErreurExpansionDeclarations DevelopperInclusionsDeclarations(RequeteExpansionDeclarations* requete) {
+        retourner DevelopperInclusionsInterne(requete, NulleDemandeExpansion, NulleSessionExpansion);
+    }
+
+    booléen ValiderRequeteExpansionADemande(RequeteExpansionDeclarationsADemande* requete) {
+        si (!requete) retourner faux;
+        requete->Demande = {};
+        si (!requete->Expansion) retourner faux;
+        RequeteExpansionDeclarations* expansion = requete->Expansion;
+        expansion->Resultat = {};
+        expansion->Resultat.IndexFichierErreur = expansion->NombreFichiers;
+        si (!requete->Disponibles || !ValiderCatalogueExpansion(expansion)) {
+            expansion->Resultat.Erreur = ErreurExpansionDeclarations::ArgumentInvalide;
+            retourner faux;
+        }
+        naturel64 fichier = 0;
+        tantque (fichier < expansion->NombreFichiers) {
+            si (requete->Disponibles[fichier] > 1 || (requete->Disponibles[fichier] == 0
+                && (expansion->Fichiers[fichier].Source || expansion->Fichiers[fichier].Taille != 0))) {
+                expansion->Resultat.Erreur = ErreurExpansionDeclarations::ArgumentInvalide;
+                retourner faux;
+            }
+            fichier = fichier + 1;
+        }
+        retourner vrai;
+    }
+
+    publique ErreurExpansionDeclarations DevelopperInclusionsADemande(RequeteExpansionDeclarationsADemande* requete) {
+        si (!ValiderRequeteExpansionADemande(requete)) retourner ErreurExpansionDeclarations::ArgumentInvalide;
+        retourner DevelopperInclusionsInterne(requete->Expansion, requete, NulleSessionExpansion);
+    }
+
+    publique ErreurExpansionDeclarations DevelopperInclusionsEnSession(RequeteExpansionDeclarationsEnSession* requete) {
+        si (!requete || requete->Reserve != 0 || requete->Operation > 1) retourner ErreurExpansionDeclarations::ArgumentInvalide;
+        SessionExpansionDeclarations* session = convertir<SessionExpansionDeclarations*>(requete->Memoire);
+        si (requete->Operation == 1) {
+            si (session) {
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&session->Arene);
+                GalacticShrine::GsPP::Hote::LibererMemoire(requete->Memoire);
+            }
+            requete->Memoire = NulleMemoireSessionExpansion;
+            requete->NombreLexages = 0;
+            requete->NombreReutilisations = 0;
+            retourner ErreurExpansionDeclarations::Reussite;
+        }
+        si (!ValiderRequeteExpansionADemande(requete->Expansion)) retourner ErreurExpansionDeclarations::ArgumentInvalide;
+        RequeteExpansionDeclarations* expansion = requete->Expansion->Expansion;
+        si (!session) {
+            requete->Memoire = GalacticShrine::GsPP::Hote::AllouerMemoire(64);
+            session = convertir<SessionExpansionDeclarations*>(requete->Memoire);
+            si (!session) {
+                expansion->Resultat.Erreur = ErreurExpansionDeclarations::AllocationImpossible;
+                retourner expansion->Resultat.Erreur;
+            }
+            session[0] = {};
+            GalacticShrine::GsPP::Hebergee::InitialiserArene(&session->Arene, 4096);
+        }
+        si (!ReserverCachesSessionExpansion(session, expansion->NombreFichiers)) {
+            expansion->Resultat.Erreur = ErreurExpansionDeclarations::AllocationImpossible;
+            retourner expansion->Resultat.Erreur;
+        }
+        ErreurExpansionDeclarations erreur = DevelopperInclusionsInterne(expansion, requete->Expansion, session);
+        requete->NombreLexages = session->NombreLexages;
+        requete->NombreReutilisations = session->NombreReutilisations;
+        retourner erreur;
+    }
+
+    booléen ValiderInstantaneReprise(RepriseExpansionDeclarations* reprise, RequeteExpansionDeclarationsADemande* demande) {
+        RequeteExpansionDeclarations* requete = demande->Expansion;
+        si (requete->NombreFichiers < reprise->NombreFichiers || requete->NombreLiens < reprise->NombreLiens) retourner faux;
+        si (reprise->Phase != 0 && (requete->IndexRacine != reprise->IndexRacine
+            || requete->MarqueUtf8 != reprise->MarqueUtf8 || requete->FinLigneCrlf != reprise->FinLigneCrlf)) retourner faux;
+        naturel64 fichier = 0;
+        tantque (fichier < reprise->NombreFichiers) {
+            constante FichierInclusionDeclarations* actuel = &requete->Fichiers[fichier];
+            FichierInclusionDeclarations* ancien = &reprise->Fichiers[fichier];
+            si (reprise->Disponibles[fichier] != 0 && (demande->Disponibles[fichier] == 0
+                || actuel->Source != ancien->Source || actuel->Taille != ancien->Taille
+                || actuel->Identite != ancien->Identite || actuel->EstInterface != ancien->EstInterface)) retourner faux;
+            si (reprise->Etat.Observes[fichier] != 0
+                && (actuel->Identite != ancien->Identite || actuel->EstInterface != ancien->EstInterface)) retourner faux;
+            si (reprise->Attente.Operation == 2 && reprise->Attente.IndexFichier == fichier
+                && (actuel->Identite != ancien->Identite || actuel->EstInterface != ancien->EstInterface)) retourner faux;
+            fichier = fichier + 1;
+        }
+        naturel64 ancienLien = 0;
+        naturel64 actuelLien = 0;
+        tantque (ancienLien < reprise->NombreLiens) {
+            LienInclusionDeclarations* ancien = &reprise->Liens[ancienLien];
+            tantque (actuelLien < requete->NombreLiens && (requete->Liens[actuelLien].IndexFichier < ancien->IndexFichier
+                || (requete->Liens[actuelLien].IndexFichier == ancien->IndexFichier
+                    && requete->Liens[actuelLien].DebutDirective < ancien->DebutDirective))) actuelLien = actuelLien + 1;
+            si (actuelLien == requete->NombreLiens) retourner faux;
+            constante LienInclusionDeclarations* actuel = &requete->Liens[actuelLien];
+            si (actuel->IndexFichier != ancien->IndexFichier || actuel->DebutDirective != ancien->DebutDirective
+                || actuel->Etat != ancien->Etat || (actuel->Etat == 0 && actuel->IndexCible != ancien->IndexCible)) retourner faux;
+            ancienLien = ancienLien + 1;
+            actuelLien = actuelLien + 1;
+        }
+        retourner vrai;
+    }
+
+    booléen ConserverCatalogueReprise(RepriseExpansionDeclarations* reprise, RequeteExpansionDeclarationsADemande* demande) {
+        RequeteExpansionDeclarations* requete = demande->Expansion;
+        si (!ReserverCachesSessionExpansion(&reprise->Lexicale, requete->NombreFichiers)) retourner faux;
+        si (requete->NombreFichiers > reprise->CapaciteFichiers) {
+            naturel64 capacite = 16;
+            tantque (capacite < requete->NombreFichiers) capacite = capacite * 2;
+            CacheFichierExpansion* caches = convertir<CacheFichierExpansion*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capacite * 16, 8));
+            naturel32* uneFois = convertir<naturel32*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capacite * 4, 4));
+            naturel32* actifs = convertir<naturel32*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capacite * 4, 4));
+            naturel32* observes = convertir<naturel32*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capacite * 4, 4));
+            FichierInclusionDeclarations* fichiers = convertir<FichierInclusionDeclarations*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capacite * 32, 8));
+            naturel32* disponibles = convertir<naturel32*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capacite * 4, 4));
+            si (!caches || !uneFois || !actifs || !observes || !fichiers || !disponibles) retourner faux;
+            naturel64 index = 0;
+            tantque (index < capacite) {
+                caches[index] = {};
+                uneFois[index] = 0;
+                actifs[index] = 0;
+                observes[index] = 0;
+                fichiers[index] = {};
+                disponibles[index] = 0;
+                si (index < reprise->CapaciteFichiers) {
+                    caches[index] = reprise->Etat.Caches[index];
+                    uneFois[index] = reprise->Etat.UneFois[index];
+                    actifs[index] = reprise->Etat.Actifs[index];
+                    observes[index] = reprise->Etat.Observes[index];
+                }
+                si (index < reprise->NombreFichiers) {
+                    fichiers[index] = reprise->Fichiers[index];
+                    disponibles[index] = reprise->Disponibles[index];
+                }
+                index = index + 1;
+            }
+            reprise->Etat.Caches = caches;
+            reprise->Etat.UneFois = uneFois;
+            reprise->Etat.Actifs = actifs;
+            reprise->Etat.Observes = observes;
+            reprise->Fichiers = fichiers;
+            reprise->Disponibles = disponibles;
+            reprise->CapaciteFichiers = capacite;
+        }
+        si (requete->NombreLiens > reprise->CapaciteLiens) {
+            naturel64 capaciteLiens = 16;
+            tantque (capaciteLiens < requete->NombreLiens) capaciteLiens = capaciteLiens * 2;
+            LienInclusionDeclarations* liens = convertir<LienInclusionDeclarations*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&reprise->Etat.Arene, capaciteLiens * 32, 8));
+            si (!liens) retourner faux;
+            reprise->Liens = liens;
+            reprise->CapaciteLiens = capaciteLiens;
+        }
+        naturel64 indexFichier = 0;
+        tantque (indexFichier < requete->NombreFichiers) {
+            reprise->Fichiers[indexFichier] = requete->Fichiers[indexFichier];
+            reprise->Disponibles[indexFichier] = demande->Disponibles[indexFichier];
+            indexFichier = indexFichier + 1;
+        }
+        naturel64 indexLien = 0;
+        tantque (indexLien < requete->NombreLiens) {
+            reprise->Liens[indexLien] = requete->Liens[indexLien];
+            indexLien = indexLien + 1;
+        }
+        reprise->NombreFichiers = requete->NombreFichiers;
+        reprise->NombreLiens = requete->NombreLiens;
+        retourner vrai;
+    }
+
+    ErreurExpansionDeclarations PoursuivreRepriseExpansion(RepriseExpansionDeclarations* reprise) {
+        EtatExpansionDeclarations* etat = &reprise->Etat;
+        RequeteExpansionDeclarations* requete = etat->Requete;
+        si (reprise->Phase == 0) {
+            si (!reprise->Cadres) reprise->Cadres = convertir<CadreExpansionDeclarations*>(GalacticShrine::GsPP::Hebergee::AllouerArene(&etat->Arene, 2048, 8));
+            si (!reprise->Cadres) retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::AllocationImpossible, 0, NulJetonsDeclarations);
+            reprise->IndexRacine = requete->IndexRacine;
+            reprise->MarqueUtf8 = requete->MarqueUtf8;
+            reprise->FinLigneCrlf = requete->FinLigneCrlf;
+            reprise->Cadres[0] = {requete->IndexRacine, 0};
+            reprise->Profondeur = 1;
+            etat->Actifs[requete->Fichiers[requete->IndexRacine].Identite] = 1;
+            etat->Observes[requete->IndexRacine] = 1;
+            etat->NombreOctets = convertir<naturel64>(requete->MarqueUtf8) * 3;
+            reprise->Phase = 1;
+        }
+        si (reprise->Phase == 1) {
+            ErreurExpansionDeclarations parcours = ContinuerParcoursExpansion(etat, reprise->Cadres, &reprise->Profondeur);
+            si (parcours != ErreurExpansionDeclarations::Reussite) retourner parcours;
+            reprise->Phase = 2;
+        }
+        requete->Resultat.NombreOctetsSource = etat->NombreOctets;
+        requete->Resultat.NombreOrigines = etat->NombreFragments;
+        si (requete->CapaciteSource < etat->NombreOctets || requete->CapaciteOrigines < etat->NombreFragments) {
+            requete->Resultat.Erreur = ErreurExpansionDeclarations::CapaciteInsuffisante;
+            retourner requete->Resultat.Erreur;
+        }
+        RequetePreparationDeclarations preparation = {
+            convertir<constante FragmentJetonDeclarations*>(etat->Fragments), etat->NombreFragments, requete->NombreFichiers,
+            requete->SourcePreparee, requete->CapaciteSource, requete->Origines, requete->CapaciteOrigines,
+            requete->MarqueUtf8, requete->FinLigneCrlf, {}};
+        si (PreparerDeclarationsAvecOrigines(&preparation) != ErreurPreparationDeclarations::Reussite)
+            retourner RefuserExpansionDeclarations(etat, ErreurExpansionDeclarations::ArgumentInvalide, 0, NulJetonsDeclarations);
+        retourner ErreurExpansionDeclarations::Reussite;
+    }
+
+    publique ErreurExpansionDeclarations DevelopperInclusionsAvecReprise(RequeteExpansionDeclarationsAvecReprise* requete) {
+        si (!requete || requete->Reserve != 0 || requete->Operation > 1) retourner ErreurExpansionDeclarations::ArgumentInvalide;
+        RepriseExpansionDeclarations* reprise = convertir<RepriseExpansionDeclarations*>(requete->Memoire);
+        si (requete->Operation == 1) {
+            si (reprise) {
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&reprise->Lexicale.Arene);
+                GalacticShrine::GsPP::Hebergee::DetruireArene(&reprise->Etat.Arene);
+                GalacticShrine::GsPP::Hote::LibererMemoire(requete->Memoire);
+            }
+            requete->Memoire = NulleMemoireSessionExpansion;
+            requete->NombreLexages = 0;
+            requete->NombreReutilisations = 0;
+            requete->NombreJetonsParcourus = 0;
+            retourner ErreurExpansionDeclarations::Reussite;
+        }
+        si (!ValiderRequeteExpansionADemande(requete->Expansion)) retourner ErreurExpansionDeclarations::ArgumentInvalide;
+        RequeteExpansionDeclarations* expansion = requete->Expansion->Expansion;
+        si (!reprise) {
+            // État privé de 344 octets ; aucun de ses champs n'appartient à l'ABI de la requête.
+            requete->Memoire = GalacticShrine::GsPP::Hote::AllouerMemoire(344);
+            reprise = convertir<RepriseExpansionDeclarations*>(requete->Memoire);
+            si (!reprise) {
+                expansion->Resultat.Erreur = ErreurExpansionDeclarations::AllocationImpossible;
+                retourner expansion->Resultat.Erreur;
+            }
+            reprise[0] = {};
+            GalacticShrine::GsPP::Hebergee::InitialiserArene(&reprise->Lexicale.Arene, 4096);
+            GalacticShrine::GsPP::Hebergee::InitialiserArene(&reprise->Etat.Arene, 4096);
+            reprise->Etat.Session = &reprise->Lexicale;
+            reprise->Etat.CompteurJetons = &reprise->NombreJetonsParcourus;
+            reprise->Etat.CapaciteFragments = &reprise->CapaciteFragments;
+        }
+        si (!ValiderInstantaneReprise(reprise, requete->Expansion)) {
+            expansion->Resultat.Erreur = ErreurExpansionDeclarations::ArgumentInvalide;
+            retourner expansion->Resultat.Erreur;
+        }
+        reprise->Etat.Requete = expansion;
+        reprise->Etat.Demande = requete->Expansion;
+        ErreurExpansionDeclarations erreur = ErreurExpansionDeclarations::AllocationImpossible;
+        si (ConserverCatalogueReprise(reprise, requete->Expansion)) erreur = PoursuivreRepriseExpansion(reprise);
+        sinon expansion->Resultat.Erreur = erreur;
+        si (erreur == ErreurExpansionDeclarations::ResolutionRequise || erreur == ErreurExpansionDeclarations::LectureRequise
+            || erreur == ErreurExpansionDeclarations::Reussite || erreur == ErreurExpansionDeclarations::CapaciteInsuffisante)
+            reprise->Attente = requete->Expansion->Demande;
+        requete->NombreLexages = reprise->Lexicale.NombreLexages;
+        requete->NombreReutilisations = reprise->Lexicale.NombreReutilisations;
+        requete->NombreJetonsParcourus = reprise->NombreJetonsParcourus;
+        expansion->Resultat.NombreOctetsArene = reprise->Etat.Arene.NombreOctets;
+        si (erreur != ErreurExpansionDeclarations::Reussite && erreur != ErreurExpansionDeclarations::CapaciteInsuffisante) {
+            expansion->Resultat.NombreOctetsSource = 0;
+            expansion->Resultat.NombreOrigines = 0;
         }
         retourner erreur;
     }

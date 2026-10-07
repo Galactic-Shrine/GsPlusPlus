@@ -10,6 +10,446 @@
 
 # Journal des modifications
 
+## Diagnostics syntaxiques possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- ajouter `DeclarationsPreparees::ExigerValide()` pour lever une
+  `ErreurCompilation` française/anglaise à la position originale, sans lecture
+  ni appel natif supplémentaire ; résultat numérique conservé et succès sans
+  exception ;
+- enrichir le champ `Detail` existant avec 43 contextes syntaxiques, codes,
+  tailles ABI et exports inchangés ; détecter les détails inconnus/incompatibles
+  comme contrats hôtes et préserver le message générique du détail nul.
+  Remettre à zéro les métadonnées après les sondages d'une analyse réussie ;
+- contextualiser la fermeture inattendue à la racine et le refus à EOF dans
+  une structure selon le bootstrap, sans changer leurs codes numériques ;
+- comparer 67 corpus bilingues et 134 refus au bootstrap pour les messages
+  FR/EN, GS1001 et positions, dont quatre combinaisons de priorité ; inclusions,
+  Unicode/BOM/CRLF/EOF, noms virtuels, interface, instantanés et durée de vie.
+  Deux détails de rappel et cinq résultats altérés refusés ; succès et détail
+  nul vérifiés, sans prétendre avoir testé un ancien paquet ;
+- CTest Windows 5/5, GNU/Linux 6/6, construction/validation native VS 2026 et
+  conformité 20/20 par chaîne réussis ; 2 751 refus sémantiques inchangés ;
+- conserver alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur ;
+  trois images identiques vérifiées de 566 495 octets et 105 exports.
+  API de développement, pas de nouvelle option ou activation syntaxique dans
+  `gsppc`, ni de frontend complet/parité exhaustive/gain global/jalon 0.28
+  acquis. Travail local sans nouveau commit, push, release ni paquet.
+
+### English
+
+- add `DeclarationsPreparees::ExigerValide()` to raise a French/English
+  `ErreurCompilation` at the original position, without new reads or native
+  calls; preserve numeric results and do nothing on success;
+- enrich the existing `Detail` field with 43 syntax contexts, without changing
+  codes, ABI sizes or exports; reject unknown/incompatible details as host
+  contract errors and preserve the generic message for detail zero.
+  Clear diagnostic metadata after successful-analysis probes;
+- contextualize an unexpected root closing brace and the rejection at EOF in
+  a struct according to the bootstrap, preserving their numeric codes;
+- compare 67 bilingual corpora and 134 rejections against the bootstrap for
+  FR/EN messages, GS1001 and positions, including four priority combinations;
+  includes, Unicode/BOM/CRLF/EOF, virtual names, interface mode, snapshots and
+  lifetime. Reject two altered callback details and five altered results;
+  check success and detail zero, without claiming tests of an older package;
+- Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 build/validation and
+  conformance 20/20 per toolchain successful; unchanged 2,751 semantic rejections;
+- preserve alpha.10, formats 1.0, ABI 1, backend and user file; three identical
+  verified images, 566,495 bytes and 105 exports. Development API, no new option
+  or syntax activation in `gsppc`, complete frontend, exhaustive parity,
+  overall performance claim or achieved 0.28 milestone. Local work without
+  a new commit, push, release or package.
+
+## Adaptateur hôte d'AST possédé — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- ajouter `AnalyserDeclarationsPreparees` : analyse syntaxique Gs++ d'un
+  instantané développé, sans parseur syntaxique C++ ni nouvelle lecture de
+  fichier ; centraliser les miroirs ABI réutilisés par les tests ;
+- posséder texte, noms, nœuds et positions originales après destruction du
+  catalogue ou déchargement de l'image ; contrôler les copies privées,
+  métadonnées, mesure/publication et structure. Bornes d'entrée/sortie,
+  exceptions hôtes et refus syntaxiques numériques sans arbre partiel ;
+- rechercher/valider les exports syntaxiques uniquement à la demande ; une
+  image dépourvue de ces exports reste utilisable pour l'expansion seule.
+  Code natif de confiance, sans bac à sable ni quota de l'arène native ;
+- comparer 20 corpus bilingues syntaxiquement valides et sept refus bilingues
+  au bootstrap, arbre et positions compris ; vérifier durée de vie, fichiers
+  remplacés après préparation, 45 contrats altérés, cinq préparations et sept
+  exports altérés, bornes, allocations et exceptions ;
+- constructions CMake/MSVC, GNU/Linux et VS 2026 natives réussies ; CTest
+  Windows 5/5, GNU/Linux 6/6, validation native et conformité 20/20 par chaîne.
+  Les 2 751 refus sémantiques restent inchangés ;
+- conserver alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur ;
+  travail local sans nouveau commit, push, release ni paquet. API de
+  bibliothèque, pas de nouvelle option CLI ni remplacement de `Programme` :
+  messages syntaxiques, assemblage multi-unités et passes suivantes encore
+  à raccorder. Aucun frontend complet, basculement par défaut, gain global
+  de performances ou jalon 0.28 acquis annoncé.
+
+### English
+
+- add `AnalyserDeclarationsPreparees`: Gs++ syntax analysis of a prepared
+  expanded snapshot, without the C++ syntax parser or new file reads;
+  centralize the ABI mirrors reused by the tests;
+- own text, names, nodes and original positions beyond catalogue destruction
+  or image unloading; check private copies, metadata, measure/publication
+  and tree structure. Input/output bounds, host exceptions and numeric syntax
+  rejections without a partial tree;
+- discover/validate syntax exports only on demand; an image lacking these
+  exports remains usable for inclusion expansion alone. Trusted native code,
+  without a sandbox or a quota on its native arena;
+- compare 20 syntactically valid bilingual corpora and seven bilingual syntax
+  rejections against the bootstrap, including trees and positions; check
+  lifetime, files replaced after preparation, 45 altered contracts, five
+  altered preparations and seven altered exports, bounds, allocation failures
+  and exceptions;
+- successful CMake/MSVC, GNU/Linux and native VS 2026 builds; Windows CTest
+  5/5, GNU/Linux 6/6, native validation and conformance 20/20 per toolchain.
+  The 2,751 semantic rejections remain unchanged;
+- preserve alpha.10, formats 1.0, ABI 1, backend and user file; local work
+  without a new commit, push, release or package. Library API, no new CLI
+  option or replacement of `Programme`: syntax messages, multi-unit assembly
+  and subsequent passes remain to be integrated. No complete frontend,
+  default-path switch, overall performance claim or achieved 0.28 milestone.
+
+## Expansion des projets et solutions — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- étendre `--expanseur-inclusions` / `--include-expander` aux projets XML
+  `.GsPj` / `.GsProject` et solutions `.GsPs`, en modes séparé et agrégé ;
+  une seule image de confiance chargée par commande, préparateur partagé par
+  l'orchestrateur mais reprises/once indépendants pour chaque unité ;
+- ajouter un préparateur facultatif à `OptionsConstructionProjet` et
+  `ConstruireSolution` ; conserver le bootstrap par défaut, les noms physiques
+  et diagnostics virtuels, le schéma XML 1.0 et les chemins relatifs au projet.
+  Le chemin CLI de l'image reste relatif au processus ; aucune découverte,
+  aucun chargement demandé par le XML ni repli silencieux ;
+- conserver ordre des projets, objets, archivage et liaison ; remplacements de
+  sortie/objets réservés à un projet et entrées binaires toujours refusées.
+  Arrêt au premier échec sans transaction ni retour arrière global ;
+- comparer rappels, exceptions, journaux et sorties au niveau API ; étendre
+  `CONF-PROJ-001` avec huit scénarios FR/EN croisés, 48 comparaisons de
+  constructions, images vérifiées/exécutées avec retour 42, 56 refus
+  différentiels et quatre images refusées avant construction. Vérifier les
+  remplacements, l'échec du second projet et une nouvelle invocation réussie.
+  Normaliser les clés des instantanés de test avec `Path.as_posix()` ;
+- CTest Windows 5/5, GNU/Linux 6/6, construction/validation native VS 2026 et
+  conformité 20/20 par chaîne réussis ; 2 751 refus sémantiques inchangés.
+  Projet réel Directives vérifié/exécuté sous MSVC et GNU, retour 42 ;
+- conserver alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur ;
+  trois Frontend identiques vérifiés, 564 751 octets et 105 exports.
+  Travail local sans nouveau commit, push, release ni paquet. AST/passes Gs++
+  encore à raccorder : aucun frontend complet, basculement par défaut,
+  jalon 0.28 acquis ou gain global de performances annoncé.
+
+### English
+
+- extend `--include-expander` / `--expanseur-inclusions` to XML `.GsPj` /
+  `.GsProject` projects and `.GsPs` solutions in separate and aggregate modes;
+  one trusted image loaded per command, shared orchestration callback but
+  independent resumptions/once state for each unit;
+- add an optional preparer to `OptionsConstructionProjet` and
+  `ConstruireSolution`; preserve the default bootstrap, physical and virtual
+  diagnostic names, XML 1.0 schema and project-relative paths. The CLI image
+  path remains process-relative; no discovery, XML-triggered image loading
+  or silent fallback;
+- preserve project order, objects, archiving and linking; output/object
+  overrides remain project-only and binary inputs still reject the option.
+  Stop on the first failure without a whole-build transaction or rollback;
+- compare callbacks, exceptions, journals and outputs at API level; extend
+  `CONF-PROJ-001` with eight crossed FR/EN scenarios, 48 build comparisons,
+  verified images returning 42, 56 differential rejections and four images
+  rejected before construction. Check overrides, failure of the second project
+  and a successful new invocation. Normalize snapshot keys with `Path.as_posix()`;
+- Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 build/validation and
+  conformance 20/20 per toolchain successful; unchanged 2,751 semantic rejections.
+  Real Directives project verified/executed on MSVC and GNU, returning 42;
+- preserve alpha.10, formats 1.0, ABI 1, backend and user file; three identical
+  verified Frontend images, 564,751 bytes and 105 exports. Local work without
+  a new commit, push, release or package. Gs++ AST/pass integration remains
+  open: no complete frontend, default-path switch, achieved 0.28 milestone
+  or overall performance claim.
+
+## Expansion facultative dans gsppc — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- ajouter `--expanseur-inclusions <Frontend.GsE>` / `--include-expander` pour
+  les sources/interfaces directes ; bootstrap par défaut, aucun chargement
+  automatique ni repli silencieux ; projets/solutions et binaires refusent
+  explicitement l'option, sans nouvelle dépendance pour reconstruire le frontend ;
+- charger une image de confiance avec durée de vie possédée, vérification GsE,
+  bornes de taille, deux imports d'allocation seulement, trampolines proches,
+  exports de reprise FR/EN cohérents, protections W^X/RX et aucun appel du
+  point d'entrée ; code natif dans le processus hôte, sans bac à sable ;
+- partager les passes C++ via `AnalyserUnitesAvecPreparation`, convertir les
+  sorties développées en jetons possédés après contrôle du contrat ; noms
+  virtuels et chemins physiques distincts, origines/modes source-interface
+  conservés, refus bilingues et E/S sans faux diagnostics de langue ;
+- comparer 11 corpus dans les deux syntaxes au pipeline bootstrap, objets
+  GsObj/images GsE identiques, et raccorder les 41 corpus bilingues d'expansion
+  au pont ; vérifier BOM/CRLF/EOF, durée de vie, 13 sorties et six contrats
+  d'image altérés ; conserver les refus actuels et l'isolation par unité ;
+- étendre les cas CLI/extensions existants : six paires COFF/GsObj/GsE pour
+  les deux alias, six paires d'extensions source/interface, images vérifiées
+  et exécutées avec retour 42, huit refus de langue et dix refus hôtes/options
+  protégeant une sortie préexistante ; 20 exigences inchangées ;
+- alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur conservés.
+  Travail local sans nouveau commit, push, release ni paquet ; raccord aux
+  projets/solutions et aux AST/passes Gs++ encore ouvert, aucun frontend
+  complet, jalon 0.28 acquis ou gain global de performances annoncé.
+- CTest Windows 5/5 et GNU/Linux 6/6, construction/validation native VS 2026
+  et conformité 20/20 par chaîne réussis ; 2 751 refus sémantiques inchangés.
+  Trois images identiques vérifiées de 564 751 octets, 105 exports et deux imports.
+
+### English
+
+- add `--include-expander <Frontend.GsE>` / `--expanseur-inclusions` for direct
+  source/interface inputs; default bootstrap, no automatic image loading or
+  silent fallback; explicitly reject the option for projects/solutions and
+  binaries, without introducing a circular frontend build dependency;
+- load a trusted image with owned lifetime, GsE verification, size bounds,
+  only two allocation imports, nearby trampolines, matching resume FR/EN
+  exports, W^X/RX protections and no entry-point call; native code runs in
+  the host process, without a sandbox;
+- share C++ passes through `AnalyserUnitesAvecPreparation`, bridge expanded
+  outputs to owned tokens after contract checks; preserve virtual diagnostic
+  names, physical paths, original positions and source/interface modes;
+  bilingual language errors and host I/O errors remain distinct;
+- compare 11 corpora in both syntaxes with the bootstrap pipeline, identical
+  GsObj/GsE outputs, and bridge all 41 bilingual expansion corpora; check
+  BOM/CRLF/EOF, lifetime, 13 corrupted outputs and six altered image contracts;
+  preserve existing rejections and per-unit isolation;
+- extend existing CLI/extension cases: six COFF/GsObj/GsE pairs for both aliases,
+  six source/interface extension pairs, verified images returning 42, eight
+  language rejections and ten host/option rejections preserving existing output;
+  unchanged total of 20 requirements;
+- preserve alpha.10, formats 1.0, ABI 1, backend and user file. Local work,
+  no new commit, push, release or package; project/solution and Gs++ AST/pass
+  integration remains open, without a complete frontend, achieved 0.28
+  milestone or overall performance claim.
+- Windows CTest 5/5 and GNU/Linux 6/6, native VS 2026 build/validation and
+  conformance 20/20 per toolchain successful; unchanged 2,751 semantic rejections.
+  Three identical verified images, 564,751 bytes, 105 exports and two imports.
+
+## E/S des inclusions — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- mutualiser identité canonique, statut et lecture dans `FichiersSource` pour
+  le bootstrap, le catalogue anticipé et les trois adaptateurs à la demande ;
+- remplacer la lecture du bootstrap sans contrôle de panne par une lecture
+  binaire contrôlée : EOF normal accepté, flux défectueux refusé sans retour
+  de préfixe partiel ; limite d'octets toujours distincte d'un échec d'E/S ;
+- ajouter `ErreurFichierSource` avec opération identification/statut/ouverture/
+  lecture, chemin physique, code système et messages français/anglais ;
+  conserver les refus de langue pour les inclusions absentes/non régulières,
+  les règles de priorité et les différences réelles du système de fichiers hôte ;
+- comparer 15 corpus bilingues au bootstrap pour les trois adaptateurs ;
+  tester frontières de blocs, EOF et exceptions de flux, panne après un bloc,
+  retrait/remplacement après résolution, libération sur réponse hôte échouée
+  et vrai verrou exclusif Windows, sans modification des ACL ;
+- faire suivre `--langue-diagnostics` aux erreurs hôtes de sources dans `gsppc`,
+  conserver GS0001/code 1 sans coordonnées fictives ; ajouter quatre contrôles
+  CLI au cas existant, avec sortie préexistante protégée ; conformité 20/20 ;
+- CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+  réussis, 2 751 refus sémantiques inchangés ; trois images identiques vérifiées
+  de 564 751 octets, 105 exports et deux imports ; alpha.10, formats 1.0, ABI 1,
+  backend et fichier utilisateur inchangés. Sélection par défaut toujours au
+  bootstrap, sans raccord de l'expansion Gs++ au pilote ni garantie atomique
+  entre statut et ouverture. Couverture non exhaustive des ACL, liens
+  symboliques, volumes distants et courses concurrentes. Travail local sans
+  nouveau commit, push, release ni paquet.
+
+### English
+
+- share canonical identity, status and reads through `FichiersSource` across
+  the bootstrap, eager catalog and all three on-demand adapters;
+- replace the bootstrap's unchecked stream transfer with checked binary reads:
+  accept normal EOF, reject failed streams without returning a partial prefix;
+  byte limits remain separate from I/O failures;
+- add `ErreurFichierSource` carrying identification/status/open/read operation,
+  physical path, system code and French/English messages; preserve language
+  rejections for missing/non-regular includes, diagnostic ordering and actual
+  host filesystem differences;
+- compare 15 bilingual corpora with the bootstrap for all three adapters;
+  test block boundaries, EOF/stream exceptions, a failure after one block,
+  removal/replacement after resolution, cleanup on failed host responses and
+  a real Windows exclusive lock, without changing ACLs;
+- honor `--langue-diagnostics` for source host errors in `gsppc`, preserving
+  GS0001/exit 1 without fictional coordinates; extend the existing CLI case
+  with four checks and a protected pre-existing output; conformance remains 20/20;
+- Windows CTest 5/5, GNU/Linux 6/6 and native VS 2026 build/validation successful,
+  unchanged 2,751 semantic rejections; three identical verified images,
+  564,751 bytes, 105 exports and two imports; preserve alpha.10, formats 1.0,
+  ABI 1, backend and user file. Default selection still uses the bootstrap:
+  no Gs++ expansion driver integration or atomic status/open guarantee.
+  ACLs, symlinks, remote volumes and concurrent races are not exhaustively
+  covered. Local work, no new commit, push, release or package.
+
+## Reprise persistante du parcours — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `DevelopperInclusionsAvecReprise` / `ResumeDeclarationIncludes`,
+  requête additive de 48 octets, opérations continuer/libérer et trois
+  compteurs ; conserver pile de 128 cadres, états once/actifs, jetons et
+  fragments sans remplacer les API historiques ;
+- reprendre au point suspendu après réponse hôte ; mesure et publications
+  répétées sans nouveau parcours ni allocation de sélection ; sorties
+  transactionnelles, croissance géométrique et reprise après allocation impossible ;
+- contrôler les instantanés entre appels : racine/BOM/CRLF fixes, sources lues,
+  métadonnées observées (alias once non lus inclus), cible en attente et liens
+  déjà fournis immuables ; ajout d'indices/liens et déplacement de tableaux permis ;
+- ajouter `PreparerFichierAvecReprise`, dialogue partagé et libération automatique
+  sur succès, refus et exception ; comparer les 41 corpus bilingues et utiliser
+  les sorties à reprise dans les matrices d'origines jusqu'à la sémantique ;
+- vérifier demandes inchangées, compteurs, gardes, sessions indépendantes,
+  mesure/publication sans allocation, métadonnées et liens modifiés,
+  croissance sous budgets et exceptions ; profil de 32 fichiers : 10 398 jetons
+  engagés, 32 lexages, 65 appels, 32 lectures et 31 résolutions, sorties identiques ;
+- CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+  réussis ; conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés ;
+  trois images identiques vérifiées de 564 751 octets, 105 exports et deux imports ;
+  alpha.10, formats 1.0, ABI 1, pilote et fichier utilisateur inchangés.
+  Validations/copies d'instantanés et relexage final encore présents : aucun
+  coût global linéaire revendiqué. Parité exhaustive des E/S et raccord au
+  pilote encore ouverts. Travail local sans nouveau commit, push, release ni paquet.
+
+### English
+
+- add `DevelopperInclusionsAvecReprise` / `ResumeDeclarationIncludes`, additive
+  48-byte request, continue/release operations and three counters; retain the
+  128-frame stack, once/active states, tokens and fragments, preserving historical APIs;
+- resume at the suspended point after the host response; repeated measurement
+  and publication without another traversal or selection allocation;
+  transactional outputs, geometric growth and retry after allocation failure;
+- validate snapshots between calls: fixed root/BOM/CRLF, immutable read sources,
+  observed metadata (including unread once aliases), pending read target and
+  previously supplied links; allow appended indices/links and relocated tables;
+- add `PreparerFichierAvecReprise`, shared dialogue and automatic cleanup on
+  success, rejection and exceptions; compare 41 bilingual corpora and feed
+  resumable outputs through origin-aware matrices up to semantics;
+- verify unchanged demands, counters, guards, independent sessions, allocation-free
+  measurement/publication, changed metadata/links, growth budgets and exceptions;
+  32-file profile: 10,398 committed tokens, 32 lexings, 65 calls, 32 reads and
+  31 resolutions, identical outputs;
+- Windows CTest 5/5, GNU/Linux 6/6 and native VS 2026 build/validation successful;
+  conformance 20/20 per chain, unchanged 2,751 semantic rejections; three identical
+  verified images, 564,751 bytes, 105 exports and two imports; preserve alpha.10,
+  formats 1.0, ABI 1, driver and user file. Snapshot validation/copying and final
+  fragment re-lexing remain: no whole-process linear-cost claim. Exhaustive I/O
+  parity and driver integration remain open. Local work, no new commit, push,
+  release or package.
+
+## Cache lexical des reprises — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- ajouter `DevelopperInclusionsEnSession` / `ExpandDeclarationIncludesInSession`,
+  requête additive de 40 octets, opérations développer/libérer et compteurs ;
+  caches privés par index de fichier, répertoire à croissance géométrique,
+  instantanés immuables, aucun état once/parcours conservé ; anciennes API intactes ;
+- ajouter `PreparerFichierAvecOriginesEnSession` : dialogue hôte partagé avec la
+  variante sans cache, mémoire de session libérée aussi sur refus et exception ;
+- comparer les 41 corpus bilingues et consommer les sorties en session dans les
+  matrices d'origines jusqu'à la sémantique ; contrôler sessions indépendantes,
+  déplacements de tableaux, adresses/tailles de sources modifiées, gardes,
+  allocations impossibles, reprise et libération après erreurs de lecture/sortie ;
+- mesurer 1 056 lexages sans conservation contre 32 avec cache pour une chaîne
+  de 32 fichiers, 1 024 réutilisations et 65 appels, mêmes lectures/résolutions
+  et sorties ; instrumentation sans conservation distincte du chronométrage de
+  l'API sans session ; temps indicatifs, aucune performance globale revendiquée ;
+- CTest Windows 5/5, GNU/Linux 6/6 et validation native VS 2026 réussis ;
+  conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés ; trois images
+  identiques vérifiées de 549 583 octets, 103 exports et deux imports ;
+  alpha.10, formats 1.0, ABI 1,
+  pilote `gsppc` et fichier utilisateur conservés. Reprises de parcours, parité
+  exhaustive des E/S et raccord au pilote encore ouverts. Travail local sans
+  nouveau commit, push, release ni paquet.
+
+### English
+
+- add `DevelopperInclusionsEnSession` / `ExpandDeclarationIncludesInSession`,
+  additive 40-byte request, develop/release operations and counters; per-file
+  private caches, geometrically growing directory, immutable snapshots;
+  no retained once/traversal state and unchanged historical APIs;
+- add `PreparerFichierAvecOriginesEnSession`: shared host dialogue with the
+  uncached variant; release session memory on success, rejection and exceptions;
+- compare all 41 bilingual expansion corpora and feed cached outputs through
+  origin-aware matrices up to semantics; verify independent sessions, relocated
+  catalog arrays, changed source addresses/sizes, guards, allocation failures,
+  retries and cleanup on read/output-limit errors;
+- measure 1,056 lexings without retention versus 32 cached for a 32-file chain,
+  1,024 reuses and 65 calls, identical reads/resolutions and outputs; non-retained
+  instrumentation separate from timing the uncached API; indicative timings,
+  no whole-compiler performance claim;
+- Windows CTest 5/5, GNU/Linux 6/6 and native VS 2026 validation successful;
+  conformance 20/20 per chain, unchanged 2,751 semantic rejections; three
+  identical verified images, 549,583 bytes, 103 exports and two imports;
+  preserve alpha.10, formats 1.0,
+  ABI 1, default `gsppc` driver and user file. Traversal replay, exhaustive I/O
+  parity and driver integration remain open. Local work, no new commit, push,
+  release or package.
+
+## Expansion à la demande — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
+
+### Français
+
+- publier les tranches d'origines et de catalogue anticipé dans le commit signé
+  `fbbf443`, poussé sur `main`, signature GitHub vérifiée et CI Windows CMake,
+  MSBuild natif et GNU/Linux réussie ; aucune release ni modification des paquets ;
+- ajouter localement `DevelopperInclusionsADemande` / `ExpandDeclarationIncludesOnDemand` :
+  requête de 56 octets, demande de 40 octets, disponibilités et suspensions 15/16 ;
+  résolution après lexage/grammaire, lecture après once/cycle/profondeur ;
+  sorties intactes, arène libérée, ancienne requête/API inchangée ;
+- ajouter `PreparerFichierAvecOrigines` : lecture/résolution seulement sur demande
+  Gs++, sans découverte des directives par le lexeur C++ ; instantanés conservés,
+  indices connus et diagnostics virtuels, bornes et demandes contrôlés ;
+  catalogues partiels refusés par l'adaptateur historique ;
+- comparer les 41 corpus français/anglais aussi par l'entrée à la demande ;
+  vérifier priorité des diagnostics avant un fichier trop volumineux, once et
+  entrées non visitées non lues, cycles/profondeur avant lecture, fichiers vides,
+  suspensions transactionnelles, reprises, disponibilités et allocations ;
+  raccorder les matrices avec origines à cette préparation jusqu'à la sémantique ;
+- CTest Windows 5/5, GNU/Linux 6/6, validation native VS 2026 et conformité
+  20/20 par chaîne ; total sémantique 2 751 inchangé, trois images identiques
+  vérifiées de 545 295 octets, 101 exports et deux imports ;
+- préserver alpha.10, formats 1.0, ABI 1, pilote `gsppc`, backend et
+  `ConteneursDynamiques.GsPP` ; coût des reprises par relance, parité exhaustive
+  des erreurs d'E/S et intégration au pilote encore ouverts. Nouvelle tranche
+  locale non commitée/non poussée, distincte de `fbbf443` et de sa CI.
+
+### English
+
+- publish the origins and eager catalog stages in signed commit `fbbf443`,
+  pushed to `main`, GitHub signature verified and Windows CMake/native MSBuild/
+  GNU/Linux CI successful; no release or package update;
+- add local `DevelopperInclusionsADemande` / `ExpandDeclarationIncludesOnDemand`:
+  56-byte request, 40-byte demand, availability masks and suspensions 15/16;
+  resolve after lexing/grammar, read after once/cycle/depth checks; untouched
+  outputs, freed arena, unchanged historical request/API;
+- add `PreparerFichierAvecOrigines`: resolve/read only when requested by Gs++,
+  without C++ lexer directive discovery; retain snapshots, known indices and
+  virtual diagnostic names; check bounds/demands and reject partial catalogs
+  in the historical adapter;
+- compare all 41 bilingual expansion corpora through the on-demand entry;
+  test diagnostic priority before oversized files, unread once aliases/unused
+  entries, cycles/depth before reads, empty files, transactional suspensions,
+  restarts, availability and allocations; feed its outputs into origin-aware
+  matrices through semantic analysis;
+- Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 validation and 20/20
+  conformance per toolchain; unchanged 2,751 semantic rejections, three identical
+  verified 545,295-byte images, 101 exports and two imports;
+- preserve alpha.10, formats 1.0, ABI 1, the default driver/backend and
+  `ConteneursDynamiques.GsPP`; replay costs, exhaustive filesystem-error parity
+  and default-driver integration remain open. This new stage remains local,
+  uncommitted/unpushed and separate from `fbbf443` and its CI.
+
 ## Catalogue de fichiers du produit — développement après Gs++ 0.27.0-alpha.10 — 2026-10-06
 
 ### Français

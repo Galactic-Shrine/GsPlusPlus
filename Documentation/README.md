@@ -27,7 +27,9 @@ consultables dans l’historique Git.
 
 - [Matrice de conformité 1.0](CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [Priorités des bases, champs et initialiseurs : dernier bilan local](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#priorités-des-bases-champs-et-initialiseurs--tranche-locale-du-5-octobre-2026)
+- [Diagnostics syntaxiques possédés : dernier bilan local](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-syntaxiques-possédés--7-octobre-2026)
+- [Adaptateur hôte d'AST possédé](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#adaptateur-hôte-dast-possédé--7-octobre-2026)
+- [Priorités des bases, champs et initialiseurs](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#priorités-des-bases-champs-et-initialiseurs--tranche-locale-du-5-octobre-2026)
 - [Protocole de benchmark](PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md)
 - [Dernière matrice : 0.27.0-alpha.10](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.10.md)
 - [Matrice historique de publication alpha.9](Validations/VALIDATION-GS-PLUS-PLUS-0.27.0-alpha.9.md)

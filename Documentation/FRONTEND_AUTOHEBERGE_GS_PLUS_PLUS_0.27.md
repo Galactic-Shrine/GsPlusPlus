@@ -5351,13 +5351,753 @@ reste inchangé. Le travail reste local, non commité/non poussé, sans nouvelle
 release ; ces résultats ne mettent pas à jour la preuve CI de `039bd3f` ni les
 paquets alpha.10 publiés.
 
+## Expansion à la demande et priorité des lectures — 6 octobre 2026
+
+Le commit signé [`fbbf443`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/fbbf4436d03358e3ee95d06472b61e552cd0f934)
+a publié les tranches précédentes, jusqu'au catalogue anticipé, et sa signature
+est vérifiée par GitHub. La [CI à trois chaînes](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37520062256)
+a réussi. Les états « local » ci-dessus correspondent au moment de leur
+validation ; aucune release ni modification des paquets alpha.10. La nouvelle
+entrée à la demande décrite ici est **postérieure à ce commit et locale**.
+
+### Contrat additif
+
+`DevelopperInclusionsADemande` / `ExpandDeclarationIncludesOnDemand` ajoute une
+requête de **56 octets** qui pointe vers l'ancienne requête de 128 octets, une
+table de disponibilités 0/1 et une demande de **40 octets**. Les codes 15 et 16
+signifient respectivement résolution et lecture requises, pas refus de langue.
+Une demande de résolution contient fichier, début de directive et plage brute
+de l'argument cité ; une demande de lecture ne contient que le fichier cible.
+Les sources indisponibles sont nulles et de taille zéro, avec identité et mode
+déjà résolus. Réserves, champs, bornes et disponibilités sont contrôlés.
+
+La suspension ne publie ni texte ni origines, met leurs nombres à zéro,
+n'incrimine aucun fichier, et libère l'arène. L'hôte satisfait la demande et
+rappelle l'entrée : le parcours est relancé, aucun état ne persiste dans le
+frontend. La résolution suit le lexage complet et le contrôle grammatical ;
+la lecture suit once, cycle et profondeur. L'API historique ne suspend pas et
+conserve ses diagnostics et ses tailles.
+
+### Raccord hôte et régressions
+
+`PreparerFichierAvecOrigines` possède catalogue et sorties, conserve les
+instantanés et répond seulement aux demandes Gs++. Aucun lexeur C++ n'est
+utilisé pour découvrir les directives : seul le chemin cité déjà validé est
+décodé avant résolution par le système de fichiers. Les entrées connues gardent
+leurs indices sans être lues anticipativement ; alias et disponibilités
+distinguent identité de fichier et index de diagnostic. Un catalogue partiel
+est refusé par l'adaptateur historique, au lieu de prendre un fichier non lu
+pour un fichier vide. Les demandes répétées ou incohérentes sont refusées.
+
+Les **41 corpus français/anglais** d'expansion sont aussi comparés au bootstrap
+par cette entrée, avec code, détail lexical, fichier/ligne/colonne, jetons et
+origines. `TesterExpansionADemande` couvre en outre les diagnostics prioritaires
+avant un fichier dépassant la limite de lecture, les alias once non lus, un
+fichier connu absent mais non visité, un cycle avant lecture, un fichier vide
+avec bornes zéro et un fichier réellement visité dépassant la limite.
+À profondeur 129, la cible n'est pas lue : 128 lectures et 128 résolutions,
+puis diagnostic de profondeur. Suspensions avec tampons/sentinelles, plage brute
+de l'argument, reprises, disponibilités invalides, pointeurs nuls, allocation
+impossible, mesure puis publication sont vérifiés.
+
+Les deux matrices avec origines consomment désormais les sorties de cette
+préparation à la demande jusqu'à la syntaxe, l'assemblage brut/normalisé et la
+sémantique. Le bootstrap et l'entrée anticipée restent des oracles indépendants.
+Les nouveaux refus d'expansion ne modifient pas le total des refus sémantiques.
+
+La relance relexe/reparcourt les fichiers déjà visités : coût potentiellement
+quadratique, encore à optimiser et à mesurer avant une bascule du pilote.
+La parité exhaustive des erreurs de permissions, liens et changements externes
+du système de fichiers n'est pas revendiquée. Le parcours par défaut de
+`gsppc`, son backend et les écrivains d'objets restent inchangés.
+
+### Validation locale de la tranche à la demande
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **construction/validation réussies**.
+
+**20/20 conformités par chaîne**, **2 751 refus sémantiques différentiels**,
+style et cohérence CMake/Visual Studio réussis. Les trois images sont identiques
+et acceptées par leurs vérificateurs : **545 295 octets**, GsE 1.0, trois
+segments, huit sections, deux imports et **101 exports** ; SHA-256
+`CAA34A4985D8A9FF082856B20F4E8E862CF9002BD807B53089BD0A0D85A53B23`.
+Les trois versions générées restent `0.27.0-alpha.10`, formats 1.0 et ABI 1 ;
+`ConteneursDynamiques.GsPP` est inchangé et `git diff --check` réussit.
+Cette tranche est locale, non commitée/non poussée ; aucune release ni
+mise à jour des paquets. La CI réussie de `fbbf443` valide le catalogue anticipé
+publié, pas ces nouveaux ajouts à la demande.
+
+## Cache lexical des reprises — 6 octobre 2026
+
+La session additive `DevelopperInclusionsEnSession` /
+`ExpandDeclarationIncludesInSession` conserve les jetons entre les suspensions
+de l'expansion à la demande. Requête de **40 octets**, opération 0 développer,
+1 libérer, pointeur opaque privé et compteurs de lexages/réutilisations.
+Initialisation à zéro, sources et indices déjà lexés immuables jusqu'à la
+libération ; déplacer les tableaux du catalogue entre appels reste permis.
+Modifier l'adresse ou la taille d'une source cachée, ou la rendre indisponible,
+est refusé ; modifier ses
+octets en place viole le contrat. Caches indépendants, tableau à croissance
+géométrique et aucune conservation des états once/actifs ou du parcours.
+Les anciennes API restent sans session et libèrent toujours toute leur mémoire
+à chaque appel. Dans la variante en session, l'arène transitoire est libérée
+sur suspension/refus, mais les jetons survivent jusqu'à l'opération de libération.
+`NombreOctetsArene` n'est donc pas une mesure de toute la mémoire retenue.
+
+Le raccord produit `PreparerFichierAvecOriginesEnSession` réutilise le même
+dialogue que l'entrée sans cache ; il possède la durée de vie du cache et le
+libère automatiquement sur succès, refus et exception hôte. Les **41 corpus
+français/anglais** comparent code/détail/fichier/ligne/colonne, demandes, E/S,
+texte et origines aux variantes précédentes. Les sorties en session alimentent
+les matrices avec origines jusqu'à la syntaxe, assemblage brut/normalisé et
+sémantique, toujours comparées au bootstrap.
+
+`TesterExpansionEnSession` vérifie suspensions transactionnelles, deux sessions
+indépendantes, déplacements de tableaux, sources changées, mesure/publication,
+échecs d'allocation et reprise, libération répétée, budgets d'allocation côté
+adaptateur, erreurs lexicales et exceptions de limites de lecture/sortie.
+Une chaîne de **32 fichiers** de 64 déclarations chacun mesure **1 056 lexages
+sans conservation**, **32 avec cache**, **1 024 réutilisations**, **65 appels**,
+**32 lectures** et **31 résolutions**, avec les mêmes sorties. Le compteur sans
+conservation est instrumenté en détruisant une session entre chaque appel ;
+les temps sont mesurés séparément avec l'API sans session réelle. Ils sont
+indicatifs et ne constituent pas un benchmark global ni un seuil de test.
+Les compteurs ne couvrent pas le relexage des fragments de préparation finale.
+
+### Validation locale du cache lexical
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**, matrice
+  auto-hébergée **79,34 s** et total **81,13 s** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, matrice
+  auto-hébergée **190,41 s** et total **194,38 s**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **construction/validation réussies**.
+
+**20/20 conformités par chaîne**, **2 751 refus sémantiques différentiels**,
+style et cohérence CMake/Visual Studio réussis. Trois images identiques acceptées
+par leurs vérificateurs : **549 583 octets**, GsE 1.0, trois segments, huit
+sections, deux imports et **103 exports** ; SHA-256
+`19568F661C9A510BD38E05AE7AADD20E7263233D99FC369590823114BDF945A2`.
+Les temps ponctuels du profil de 32 fichiers sont Windows **617,32/41,59 ms**,
+WSL **1 047,59/410,22 ms**, MSBuild natif **598,26/38,42 ms**, sans/avec cache.
+Ils dépendent notamment de l'hôte et des E/S, ne sont ni une médiane ni une
+comparaison du compilateur complet, et ne conditionnent pas le succès des tests.
+
+Les trois versions générées restent cohérentes avec `VERSION`. La version reste
+`0.27.0-alpha.10`, formats 1.0 et ABI 1 ; pilote `gsppc`, backend et
+`ConteneursDynamiques.GsPP` inchangés. Tranche locale non commitée/non poussée,
+sans release ni mise à jour des paquets. La CI de `fbbf443` ne valide pas ces
+ajouts locaux. Le parcours rejoué, la parité exhaustive des erreurs d'E/S et
+l'intégration au pilote restent ouverts ; aucun frontend complet ni jalon 0.28
+n'est revendiqué.
+
+## Reprise persistante du parcours — 6 octobre 2026
+
+L'entrée additive `DevelopperInclusionsAvecReprise` / `ResumeDeclarationIncludes`
+conserve la sélection au-delà des suspensions. Sa requête de **48 octets**
+ajoute au dialogue existant un pointeur opaque, les opérations 0 continuer /
+1 libérer et trois compteurs. Les entrées de 128/56/40 octets restent intactes.
+Les jetons lexés, la pile de 128 cadres, les états once/actifs et les fragments
+sélectionnés survivent entre appels. Le curseur d'une directive n'est validé
+qu'après réponse hôte et contrôles de sa cible : une demande inchangée ne
+consomme pas une seconde fois le préfixe. La mesure et les publications
+répétées réutilisent la sélection achevée, sans relancer le parcours ni allouer
+de nouvelle sélection.
+
+Le catalogue grandit par ajout d'indices ; des liens triés peuvent s'insérer
+entre les anciens. Tableaux du catalogue et tampons de sortie peuvent bouger,
+mais sources lues, métadonnées observées et liens déjà fournis sont contrôlés
+comme un instantané immuable. Un alias ignoré par once reste une métadonnée
+observée, même sans lecture ; la cible d'une lecture en attente conserve son
+identité et son mode. Racine/BOM/CRLF sont figés au démarrage. Modifier des
+octets de source en place viole le contrat : aucune copie de validation ni
+aucun hachage de contenu n'est introduit.
+
+Les refus d'instantanés incompatibles n'inventent pas de diagnostic de langue.
+Échec d'allocation pendant la croissance : pile, sélection et demande en
+attente restent réutilisables après restauration d'un instantané compatible.
+Toute la mémoire privée survit aux suspensions/refus jusqu'à la libération ;
+`NombreOctetsArene` ne mesure que l'arène du parcours, pas la mémoire lexicale,
+l'objet opaque ou toute la mémoire de l'hôte. `PreparerFichierAvecReprise`
+possède cette durée de vie, partage le dialogue et les bornes des adaptateurs
+précédents et libère aussi sur exception, sans lexeur C++ pour découvrir les
+directives.
+
+`TesterRepriseInclusions` vérifie les demandes laissées sans réponse, préfixes,
+retours de pile, once/alias non lus, déplacements de tableaux, changements
+d'adresses/tailles/identités/modes, retrait de liens/indices, options changées,
+croissance conjointe des répertoires fichiers/liens sous budgets d'allocation,
+restauration puis reprise, sessions indépendantes et gardes de sortie.
+La publication après mesure réussit avec toutes nouvelles allocations
+interdites ; publications et mesures répétées conservent le compteur.
+Les exceptions de limites de lecture/sortie et les budgets de l'adaptateur
+contrôlent aussi la libération. Les **41 corpus bilingues** comparent demandes,
+E/S, texte, origines et diagnostics aux variantes précédentes et au bootstrap.
+Les sorties à reprise alimentent désormais les matrices d'origines jusqu'à
+la syntaxe, l'assemblage brut/normalisé et la sémantique.
+
+Une chaîne de **32 fichiers**, 64 déclarations chacun, compte **10 398 jetons
+engagés**, **32 lexages**, **65 appels**, **32 lectures** et **31 résolutions** ;
+texte et origines sont identiques à la session lexicale. Ce compteur compte
+les jetons dont le parcours est validé, directives/arguments et EOF inclus,
+pas les tentatives suspendues. Le relexage final des fragments demeure, ainsi
+que les validations et copies d'instantanés à chaque appel. Ces dernières
+peuvent encore coûter quadratiquement sur une longue série de demandes :
+aucune performance globale linéaire n'est revendiquée. Les chronométrages
+du profil restent indicatifs, sans seuil de réussite.
+
+### Validation locale de la reprise persistante
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**, matrice
+  auto-hébergée **90,93 s** et total **92,84 s** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, matrice
+  auto-hébergée **217,52 s** et total **222,04 s**, intégration comprise ;
+- Visual Studio 2026 sans CMake : `GsPlusPlus.slnx`, puis
+  `VisualStudio/Validation.vcxproj`, Release/x64 : **construction/validation réussies**.
+
+**20/20 conformités par chaîne**, **2 751 refus sémantiques différentiels**,
+style et cohérence CMake/Visual Studio réussis. Les trois `Frontend.GsE` sont
+identiques et acceptés par leurs vérificateurs : **564 751 octets**, GsE 1.0,
+trois segments, huit sections, deux imports et **105 exports** ; SHA-256
+`081273CD5F1DBFC41A923119C0BC4686F90EE24F25171863999F9661543D9D37`.
+Chronométrages ponctuels du profil 32 fichiers, cache lexical seul / reprise :
+Windows **35,96/33,33 ms**, WSL **425,49/390,49 ms**, MSBuild natif
+**36,60/35,98 ms**. Mesures indicatives, sensibles à l'hôte et aux E/S,
+ni médianes ni benchmark du compilateur complet.
+
+Les trois en-têtes générés correspondent à `VERSION` : `0.27.0-alpha.10`.
+Formats 1.0, ABI 1, pilote `gsppc`, backend et fichier utilisateur
+`ConteneursDynamiques.GsPP` inchangés. `git diff --check` réussit. Tranche locale,
+non commitée/non poussée, sans release ni mise à jour des paquets ; la CI de
+`fbbf443` ne valide pas ces ajouts. La parité exhaustive des erreurs d'E/S,
+les interactions non couvertes et l'intégration au pilote restent ouvertes.
+Aucun frontend complet ni jalon 0.28 n'est revendiqué.
+
+## Erreurs hôtes et lecture des inclusions — 6 octobre 2026
+
+`Compiler/include/GsPP/FichiersSource.hpp` et `Compiler/src/FichiersSource.cpp`
+mutualisent identité canonique, contrôle du statut et lecture entre le
+bootstrap, le catalogue anticipé et les trois adaptateurs à la demande.
+`ErreurFichierSource` conserve opération, chemin physique, code système et
+messages français/anglais ; elle reste interceptable comme `runtime_error`.
+Cette harmonisation modifie les types/messages hôtes auparavant non uniformes,
+pas l'ABI de l'image, les codes de langue ni les règles once/cycle/profondeur.
+Le bootstrap utilise désormais le lecteur contrôlé, au lieu d'un transfert
+de `rdbuf` sans contrôle de panne : aucun préfixe incomplet ou texte vide
+n'est retourné comme une source valable après un échec de lecture.
+
+Absence, répertoire inclus et parent non répertoire restent `FichierIntrouvable`
+à la directive. Une autre erreur de statut/identification, une ouverture
+impossible ou une panne de lecture restent des exceptions hôtes attachées au
+chemin physique, sans diagnostic de langue fictif. Une racine répertoire peut
+échouer à l'ouverture sous Windows, ou à la lecture sous GNU ; le classement
+réel de l'hôte est conservé. Pour un composant de 300 caractères, MSVC/NTFS
+renvoie ici une absence et GNU une erreur de statut : le test observe le
+contrôle de l'hôte avant de comparer tous les chemins dans cet hôte.
+Le code système de flux utilise `errno` disponible, sinon `errc::io_error` ;
+il ne prétend pas toujours exposer le détail natif de l'OS.
+
+`TesterEntreesSortiesInclusions` compare **15 corpus français/anglais** au
+bootstrap pour chaque adaptateur : sans cache, session lexicale et reprise.
+Racines absentes/répertoires, inclusions absentes/répertoires, parent non
+répertoire, absence imbriquée avec origine, nom long, erreurs lexicales ou
+grammaticales avant un statut ultérieur, extension incompatible, fichiers vides,
+lecture multi-blocs et alias once. Les erreurs hôtes comparent opération,
+chemin, code système et les deux messages ; les diagnostics de langue comparent
+code/fichier/ligne/colonne ; les succès comparent jetons et origines.
+
+Les tests du lecteur couvrent 0/1/8 191/8 192/8 193/16 384 octets, octet nul,
+limite exacte et dépassement, EOF avec/sans exceptions de flux et états en
+échec. Un `streambuf` injecte une panne après un bloc complet : le lecteur
+refuse, sans rendre le préfixe. Des wrappers de test ABI simulent la réponse
+hôte sans modifier le produit : retrait ou remplacement par répertoire d'une
+cible **après résolution**, puis restauration de la fixture ; comparaison à la
+même lecture physique, sortie par exception et mémoire privée libérée. Une
+exception de flux pendant une réponse de résolution vérifie également le
+nettoyage. Sous Windows, un verrou exclusif teste un vrai échec d'ouverture,
+comparé au bootstrap, sans modifier les ACL.
+
+`gsppc` intercepte l'erreur de source avant l'exception générale, choisit le
+message via `--langue-diagnostics francais|anglais`, conserve **GS0001/code 1**
+et n'invente pas de coordonnées. Le contrôle CLI existant de conformité teste
+désormais les racines absentes/répertoires dans les deux langues et vérifie
+qu'un fichier de sortie préexistant reste intact. Le total des exigences reste
+20 ; le rapport détaille les quatre vérifications supplémentaires du CLI.
+
+Il n'y a pas de garantie atomique entre statut et ouverture, de relance
+automatique sur erreur d'E/S ni de changement de sélection par défaut vers
+l'expansion Gs++ : le pilote reste sur le bootstrap. ACL, liens symboliques,
+volumes distants, périphériques et toutes les courses concurrentes ne sont
+pas couverts exhaustivement par cette tranche.
+
+### Validation locale des E/S
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**, matrice
+  auto-hébergée **86,00 s** et total **88,10 s** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, matrice
+  auto-hébergée **212,24 s** et total **216,44 s**, intégration comprise ;
+- Visual Studio 2026 sans CMake :
+  `MSBuild.exe GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo`,
+  puis `MSBuild.exe VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo` :
+  **construction/validation réussies**.
+
+**20/20 conformités par chaîne**, avec les quatre contrôles CLI de sources
+consignés dans `CONF-CLI-001`, **2 751 refus sémantiques différentiels**,
+style et cohérence CMake/Visual Studio réussis. Trois `Frontend.GsE` identiques
+acceptés par leurs vérificateurs : **564 751 octets**, GsE 1.0, trois segments,
+huit sections, deux imports et **105 exports** ; SHA-256 inchangé
+`081273CD5F1DBFC41A923119C0BC4686F90EE24F25171863999F9661543D9D37`.
+Les bibliothèques, objets et image ont été régénérés avec le lecteur partagé.
+Versions générées cohérentes avec `VERSION` : `0.27.0-alpha.10`, formats 1.0,
+ABI 1 ; backend et `ConteneursDynamiques.GsPP` inchangés.
+`git diff --check` réussit. Tranche locale non commitée/non poussée, sans
+release ni mise à jour des paquets ; la CI de `fbbf443` ne valide pas ces ajouts.
+Le raccord de la sélection Gs++ au pilote et les cas d'E/S non couverts
+restent ouverts, sans revendication de frontend complet ni de jalon 0.28.
+
+## Expansion Gs++ facultative dans le pilote — 7 octobre 2026
+
+Le pilote des **sources/interfaces directes** accepte maintenant
+`--expanseur-inclusions <Frontend.GsE>` / `--include-expander <Frontend.GsE>`.
+Il utilise la reprise persistante de l'image, puis un pont contrôlé vers les
+jetons du pipeline C++. Le chemin par défaut reste au bootstrap : aucun
+chargement automatique ni repli silencieux en cas d'erreur, et aucune dépendance
+circulaire pour reconstruire le frontend. Projets/solutions et entrées binaires
+refusent cette option explicitement dans cette première tranche.
+
+### Chargement et frontière hôte
+
+`ExpanseurInclusionsCharge` possède le chargement natif et le retire à sa
+destruction. L'image est vérifiée avant allocation, bornée à 64 Mio de fichier
+et 1 Gio de mémoire logique ; seuls les imports d'allocation/libération sont
+résolus, par deux trampolines proches. Exports FR/EN requis à la même adresse,
+type fonction et plage dans un segment exécutable ; segments/pages compatibles
+avec les protections W^X, trampolines RX et cache d'instructions synchronisé.
+Le point d'entrée n'est jamais appelé. Chargement Windows/Linux x86-64 seulement.
+
+**Image de confiance obligatoire.** La validation du format n'authentifie pas
+l'image ni toute sa signature ABI ; son code s'exécute dans `gsppc`, sans bac à
+sable. Le fournisseur doit respecter la requête de reprise de 48 octets et ses
+règles de propriété. Les reprises des adaptateurs sont libérées avant retrait
+de l'image, y compris en cas de refus ou exception hôte.
+
+`AnalyserUnitesAvecPreparation` partage validation des extensions, syntaxe,
+fusion, normalisation et sémantique avec `AnalyserUnites`, qui conserve le
+préparateur bootstrap. Chaque unité reçoit un catalogue/reprise distinct,
+sans partage de once ni des utilisations d'espaces entre unités.
+`ConvertirPreparationEnJetons` vérifie tailles, cardinalité, plages, lexèmes,
+fichiers disponibles, modes interface, réservés et EOF. Le lexeur C++ décode
+ensuite les jetons du texte développé ; les origines remettent les positions
+et modes de chaque fichier, et les jetons possèdent textes et noms.
+
+Les refus d'expansion reprennent les messages bilingues du bootstrap. En cas
+de refus lexical, son détail est tiré de l'instantané original fautif, sans
+relecture du disque, avec comparaison des coordonnées. Chemins physiques et
+noms de diagnostics restent distincts dans le catalogue, notamment pour le
+refus de profondeur. Contrat incohérent et E/S restent des erreurs hôtes,
+pas des positions de langue inventées ; sortie préexistante conservée.
+
+### Périmètre différentiel
+
+- **11 corpus dans les deux syntaxes** (22 exécutions du pipeline) : interfaces
+  de types/prototypes, once répété, multi-unités, noms virtuels, chaînes locales
+  échappées, refus syntaxiques/sémantiques et de normalisation, imports isolés
+  et inclusions absentes ; objets GsObj et images GsE identiques au bootstrap ;
+- **41 corpus bilingues d'expansion** existants raccordés au pont : jetons,
+  textes décodés, modes et chaque origine/EOF identiques ; messages français
+  et anglais comparés sur refus, dont lexage et profondeur 128/129 ;
+- BOM/CRLF, fin de la racine, jetons possédés après déchargement d'une seconde
+  image, validation des extensions avant appel du préparateur ;
+- **13 sorties altérées** et **six contrats d'image altérés** refusés : réservés,
+  plages, indices/modes/EOF, tailles, lexèmes ; export absent, alias différent,
+  type d'export, import inconnu, segment W+X et taille logique excessive ;
+- contrôle CLI dans `CONF-CLI-001` : **six paires bootstrap/Gs++** (deux alias,
+  COFF/GsObj/GsE), jetons/AST et octets identiques, images développées vérifiées
+  et exécutées avec retour 42 ; **huit refus de langue bilingues** et **dix refus
+  hôtes/options/contextes**, avec sortie préexistante protégée.
+  Les cas d'extensions existants comparent aussi **six paires** pour les trois
+  variantes source et les trois variantes interface ; vingt exigences conservées.
+
+Les refus du pipeline réel ne sont pas ajoutés aux **2 751 refus sémantiques
+auto-hébergés** : ces passes restent C++. Aucun changement de syntaxe, de
+backend, d'ABI ou de format n'est introduit. La duplication d'une énumération
+entre unités agrégées et l'initialisation globale d'un pointeur de données
+restent refusées, comme dans le bootstrap ; once reste propre à chaque unité.
+
+### Preuves locales du raccord au pilote
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**, matrice
+  auto-hébergée **81,84 s**, total **84,11 s** ; conformité relancée après ajout
+  des comparaisons d'extensions, **20/20** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, matrice
+  auto-hébergée **215,78 s**, total **222,41 s**, intégration comprise ;
+- Visual Studio 2026 natif :
+  `MSBuild.exe GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo`,
+  puis `MSBuild.exe VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo` :
+  **construction/validation réussies** ; conformité relancée directement avec
+  les mêmes arguments de `Test-Native.ps1` après ajout des comparaisons d'extensions,
+  **20/20**.
+
+**20/20 conformités sur chaque chaîne**, six paires CLI et 18 refus consignés
+dans `CONF-CLI-001`, trois variantes source et trois variantes interface
+comparées dans `CONF-EXT-001/002`. **2 751 refus sémantiques différentiels**
+inchangés ; style et cohérence des sept cibles CMake/natif réussis.
+L'exemple réel `Exemples/Directives/Principal.GsPP` a également été compilé
+avec cette option sous MSVC, vérifié puis exécuté : GsE sans import, retour **42**.
+Les trois `Frontend.GsE` sont identiques et acceptés par leurs vérificateurs :
+**564 751 octets**, GsE 1.0, trois segments, huit sections, deux imports,
+**105 exports** ; SHA-256
+`081273CD5F1DBFC41A923119C0BC4686F90EE24F25171863999F9661543D9D37`.
+Trois en-têtes générés à `0.27.0-alpha.10`, formats 1.0 et ABI 1 conservés.
+`ConteneursDynamiques.GsPP` utilisateur inchangé, backend inchangé.
+`git diff --check` réussit. Tranche locale non commitée/non poussée, sans
+release ni mise à jour des paquets ; la CI de `fbbf443` ne valide pas ces ajouts.
+Il ne s'agit pas d'un frontend complet ni d'un jalon 0.28 acquis.
+
+### Limites et prochaine étape
+
+Seule la **sélection des inclusions** peut désormais être effectuée par Gs++
+dans le pilote réel. Relexage/décodage C++, analyse, normalisation, sémantique,
+génération x64, écrivains et liaison restent bootstrap. Les validations et
+relexages du pont ont un coût : aucune amélioration globale de performances
+n'est annoncée. À l'issue de cette première tranche, le raccord aux
+projets/solutions et l'emploi des AST/passes auto-hébergés après préparation
+restaient à réaliser, ainsi que les cas d'E/S
+non couverts. Le mode par défaut n'a pas basculé ; aucun jalon 0.28 acquis.
+
+## Expansion Gs++ des projets et solutions — 7 octobre 2026
+
+Le raccord facultatif est maintenant étendu aux projets `.GsPj` /
+`.GsProject` et aux solutions `.GsPs`, en compilation **séparée et agrégée**.
+Les deux alias `--expanseur-inclusions` / `--include-expander` sélectionnent
+le même préparateur que pour les sources directes. Le bootstrap reste le choix
+par défaut, sans chargement automatique ni repli silencieux ; il reconstruit
+toujours le frontend sans dépendance circulaire à une image préexistante.
+
+### Propagation et durée de vie
+
+- `OptionsConstructionProjet::PreparerJetons` ajoute un préparateur facultatif ;
+  `ConstruireSolution` accepte le même rappel et le transmet à chaque projet.
+  Les appels sans préparateur gardent le comportement bootstrap ;
+- les interfaces et sources passent par `AnalyserUnitesAvecPreparation` avant
+  les mêmes passes C++, génération, archivage et liaison. En mode séparé,
+  les interfaces sont préparées pour chaque source ; en mode agrégé, toutes
+  les interfaces et sources rejoignent le même programme après préparation ;
+- une seule image est chargée avant la construction et reste possédée jusqu'à
+  sa fin. Catalogues et reprises restent indépendants par unité, sans partage
+  de once entre sources ou projets. Un rappel d'API doit conserver en vie ses
+  ressources capturées jusqu'à la fin de la construction ;
+- le chemin CLI de l'image est relatif au répertoire du processus ; les chemins
+  du XML restent relatifs au fichier qui les contient. Noms physiques et noms
+  virtuels de diagnostics sont conservés, ainsi que les modes source/interface ;
+- le schéma XML **1.0** ne change pas et n'ajoute aucun chargement d'image native.
+  Les remplacements de sortie/répertoire d'objets restent propres à un projet,
+  refusés sur une solution ; format, carte et point d'entrée restent définis
+  par le XML. Les entrées binaires refusent toujours l'option.
+
+L'image doit être de confiance : son code natif s'exécute dans l'hôte sans bac
+à sable. Les contrats, limites de chargement et protections de la tranche
+précédente sont réutilisés. L'ordre de construction et les noms des sorties
+ne changent pas. La solution s'arrête au premier échec, **sans transaction ni
+retour arrière global** : un projet précédent réussi reste reconstruit.
+Un refus avant le premier objet conserve les sorties préexistantes ; un refus
+plus tardif peut laisser des objets ou bibliothèques déjà mis à jour.
+
+### Couverture du raccord aux projets
+
+`TesterProjetsAvecPreparation` vérifie les deux modes avec un projet bibliothèque
+français, un projet exécutable anglais et une solution mixte. Ordre des rappels
+(six en séparé, cinq en agrégé), modes, chemins physiques/noms de diagnostics,
+résultats et journaux sont vérifiés ; objets, archive, image et carte sont
+identiques au bootstrap. Une exception du préparateur est propagée sans
+remplacer les sorties lorsque le premier appel échoue.
+
+`CONF-PROJ-001` contient désormais **huit scénarios** : modes séparé/agrégé ×
+vocabulaire XML FR/EN × mots-clés source FR/EN. Les deux alias sont exercés sur
+la bibliothèque, l'exécutable et la solution, soit **48 comparaisons** de
+constructions et de toutes leurs sorties avec le bootstrap. Inclusions
+imbriquées/alias canoniques, once indépendant par unité, interfaces explicites,
+chemins avec espaces et chemin d'image relatif au processus sont couverts.
+Les exécutables sont vérifiés et retournent **42**. Les remplacements de sortie
+et de répertoire d'objets sont vérifiés sur un projet.
+
+**56 refus différentiels** comparent codes/messages dans les deux langues,
+les deux modes et les deux entrées projet/solution : directive, lexage inclus,
+corps d'interface, sémantique, inclusion absente, interface racine au nom virtuel
+et source physique absente. Les sorties existantes sont conservées pour ces
+échecs avant le premier objet, et la solution ne poursuit pas le projet suivant.
+**Quatre images invalides/absentes** sont refusées avant le début de construction.
+Un échec du second projet vérifie la conservation de la bibliothèque reconstruite,
+de l'ancien exécutable et de sa carte, l'absence du troisième projet, puis le
+retour aux sorties de référence par une nouvelle invocation après correction.
+
+### Preuves locales des projets et solutions
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**, matrice
+  auto-hébergée **76,57 s**, conformité **10,37 s**, total **87,31 s** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, matrice
+  auto-hébergée **209,07 s**, conformité **28,49 s**, total **240,30 s**, intégration comprise ;
+- Visual Studio 2026 natif :
+  `MSBuild.exe GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo`,
+  puis `MSBuild.exe VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo` :
+  **construction/validation réussies**, style et sept cibles natives cohérents.
+
+Les rapports JSON des trois chaînes contiennent **20/20**, les huit scénarios,
+48 comparaisons, 56 refus et quatre images refusées avant construction.
+La première exécution Windows avait révélé une clé de test non portable (`\`
+au lieu de `/`) ; l'instantané utilise désormais `Path.as_posix()`, puis les
+validations complètes ont été relancées. **2 751 refus sémantiques différentiels**
+restent inchangés : les nouvelles comparaisons de projets utilisent les passes C++.
+L'exemple réel `Exemples/Directives/Application.GsPj`, avec remplacements vers
+les répertoires de tests CMake, a aussi été compilé, vérifié et exécuté sous
+MSVC et GNU avec l'option : image sans import, retour **42**.
+
+Les trois `Frontend.GsE` sont vérifiés et identiques : **564 751 octets**,
+GsE 1.0, trois segments, huit sections, deux imports et **105 exports** ; SHA-256
+`081273CD5F1DBFC41A923119C0BC4686F90EE24F25171863999F9661543D9D37`.
+Les trois en-têtes générés indiquent `0.27.0-alpha.10`. Formats 1.0, ABI 1,
+backend et fichier utilisateur `ConteneursDynamiques.GsPP` restent inchangés.
+`git diff --check` réussit. Travail local sans nouveau commit, push, release ni
+paquet ; la CI de `fbbf443` ne valide pas ces ajouts.
+
+### Limites après le raccord aux projets
+
+La sélection des inclusions peut être réalisée par Gs++ dans tous ces modes
+du pilote. Relexage/décodage, AST, normalisation, sémantique et backend restent
+C++. L'emploi des AST/passes auto-hébergés après préparation et les interactions
+d'E/S non couvertes restent à réaliser avant tout basculement par défaut.
+Aucun frontend entièrement auto-hébergé, gain global de performances ou jalon
+0.28 acquis n'est annoncé par cette tranche.
+
+## Adaptateur hôte d'AST possédé — 7 octobre 2026
+
+La première brique de production après expansion est disponible dans
+`Compiler/include/GsPP/DeclarationsPreparees.hpp` et
+`Compiler/src/DeclarationsPreparees.cpp` : `AnalyserDeclarationsPreparees`
+appelle l'analyseur syntaxique Gs++ sur un instantané développé, **sans analyse
+syntaxique C++ ni nouvelle lecture de fichier**. C'est une API de bibliothèque
+hôte, pas encore un remplacement des passes de `gsppc`.
+
+### Contrat et propriété
+
+Les miroirs ABI syntaxiques (nœud 64, résultat 48, requête 80 et contexte
+d'origines 56 octets) sont centralisés dans le nouveau fichier d'en-tête ;
+les tests historiques réutilisent les mêmes types. Le chargeur expose
+`AnalyseurDeclarations()` et vérifie à la demande la paire d'exports FR/EN,
+son type fonction, sa section, sa taille et sa plage exécutable. L'expansion
+seule reste possible si ces exports manquent ou sont incorrects ; aucune
+nouvelle dépendance syntaxique n'est introduite dans l'option existante.
+L'image reste du code natif de confiance, sans bac à sable.
+
+Le pont lexical vérifie l'instantané avant appel. L'analyseur reçoit des
+copies privées du texte et des origines ; pointeurs et contenus sont contrôlés
+après chacun des deux appels de mesure/publication. Racine, liens parents
+antérieurs, genres/drapeaux, plages de noms, capacités et coordonnées sont
+vérifiés avant retour. Une garde détecte aussi l'écriture du nœud immédiatement
+après le tampon ; elle ne constitue pas une protection contre toute corruption
+mémoire d'une image native arbitraire.
+
+`DeclarationsPreparees` possède texte, nœuds et origines originales. Les noms
+sont des vues bornées dans ce texte possédé ; aucune vue vers le catalogue ou
+l'image ne survit. Les coordonnées synthétiques des nœuds restent intactes,
+avec une table distincte de fichier/ligne/colonne/unité/rang et de mode à leur
+jeton de position. La racine synthétique est située en 1:1 dans l'unité racine.
+Un parcours du texte et des recherches binaires localisent les nœuds ; pas de
+parcours complet répété par nœud. Le mode global d'interface prime sur les modes
+locaux, sans confondre origine du nœud et jeton décisif de la déclaration.
+
+Sur refus syntaxique, seuls résultat numérique et position originale vérifiée
+sont publiés : pas de texte ou d'arbre partiel. Un contrat incohérent reste
+une erreur hôte, et une allocation impossible une exception hôte. Les entrées
+sont bornées par défaut à **64 Mio / un million de jetons**, avant appel natif ;
+la sortie à **un million de nœuds**, après mesure et avant allocation de sortie.
+Ces bornes ne sont ni une isolation du code natif ni un quota de son arène.
+
+### Couverture de l'adaptateur
+
+- instantané conservé après remplacement des fichiers sur disque ; AST/noms
+  disponibles après destruction du catalogue, déchargement de l'image, copie
+  et déplacement ; interface racine au nom virtuel et source vide avec BOM ;
+- **45 contrats altérés** refusés : 41 cas de métadonnées, pointeurs, capacités,
+  structure, noms, positions, garde et entrées privées ; quatre cas de diagnostic
+  local incohérent. Échec d'allocation dans les deux phases et exception du
+  rappel propagés séparément ;
+- trois bornes de taille vérifiées, quatre arguments invalides refusés avant
+  appel, **cinq préparations altérées** arrêtées avant le rappel natif ;
+- **sept contrats d'exports syntaxiques altérés**, tous valides au niveau GsE,
+  refusés uniquement à la demande syntaxique : export absent, alias différent,
+  type, section, taille nulle/excessive et adresse dans un segment non exécutable.
+  Leur expansion reste utilisable ;
+- les **20 corpus bilingues syntaxiquement valides et sept refus syntaxiques
+  bilingues** de la matrice d'origines passent aussi par l'adaptateur de production :
+  arbre et positions synthétiques comparés au bootstrap, origine/mode de chaque
+  nœud et origine des refus comparés. BOM/LF/CRLF, inclusions imbriquées, Unicode,
+  noms, utilisations d'espaces, classes et signatures à modes mixtes sont couverts.
+  Les trois refus sémantiques existants sont syntaxiquement valides et restent
+  testés par les passes historiques ; l'adaptateur n'ajoute pas de passe sémantique.
+
+### Preuves locales de l'adaptateur
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**, matrice
+  auto-hébergée **77,63 s**, conformité **12,02 s**, total **90,15 s** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**, matrice
+  auto-hébergée **208,86 s**, conformité **28,96 s**, intégration **1,85 s**,
+  total **240,69 s** ;
+- Visual Studio 2026 natif :
+  `MSBuild.exe GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo`,
+  puis `MSBuild.exe VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo` :
+  **construction/validation réussies**, conformité **20/20**, style et sept
+  cibles natives cohérents avec CMake.
+
+Les rapports de conformité des trois chaînes donnent **20/20** ; les
+**2 751 refus sémantiques** historiques restent inchangés. Les constructions
+de projets/solutions conservent huit scénarios, 48 comparaisons et 56 refus.
+
+La première exécution avait détecté un mauvais offset dans la fixture du
+segment non exécutable ; corrigé selon le format GsE, puis constructions et
+tests relancés. Les conversions implicites des octets de fixture ont été
+remplacées par des valeurs `uint8_t`, sans nouvel avertissement de construction.
+Les trois `Frontend.GsE` sont vérifiés et identiques : **564 751 octets**,
+trois segments, huit sections, deux imports et **105 exports** ; SHA-256
+`081273CD5F1DBFC41A923119C0BC4686F90EE24F25171863999F9661543D9D37`.
+En-têtes générés alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur
+conservés ; `git diff --check` réussit. Travail local sans nouveau commit,
+push, release ni paquet.
+
+### Limites et prochain raccord
+
+`HachageType` reste une information opaque, pas la description riche des types
+du backend. L'AST possédé ne remplace pas encore `Programme` ; les diagnostics
+syntaxiques numériques ne sont pas encore adaptés aux messages du pilote.
+L'assemblage/normalisation multi-unités et les passes suivantes doivent être
+raccordés à ces sorties, puis au backend, avant d'activer l'analyse Gs++ dans
+`gsppc`. L'option d'expansion reste expansion seule ; aucune nouvelle option
+CLI, aucun basculement par défaut, frontend entièrement auto-hébergé, gain global
+de performances ou jalon 0.28 acquis n'est annoncé.
+
+## Diagnostics syntaxiques possédés — 7 octobre 2026
+
+`DeclarationsPreparees::ExigerValide()` transforme un refus numérique de
+l'adaptateur en `ErreurCompilation`, avec les deux messages et la position
+originale déjà possédée. Un succès ne lève rien. Le résultat numérique reste
+disponible pour les consommateurs qui ne souhaitent pas lever d'exception ;
+aucun arbre partiel, nouvelle lecture, relexage ou appel natif n'est ajouté
+par cette méthode. Copie/déplacement et déchargement de l'image n'affectent pas
+la restitution ultérieure du diagnostic.
+
+### Contexte et compatibilité
+
+Le code général ne distingue pas toujours « identifiant attendu » de « nom
+de paramètre attendu », ni un délimiteur de constructeur de celui d'une
+signature de pointeur de fonction. Le champ `Detail` existant reçoit donc les
+**43 contextes additifs** de `DetailDiagnosticDeclarations`, définis dans
+`AnalyseurDeclarations.HGsPP`. Les sites de refus Gs++ renseignent ces contextes ;
+les codes `Erreur`, tailles ABI, conventions d'appel et exports sont inchangés.
+Les métadonnées de diagnostic sont remises à zéro après une analyse réussie,
+y compris après les sondages de déclarations.
+
+L'adaptateur vérifie que le contexte est connu et compatible avec le code,
+avant de retourner un refus de langue. Un détail altéré est une erreur de
+contrat hôte, pas un faux GS1001. La valeur 0 garde le message générique de
+la catégorie historique ; elle ne peut pas garantir le message précis d'une
+ancienne image qui ne renseigne pas le contexte. Les détails lexicaux conservent
+leur signification antérieure et leur traitement par le pont lexical.
+
+La fermeture inattendue au niveau racine est contextualisée comme « fin de
+fichier attendue ». Le diagnostic numérique historique à EOF dans un corps
+de structure garde son code 10 mais porte le contexte « type attendu », comme
+le bootstrap au même emplacement. Ce raccord de messages ne remplace pas la
+grammaire du bootstrap et n'établit pas une parité de toute entrée possible.
+
+### Matrice des messages et positions
+
+La nouvelle matrice de production couvre **67 corpus dans les deux syntaxes**,
+soit **134 refus** :
+
+- les 43 contextes, chacun exercé par un corpus, dont signatures, paramètres,
+  noms de types/champs/membres, alias, espaces, délimiteurs et constructeurs ;
+- vingt catégories sans contexte supplémentaire et quatre combinaisons avec
+  plusieurs refus possibles, vérifiant la priorité du premier refus ;
+- deux niveaux d'inclusion, fichier Unicode avec BOM/CRLF, nom virtuel de la
+  racine, fin de fichier, mode global d'interface et préparations synthétiques
+  BOM/LF/CRLF ;
+- messages français **et** anglais et rendu `fichier:ligne:colonne GS1001`
+  comparés exactement au bootstrap pour chaque refus, sans invoquer de
+  nouvelle option CLI ;
+- fichiers remplacés après préparation, refus conservé après destruction du
+  catalogue/déchargement, copie/déplacement, succès sans exception ;
+- deux détails de rappel inconnus/incompatibles rejetés à la frontière native,
+  cinq résultats de diagnostic altérés refusés comme erreurs hôtes et
+  restitution générique d'un résultat à détail nul. Cette dernière vérifie
+  le contrat historique du champ, pas un ancien paquet publié.
+
+Les matrices précédentes restent vertes, dont 45 contrats altérés de l'AST,
+cinq préparations, sept exports et **2 751 refus sémantiques** inchangés.
+
+### Preuves locales des messages
+
+- CMake/MSVC : `cmake --build --preset windows-release --target espace_travail --parallel 6`,
+  puis `ctest --preset windows-release --output-on-failure` : **5/5**,
+  auto-hébergement **79,00 s**, conformité **14,51 s**, total **95,83 s** ;
+- Ubuntu/WSL : `cmake --build --preset linux-release --target espace_travail --parallel 4`,
+  puis `ctest --preset linux-release --output-on-failure` : **6/6**,
+  auto-hébergement **231,92 s**, conformité **29,48 s**, intégration **2,58 s**,
+  total **265,11 s** ;
+- Visual Studio 2026 natif :
+  `MSBuild.exe GsPlusPlus.slnx /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo`,
+  puis `MSBuild.exe VisualStudio/Validation.vcxproj /m /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo` :
+  **construction/validation réussies**, conformité **20/20**, style et sept
+  cibles natives cohérents avec CMake.
+
+Les trois images reconstruites sont identiques et vérifiées : **566 495 octets**,
+trois segments, huit sections, deux imports et **105 exports**, SHA-256
+`FB500ADFB096ED33F3A95A0079C690FB0DC2FEE29894AB04A9DA8A4C57658B1F`.
+Les premières constructions ont signalé la limite actuelle de quatre paramètres
+Gs++ et une incompatibilité de qualification du pointeur du nouveau helper ;
+celui-ci utilise maintenant un pointeur de jeton sans modification. Une liste
+de pointeurs const/mutable et un marqueur signé de fixture C++ ont également
+été corrigés, puis les chaînes reconstruites sans nouvel avertissement.
+Les rapports de conformité donnent **20/20 par chaîne** ; les projets/solutions
+conservent huit scénarios, 48 comparaisons et 56 refus, les sémantiques
+**2 751 refus**. En-têtes générés alpha.10, formats 1.0, ABI 1, backend et fichier
+utilisateur conservés ; `git diff --check` réussit. Travail local sans nouveau
+commit, push, release ni paquet.
+
+### Prochain raccord après les messages
+
+Les messages sont disponibles au niveau API, mais l'AST Gs++ ne remplace
+toujours pas `Programme`. L'assemblage/normalisation multi-unités et les passes
+suivantes doivent être raccordés aux sorties possédées, puis au backend,
+avant d'activer l'analyse Gs++ dans le pilote. `--expanseur-inclusions` reste
+une sélection de l'expansion seule, avec bootstrap par défaut. Aucun frontend
+complet, gain global de performances ni jalon 0.28 acquis n'est annoncé.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
-- compléter la lecture/résolution à la demande du catalogue hôte, puis intégrer
-  le chemin préparé avec origines au pilote de fichiers, sans confondre les inclusions
-  textuelles avec les unités de traduction séparées ;
+- compléter les interactions non couvertes des reprises et erreurs d'E/S,
+  puis raccorder l'AST possédé à l'assemblage/normalisation multi-unités, aux
+  passes suivantes et au backend ; connecter les diagnostics possédés au pilote ;
+  conserver la distinction entre
+  inclusions textuelles et unités de traduction séparées et vérifier avant
+  tout changement du chemin par défaut ;
 - compléter les autres familles sémantiques encore prises en charge par le
   bootstrap, notamment les contextes des constructions et opérateurs et les
   interactions de priorité entre passes non encore testées, dont les contrôles

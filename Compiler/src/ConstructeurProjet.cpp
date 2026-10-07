@@ -645,7 +645,9 @@ namespace GsPP
                                  const std::string& nomObjet,
                                  const std::string& diagnostic)
         {
-            auto programme = AnalyserUnites(unites);
+            auto programme = options.PreparerJetons
+                ? AnalyserUnitesAvecPreparation(unites, options.PreparerJetons)
+                : AnalyserUnites(unites);
             auto machine = GenerateurX64().Generer(programme);
             const auto cheminObjet = configuration.RepertoireObjets / nomObjet;
             const auto contenu = EcrivainGsO().Construire(machine);
@@ -714,7 +716,8 @@ namespace GsPP
 
     std::vector<ResultatConstructionProjet> ConstructeurProjet::ConstruireSolution(
         const std::filesystem::path& cheminSolution,
-        std::ostream& journal) const
+        std::ostream& journal,
+        const PreparateurJetonsUnite& preparerJetons) const
     {
         const auto base = cheminSolution.parent_path().empty()
             ? std::filesystem::path(".") : cheminSolution.parent_path();
@@ -728,7 +731,9 @@ namespace GsPP
                     + " : seule la clé projet est autorisée dans une solution");
             const auto projet = ResoudreChemin(base, ligne.Valeur);
             journal << "== Projet " << projet.string() << " ==\n";
-            resultats.push_back(Construire(projet, journal));
+            OptionsConstructionProjet options;
+            options.PreparerJetons = preparerJetons;
+            resultats.push_back(Construire(projet, journal, options));
         }
         if (resultats.empty())
             throw std::runtime_error("la solution ne contient aucun projet");

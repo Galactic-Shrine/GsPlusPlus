@@ -16,7 +16,10 @@
   <ItemGroup>
     <ClCompile Include="..\Compiler\src\Lexeur.cpp" />
     <ClCompile Include="..\Compiler\src\Compilation.cpp" />
+    <ClCompile Include="..\Compiler\src\FichiersSource.cpp" />
     <ClCompile Include="..\Compiler\src\CatalogueInclusions.cpp" />
+    <ClCompile Include="..\Compiler\src\ExpanseurInclusions.cpp" />
+    <ClCompile Include="..\Compiler\src\DeclarationsPreparees.cpp" />
     <ClCompile Include="..\Compiler\src\AnalyseurSyntaxique.cpp" />
     <ClCompile Include="..\Compiler\src\AnalyseurSemantique.cpp" />
     <ClCompile Include="..\Compiler\src\GenerateurX64.cpp" />

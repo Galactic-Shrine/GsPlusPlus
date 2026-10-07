@@ -10,13 +10,189 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
-Le commit signé [`039bd3f`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/039bd3f8887c9d8bc826e000d3b8099609d52850)
-publie les tranches jusqu'à la normalisation des déclarations libres, à 2 719
+Le commit signé [`fbbf443`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/fbbf4436d03358e3ee95d06472b61e552cd0f934)
+publie les tranches jusqu'au catalogue anticipé de fichiers et aux origines, à 2 751
 refus sémantiques. Sa signature est vérifiée et sa
-[CI à trois chaînes](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37485258264)
+[CI à trois chaînes](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37520062256)
 réussit. Les mentions locales des jalons historiques décrivent leur état au
 moment de validation ; aucune nouvelle release ni mise à jour des paquets
 alpha.10 n'est réalisée.
+
+### Ajout local du 7 octobre 2026 — diagnostics syntaxiques possédés
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.**
+`DeclarationsPreparees::ExigerValide()` traduit le refus syntaxique en
+`ErreurCompilation` bilingue à la position originale possédée, sans lecture
+ou appel natif supplémentaire. Quarante-trois contextes additifs dans `Detail`,
+codes/tailles ABI/exports inchangés ; détails inconnus ou incompatibles refusés
+comme contrats hôtes. La valeur 0 restitue une catégorie générique historique,
+pas nécessairement le message précis d'une ancienne image.
+Soixante-sept corpus bilingues, 134 refus comparés au bootstrap pour les deux
+messages, GS1001 et positions, dont quatre combinaisons de priorité ; inclusions
+imbriquées, nom virtuel, Unicode/BOM/CRLF/EOF, interface, instantanés et durée
+de vie vérifiés. Deux détails de rappel et cinq résultats altérés refusés ;
+succès et résultat à détail nul vérifiés. CTest Windows **5/5**, GNU/Linux **6/6**,
+construction/validation native VS 2026 et conformité **20/20 par chaîne** réussis ;
+**2 751 refus sémantiques** inchangés. Trois images identiques vérifiées, **566 495 octets**,
+105 exports ; alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur
+conservés. API seule : l'AST ne remplace pas encore `Programme`, le pilote reste
+au bootstrap et l'option existante ne sélectionne que l'expansion.
+Aucune parité exhaustive, frontend complet, gain global ou jalon 0.28 acquis
+annoncé. Travail local sans nouveau commit/push/release ni paquet.
+Voir le [bilan des messages](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-syntaxiques-possédés--7-octobre-2026).
+
+### Ajout local du 7 octobre 2026 — adaptateur hôte d'AST possédé
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** L'API hôte
+`AnalyserDeclarationsPreparees` appelle l'analyseur syntaxique Gs++ après
+expansion, sans analyse syntaxique C++ ni nouvelle lecture des sources.
+Contrats ABI centralisés, exports syntaxiques vérifiés à la demande ; leur
+absence n'empêche pas l'expansion seule. Texte, noms, arbre compact et origines
+possédés, sans dépendance de durée de vie au catalogue ou à l'image ;
+instantanés privés et contrats de mesure/publication contrôlés. Refus numérique
+et position originale sans arbre partiel, bornes d'entrée/sortie et exceptions
+hôtes ; aucune isolation d'une image native de confiance.
+Vingt corpus bilingues syntaxiquement valides et sept refus syntaxiques
+bilingues comparés au bootstrap, 45 contrats altérés, cinq préparations et
+sept exports altérés refusés ; allocations, exceptions et durée de vie testées.
+CTest Windows **5/5**, GNU/Linux **6/6**, construction/validation native VS 2026
+et conformité **20/20 par chaîne** réussis ; **2 751 refus sémantiques** inchangés.
+Trois Frontend identiques vérifiés de 564 751 octets et 105 exports ; alpha.10,
+formats 1.0, ABI 1, backend et fichier utilisateur conservés.
+API de bibliothèque, pas de nouvelle option CLI : `Programme`, assemblage
+multi-unités, messages syntaxiques et passes suivantes restent à raccorder.
+L'expansion facultative du pilote reste expansion seule ; aucun basculement
+par défaut, frontend complet, gain global ou jalon 0.28 acquis annoncé.
+Travail local sans nouveau commit/push/release ni paquet.
+Voir le [bilan de l'adaptateur](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#adaptateur-hôte-dast-possédé--7-octobre-2026).
+
+### Ajout local du 7 octobre 2026 — expansion des projets et solutions
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Le raccord explicite
+`--expanseur-inclusions` / `--include-expander` couvre désormais les projets
+XML `.GsPj` / `.GsProject` et les solutions `.GsPs`, en modes séparé et agrégé.
+Une seule image de confiance possédée par commande, préparateur transmis à
+chaque projet/interface/source, reprises et once indépendants par unité.
+Bootstrap par défaut, schéma XML 1.0, chemins et ordre des projets inchangés ;
+arrêt au premier échec, sans retour arrière global. Code natif dans l'hôte,
+sans bac à sable ; aucun chargement automatique ajouté au XML.
+Test API des rappels et exceptions, huit scénarios croisés FR/EN, 48 comparaisons
+d'objets/archives/images/cartes avec le bootstrap, exécutables retournant 42,
+56 refus différentiels et quatre images refusées avant construction.
+Remplacements de projet, échec tardif de solution et nouvelle invocation vérifiés.
+CTest Windows **5/5**, GNU/Linux **6/6**, construction/validation native VS 2026
+et conformité **20/20 par chaîne** réussis ; **2 751 refus sémantiques** inchangés.
+Projet réel Directives compilé/vérifié/exécuté sous MSVC et GNU, retour 42 ;
+trois images Frontend identiques vérifiées, en-têtes alpha.10, formats 1.0,
+ABI 1, backend et fichier utilisateur conservés. Les AST/passes auto-hébergés
+restent à raccorder ; aucun basculement par défaut, frontend complet ou gain
+global annoncé. Travail local sans nouveau commit/push/release ni paquet.
+Voir le [bilan des projets](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#expansion-gs-des-projets-et-solutions--7-octobre-2026).
+
+### Ajout local du 7 octobre 2026 — expansion facultative dans le pilote
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** `gsppc` accepte
+`--expanseur-inclusions` / `--include-expander` avec une image de confiance
+pour les sources/interfaces directes ; reprise Gs++, pont contrôlé vers les
+jetons C++ et origines originales. Chargement possédé, deux imports, exports
+FR/EN cohérents, protections W^X/RX, aucun appel du point d'entrée ; exécution
+native dans l'hôte, sans bac à sable. Bootstrap par défaut et reconstruction
+du frontend indépendants de l'image ; lors de cette première tranche,
+projets/solutions et binaires refusaient l'option explicitement. Onze corpus
+dans les deux syntaxes, 41 corpus bilingues d'expansion au pont, 13 sorties et
+six contrats d'image altérés ;
+six paires CLI COFF/GsObj/GsE et six paires d'extensions comparées, images
+exécutées avec retour 42, 18 refus CLI avec sortie préexistante conservée.
+CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+réussis ; conformité 20/20 par chaîne, 2 751 refus sémantiques inchangés.
+Trois images identiques vérifiées de 564 751 octets, 105 exports et deux imports.
+Alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur conservés.
+Les AST/passes auto-hébergés et les projets/solutions restaient à raccorder ;
+aucun basculement par défaut, frontend complet ou gain global annoncé.
+Tranche locale sans nouveau commit/push/release, distincte de `fbbf443` et de sa CI.
+Voir le [bilan du pilote](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#expansion-gs-facultative-dans-le-pilote--7-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — E/S des inclusions
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** Les primitives hôtes
+d'identité/statut/lecture sont partagées par le bootstrap, le catalogue anticipé
+et les trois adaptateurs. La lecture contrôlée ne rend plus un texte partiel
+après panne ; `ErreurFichierSource` distingue opération, chemin physique et
+code système des diagnostics de langue. Quinze corpus bilingues comparent
+chaque adaptateur au bootstrap, avec frontières de blocs, EOF, pannes de flux,
+incidents après résolution et verrou exclusif Windows. Mémoire privée libérée
+sur exception ; quatre contrôles CLI vérifient la langue et une sortie
+préexistante protégée. CTest Windows 5/5, GNU/Linux 6/6 et construction/validation
+native VS 2026 réussis, conformité 20/20 par chaîne et 2 751 refus sémantiques
+inchangés. Images identiques vérifiées de 564 751 octets, 105 exports et deux
+imports ; alpha.10, formats 1.0, ABI 1, backend et fichier utilisateur inchangés.
+La sélection par défaut reste au bootstrap. Raccord au pilote à préparer ;
+ACL/liens symboliques/volumes distants/courses concurrentes non exhaustifs,
+aucune garantie atomique entre statut et ouverture. Tranche locale sans nouveau
+commit/push/release, distincte de `fbbf443` et de sa CI.
+Voir le [bilan des E/S](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#erreurs-hôtes-et-lecture-des-inclusions--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — reprise persistante du parcours
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** L'entrée facultative
+`DevelopperInclusionsAvecReprise` conserve jetons, pile de 128 cadres,
+once/actifs et fragments au-delà des demandes. Requête additive de 48 octets,
+continuer/libérer ; anciennes API conservées. Le curseur attend la réponse
+hôte ; mesure et publications répétées réutilisent la sélection sans relancer
+le parcours. Instantanés contrôlés entre appels, alias once non lus inclus,
+catalogue croissant et tableaux déplaçables ; libération automatique côté
+produit avec `PreparerFichierAvecReprise`, également sur exception.
+Les 41 corpus bilingues et les matrices d'origines utilisent cette reprise
+jusqu'à la sémantique. Profil de 32 fichiers : 10 398 jetons engagés, 32 lexages,
+65 appels, 32 lectures et 31 résolutions, mêmes sorties. Contrôles/copies du
+catalogue et relexage final restent présents : aucun coût global linéaire
+revendiqué. Parité exhaustive des E/S et raccord au pilote encore ouverts.
+CTest Windows 5/5, GNU/Linux 6/6 et construction/validation native VS 2026
+réussis ; conformité 20/20 par chaîne et 2 751 refus sémantiques inchangés.
+Trois images identiques vérifiées de 564 751 octets, 105 exports et deux imports.
+Alpha.10, formats 1.0, ABI 1, pilote et fichier utilisateur inchangés.
+Tranche locale sans nouveau commit/push/release, distincte de `fbbf443` et de sa CI.
+Voir le [bilan de la reprise](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#reprise-persistante-du-parcours--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — cache lexical des reprises
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** La session facultative
+`DevelopperInclusionsEnSession` conserve les jetons des fichiers entre les
+demandes, sans remplacer les API de 128/56 octets. Requête de 40 octets,
+développement/libération explicites, caches indépendants et sources immuables.
+`PreparerFichierAvecOriginesEnSession` libère aussi sur exception hôte.
+Les 41 corpus bilingues sont comparés aux variantes précédentes ; les matrices
+d'origines consomment désormais les sorties en session jusqu'à la sémantique.
+Profil ciblé de 32 fichiers : 1 056 lexages sans conservation contre 32 avec
+cache, 1 024 réutilisations, 65 appels et mêmes E/S/sorties. Le parcours reste
+rejoué ; aucune performance globale linéaire n'est revendiquée. Les erreurs
+d'E/S non couvertes et le raccord au pilote restent ouverts. Tranche locale
+non commitée/non poussée, distincte de `fbbf443` publié et de sa CI ; alpha.10,
+formats 1.0 et ABI 1 inchangés. CTest Windows 5/5, GNU/Linux 6/6 et validation
+native VS 2026 réussis, conformité 20/20 par chaîne et 2 751 refus sémantiques
+inchangés ; trois images identiques vérifiées de 549 583 octets, 103 exports
+et deux imports.
+Voir le [bilan des sessions](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#cache-lexical-des-reprises--6-octobre-2026).
+
+### Ajout local du 6 octobre 2026 — expansion à la demande
+
+**VALIDÉ dans le périmètre testé sur les trois chaînes.** L'entrée additive
+`DevelopperInclusionsADemande` laisse Gs++ choisir les
+résolutions et lectures nécessaires. Requête de 56 octets, demande de 40 octets,
+disponibilités explicites et codes 15/16 ; aucune sortie publiée sur suspension,
+arène libérée et parcours relancé à chaque reprise. Le produit répond avec
+`PreparerFichierAvecOrigines`, sans lexeur C++ pour découvrir les directives.
+Les fichiers non visités ou ignorés par once ne sont pas lus ; les cycles et
+la profondeur sont contrôlés avant la lecture cible. Contrats historiques et
+pilote `gsppc` conservés. Les tests comparent aussi les 41 corpus bilingues au
+bootstrap et raccordent les sorties à la syntaxe/assemblage/sémantique avec
+origines. Coût des reprises, parité exhaustive des erreurs d'E/S et intégration
+au pilote restent ouverts. CTest Windows 5/5, GNU/Linux 6/6 et validation native
+réussis ; conformité 20/20 par chaîne, total sémantique 2 751 inchangé. Trois
+images identiques vérifiées de 545 295 octets, 101 exports et deux imports.
+Alpha.10, formats 1.0 et ABI 1 conservés. Tranche locale non commitée/non poussée,
+distincte du commit publié `fbbf443` et de sa CI.
+Voir le [bilan à la demande](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#expansion-à-la-demande-et-priorité-des-lectures--6-octobre-2026).
 
 ### Ajout local du 6 octobre 2026 — catalogue de fichiers du produit
 

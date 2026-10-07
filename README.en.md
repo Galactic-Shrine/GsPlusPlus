@@ -134,8 +134,14 @@ sources and linked libraries.
 This addition works in the `gsppc` bootstrap and has a
 [runnable bilingual example](Exemples/Directives/Application.GsPj).
 The self-hosted analyzers also parse namespace using directives and resolve
-their names, aliases and overload sets. Included files are still expanded by
-the host bootstrap; this is not a full C++ preprocessor. The
+their names, aliases and overload sets. Included files are expanded by the host
+bootstrap by default. Development sources now offer
+`--include-expander <Frontend.GsE>` (French alias `--expanseur-inclusions`)
+to choose Gs++ expansion for direct source/interface inputs, XML projects and
+solutions, in both separate and aggregate compilation modes. One image is
+loaded per command, with isolated resumptions per unit. The image must be
+trusted: its native code runs inside the compiler, without a sandbox. Subsequent
+analysis and code generation still use C++; this is not a full C++ preprocessor. The
 [current rules and limitations](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
 describe the supported forms. Published alpha.10 packages remain unchanged.
 
@@ -496,6 +502,28 @@ All normative documentation is maintained in Markdown as its primary source.
   names separate from physical paths, iterative traversal and configurable
   limits; Gs++ frontend text/origin preparation with ABI contract checks;
   graph files are still read eagerly;
+- on-demand preparation entry: Gs++ chooses when to resolve a path and read a
+  file, after directive validation and once/cycle/depth checks; suspensions
+  publish neither text nor origins; this additive API does not yet replace
+  the default `gsppc` path;
+- optional lexical session retaining tokens between demands: already-lexed files are
+  not re-lexed, immutable snapshots and automatic host-side cleanup, including
+  on exceptions; outputs and diagnostics compared with the uncached entry;
+  directive traversal is still replayed;
+- persistent-resume variant: retain the inclusion stack, once/active states
+  and selected fragments; measure and publish without restarting traversal,
+  validate snapshots and clean up automatically, including on exceptions;
+  optional API, no default-driver replacement or whole-process linear-cost claim;
+- shared file primitives for the bootstrap and adapters: checked reads never
+  return partial text on a read failure; host errors retain operation, path and
+  system code, separate from language diagnostics; French/English `gsppc` messages
+  and a bilingual I/O matrix covering all three adapters;
+- explicit Gs++ expansion option for direct sources/interfaces, XML projects
+  and solutions, in separate and aggregate modes:
+  specialized loading of a trusted image, per-unit isolated resumptions,
+  a bridge to C++ tokens with checked origins, original bilingual diagnostics
+  and outputs compared with the bootstrap; preserve project order and stop at
+  the first failure without whole-build rollback; unchanged default path;
 - self-hosted lexical preparation of expanded text and origins from original
   token fragments selected by the host: preserve lexemes and escaped strings,
   transactional outputs, exact capacities, BOM/LF/CRLF and EOF; no allocation
@@ -504,6 +532,15 @@ All normative documentation is maintained in Markdown as its primary source.
   origins: mixed source/interface modes and diagnostics in the original file;
   twenty syntactically valid bilingual corpora, seven bilingual syntax rejections
   and three bilingual semantic rejections; input expanded by the host or the expansion API;
+- host adapter for an owned Gs++ syntax AST from an expanded unit: names and
+  original positions, checked contracts/capacities, no partial tree on rejection
+  or new file reads. Development API, separate from the C++ `Programme`;
+  no driver or subsequent-pass replacement;
+- owned syntax diagnostics from this adapter: `ExigerValide()` raises a
+  French/English `ErreurCompilation` in the original file; 43 contexts, 67
+  bilingual corpora and 134 rejections compared against the bootstrap,
+  including messages and positions. Unknown/incompatible details remain host
+  contract errors; development API, without enabling Gs++ syntax in the driver;
 - self-hosted assembly of prepared sources and interfaces: text, AST and origin
   table, with local diagnostics and namespace imports isolated per compilation unit;
   thirteen valid bilingual corpora, guarded outputs and tested allocation failures;

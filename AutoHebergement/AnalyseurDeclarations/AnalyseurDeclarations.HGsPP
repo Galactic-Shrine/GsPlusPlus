@@ -73,6 +73,58 @@ espace GalacticShrine::GsPP::Autohebergement {
         ExpectedNamespace = 30,
     };
 
+    /**
+     * <résumé>Contexte bilingue d'un refus syntaxique dans ResultatAnalyseDeclarations.Detail.</résumé>
+     * @etc. Valeurs additives, 0 pour la catégorie historique ; tailles ABI et codes Erreur inchangés.
+     * @etc. L'hôte vérifie aussi la compatibilité du détail avec le code de refus.
+     **/
+    énumération DetailDiagnosticDeclarations {
+        Generique = 0,
+        NomQualifie = 1,
+        NomFonction = 2,
+        PointeurChevronOuvrant = 3,
+        SignatureParentheseOuvrante = 4,
+        SignatureParentheseFermante = 5,
+        SignatureChevronFermant = 6,
+        TailleEntiereTableau = 7,
+        NomStructure = 8,
+        VisibiliteDeuxPoints = 9,
+        NomAliasChamp = 10,
+        ChampCible = 11,
+        NomMembre = 12,
+        NomChamp = 13,
+        StructurePointVirgule = 14,
+        VirtuelDuplique = 15,
+        RemplacementDuplique = 16,
+        NomEnumeration = 17,
+        NomEnumerateur = 18,
+        EnumerationPointVirgule = 19,
+        RetourTableau = 20,
+        NomParametre = 21,
+        SoiUnique = 22,
+        DelegationMixte = 23,
+        ParentPremier = 24,
+        NomChampInitialiseur = 25,
+        ExternePointVirgule = 26,
+        SoiParentheseOuvrante = 27,
+        SoiParentheseFermante = 28,
+        ParentParentheseOuvrante = 29,
+        ParentParentheseFermante = 30,
+        ChampParentheseOuvrante = 31,
+        ChampParentheseFermante = 32,
+        ExterneListeInitialisation = 33,
+        SiParentheseOuvrante = 34,
+        TantqueParentheseOuvrante = 35,
+        NomVariable = 36,
+        AgregatAccoladeFermante = 37,
+        AliasEgal = 38,
+        AliasPointVirgule = 39,
+        UtilisationPointVirgule = 40,
+        FinFichier = 41,
+        StructureFinType = 42,
+        NomMembreClasseChamp = 43,
+    };
+
     énumération GenreNoeudDeclaration {
         Programme = 0,
         Program = 0,

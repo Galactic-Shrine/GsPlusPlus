@@ -584,7 +584,7 @@ conservé ; une incohérence de code/capacité/contrat lève une exception hôte
 Les bornes de sortie par défaut sont 64 Mio de texte et un million d'origines.
 L'image contenant l'export doit rester chargée pendant les deux appels.
 
-**Limite actuelle :** le lexeur C++ découvre les chemins candidats, et tout
+**Limite de l'entrée anticipée :** le lexeur C++ découvre les chemins candidats, et tout
 le graphe accessible est lu avant l'expansion Gs++, y compris des fichiers que
 `once` ou un refus de directive pourraient ensuite rendre inutiles. Un échec
 d'E/S anticipé peut donc précéder un diagnostic de langue du parcours effectif.
@@ -592,7 +592,302 @@ Les erreurs lexicales des fichiers restent dans leurs textes pour être
 diagnostiquées par le frontend. Cette entrée réutilisable, utilisée par les
 matrices de syntaxe/assemblage/sémantique avec origines, ne remplace pas le
 parcours par défaut de `gsppc`. Une résolution/lecture à la demande et le raccord
-complet au pilote restent à implémenter avant cette bascule.
+complet au pilote sont distincts ; l'entrée à la demande ci-dessous constitue
+une première alternative, sans bascule du pilote par défaut.
+
+### Expansion et lecture à la demande
+
+`DevelopperInclusionsADemande` / `ExpandDeclarationIncludesOnDemand` reçoit une
+`RequeteExpansionDeclarationsADemande` de **56 octets** : pointeur vers la
+requête historique de 128 octets, tableau de disponibilités 0/1 de
+`NombreFichiers` éléments et demande de **40 octets**. L'entrée historique
+reste inchangée et ne renvoie pas de suspensions. L'entrée additive ajoute les
+codes **15 résolution requise** et **16 lecture requise**, qui ne sont pas des
+diagnostics de langue.
+
+Chaque fichier indisponible porte source nulle et taille zéro, mais une identité
+et un mode déjà résolus. Une disponibilité autre que 0/1, ou une source publiée
+comme indisponible, est un argument invalide. Les métadonnées et liens restent
+soumis aux contrôles de l'API historique ; la demande est remise à zéro avant
+chaque appel, et seuls les codes 15/16 la renseignent. Les tableaux doivent
+rester stables pendant l'appel ; l'hôte peut les reconstruire entre reprises.
+
+La demande expose `Operation`, réserve nulle, `IndexFichier`, `DebutDirective`,
+`DebutArgument` et `TailleArgument`. Une résolution (opération 1) porte le fichier
+appelant, la position de `#` et la plage brute de la chaîne entre guillemets.
+Elle n'intervient qu'après le lexage complet du fichier et la validation de la
+directive. Une lecture (opération 2) porte uniquement le fichier à charger,
+avec les trois plages nulles. Elle suit les contrôles once/cycle/profondeur,
+avant le lexage cible. La racine elle-même est lue à la demande.
+
+Sur suspension, les deux sorties sont intactes, leurs nombres sont zéro,
+`IndexFichierErreur=NombreFichiers`, les coordonnées sont nulles et l'arène
+est libérée. Après avoir satisfait une demande, l'hôte rappelle l'entrée :
+le parcours est **relancé**, il n'existe pas d'état persistant dans l'image.
+Les textes/identités/liens fournis doivent former le même instantané à travers
+les reprises. La publication finale reste transactionnelle.
+
+`GsPP::PreparerFichierAvecOrigines` implémente ce dialogue côté produit.
+Il résout les plages choisies par Gs++ sans utiliser le lexeur C++ pour découvrir
+les directives, lit seulement les fichiers demandés, conserve les instantanés
+canoniques, contrôle les bornes et refuse les demandes incohérentes/répétées.
+Son `ResultatPreparationFichier` possède catalogue et sorties, avec nombres de
+lectures physiques, résolutions et appels. `CatalogueInclusions::Disponibles`
+distingue les fichiers lus des métadonnées non visitées : un catalogue partiel
+est refusé par l'adaptateur historique `PreparerSourceAvecOrigines`.
+
+La reprise relance le lexage et la traversée des fichiers déjà visités : ce
+coût reste à optimiser et à mesurer. Les limites hôtes et de sortie restent
+applicables ; un fichier visité peut donc provoquer une erreur d'E/S ou de
+limite. La priorité des refus de langue avant les fichiers non visités est
+testée, mais la parité exhaustive des erreurs du système de fichiers et le
+raccord au pilote par défaut ne sont pas revendiqués.
+
+### Session facultative de cache lexical
+
+`DevelopperInclusionsEnSession` / `ExpandDeclarationIncludesInSession` reçoit une
+`RequeteExpansionDeclarationsEnSession` de **40 octets** : pointeur vers la
+requête à la demande, pointeur opaque `Memoire`, opération/réserve 32 bits et deux
+compteurs 64 bits. La requête doit être initialisée à zéro. L'opération **0**
+développe avec le même protocole 15/16 ; **1** libère la session, même sans
+requête d'expansion imbriquée, remet pointeur et compteurs à zéro et renvoie
+succès. Libérer une session vide est permis. Réserve non nulle, opération
+inconnue et requête imbriquée absente pour développer sont invalides.
+
+La session conserve les tableaux de jetons des fichiers lexés avec succès,
+par index de catalogue, dans une arène privée. Le tableau des caches grandit
+géométriquement ; l'état once, les fichiers actifs et le parcours ne sont pas
+conservés. La grammaire des directives, l'ordre des demandes et les priorités
+des diagnostics sont donc rejoués. Les API historiques de 128/56 octets gardent
+leur comportement sans état persistant. Aucun cache global de processus n'est
+introduit ; deux sessions possèdent des mémoires indépendantes.
+
+L'hôte **ne copie ni ne modifie le pointeur opaque**. Une session appartient à
+un seul utilisateur, sans appels simultanés. Les indices déjà lexés, leurs
+adresses de source et leurs contenus restent immuables jusqu'à la libération ;
+les tableaux de catalogue/liens et les tampons de sortie peuvent se déplacer
+entre appels et le catalogue peut grandir. Un changement d'adresse ou de taille
+d'une source déjà cachée, ou son retour à l'état indisponible, est refusé au
+moment de sa visite, sans sortie ni diagnostic de langue. Une modification
+des octets en place viole le contrat :
+il n'y a ni copie de validation ni hachage des sources à chaque reprise.
+Pour un autre instantané, libérer puis créer une nouvelle session.
+
+Les sorties restent transactionnelles sur suspension/refus. L'arène transitoire
+de l'appel est libérée, mais l'arène des jetons **survit jusqu'à l'opération 1**,
+y compris après un échec d'allocation ou un refus. L'hôte doit donc libérer sur
+tous les chemins de sortie, avant de décharger l'image GsE ou de retirer les
+sources. `NombreOctetsArene` mesure l'arène transitoire, pas la mémoire totale
+retenue par la session. `NombreLexages` cumule les lexages complets de fichiers
+réussis ; `NombreReutilisations` compte leurs réemplois entre appels. Ces
+compteurs ne comptent pas le relexage des fragments par la préparation finale.
+
+`GsPP::PreparerFichierAvecOriginesEnSession` possède cette durée de vie côté
+produit : mêmes demandes, mêmes limites et mêmes instantanés stables que
+l'adaptateur sans cache ; libération automatique sur succès, refus et exception
+hôte. Son résultat conserve les deux compteurs avant destruction de la session.
+Le parcours rejoué, les validations de catalogue et le relexage final des
+fragments restent à optimiser ; aucun coût global linéaire n'est revendiqué.
+Cette variante ne remplace pas encore le chemin par défaut de `gsppc`.
+
+### Reprise persistante du parcours
+
+`DevelopperInclusionsAvecReprise` / `ResumeDeclarationIncludes` reçoit une
+`RequeteExpansionDeclarationsAvecReprise` de **48 octets** : pointeur vers la
+requête à la demande, pointeur opaque `Memoire`, opération/réserve 32 bits et
+trois compteurs 64 bits (`NombreLexages`, `NombreReutilisations`,
+`NombreJetonsParcourus`). Initialiser à zéro ; opération **0** continuer,
+**1** libérer, même sans requête imbriquée. La libération remet pointeur et
+compteurs à zéro ; répéter la libération d'une session vide est permis.
+Réserve non nulle, opération inconnue ou requête imbriquée absente pour
+continuer sont invalides. Les entrées de 128/56/40 octets restent disponibles
+avec leur comportement antérieur.
+
+Cette variante conserve les jetons lexés, la pile itérative de **128 cadres**,
+les états once/actifs et les fragments déjà sélectionnés. Le lexage complet
+d'un fichier précède sa visite grammaticale. Une demande 15/16 ne valide pas
+le déplacement du curseur de la directive : la reprise attend le lien ou la
+source, puis reprend au même endroit, sans reparcourir les fichiers précédents.
+La mesure exacte et les publications suivantes réutilisent la sélection
+terminée, sans nouveau parcours ni allocation de sélection. La préparation
+finale des fragments reste lexicale et transactionnelle.
+
+Le catalogue peut **grandir sans retirer ni réordonner ses indices** ; ses
+tableaux, les liens triés et les tampons de sortie peuvent changer d'adresse
+entre appels. Les liens nouveaux peuvent s'insérer entre les liens connus.
+En revanche :
+
+- racine, BOM et mode LF/CRLF sont figés dès le démarrage du parcours ;
+- une source déjà lue reste disponible, avec adresse, taille, identité canonique
+  et mode inchangés ; ses octets restent immuables en place ;
+- l'identité et le mode des fichiers déjà observés sont figés, **y compris un
+  alias ignoré par once sans lecture de sa source** ; ceux de la cible d'une
+  lecture en attente le sont aussi ;
+- chaque lien déjà fourni garde sa clé, son état et, s'il est disponible, sa
+  cible. La sentinelle d'un lien indisponible suit le nombre actuel de fichiers.
+
+Un instantané incompatible est refusé avec arguments invalides, sans sortie
+ni faux diagnostic de langue. Les instantanés sont contrôlés avant la reprise,
+pas seulement à la prochaine visite du fichier. Modifier les octets d'une
+source en place viole le contrat : aucune copie de validation ni aucun hachage
+de contenu n'est ajouté. Pour un autre instantané, libérer puis recréer la
+session. Ne pas copier ni modifier le pointeur opaque ; une session appartient
+à un seul utilisateur, sans appels simultanés.
+
+Les sorties restent intactes sur suspension, refus ou allocation impossible.
+Le curseur, les fragments et la demande en attente survivent à un échec
+d'agrandissement du catalogue : une nouvelle tentative avec l'instantané
+compatible peut continuer. Toute la mémoire privée retenue survit jusqu'à
+l'opération 1, **également après un refus**. L'hôte doit libérer sur tous les
+chemins avant de retirer les sources ou de décharger l'image GsE.
+`NombreOctetsArene` mesure ici l'arène retenue du parcours, sans l'arène
+lexicale ni l'objet opaque : ce n'est pas la mémoire totale de la session.
+
+`NombreLexages` compte les lexages complets réussis de fichiers et
+`NombreReutilisations` leurs réemplois. `NombreJetonsParcourus` compte les
+jetons dont le parcours a été **validé** : un jeton ordinaire ou EOF vaut un,
+une directive et son argument valent deux. Les tentatives suspendues ou
+échouées ne l'incrémentent pas ; ce compteur n'inclut ni les validations et
+copies du catalogue, ni le relexage des fragments de préparation finale.
+Il ne mesure donc ni tous les accès aux jetons ni le coût total. Les contrôles
+et copies d'instantanés à chaque appel peuvent encore produire un coût
+quadratique sur une longue suite de demandes : aucun coût global linéaire
+n'est revendiqué.
+
+`GsPP::PreparerFichierAvecReprise` utilise le même dialogue de lecture/résolution
+et les mêmes limites que les adaptateurs précédents, sans découverte des
+directives par le lexeur C++. Il possède la session, la libère automatiquement
+sur succès, refus et exception, et conserve les compteurs dans son résultat.
+Cette entrée reste facultative ; son raccord au pilote est explicite, décrit ci-dessous.
+
+### Erreurs hôtes de sources et lecture contrôlée
+
+Le bootstrap C++, le catalogue anticipé et les trois adaptateurs à la demande
+partagent `IdentifierFichierSource`, `EstFichierSourceRegulier` et
+`LireFichierSource`, dans `GsPP/FichiersSource.hpp`. Ces primitives sont des
+services **hôtes**, pas de nouveaux exports ou codes d'erreur de l'ABI Gs++.
+Les mêmes règles d'identité canonique et de casse ASCII Windows sont conservées.
+
+`ErreurFichierSource`, dérivée de `std::runtime_error`, expose une opération
+(`Identification`, `Statut`, `Ouverture`, `Lecture`), le chemin **physique**, un
+`std::error_code` et les messages français/anglais avec `Message(LangueDiagnostic)`.
+Les contrôles de système de fichiers conservent le code rendu par la bibliothèque
+hôte. Les flux utilisent `errno` s'il est disponible, sinon `errc::io_error` :
+ce code n'est pas une garantie de disposer du détail natif Windows ou POSIX.
+`what()` reste français ; les interceptions générales `std::runtime_error` /
+`std::exception` restent possibles. Les anciens types/messages d'erreurs hôtes
+non uniformes sont donc harmonisés, sans changer les diagnostics de langue.
+
+Il faut distinguer les situations suivantes :
+
+- une inclusion absente, une cible non régulière (dont un répertoire) ou un
+  chemin traversant un parent non répertoire restent le diagnostic **10**
+  `FichierIntrouvable`, à la directive dans le fichier appelant ;
+- une autre erreur de statut/identification est une exception hôte attachée
+  au chemin examiné, pas un diagnostic de langue avec coordonnées inventées ;
+- une racine qui ne peut pas s'ouvrir, ou une cible retirée/remplacée après
+  sa résolution, échoue à l'ouverture ou à la lecture de sa cible physique ;
+- un dépassement de limite d'octets reste `std::length_error`, distinct d'un
+  échec du système de fichiers.
+
+Le classement effectif du système de fichiers est conservé : par exemple un
+nom très long peut être classé absent par MSVC/NTFS et provoquer une erreur de
+statut avec GNU. Le code compare les chemins dans le même hôte ; il ne force
+pas les catégories d'un OS sur l'autre. Il n'ajoute pas de garantie atomique
+entre contrôle du statut, résolution et ouverture, ni de nouvelle tentative
+automatique après une erreur d'E/S.
+
+`LireFluxSource` lit depuis la position d'un flux emprunté, sans le fermer,
+par blocs de 8 192 octets. EOF normal, source vide et lecture courte finale
+sont acceptés, même avec `failbit`/`badbit` dans le masque d'exceptions du flux.
+Un flux en échec sans EOF, `badbit` ou une `ios_base::failure` de lecture
+provoque `ErreurFichierSource` : **aucun préfixe partiel n'est retourné**.
+Les octets binaires restent inchangés et la limite est contrôlée avant ajout.
+`LireFichierSource` ouvre en binaire, puis utilise cette même lecture contrôlée.
+Le bootstrap ne traite donc plus une panne de lecture comme un texte partiel
+ou une source vide valable.
+
+À la demande, ces exceptions sortent au point choisi par l'expansion Gs++ ;
+les sessions lexicales et à reprise sont libérées par leurs adaptateurs, même
+si l'exception survient pendant la réponse hôte. Les priorités du lexage et de
+la grammaire avant résolution, et once/cycle/profondeur avant lecture, restent
+inchangées. Dans `gsppc`, l'erreur hôte de source reste **GS0001 / sortie 1**,
+sans coordonnées fictives ; son texte suit `--langue-diagnostics francais|anglais`.
+Le diagnostic de langue reste **GS1001 / sortie 2**.
+
+La matrice locale couvre 15 corpus bilingues sur les trois adaptateurs, des
+flux défectueux après un bloc, les limites/EOF, des incidents de retrait ou
+remplacement après résolution et les verrous exclusifs Windows. Elle ne
+revendique pas une couverture exhaustive des ACL, liens symboliques, volumes
+distants, périphériques ou de toutes les courses concurrentes. Le chemin
+de sélection par défaut du pilote reste celui du bootstrap.
+
+### Expansion Gs++ facultative dans le pilote de fichiers
+
+Dans les sources de développement après alpha.10, `gsppc` accepte
+`--expanseur-inclusions <image.GsE>` et son alias anglais
+`--include-expander <image.GsE>` pour les entrées directes sources/interfaces,
+les projets `.GsPj` / `.GsProject` et les solutions `.GsPs`.
+Sans cette option, la sélection des inclusions reste celle du bootstrap C++.
+Aucune image n'est découverte automatiquement et aucun repli silencieux vers
+le bootstrap n'a lieu si l'image ou son contrat échoue. L'option reste refusée
+pour les entrées binaires objets et bibliothèques.
+
+Pour un projet ou une solution, une seule image est chargée avant la
+construction et reste possédée jusqu'à sa fin. Le préparateur facultatif est
+transmis à `ConstructeurProjet`, à chaque projet de la solution, puis à ses
+interfaces et sources, en compilation séparée comme agrégée. Chaque unité
+garde un catalogue et une reprise indépendants ; les interfaces d'un projet
+séparé sont donc préparées de nouveau pour chaque unité de traduction.
+Le chemin de l'image passé en ligne de commande est relatif au répertoire
+du processus, contrairement aux chemins XML relatifs au fichier qui les
+contient. Aucun élément ni attribut XML de chargement n'est ajouté au schéma 1.0.
+Les remplacements `-o` / `--object-directory` restent réservés à un projet ;
+format, carte et point d'entrée restent définis par son XML. Ordre des projets,
+noms des objets et liaison ne sont pas modifiés par le choix du préparateur.
+
+La construction n'est pas une transaction couvrant toutes les sorties : une
+erreur arrête le projet ou la solution, sans annuler les objets ou projets déjà
+construits. Un refus avant le premier objet ne remplace pas les sorties
+existantes ; un échec plus tardif peut laisser une bibliothèque reconstruite
+et l'ancien exécutable du projet suivant. Il n'y a ni poursuite des projets
+suivants, ni retour arrière automatique.
+
+L'image fournie doit être **de confiance** : elle contient du code natif exécuté
+dans le processus du compilateur, sans bac à sable ni vérification d'authenticité.
+Le chargeur spécialisé vérifie GsE 1.0/ABI 1 avant chargement et exige les exports
+`DevelopperInclusionsAvecReprise` / `ResumeDeclarationIncludes` du namespace
+`GalacticShrine::GsPP::Autohebergement`, fonctions exécutables à la même adresse.
+Seuls les imports `AllouerMemoire` et `LibererMemoire` du namespace
+`GalacticShrine::GsPP::Hote` sont résolus. Les images sont bornées à 64 Mio de
+fichier et 1 Gio de mémoire logique. Les trampolines x86-64 sont proches de
+l'image pour les relocalisations relatif32 ; protections de segments W^X et
+page de trampolines RX, sans appel du point d'entrée. Le chargement est limité
+aux hôtes Windows/Linux x86-64, indépendamment des futures cibles de sortie.
+Le format ne décrit pas toute la signature de fonction : la conformité de
+l'image à l'ABI de requête de 48 octets reste une obligation du fournisseur.
+
+Chaque unité possède son propre catalogue et sa propre reprise. L'expansion
+Gs++ choisit les directives, once, cycles et profondeurs ; l'hôte ne fait que
+répondre aux lectures et résolutions demandées. La reprise est libérée avant
+déchargement, y compris sur refus ou exception. Le pont
+`ConvertirPreparationEnJetons` vérifie tailles, nombre de jetons, indices de
+fichiers disponibles, champs réservés, modes source/interface, plages ordonnées,
+lexèmes et EOF. Il décode le texte préparé avec le lexeur C++, puis remplace
+fichier/ligne/colonne/mode par les origines originales. Il ne redécouvre pas les
+directives. Les jetons retournés possèdent leurs textes et noms, sans vues vers
+le catalogue ou l'image. Les contrôles et relexages ont un coût supplémentaire ;
+aucune accélération globale n'est revendiquée.
+
+Les refus d'expansion sont traduits en diagnostics de langue bilingues. Pour
+un refus lexical, le détail C++ est obtenu sur l'instantané original fautif,
+sans nouvelle lecture, avec vérification des coordonnées renvoyées. Les erreurs
+d'E/S restent hôtes. Un contrat incohérent ne devient pas un faux GS1001.
+Les passes syntaxiques, normalisation, sémantique, génération x64 et écrivains
+restent celles du pipeline C++, partagé par `AnalyserUnitesAvecPreparation`.
+Cette option ne démontre donc pas un compilateur entièrement auto-hébergé.
+Le bootstrap reste capable de construire `Frontend.GsE` sans dépendre de
+l'existence de cette image.
 
 ### Préparation lexicale du texte développé et des origines
 
@@ -675,6 +970,82 @@ des chemins restent côté hôte ; l'entrée d'expansion ci-dessus traite les di
 Cette entrée ne normalise pas les déclarations ; les entrées d'assemblage
 avec origines ci-dessous utilisent le même contrat de jetons pour chaque unité.
 Voir les [preuves différentielles](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#origines-des-inclusions-préparées--6-octobre-2026).
+
+### Adaptateur hôte d'AST syntaxique possédé
+
+Les sources de développement après alpha.10 proposent
+`AnalyserDeclarationsPreparees` dans `Compiler/include/GsPP/DeclarationsPreparees.hpp`.
+Cette API hôte reçoit un `ResultatPreparationFichier` déjà développé et le
+pointeur de l'export syntaxique avec origines. Elle vérifie la préparation avec
+le pont lexical existant, **sans appeler l'analyseur syntaxique C++**, puis
+effectue une mesure et une publication de l'AST Gs++.
+
+`ExpanseurInclusionsCharge::AnalyseurDeclarations()` vérifie à la demande la
+paire d'exports `AnalyserDeclarationsAvecOrigines` /
+`AnalyzeOriginAwareDeclarations` : même adresse, fonctions, section de code,
+taille non nulle et plage dans un segment exécutable. Ces exports ne sont pas
+exigés par le chargement pour l'expansion seule. L'image native doit être de
+confiance et rester chargée pendant les appels ; il n'y a pas de bac à sable.
+Les miroirs ABI restent des nœuds de 64 octets, résultats de 48 octets,
+requêtes syntaxiques de 80 octets et requêtes avec origines de 56 octets.
+
+Le résultat `DeclarationsPreparees` possède le texte développé, les nœuds
+compacts et les noms/positions originales de chaque nœud. Les coordonnées dans
+les nœuds restent synthétiques ; `Origines` identifie le fichier original,
+l'unité de traduction, le rang de jeton et son mode source/interface, auquel
+prime le mode global d'interface. La racine synthétique du programme reçoit
+le nom et la position 1:1 de l'unité racine. `Nom(index)` donne une vue bornée
+dans le texte possédé, valable pendant la vie de ce résultat.
+Le mode d'origine d'un nœud décrit son jeton de position ; il ne remplace pas
+le mode du jeton décisif utilisé pour classer une déclaration.
+
+Les entrées natives sont des copies privées du texte et des origines. Leurs
+contenus et pointeurs sont vérifiés après chaque appel. La publication exige
+les mêmes capacités mesurées, des métadonnées cohérentes, un arbre enraciné
+avec parents antérieurs, genres/drapeaux connus, noms bornés et positions de
+jetons existantes. Un parcours du texte et des recherches binaires retrouvent
+les origines ; aucune lecture de fichier ni parcours depuis le début par nœud.
+Les défauts de contrat restent des exceptions hôtes, pas de faux GS1001.
+
+Un refus syntaxique publie uniquement le résultat numérique et une position
+originale vérifiée, **sans texte ni arbre partiel**. `DeclarationsPreparees::ExigerValide()`
+traduit ce refus en `ErreurCompilation` bilingue à partir du code et du contexte
+`Detail`, sans lecture ni appel natif supplémentaire ; aucun effet sur un succès.
+Les erreurs d'expansion et
+lexicales antérieures gardent le traitement du pont ; une allocation impossible
+est propagée comme exception hôte. Limites hôtes par défaut : 64 Mio de texte,
+un million de jetons et un million de nœuds. Les deux premières sont contrôlées
+avant appel natif ; celle des nœuds après mesure, avant allocation de sortie.
+Elles ne constituent pas un quota ni une isolation du code natif ou de son arène.
+
+L'AST et ses noms restent disponibles après destruction du catalogue ou
+déchargement de l'image, ainsi qu'après copie/déplacement du résultat.
+`HachageType` reste opaque : cet arbre ne remplace pas encore le `Programme`
+riche du backend C++. L'API n'est pas activée par une nouvelle option CLI et
+ne change ni le bootstrap par défaut ni le contrat de `--expanseur-inclusions`.
+Elle n'établit pas le raccord complet des passes ni un gain de performances.
+
+#### Messages syntaxiques possédés
+
+Le champ existant `ResultatAnalyseDeclarations.Detail` porte, pour les codes
+syntaxiques 5 à 30, les contextes additifs 1 à 43 de
+`DetailDiagnosticDeclarations`. Les noms, paramètres, signatures de pointeur
+de fonction, tableaux, délimiteurs, alias, utilisations d'espaces et initialiseurs
+de constructeurs distinguent ainsi leurs messages. La valeur 0 conserve le
+message générique de la catégorie historique ; une ancienne image sans détails
+ne restitue donc pas nécessairement le message précis du bootstrap.
+Les tailles des miroirs ABI, les codes `Erreur` et la convention d'appel restent
+inchangés. Les erreurs lexicales antérieures conservent la signification lexicale
+de leur détail et sont traitées par le pont avant l'analyse syntaxique.
+
+Un détail inconnu ou incompatible avec son code est refusé comme contrat hôte,
+avant toute publication d'un résultat de langue. `ExigerValide()` utilise la
+position originale possédée, pas la position synthétique ni un texte relu ;
+ses deux messages restent disponibles après copie/déplacement du résultat et
+déchargement de l'image. Ils peuvent être rendus par le contrat `GS1001` actuel.
+L'API ne s'active pas automatiquement dans `gsppc` et ne rend pas les inclusions
+ou constructions transactionnelles. Les comparaisons exactes et les priorités
+restent limitées aux corpus validés, pas une preuve de parité de toute entrée.
 
 ### Assemblage, normalisation et sémantique avec origines d'inclusions
 

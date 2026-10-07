@@ -5,6 +5,8 @@
 #include "GsPP/EcrivainCoff.hpp"
 #include "GsPP/EcrivainGsE.hpp"
 #include "GsPP/ErreurCompilation.hpp"
+#include "GsPP/ExpanseurInclusions.hpp"
+#include "GsPP/FichiersSource.hpp"
 #include "GsPP/GenerateurX64.hpp"
 #include "GsPP/ObjetGsO.hpp"
 #include "GsPP/VersionProduit.hpp"
@@ -101,6 +103,8 @@ namespace
             << "  --editeur <nom>                  éditeur dans les métadonnées\n"
             << "  --jetons                         afficher les jetons\n"
             << "  --ast                            afficher l’AST et les dispositions\n"
+            << "  --expanseur-inclusions <image.GsE> expansion Gs++ : sources, interfaces, projets, solutions\n"
+            << "  --include-expander <image.GsE>    alias anglais ; image native de confiance uniquement\n"
             << "  --langue-diagnostics français|anglais\n"
             << "  --version                        afficher la version\n";
     }
@@ -204,6 +208,7 @@ int main(int argc, char** argv)
     std::filesystem::path sortie;
     std::filesystem::path carte;
     std::filesystem::path repertoireObjets;
+    std::filesystem::path imageExpansion;
     bool afficherJetons = false;
     bool afficherAst = false;
     bool formatExplicite = false;
@@ -223,6 +228,14 @@ int main(int argc, char** argv)
             { AfficherAide(); return 0; }
             if (argument == "--jetons") { afficherJetons = true; continue; }
             if (argument == "--ast") { afficherAst = true; continue; }
+            if (argument == "--expanseur-inclusions" || argument == "--include-expander")
+            {
+                if (!imageExpansion.empty()) throw std::runtime_error("expanseur d'inclusions indiqué plusieurs fois");
+                if (++index >= argc || !argv[index][0] || argv[index][0] == '-')
+                    throw std::runtime_error("chemin d'image attendu après " + argument);
+                imageExpansion = argv[index];
+                continue;
+            }
             if (argument == "-o")
             {
                 if (++index >= argc) throw std::runtime_error("chemin attendu après -o");
@@ -311,11 +324,20 @@ int main(int argc, char** argv)
             if (contientSolution && (!sortie.empty() || !repertoireObjets.empty()))
                 throw std::runtime_error(
                     "les remplacements de sortie s’appliquent uniquement à un projet");
+            std::unique_ptr<ExpanseurInclusionsCharge> expanseur;
+            PreparateurJetonsUnite preparer;
+            if (!imageExpansion.empty())
+            {
+                expanseur = std::make_unique<ExpanseurInclusionsCharge>(imageExpansion);
+                preparer = [&](const UniteSource& unite)
+                { return PreparerJetonsAvecReprise(unite, expanseur->Developper()); };
+            }
             if (contientProjet)
             {
                 OptionsConstructionProjet options;
                 options.Sortie = sortie;
                 options.RepertoireObjets = repertoireObjets;
+                options.PreparerJetons = preparer;
                 const auto resultat = ConstructeurProjet().Construire(
                     entrees[0], std::cout, options);
                 std::cout << "Projet construit : " << resultat.Sortie.string()
@@ -323,7 +345,7 @@ int main(int argc, char** argv)
             }
             else
             {
-                const auto resultats = ConstructeurProjet().ConstruireSolution(entrees[0], std::cout);
+                const auto resultats = ConstructeurProjet().ConstruireSolution(entrees[0], std::cout, preparer);
                 std::cout << "Solution construite : " << resultats.size() << " projet(s)\n";
             }
             return 0;
@@ -337,6 +359,8 @@ int main(int argc, char** argv)
         const bool contientBibliotheque = std::any_of(
             entrees.begin(), entrees.end(), EstBibliotheque);
         const bool contientBinaire = contientObjet || contientBibliotheque;
+        if (contientBinaire && !imageExpansion.empty()) throw std::runtime_error(
+            "--expanseur-inclusions ne s'applique pas aux objets/bibliothèques");
         const bool contientSource = std::any_of(
             entrees.begin(), entrees.end(),
             [](const std::filesystem::path& chemin)
@@ -360,8 +384,12 @@ int main(int argc, char** argv)
             std::vector<UniteSource> unites;
             for (const auto& chemin : entrees)
                 unites.push_back({chemin, EstExtensionInterface(chemin), chemin.string()});
-            auto programme = AnalyserUnites(
-                unites, afficherJetons ? &std::cout : nullptr);
+            std::unique_ptr<ExpanseurInclusionsCharge> expanseur;
+            if (!imageExpansion.empty()) expanseur = std::make_unique<ExpanseurInclusionsCharge>(imageExpansion);
+            auto programme = expanseur
+                ? AnalyserUnitesAvecPreparation(unites, [&](const UniteSource& unite)
+                    { return PreparerJetonsAvecReprise(unite, expanseur->Developper()); }, afficherJetons ? &std::cout : nullptr)
+                : AnalyserUnites(unites, afficherJetons ? &std::cout : nullptr);
             if (afficherAst) AfficherAst(programme);
             const auto machine = GenerateurX64().Generer(programme);
             if (format == FormatSortie::GsE)
@@ -434,6 +462,11 @@ int main(int argc, char** argv)
         std::cerr << erreur.Ligne() << ':' << erreur.Colonne()
                   << " GS1001 : " << erreur.Message(langue) << '\n';
         return 2;
+    }
+    catch (const ErreurFichierSource& erreur)
+    {
+        std::cerr << "GS0001 : " << erreur.Message(langue) << '\n';
+        return 1;
     }
     catch (const std::exception& erreur)
     {

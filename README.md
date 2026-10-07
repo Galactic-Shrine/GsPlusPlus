@@ -140,8 +140,15 @@ responsabilité de compiler les sources et de lier les bibliothèques.
 Cet ajout fonctionne dans le bootstrap `gsppc` et possède un
 [exemple bilingue exécutable](Exemples/Directives/Application.GsPj).
 Les analyseurs auto-hébergés reconnaissent également les utilisations d'espaces
-et résolvent leurs noms, alias et surcharges. L'expansion des fichiers inclus
-reste assurée par le bootstrap hôte ; il ne s'agit pas d'un préprocesseur C++ complet. Les
+et résolvent leurs noms, alias et surcharges. Par défaut, l'expansion des fichiers
+inclus reste assurée par le bootstrap hôte. Les sources de développement offrent
+maintenant `--expanseur-inclusions <Frontend.GsE>` (alias `--include-expander`)
+pour choisir l'expansion Gs++ sur les sources/interfaces directes, les projets
+XML et les solutions, en compilation séparée comme agrégée. Une seule image
+est chargée par commande, avec des reprises isolées par unité. Elle doit être
+de confiance : son code natif s'exécute dans le compilateur, sans bac à sable.
+L'analyse et la génération suivantes restent en C++ ; il ne s'agit pas d'un
+préprocesseur C++ complet. Les
 [règles et limites actuelles](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
 précisent les formes prises en charge. Les paquets alpha.10 publiés restent
 inchangés.
@@ -510,6 +517,29 @@ principale.
   alias canoniques, noms de diagnostic distincts des chemins, parcours itératif
   et limites configurables ; préparation du texte et des origines par le frontend
   Gs++, avec contrôle du contrat ABI ; lecture du graphe encore anticipée ;
+- entrée de préparation à la demande : Gs++ choisit quand résoudre un chemin
+  et lire un fichier, après validation des directives et contrôles once/cycle/
+  profondeur ; les suspensions ne publient aucun texte ni origine ; cette API
+  additive ne remplace pas encore le parcours par défaut de `gsppc` ;
+- session lexicale facultative pour conserver les jetons entre les demandes : fichiers
+  déjà lexés non relexés, instantanés immuables et libération automatique côté
+  produit, y compris sur exception ; sorties et diagnostics comparés à l'entrée
+  sans cache ; parcours des directives encore rejoué ;
+- variante à reprise persistante : pile des inclusions, états once/actifs et
+  fragments conservés ; mesure et publication sans relancer le parcours,
+  instantanés contrôlés et libération automatique même sur exception ; API
+  facultative, sans remplacement du pilote par défaut ni promesse de coût
+  global linéaire ;
+- primitives de fichiers partagées entre bootstrap et adaptateurs : lecture
+  contrôlée sans retour de texte partiel sur panne, erreurs hôtes avec opération,
+  chemin et code système, distinctes des diagnostics de langue ; messages
+  français/anglais dans `gsppc` et matrice E/S bilingue sur les trois adaptateurs ;
+- option explicite d'expansion Gs++ pour les sources/interfaces directes, projets
+  XML et solutions, en modes séparé et agrégé :
+  chargement spécialisé d'une image de confiance, reprises isolées par unité,
+  pont vers les jetons C++ avec origines vérifiées, diagnostics bilingues originaux
+  et sorties comparées au bootstrap, ordre des projets conservé et arrêt au
+  premier échec sans retour arrière global ; chemin par défaut inchangé ;
 - préparation lexicale auto-hébergée du texte développé et des origines, à partir
   des fragments originaux sélectionnés par l'hôte : lexèmes et chaînes échappées
   conservés, sorties transactionnelles, capacités exactes, BOM/LF/CRLF et EOF ;
@@ -518,6 +548,15 @@ principale.
   jeton : modes source/interface mixtes et diagnostics dans le fichier d'origine ;
   vingt corpus bilingues syntaxiquement valides, sept refus syntaxiques et trois
   refus sémantiques bilingues ; texte développé par l'hôte ou par l'API d'expansion ;
+- adaptateur hôte pour obtenir un AST syntaxique Gs++ possédé à partir d'une
+  unité développée : noms et origines originales, contrats/capacités contrôlés,
+  aucun arbre partiel sur refus ni nouvelle lecture. API de développement,
+  distincte du `Programme` C++ ; pas de basculement du pilote ou de ses passes ;
+- diagnostics syntaxiques possédés de cet adaptateur : `ExigerValide()` lève
+  une `ErreurCompilation` française/anglaise dans le fichier original ; 43
+  contextes, 67 corpus bilingues et 134 refus comparés au bootstrap, messages
+  et positions compris. Détails inconnus/incompatibles refusés comme erreurs
+  hôtes ; API de développement, sans activation de l'analyse Gs++ dans le pilote ;
 - assemblage auto-hébergé de sources et interfaces préparées : texte, AST et
   table d'origines, avec diagnostics locaux et imports d'espaces isolés par unité ;
   treize corpus bilingues valides, sorties protégées et échecs d'allocation testés ;

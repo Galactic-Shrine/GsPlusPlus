@@ -198,6 +198,26 @@ espace GalacticShrine::GsPP::Autohebergement {
         ConstructorFieldInitializer = 35,
         UtilisationEspace = 36,
         UsingNamespace = 36,
+        /** <résumé>Cible nominale enfant d'un AliasChamp, sans symbole ni expression évaluée.</résumé> **/
+        CibleAliasChamp = 37,
+        FieldAliasTarget = 37,
+        /** <résumé>Cible nominale qualifiée enfant d'un Alias racine, sans symbole ni expression évaluée.</résumé> **/
+        CibleAlias = 38,
+        AliasTarget = 38,
+        /** <résumé>Segment du namespace d'un alias racine, après sa cible ; HachageEspace possède le préfixe cumulé.</résumé> **/
+        SegmentEspaceAlias = 39,
+        AliasNamespaceSegment = 39,
+        /** <résumé>Base nominale enfant immédiat d'une classe, sans symbole ni expression évaluée.</résumé> **/
+        BaseClasse = 40,
+        ClassBase = 40,
+        /** <résumé>Type nommé direct d'une déclaration ; Drapeaux conserve le décalage lexical, HachageType l'empreinte déclarée.</résumé> **/
+        NomTypeDeclare = 41,
+        DeclaredTypeName = 41,
+        NomTypeCallback = 42,
+        CallbackTypeName = 42,
+        /** <résumé>Nom écrit du type cible d'une conversion ; feuille sans symbole ni expression évaluée.</résumé> **/
+        NomTypeConversion = 43,
+        CastTypeName = 43,
     };
 
     énumération DrapeauNoeudDeclaration {
@@ -513,6 +533,25 @@ espace GalacticShrine::GsPP::Autohebergement {
      * @Retourner(ErreurAssemblageDeclarations) Sélection normalisée ou conflit original, sans sortie partielle.
      **/
     publique ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesAvecOrigines(RequeteAssemblageAvecOrigines* requete);
+
+    structure RequeteDiagnosticAssemblage {
+        RequeteAssemblageAvecOrigines* Assemblage;
+        caractère* Nom;
+        naturel64 CapaciteNom;
+        naturel64 NombreOctetsNom;
+        naturel64 Reserve;
+    };
+
+    /**
+     * <résumé>Ajoute le nom qualifié exact au diagnostic de normalisation, sans changer les contrats historiques.</résumé>
+     * @Paramètre(RequeteDiagnosticAssemblage*: requete) Assemblage avec origines, tampon de nom distinct et champ Reserve nul.
+     * @Retourner(ErreurAssemblageDeclarations) Même code que l'assemblage normalisé, y compris si le tampon de nom manque.
+     * @etc. NombreOctetsNom mesure les octets UTF-8 sans terminateur pour les conflits 6 à 10 ; zéro sinon.
+     * @etc. Un tampon insuffisant reste intact ; un refus ne publie jamais les trois sorties d'assemblage.
+     **/
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesAvecDiagnostic(RequeteDiagnosticAssemblage* requete);
+    alias DiagnosticAssemblyRequest = RequeteDiagnosticAssemblage;
+    alias AssembleNormalizedDeclarationsWithDiagnostic = AssemblerDeclarationsNormaliseesAvecDiagnostic;
 
     /**
      * <résumé>Traduit une position locale synthétique d'une unité en origine de fichier.</résumé>

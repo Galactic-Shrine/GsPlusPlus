@@ -77,6 +77,7 @@ namespace GsPP
         void ExigerFermetureType(const char* fr, const char* en);
 
         std::vector<Jeton> _Jetons;
+        std::vector<PositionSource> _PositionsEspace;
         std::size_t _Position = 0;
         std::string _Fichier;
         bool _EstInterface = false;

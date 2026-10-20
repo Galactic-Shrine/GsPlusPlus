@@ -4,6 +4,7 @@
  **/
 espace GalacticShrine::GsPP::Autohebergement {
     JetonLexe* NulJetonsNormalisation;
+    RequeteDiagnosticAssemblage* NulDiagnosticAssemblage;
     structure CheminNomNormalisation {
         naturel64 Parent;
         naturel64 Jeton;
@@ -385,6 +386,10 @@ espace GalacticShrine::GsPP::Autohebergement {
     booléen MemesParametresNormalisation(EtatNormalisationDeclarations* etat, naturel64 gauche, naturel64 droite) {
         naturel64 a = gauche + 1;
         naturel64 b = droite + 1;
+        tantque (a < etat->Brut->Resultat.NombreNoeuds && (etat->Brut->Noeuds[a].Genre == 41 || etat->Brut->Noeuds[a].Genre == 42)
+            && etat->Brut->Noeuds[a].Parent == gauche) a = a + 1;
+        tantque (b < etat->Brut->Resultat.NombreNoeuds && (etat->Brut->Noeuds[b].Genre == 41 || etat->Brut->Noeuds[b].Genre == 42)
+            && etat->Brut->Noeuds[b].Parent == droite) b = b + 1;
         naturel64 classeA = etat->Brut->Noeuds[gauche].Parent;
         naturel64 classeB = etat->Brut->Noeuds[droite].Parent;
         si (classeA != 0 && classeB != 0) {
@@ -407,15 +412,15 @@ espace GalacticShrine::GsPP::Autohebergement {
             si (etat->Metadonnees[classeImplicite].TailleSoi != etat->Metadonnees[parametreExplicite].TailleType
                 || !MemesMotsTypesNormalisation(etat, etat->Metadonnees[classeImplicite].DebutSoi,
                     etat->Metadonnees[parametreExplicite].DebutType, etat->Metadonnees[classeImplicite].TailleSoi)) retourner faux;
-            si (classeA != 0) b = b + 1;
-            sinon a = a + 1;
+            si (classeA != 0) b = etat->Metadonnees[b].FinSousArbre;
+            sinon a = etat->Metadonnees[a].FinSousArbre;
         }
         tantque (a < etat->Brut->Resultat.NombreNoeuds && b < etat->Brut->Resultat.NombreNoeuds
             && etat->Brut->Noeuds[a].Genre == 2 && etat->Brut->Noeuds[a].Parent == gauche
             && etat->Brut->Noeuds[b].Genre == 2 && etat->Brut->Noeuds[b].Parent == droite) {
             si (!MemesTypesNormalisation(etat, a, b)) retourner faux;
-            a = a + 1;
-            b = b + 1;
+            a = etat->Metadonnees[a].FinSousArbre;
+            b = etat->Metadonnees[b].FinSousArbre;
         }
         booléen resteA = a < etat->Brut->Resultat.NombreNoeuds
             && etat->Brut->Noeuds[a].Genre == 2 && etat->Brut->Noeuds[a].Parent == gauche;
@@ -484,6 +489,66 @@ espace GalacticShrine::GsPP::Autohebergement {
                 retourner;
             }
             origine = origine + 1;
+        }
+    }
+
+    /**
+     * <résumé>Mesure puis copie le nom du conflit pendant que ses chemins lexicaux sont encore vivants.</résumé>
+     * @Paramètre(EtatNormalisationDeclarations*: etat) Métadonnées privées, inchangées.
+     * @Paramètre(naturel64: index) Déclaration fautive sélectionnée par la normalisation.
+     * @Paramètre(RequeteDiagnosticAssemblage*: diagnostic) Tampon facultatif, sans terminateur ajouté.
+     * @etc. Constructeurs, destructeurs et opérateurs utilisent les noms canoniques du bootstrap.
+     **/
+    vide PublierNomConflitNormalisation(
+        EtatNormalisationDeclarations* etat, naturel64 index, RequeteDiagnosticAssemblage* diagnostic) {
+        si (!diagnostic) retourner;
+        MetadonneesNormalisation* metadata = &etat->Metadonnees[index];
+        naturel64 chemin = metadata->Nom;
+        naturel64 taille = 0;
+        tantque (chemin != 0) {
+            taille = taille + etat->Jetons[etat->Chemins[chemin].Jeton].TailleSource;
+            chemin = etat->Chemins[chemin].Parent;
+            si (chemin != 0) taille = taille + 2;
+        }
+        constante caractère* suffixe = "";
+        naturel64 tailleSuffixe = 0;
+        si (metadata->NomSpecial == 13) { suffixe = "::$constructeur"; tailleSuffixe = 15; }
+        si (metadata->NomSpecial == 14) { suffixe = "::$destructeur"; tailleSuffixe = 14; }
+        booléen estOperateurDiagnostic = etat->Brut->Noeuds[index].Genre == 15;
+        taille = taille + tailleSuffixe;
+        si (estOperateurDiagnostic) taille = taille + 8;
+        diagnostic->NombreOctetsNom = taille;
+        si (!diagnostic->Nom || diagnostic->CapaciteNom < taille) retourner;
+        naturel64 position = taille - tailleSuffixe;
+        naturel64 octetSuffixe = 0;
+        tantque (octetSuffixe < tailleSuffixe) {
+            diagnostic->Nom[position + octetSuffixe] = suffixe[octetSuffixe];
+            octetSuffixe = octetSuffixe + 1;
+        }
+        chemin = metadata->Nom;
+        constante caractère* prefixeOperateur = "operator";
+        tantque (chemin != 0) {
+            JetonLexe* partie = &etat->Jetons[etat->Chemins[chemin].Jeton];
+            naturel64 octetNom = partie->TailleSource;
+            tantque (octetNom != 0) {
+                octetNom = octetNom - 1;
+                position = position - 1;
+                diagnostic->Nom[position] = etat->Brut->SourceAssemblee[partie->Debut + octetNom];
+            }
+            si (estOperateurDiagnostic) {
+                naturel64 octetPrefixe = 8;
+                tantque (octetPrefixe != 0) {
+                    octetPrefixe = octetPrefixe - 1;
+                    position = position - 1;
+                    diagnostic->Nom[position] = prefixeOperateur[octetPrefixe];
+                }
+                estOperateurDiagnostic = faux;
+            }
+            chemin = etat->Chemins[chemin].Parent;
+            si (chemin != 0) {
+                position = position - 1; diagnostic->Nom[position] = 58;
+                position = position - 1; diagnostic->Nom[position] = 58;
+            }
         }
     }
 
@@ -563,11 +628,13 @@ espace GalacticShrine::GsPP::Autohebergement {
      * @Paramètre(RequeteAssemblageDeclarations*: requete) Unités et tampons distincts de l'appelant.
      * @Paramètre(constante TableOriginesUniteDeclarations*: tables) Origines de jetons par unité, ou pointeur nul pour le contrat historique.
      * @Paramètre(naturel64: nombreFichiers) Taille du catalogue commun aux origines.
+     * @Paramètre(RequeteDiagnosticAssemblage*: diagnostic) Nom de conflit facultatif, sans effet sur les sorties historiques.
      * @Retourner(ErreurAssemblageDeclarations) Résultat pour les fonctions libres et membres, globales et alias.
      **/
     ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesInterne(
         RequeteAssemblageDeclarations* requete,
-        constante TableOriginesUniteDeclarations* tables, naturel64 nombreFichiers) {
+        constante TableOriginesUniteDeclarations* tables, naturel64 nombreFichiers,
+        RequeteDiagnosticAssemblage* diagnostic) {
 
         si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
         requete->Resultat = {};
@@ -645,6 +712,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             requete->Resultat.Erreur = erreur;
             requete->Resultat.NombreNoeuds = 0;
             LocaliserErreurNormalisation(requete, &brut, indexErreur);
+            PublierNomConflitNormalisation(&etat, indexErreur, diagnostic);
             GalacticShrine::GsPP::Hebergee::DetruireArene(&arene);
             retourner erreur;
         }
@@ -681,6 +749,6 @@ espace GalacticShrine::GsPP::Autohebergement {
     }
 
     publique ErreurAssemblageDeclarations AssemblerDeclarationsNormalisees(RequeteAssemblageDeclarations* requete) {
-        retourner AssemblerDeclarationsNormaliseesInterne(requete, NulTablesOriginesDeclarations, 0);
+        retourner AssemblerDeclarationsNormaliseesInterne(requete, NulTablesOriginesDeclarations, 0, NulDiagnosticAssemblage);
     }
 }

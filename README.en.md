@@ -541,6 +541,49 @@ All normative documentation is maintained in Markdown as its primary source.
   bilingual corpora and 134 rejections compared against the bootstrap,
   including messages and positions. Unknown/incompatible details remain host
   contract errors; development API, without enabling Gs++ syntax in the driver;
+- host adapter for owned raw/normalized multi-unit assembly: retain text, AST,
+  names, unit spans and original positions after definition selection; cumulative
+  limits, 82 altered contracts and 14 altered exports rejected, bilingual matrix
+  compared against the bootstrap. Development API without file rereads; located
+  an additive entry owns qualified conflict names and bilingual `ExigerValide()`
+  diagnostics; backend integration and full semantic diagnostic translation still pending;
+- host adapter for owned assembled semantics: `AnalyserSemantiqueAssemblee`
+  retains the AST, symbols and resolutions, unit isolation and original positions
+  for numeric rejections; private copies, bounds and guards, no published
+  rejection prefixes, rereads or C++ passes; tested with replaced files and
+  after unloading, local development API without enabling it in the driver;
+- owned semantic diagnostics: invariant, local/global, condition/logical,
+  required constructors for default field values, enum values, unsupported
+  array references, non-public inheritance and self-inheritance,
+  exact names for duplicate fields, field aliases, enumerators and locals,
+  and an invariant duplicate-parameter message,
+  field aliases conflicting with direct fields in either declaration order,
+  exact names for revisited aliases in cycles, distinct from the entry alias
+  when the chain has an acyclic prefix,
+  written names of unknown field-alias targets retained in nominal AST children,
+  root-alias cycles with owned complete qualified names, including nested namespaces and across units
+  (legacy ASTs without nominal namespace prefixes remain numeric),
+  written unknown root-alias targets and ambiguous overloaded-function alias targets,
+  including qualifications, imports, namespaces and methods,
+  written names of unknown used namespaces, qualified or relative, at the `utilisant` / `using` position,
+  written ambiguous imported names in root-alias targets, expressions, class bases
+  (nominal node 40), or directly named global/local/field, function/method return and parameter types
+  (nominal node 41), and nested named callback types (nominal leaves 42, first failure retained);
+  named `convertir<…>` / `cast<…>` target types, including nested callbacks
+  (nominal leaves 43, target checked before the operand);
+  legacy ASTs without nominal context remain numeric,
+  invalid member/call-target receiver, inaccessible fields, methods and member operators,
+  missing initializer fields or inherited fields that cannot be initialized directly,
+  class object fields with forbidden default values and uninitialized const fields,
+  incorrect expression counts and non-aggregate array arguments in explicit field initializers,
+  fields initialized twice or in the wrong order (canonical names, including aliases),
+  unknown-name, unknown-member and ambiguous overloaded-address French/English messages through
+  `SemantiqueAssemblee::ExigerValide()`,
+  with original positions; lex only the already-owned name span, including
+  qualifications and comments, without file reads or C++ syntax/semantic passes.
+  Families still needing resolved names, types or unavailable
+  context remain numeric, without approximate messages.
+  Local API; full translation and driver integration are still pending;
 - self-hosted assembly of prepared sources and interfaces: text, AST and origin
   table, with local diagnostics and namespace imports isolated per compilation unit;
   thirteen valid bilingual corpora, guarded outputs and tested allocation failures;

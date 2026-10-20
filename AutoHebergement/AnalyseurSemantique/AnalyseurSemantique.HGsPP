@@ -100,6 +100,9 @@ espace GalacticShrine::GsPP::Autohebergement {
         ConstructorDelegationCycle = 32,
         ChampInitialiseurIntrouvable = 33,
         UnknownInitializerField = 33,
+        /** <résumé>Même code 33 ; Detail 1 désigne un champ ou alias hérité, non directement initialisable.</résumé> **/
+        ChampInitialiseurHeriteInterdit = 33,
+        InheritedInitializerFieldForbidden = 33,
         ChampInitialisePlusieursFois = 34,
         FieldInitializedMoreThanOnce = 34,
         OrdreInitialisationChampInvalide = 35,
@@ -158,6 +161,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         NonIntegerUnaryOperator = 61,
         OperateurLogiqueNonScalaire = 62,
         NonScalarLogicalOperator = 62,
+        ConditionNonScalaire = 62,
+        NonScalarCondition = 62,
         TypesOperandesDifferents = 63,
         DifferentOperandTypes = 63,
         DecalageNonEntier = 64,
@@ -399,6 +404,16 @@ espace GalacticShrine::GsPP::Autohebergement {
     /**
      * <résumé>Résultats de l'analyse sémantique.</résumé>
      * @etc. Les résultats de l'analyse sémantique incluent les erreurs, les statistiques et les capacités requises.
+     * @etc. Code 62 : Detail 0 pour une opération logique non scalaire, 1 pour une condition non scalaire.
+     * @etc. Code 33 : Detail 0 pour un nom absent, 1 pour un champ/alias hérité non directement initialisable.
+     * @etc. Code 36 : Detail indexe le champ canonique ; le nombre d'expressions reste dans l'AST initialiseur.
+     * @etc. Code 41 : Detail indexe le champ ; l'AST distingue l'initialiseur explicite de sa valeur par défaut.
+     * @etc. Code 46 : Detail conserve le nombre de dimensions ; le genre du nœud distingue locale et globale.
+     * @etc. Code 107 : Detail rang de symbole de l'entrée du cycle, position de l'alias revisité.
+     * @etc. Code 108 : Detail index AST de la cible nominale (genre 37), position de l'alias ; 0 pour un ancien AST.
+     * @etc. Code 109 : Detail rang de symbole de l'entrée du cycle, position de l'alias racine revisité, même inter-unité.
+     * @etc. Code 110 : Detail index AST de la cible nominale (genre 38), position de l'alias ; 0 pour un ancien AST.
+     * @etc. Code 121 : Detail index AST de la base 40 ou du type nommé direct 41 ; 0 pour les alias, expressions et anciens AST.
      **/
     structure ResultatAnalyseSemantique {
 

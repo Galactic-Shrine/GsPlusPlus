@@ -204,4 +204,27 @@ namespace GsPP
             "GalacticShrine::GsPP::Autohebergement::AnalyserDeclarationsAvecOrigines",
             "GalacticShrine::GsPP::Autohebergement::AnalyzeOriginAwareDeclarations"));
     }
+
+    AssembleurDeclarationsAvecOriginesHote ExpanseurInclusionsCharge::AssembleurDeclarations(bool normaliser) const
+    {
+        return reinterpret_cast<AssembleurDeclarationsAvecOriginesHote>(implementation_->ChercherFonction(
+            normaliser ? "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsNormaliseesAvecOrigines"
+                : "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsAvecOrigines",
+            normaliser ? "GalacticShrine::GsPP::Autohebergement::AssembleNormalizedOriginAwareDeclarations"
+                : "GalacticShrine::GsPP::Autohebergement::AssembleOriginAwareDeclarations"));
+    }
+
+    AssembleurDeclarationsAvecDiagnosticHote ExpanseurInclusionsCharge::AssembleurDeclarationsAvecDiagnostic() const
+    {
+        return reinterpret_cast<AssembleurDeclarationsAvecDiagnosticHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AssemblerDeclarationsNormaliseesAvecDiagnostic",
+            "GalacticShrine::GsPP::Autohebergement::AssembleNormalizedDeclarationsWithDiagnostic"));
+    }
+
+    AnalyseurSemantiqueUnitesHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnites() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnites",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeUnitSemantics"));
+    }
 }

@@ -2,6 +2,8 @@
 
 #include "GsPP/CatalogueInclusions.hpp"
 #include "GsPP/DeclarationsPreparees.hpp"
+#include "GsPP/AssemblageDeclarationsPreparees.hpp"
+#include "GsPP/SemantiqueAssemblee.hpp"
 
 #include <memory>
 
@@ -23,6 +25,12 @@ namespace GsPP
         [[nodiscard]] ExpanseurInclusionsAvecRepriseHote Developper() const noexcept;
         /** <résumé>Vérifie les exports syntaxiques FR/EN à la demande ; aucune obligation pour l'expansion seule.</résumé> **/
         [[nodiscard]] AnalyseurDeclarationsAvecOriginesHote AnalyseurDeclarations() const;
+        /** <résumé>Vérifie à la demande la paire d'exports d'assemblage brut ou normalisé avec origines.</résumé> **/
+        [[nodiscard]] AssembleurDeclarationsAvecOriginesHote AssembleurDeclarations(bool normaliser = true) const;
+        /** <résumé>Vérifie à la demande les exports normalisés avec nom qualifié de diagnostic possédé.</résumé> **/
+        [[nodiscard]] AssembleurDeclarationsAvecDiagnosticHote AssembleurDeclarationsAvecDiagnostic() const;
+        /** <résumé>Vérifie à la demande la paire sémantique FR/EN avec isolation des unités de traduction.</résumé> **/
+        [[nodiscard]] AnalyseurSemantiqueUnitesHote AnalyseurSemantiqueUnites() const;
 
     private:
         struct Implementation;

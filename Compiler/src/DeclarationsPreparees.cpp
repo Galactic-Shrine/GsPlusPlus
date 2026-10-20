@@ -252,7 +252,7 @@ namespace GsPP
         for (std::size_t i = 0; i < nombre; ++i)
         {
             const auto& noeud = noeuds[i];
-            if (noeud.Genre > 36 || (noeud.Drapeaux & ~0x1FFFFU)
+            if (noeud.Genre > 43 || (noeud.Genre != 41 && noeud.Genre != 42 && noeud.Genre != 43 && (noeud.Drapeaux & ~0x1FFFFU))
                 || noeud.DebutNom > source.size() || noeud.TailleNom > source.size() - noeud.DebutNom)
                 ContratIncoherent();
             if (!i)
@@ -264,6 +264,44 @@ namespace GsPP
                 continue;
             }
             if (!noeud.Genre || noeud.Parent >= i || !noeud.Ligne || !noeud.Colonne) ContratIncoherent();
+            if (noeuds[noeud.Parent].Genre >= 40 && noeuds[noeud.Parent].Genre <= 43) ContratIncoherent();
+            if (noeud.Genre == 43)
+            {
+                const auto& parent = noeuds[noeud.Parent];
+                if (!noeud.Parent || parent.Genre != 31 || parent.Drapeaux || parent.DebutNom || parent.TailleNom || parent.HachageNom
+                    || !noeud.TailleNom || noeud.Drapeaux < 2 || noeud.Drapeaux > source.size()
+                    || noeud.HachageType != parent.HachageType || noeud.HachageEspace != parent.HachageEspace
+                    || noeud.Ligne < parent.Ligne || (noeud.Ligne == parent.Ligne && noeud.Colonne <= parent.Colonne)
+                    || (noeud.Parent + 1 != i && (noeuds[i - 1].Genre != 43 || noeuds[i - 1].Parent != noeud.Parent
+                        || noeuds[i - 1].Drapeaux >= noeud.Drapeaux
+                        || noeuds[i - 1].DebutNom + noeuds[i - 1].TailleNom > noeud.DebutNom))) ContratIncoherent();
+            }
+            if (noeud.Genre == 41 || noeud.Genre == 42)
+            {
+                const auto& parent = noeuds[noeud.Parent]; const auto genre = parent.Genre;
+                if (!noeud.Parent || (noeud.Genre == 41 && noeud.Parent + 1 != i) || (genre != 1 && genre != 2 && genre != 3
+                    && genre != 7 && genre != 12 && genre != 15 && genre != 19) || !noeud.TailleNom
+                    || noeud.HachageType != parent.HachageType || noeud.HachageEspace != parent.HachageEspace
+                    || noeud.Drapeaux > source.size() || noeud.DebutNom + noeud.TailleNom > parent.DebutNom) ContratIncoherent();
+                if (noeud.Genre == 42 && (noeud.Drapeaux < 2 || (noeud.Parent + 1 != i
+                    && (noeuds[i - 1].Genre != 42 || noeuds[i - 1].Parent != noeud.Parent
+                        || noeuds[i - 1].Drapeaux >= noeud.Drapeaux
+                        || noeuds[i - 1].DebutNom + noeuds[i - 1].TailleNom > noeud.DebutNom)))) ContratIncoherent();
+            }
+            if (noeud.Genre == 40 && (!noeud.Parent || noeud.Parent + 1 != i
+                || noeuds[noeud.Parent].Genre != 6 || noeuds[noeud.Parent].Parent
+                || !(noeuds[noeud.Parent].Drapeaux & 32) || noeud.Drapeaux || noeud.HachageType || !noeud.TailleNom
+                || noeud.HachageNom != noeuds[noeud.Parent].HachageType
+                || noeud.HachageEspace != noeuds[noeud.Parent].HachageEspace)) ContratIncoherent();
+            if ((noeud.Genre == 37 || noeud.Genre == 38) && (!noeud.Parent || noeud.Parent + 1 != i
+                || noeuds[noeud.Parent].Genre != (noeud.Genre == 37 ? 11U : 10U)
+                || noeud.Drapeaux || noeud.HachageType || !noeud.TailleNom
+                || noeud.HachageNom != noeuds[noeud.Parent].HachageType
+                || noeud.HachageEspace != noeuds[noeud.Parent].HachageEspace)) ContratIncoherent();
+            if (noeud.Genre == 39 && (!noeud.Parent || noeuds[noeud.Parent].Genre != 10
+                || noeuds[noeud.Parent].Parent || noeud.Drapeaux || noeud.HachageType || !noeud.TailleNom
+                || noeuds[i - 1].Parent != noeud.Parent
+                || (noeuds[i - 1].Genre != 38 && noeuds[i - 1].Genre != 39))) ContratIncoherent();
             const auto index = indexOrigine(noeud.Ligne, noeud.Colonne);
             resultat.Origines.push_back({positionOriginale(index), modeInterface || origines[index].EstInterface != 0});
         }

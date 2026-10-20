@@ -10,6 +10,740 @@
 
 # Journal des modifications
 
+## Diagnostics sémantiques possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- extension aux conversions du 2026-10-15 : conserver les noms de types cibles,
+  callbacks imbriqués compris, dans les feuilles 43 `NomTypeConversion` /
+  `CastTypeName`, avant l'unique opérande de l'expression 31. Posséder tranche,
+  hachage, espace, empreinte opaque du type complet et décalage lexical ; `Detail`
+  désigne le nom ambigu exact à la position de la conversion. Vérifier feuilles,
+  prédécesseurs, unités/origines/rangs, opérande et ancêtres partageant la position ;
+  lexage borné de `convertir <` / `cast <`, sans résolution hôte. Cible validée
+  avant l'opérande, sans nouveau parcours générique des expressions. Ancien AST
+  sans contexte 43 conservé numérique, `Detail 0` et même origine. Étendre les
+  régressions d'allocation/inclusions aux conversions de callbacks nommés.
+  Matrice ciblée 121 : 190 refus traduits (30 conversions, 28 callbacks,
+  48 types directs, 24 bases), aucun cas réservé numérique, 24 anciens alias,
+  24 anciennes bases et 106 anciens contextes types/conversions numériques,
+  104 succès FR/EN, 154 priorités, 2 700 contrats/textes, 312 marqueurs natifs et
+  428 entrées AST altérés refusés. Production AST et image native modifiées ;
+  codes/exports, disposition AST de 64 octets, formats 1.0 et tailles ABI conservés.
+  Windows CTest 5/5, GNU/Linux CTest 6/6, solution/validation native VS 2026,
+  conformité 20/20 sur chaque chaîne et intégration GNU/Linux réussis ;
+- tranche précédente des callbacks du 2026-10-10 : recueillir les noms écrits lors du parseur
+  récursif, retour puis paramètres, et produire les feuilles nominales 42
+  `NomTypeCallback` / `CallbackTypeName` sous les mêmes déclarations typées.
+  Conserver ordre lexical, tranche/hachage, espace, empreinte opaque du type source
+  complet et décalage lexical ; `Detail` désigne exactement le nom ambigu, position
+  de déclaration conservée. Vérifier feuilles/prédécesseurs/unités/origines/rangs et
+  lexage borné du préfixe, sans résolution hôte ; ignorer les feuilles dans les
+  parcours d'expressions et la normalisation des surcharges/prototypes.
+  Conserver le premier échec de type au lieu de le remplacer par une ambiguïté
+  plus tardive. Matrice 121 : 160 refus traduits (28 callbacks, 48 types directs,
+  24 bases), 2 conversions numériques, 24 anciens alias, 24 anciennes bases et
+  76 anciens types numériques, 92 succès FR/EN, 128 priorités, 2 162 contrats/textes,
+  252 marqueurs natifs et 328 entrées AST altérés refusés. Callbacks imbriqués,
+  nom ambigu après des noms valides, surcharges/prototypes et durée de vie vérifiés.
+  Sondes de variables/membres sans allocation nominale ; corpus d'inclusions
+  bilingue supplémentaire avec budgets d'allocation et sorties transactionnelles.
+  Ancien AST sans contexte 42 conservé numérique avec `Detail 0`. Production AST
+  et image native modifiées, codes/exports, disposition AST de 64 octets, formats
+  1.0 et tailles ABI conservés ;
+- tranche précédente des types directs du 2026-10-10 : ajouter l'enfant nominal immédiat
+  41 `NomTypeDeclare` / `DeclaredTypeName` aux globales/locales/champs/retours/
+  paramètres, constructeurs compris. Posséder nom qualifié, hachage, même espace,
+  empreinte opaque du type source complet et décalage lexical (`Drapeaux`, non
+  masque de propriétés). `Detail` indexe 41, position de déclaration conservée ;
+  contrôler parent/feuille, unité/bornes, hachages/origines/rangs et lexage borné
+  du préfixe, sans résolution hôte. Différer les globales ambiguës après signatures
+  et contrôles des classes, puis traiter chaque globale entièrement dans l'ordre.
+  Ne pas compter 41 comme expression/argument ; comparer les paramètres par
+  sous-arbres dans la normalisation des surcharges/prototypes, récepteur implicite
+  inchangé. Bilan avant les callbacks : 132 refus traduits (48 types directs, 24 bases),
+  4 callbacks/conversions numériques, 24 anciens alias, 24 anciennes bases et
+  48 anciens types numériques, 76 succès FR/EN, 90 priorités, 1 750 contrats/textes,
+  204 marqueurs natifs et 248 entrées AST altérés refusés. Types primitifs/callbacks
+  sans feuille 41 ; anciens AST sans contexte 41 acceptés avec `Detail 0` numérique.
+  AST et image native modifiés ; codes/exports, disposition AST de 64 octets,
+  formats 1.0 et tailles ABI conservés ;
+- tranche précédente des bases du 2026-10-10 : ajouter le nœud nominal 40 `BaseClasse` / `ClassBase`,
+  enfant immédiat de la classe, sans symbole ni expression évaluée. Pour le code
+  121 d'héritage, `Detail` indexe la base écrite et le diagnostic garde la position
+  de la classe. Contrôler parent/feuille, tranches/hachages, unité/origines, rang
+  lexical exact et phase sans résolutions ; lexage borné du nom et de `:` avec
+  visibilité publique facultative, sans résolution hôte des types/imports.
+  Bilan avant les types directs : 84 refus traduits (24 bases), 14 types numériques,
+  24 anciens alias et 24 anciennes bases numériques, 40 succès FR/EN, 52 priorités,
+  942 contrats/textes, 108 marqueurs natifs et 88 entrées AST altérés refusés.
+  Ancien AST sans enfant 40 accepté avec `Detail 0` numérique. Comparaison de
+  l'AST au bootstrap, notamment bases qualifiées avec commentaires ; priorités
+  des phases antérieures et de l'héritage public conservées. Production AST et
+  image native modifiées ; disposition AST de 64 octets, codes/exports, formats
+  1.0 et tailles ABI conservés ;
+- première tranche du 2026-10-10 : traduire les noms importés ambigus (121) dans les cibles
+  d'alias globaux 38 et les références d'expression 24, à leur origine possédée.
+  Vérifier `Detail 0`, nombre complet de symboles, nom/tranche/hachage, unité,
+  parent/feuille et origines ; réutiliser le rang lexical des cibles d'alias.
+  Pas de recherche d'import, reconstruction des candidats ou phase sans résolutions
+  supposée. Matrice : 60 refus traduits, 16 types/bases numériques, 24 anciens
+  alias numériques, 24 succès FR/EN, 32 priorités, 534 contrats/textes et
+  60 marqueurs natifs altérés refusés ; noms qualifiés/UTF-8/commentaires,
+  inclusions, interfaces, unités, fichiers remplacés et copie/déplacement/déchargement.
+  Types, bases, callbacks/conversions sans nom nominal et autres contextes conservés
+  numériques. Traduction hôte uniquement, image native/AST, codes/exports, formats
+  et ABI inchangés ;
+- ajout du 2026-10-10 : traduire les espaces utilisés introuvables (120) depuis
+  le nom écrit du nœud 36 existant, à la position de `utilisant` / `using`.
+  Contrôler feuille racine unique, unité, origines, tranche/hachage, `Detail 0`,
+  table de symboles complète éventuellement vide et absence de résolutions,
+  sans recherche de namespace ou résolution d'import hôte.
+  Matrice : 60 refus traduits, 24 succès FR/EN, 24 priorités, 564 contrats/textes
+  et 72 marqueurs natifs altérés refusés ; qualification 128, UTF-8/commentaires,
+  déclarations trop tardives, interfaces, inter-unités, phase sans symbole,
+  fichiers remplacés et copie/déplacement/déchargement.
+  Conflit de nom racine avant 120, priorités couvertes devant alias/valeurs/corps
+  comparées au bootstrap ; aucune nouvelle règle globale entre les passes.
+  Traduction hôte uniquement, image native, codes/exports, formats et ABI inchangés ;
+- ajout du 2026-10-10 : traduire les cycles d'alias globaux (109) dans les
+  namespaces, depuis des segments nominaux 39 possédés, extérieurs vers intérieurs,
+  après la cible 38. Vérifier noms et hachages de préfixes cumulés, origines,
+  unité, ordre lexical et feuilles sans descendants ; conserver leurs positions
+  dans le bootstrap pour l'oracle AST. `Detail` reste le rang de symbole d'entrée,
+  distinct de l'alias revisité, même dans deux unités/espaces différents.
+  Matrice consolidée : 72 refus traduits, 32 anciens AST de namespaces numériques,
+  24 succès FR/EN, 24 priorités, 704 contrats/textes, 54 gardes de segments et
+  50 rangs natifs altérés refusés ; namespaces imbriqués/réouverts, UTF-8/commentaires,
+  chaîne 128, inter-unités et durée de vie. Aucun préfixe inventé dans les anciens
+  AST, aucun graphe résolu par l'hôte. Image native et contenu AST modifiés,
+  nœuds de 64 octets, codes/exports, formats 1.0 et tailles ABI inchangés ;
+- ajout du 2026-10-10 : traduire les alias de fonctions surchargées ambigus (112)
+  depuis la cible écrite dans l'enfant 38 de l'alias à l'origine du refus.
+  `Detail` reste le nombre de surcharges, au moins 2 et borné par le total des
+  nœuds de fonction ; aucune reconstruction ou authentification des candidats.
+  Vérifier noms/hachages, parent, unité, origines et rang lexical comme pour 110.
+  Matrice : 50 refus traduits, 50 anciens AST numériques, 24 succès FR/EN,
+  24 priorités, 638 contrats/textes et 48 nombres natifs altérés refusés ;
+  méthodes, groupes importés, prototypes d'interface fusionnés, chaîne 128,
+  inter-unités, fichiers remplacés et copie/déplacement/déchargement.
+  Ancien AST sans enfant 38 conservé numérique, nombre de surcharges inchangé.
+  Traduction hôte uniquement ; image native, codes/exports, formats et ABI inchangés.
+  Code 111 encore numérique faute de matrice source différentielle établie ;
+- ajout du 2026-10-10 : traduire les cibles d'alias globaux introuvables (110)
+  depuis leur nom écrit possédé, y compris qualifications, imports et namespaces.
+  Un enfant nominal 38, `CibleAlias` / `AliasTarget`, suit l'alias ; `Detail`
+  indexe cet enfant, le refus garde la position de l'alias courant. Contrôler
+  noms, hachages, origines, unités et ordre lexical sans résolution hôte des
+  cibles/imports/graphes. Conserver la position cible dans l'AST bootstrap pour
+  l'oracle et accepter le nœud 38 dans le contrôle historique de hachage qualifié.
+  Matrice : 48 refus traduits, 48 anciens AST numériques, 24 succès FR/EN,
+  16 priorités, 638 contrats/textes et 60 indices nominaux natifs altérés refusés ;
+  chaîne 128, inter-unités, UTF-8/inclusions et copie/déplacement/déchargement.
+  Ancien AST sans enfant 38 conservé numérique avec `Detail 0` ; enfant nominal
+  sans symbole/expression évaluée. Image native modifiée, nœuds de 64 octets,
+  codes/exports, formats 1.0 et tailles ABI inchangés. Code 111 et cycles
+  109 exigeant un préfixe de namespace non possédé encore numériques ;
+- ajout du 2026-10-09 : traduire les cycles d'alias racines (109) lorsque le nom
+  complet de l'alias revisité est possédé, y compris `API::Vue`, UTF-8 et commentaires.
+  `Detail` reste le rang de symbole d'entrée ; entrée et refus peuvent appartenir
+  à deux unités/espaces différents. Contrôler les deux noms et origines sans
+  rechercher les cibles ni reconstruire le graphe. Matrice : 40 refus traduits,
+  16 namespaces réservés numériques, 24 succès FR/EN, 16 priorités,
+  452 contrats/textes et 50 rangs natifs altérés refusés ; chaîne 128, inclusions,
+  fichiers remplacés, copies/déplacements et déchargement. Alias signalé dans
+  un namespace et code 111 encore numériques, aucun préfixe deviné ;
+  traductions des codes 110/112 ajoutées le 10 octobre.
+  Traduction hôte uniquement, image native, codes/exports, formats et ABI inchangés ;
+- ajout du 2026-10-09 : traduire les cibles d'alias de champ introuvables (108)
+  depuis leur nom possédé dans un enfant nominal 37, `CibleAliasChamp` /
+  `FieldAliasTarget`. `Detail` indexe ce nœud AST ; la position du refus reste
+  celle de l'alias courant. Vérifier forme canonique, parent, unité, origines
+  et noms/hachages sans rechercher les cibles ni les bases. Conserver la position
+  cible dans l'AST bootstrap pour l'oracle, sans changer les règles. Matrice :
+  32 refus traduits, 32 anciens AST numériques, 418 contrats/textes et 40 indices
+  nominaux natifs altérés rejetés ; chaîne 128, UTF-8/inclusions et durée de vie.
+  Les 16 priorités d'alias sont maintenant toutes traduites. Nouvel enfant AST,
+  sans symbole/expression évaluée ; ancien AST sans enfant nominal et `Detail 0`
+  conservé numérique. Image native modifiée, pas les codes/exports, formats ou tailles ABI ;
+- ajout du 2026-10-09 : traduire les cycles d'alias de champ (107) depuis le
+  nom possédé de l'alias revisité ; distinguer sa position du rang de symbole
+  de l'alias d'entrée conservé dans `Detail`, y compris avec un préfixe acyclique.
+  Contrôler les deux noms, l'unité et le même agrégat sans rechercher les cibles
+  ni refaire la détection du cycle. Matrice : 32 refus
+  traduits, 24 succès FR/EN, 16 priorités traduites,
+  322 contrats/textes et 40 rangs natifs altérés rejetés ; auto-cycles, préfixes,
+  chaîne de 128 alias, inclusions et copie/déplacement après déchargement.
+  Code hôte seulement pour le cycle 107, image native, codes/exports, formats et ABI inchangés ;
+- ajout du 2026-10-09 : traduire le code 14 depuis le nom exact de l'alias en
+  conflit avec un champ direct ; conserver la position de l'alias, même déclaré
+  avant le champ, avec `Detail` désignant le nœud AST du champ. Contrôler noms,
+  genres, unité et même agrégat sans rechercher de candidat dans l'hôte. Aligner
+  les priorités natives des noms par agrégat : champs avant alias, noms d'alias
+  dans leur ordre avant leurs cibles, conflit champ/alias avant doublon du même
+  alias courant. Matrice : 32 refus traduits, 24 succès FR/EN, 16 priorités de
+  noms, 290 contrats/textes et 32 indices natifs altérés rejetés. Image native
+  modifiée sans nouveau code/export ni changement de format ou d'ABI ;
+- ajout du 2026-10-09 : traduire les champs, alias de champs, énumérateurs et
+  locaux répétés (12/13/15/17), depuis les deux noms simples possédés et le
+  `Detail` natif désignant le nœud AST précédent ; vérifier genres, ordre, unité
+  et portée sans nouvelle résolution. Ajouter le message invariant des
+  paramètres répétés (16). Matrice : 40 refus traduits, 32 succès FR/EN,
+  298 contrats/textes et 32 indices natifs altérés rejetés. Corriger la priorité
+  Gs++ du doublon d'énumérateur avant son propre initialiseur, mais après une
+  erreur de valeur précédente ; huit régressions FR/EN dédiées. Image native
+  modifiée sans nouveau code/export ni changement de format ou d'ABI ;
+- ajout du 2026-10-09 : traduire huit invariants supplémentaires, codes
+  39/85/86/87/88/101/113/115 : constructeur requis avec des champs par défaut,
+  valeurs d'énumération non entières/non constantes/hors plage/débordement,
+  références de tableaux interdites, héritage non public et auto-héritage.
+  Retirer la référence figée à `Gs++ 0.22` du diagnostic d'héritage FR/EN,
+  sans changer la règle. Corriger l'accès prématuré à l'index final des fonctions
+  dans le bootstrap pour les appels d'initialiseurs d'énumération : réutiliser
+  la cible déjà résolue, sans déplacer les passes. Matrice ciblée : 64 refus
+  traduits, 32 succès FR/EN et 320 contrats altérés rejetés, trois unités,
+  inclusions UTF-8, fichiers remplacés et copie/déplacement/déchargement.
+  Modifications hôtes uniquement, image native inchangée ;
+- ajout du 2026-10-09 : traduire le code 36 (nombre d'expressions incorrect)
+  et le code 41 explicite (argument de tableau non agrégé), avec le champ
+  canonique, alias compris. `Detail` 36 indexe désormais le champ, non le
+  nombre d'arguments ; nombre/genre des enfants contrôlés dans l'AST possédé,
+  même classe pour champ et constructeur, aucune résolution hôte. Le code 41
+  par défaut reste numérique : son message exige les types résolus, sans
+  approximation. Utiliser l'hôte et l'image courante ensemble ; contexte natif
+  36 enrichi, sans nouveau code/export ni changement de format, de règle du
+  langage ou de disposition d'ABI. Matrice consolidée : 160 refus traduits,
+  8 cas par défaut réservés numériques, 58 succès FR/EN, 586 contrats/textes
+  et 62 indices/marqueurs natifs altérés refusés ;
+- ajout du 2026-10-08 : traduire les codes 38/40 depuis la déclaration du champ
+  désignée par `Detail` et l'origine native exacte : valeur par défaut interdite
+  sur un objet classe et constante non initialisée. Classe, drapeau de valeur
+  par défaut, nombre de symboles et nom possédé vérifiés, sans interpréter les
+  types opaques ni refaire les plans de constructeur ; indices vers un autre
+  champ, même dans la même classe, rejetés. Traduction hôte uniquement : aucun
+  changement de l'image native, des codes, exports, formats, règles du langage
+  ou ABI ; bilans de la matrice consolidée ci-dessus ;
+- ajout du 2026-10-08 : distinguer le code 33 « champ absent » (`Detail` 0)
+  du champ/alias hérité non directement initialisable (`Detail` 1) dans la passe
+  Gs++, puis traduire le nom écrit et les messages FR/EN exacts sans résolution
+  hôte. Alias bilingues du même code ; image native modifiée, sans nouveau code,
+  export, format, règle du langage ni changement de disposition d'ABI ;
+  bilans de la matrice consolidée ci-dessus. Héritage public transitif,
+  champs privés/protégés, alias hérités,
+  tableaux et priorités vérifiés ;
+- ajout du 2026-10-08 : traduire les codes 34/35 depuis le champ canonique
+  désigné par `Detail`, sans nouvelle résolution de champ/alias/type. Noms réels
+  des champs, doublons et ordre incorrect, alias directs/chaînés, namespaces et
+  priorités avant les arguments inconnus/entre constructeurs invalides ;
+  bilans de la matrice consolidée ci-dessus. Cette traduction 34/35 reste hôte :
+  elle ne change ni l'image native, ni les codes, exports, formats, règles du
+  langage ou ABI ;
+- ajout du 2026-10-08 : traduire le code 25 depuis l'index de symbole `Detail`
+  et l'AST possédé, sans republier les préfixes sémantiques ; distinguer champs
+  privés/protégés (nom écrit, alias compris), méthodes (nom déclaré, appels
+  qualifiés ou via alias) et expressions d'opérateurs membres inaccessibles ;
+  vérifier champs de structures/unions/classes, champs callables, héritage,
+  unités distinctes et indices natifs incohérents. Aucun nouveau code/export
+  ni changement d'ABI dans la traduction hôte ;
+- accepter les sections de visibilité des champs de structures/unions dans
+  l'analyseur des déclarations Gs++, comme le bootstrap. Les membres exécutables
+  restent réservés aux classes ; image native modifiée, sans nouvelle règle
+  du langage, code, export, format ni changement d'ABI ;
+- ajout du 2026-10-08 : traduire les quatre variantes contextuelles du code 23,
+  `.` / `->`, accès membre ou cible d'appel, sans résolution de type hôte ;
+  114 refus traduits et 28 succès FR/EN dans la matrice contextuelle,
+  224 contextes et huit marqueurs altérés refusés ;
+- corriger les récepteurs d'énumération dans la passe Gs++ : refuser au code 23
+  avant la recherche de membre, au lieu du code 24 incorrect. Noms qualifiés
+  d'énumérateurs toujours valides ; image native modifiée, sans nouvel export,
+  format ni changement d'ABI ;
+- ajouter `SemantiqueAssemblee::PeutTraduireDiagnostic()` et `ExigerValide()` :
+  messages invariants et contextuels français/anglais, position originale
+  possédée, utilisables après copie/déplacement/déchargement, sans relecture ni
+  appel natif ;
+- contrôler les succès/refus conservés et séparer contrat incohérent, diagnostic
+  source exact et famille encore numérique ; noms et types résolus ne sont pas
+  inventés à partir de hachages opaques ;
+- traduire les quatre variantes des codes 46 et 62 depuis leur contexte
+  possédé : tableau local/global via le genre de la déclaration ; opération
+  logique/condition via `Detail` 0/1 et l'expression concernée ; alias bilingues
+  `ConditionNonScalaire` / `NonScalarCondition`, sans nouveau code ni export ;
+- traduire le code 18 depuis la tranche de texte de la référence possédée :
+  lexage limité au nom, qualifications avec espaces/commentaires, UTF-8 et
+  `soi` / `this` ; vérifier le hachage sans l'inverser. Références `parent` /
+  `super` encore numériques, aucun nouveau code/export ni changement de l'image ;
+- traduire aussi le code 19 depuis le nom source possédé de l'adresse surchargée
+  ambiguë : nombre de candidats cohérent, référence hors cible directe d'appel ;
+  vérifier callbacks, conditions, globales et groupes libres/membres, sans
+  nouvelle sélection de surcharge d'après un type de callback destinataire ;
+- traduire le code 24 depuis un accès membre unique : nom simple UTF-8,
+  position de `.` / `->`, accès chaînés, méthodes absentes et priorités, sans
+  nouvelle résolution ni modification du frontend natif. Refuser qualifications,
+  mots-clés, drapeaux ou candidats incohérents comme erreurs hôtes ;
+- corriger le contrôle absent des conditions `si` / `tantque` dans la passe
+  Gs++ : résoudre et exiger une valeur scalaire avant le corps/les branches,
+  sans changer l'ABI ni les exports ; 60 refus traduits et 16 succès FR/EN ciblés,
+  96 contextes et huit marqueurs natifs altérés refusés ;
+  vérifier aussi les surcharges `==` / `!=` renvoyant une structure refusée comme
+  condition, sans rendre `&&` / `||` surchargeables ;
+- étendre les comparaisons différentielles aux messages et au rendu `GS1001`
+  dans les deux langues ; ajouter une matrice de production avec unités,
+  inclusions UTF-8, BOM/CRLF, instantanés détruits, fichiers remplacés et résultats
+  altérés. Validation courante dans le bilan du frontend ;
+- matrice des noms/accès : 192 refus traduits, dont 36 adresses surchargées ambiguës,
+  36 membres introuvables et 72 accès interdits, quatre réservés numériques et
+  46 succès FR/EN ; 1 218 contrats/textes et six indices natifs altérés refusés
+  comme erreurs hôtes, sans transformer
+  une erreur lexicale interne en diagnostic source ; durée de vie indépendante
+  de l'image et des fichiers ;
+- validation précédente, callbacks du 10 octobre : Windows CTest 5/5, GNU/Linux CTest 6/6, solution et validation
+  native VS 2026 réussies ; conformité 20/20 sur chaque chaîne, intégration GNU/Linux réussie ; 920 comparaisons bilingues,
+  47 codes invariants, trois codes contextuels, noms/accès des codes 18/19/24/25
+  et champs/initialiseurs des codes 33/34/35/36/38/40 et 41 explicite,
+  94 corpus assemblés et 80 résultats altérés d'invariants ; les 2 751 refus
+  historiques gardent leur compteur distinct ; images identiques et vérifiées
+  de 584 431 octets et 107 exports. Nouvelle image conversions : 585 279 octets,
+  107 exports, identique sur les trois constructions et validée par les trois
+  vérificateurs ; ajout de 848 octets à l'image précédente ;
+- tranche locale sans commit/push/release ni paquet ; alpha.10, formats et ABI
+  inchangés. Un dernier commit/release de la série 0.27.0 est prévu avant le
+  passage à 0.28.0, qui sera annoncé explicitement ; traduction complète,
+  pilote et backend restent à poursuivre.
+
+### English
+
+- 2026-10-15 cast extension: retain written target type names, including nested
+  callbacks, in leaves 43 `NomTypeConversion` / `CastTypeName`, before the single
+  operand of expression 31. Own spans, hashes, namespace, opaque complete target
+  type fingerprint and lexical offset; `Detail` selects the exact ambiguous name
+  at the cast position. Check leaves, predecessors, units/origins/ordinals,
+  operand and same-position ancestors; bounded `convertir <` / `cast <` prefix
+  lexing without host resolution. Validate the target before its operand,
+  without introducing generic expression reordering. Legacy ASTs without node 43
+  keep numeric `Detail 0` at the same origin. Extend allocation/inclusion regressions
+  to named callback casts. Focused 121 matrix: 190 translated rejections (30 casts,
+  28 callbacks, 48 directly named types, 24 bases), no reserved numeric cases,
+  24 numeric legacy aliases, 24 legacy bases and 106 legacy type/cast contexts,
+  104 French/English successes, 154 priority checks, 2,700 rejected altered contracts/
+  name spans, 312 native markers and 428 AST inputs. AST output and native image
+  change; codes/exports, 64-byte AST layout, 1.0 formats and ABI sizes remain unchanged.
+  Windows CTest 5/5, GNU/Linux CTest 6/6, native VS 2026 solution/validation,
+  conformity 20/20 on each chain and GNU/Linux integration passed;
+- previous 2026-10-10 callback tranche: collect written names during recursive parsing,
+  return then parameters, and produce nominal leaves 42 `NomTypeCallback` /
+  `CallbackTypeName` under the same typed declarations. Retain lexical order,
+  name spans/hashes, namespace, opaque complete source-type fingerprint and lexical
+  offset; `Detail` selects the exact ambiguous name at the declaration position.
+  Check leaves/predecessors/units/origins/ordinals and bounded prefix lexing,
+  without host resolution; ignore leaves in expression traversal and overload/
+  prototype normalization. Retain the first type failure instead of replacing it
+  with a later ambiguity. Error 121 matrix: 160 translated rejections (28 callbacks,
+  48 directly named types, 24 bases), two numeric casts, 24 numeric legacy aliases,
+  24 legacy bases and 76 legacy types, 92 French/English successes, 128 priority checks,
+  2,162 rejected altered contracts/name spans, 252 native markers and 328 AST inputs.
+  Nested callbacks, ambiguous names after valid ones, overloads/prototypes and
+  lifetime checks covered. Variable/member probes do not allocate nominal metadata;
+  an additional bilingual inclusion corpus covers injected allocation budgets and
+  transactional outputs. Legacy ASTs without node 42 retain numeric `Detail 0`.
+  AST output and native image change; preserve codes/exports, the 64-byte AST
+  layout, 1.0 formats and ABI sizes;
+- previous 2026-10-10 directly named type tranche: add immediate nominal child 41
+  `NomTypeDeclare` / `DeclaredTypeName` to global/local/field, return and parameter
+  declarations, including constructor parameters. Own the qualified name, its
+  hash, matching namespace, opaque full source-type fingerprint and lexical
+  offset (`Drapeaux`, not a property mask). `Detail` indexes 41; retain the declaration
+  position. Check parent/leaf, unit/bounds, hashes/origins/ordinals and bounded
+  prefix lexing without host resolution. Defer ambiguous globals until after
+  signatures and class checks, then process each global fully in order. Do not
+  count 41 as an expression/argument; compare parameter subtrees when normalizing
+  overloads/prototypes, preserving the implicit receiver. Before callbacks:
+  132 translated rejections (48 directly named types, 24 bases), four numeric
+  callbacks/casts, 24 numeric legacy aliases, 24 legacy bases and 48 legacy types,
+  76 French/English successes, 90 priority checks, 1,750 rejected altered contracts/name
+  spans, 204 rejected native markers and 248 rejected AST inputs. Primitive/callback
+  types have no child 41; legacy ASTs without it keep numeric `Detail 0`. AST output
+  and native image change; preserve codes/exports, the 64-byte AST layout,
+  1.0 formats and ABI sizes;
+- previous 2026-10-10 base tranche: add nominal node 40 `BaseClasse` / `ClassBase` as an
+  immediate class child, without a symbol or evaluated expression. In inheritance
+  error 121, `Detail` indexes the written base and the diagnostic retains the
+  class position. Check parent/leaf, name spans/hashes, unit/origins, exact lexical
+  ordinal and the resolution-free inheritance phase; bounded lexing of the name
+  and `:` with optional public visibility, without host type/import resolution.
+  Before directly named types: 84 translated rejections (24 bases), 14 numeric types,
+  24 numeric legacy aliases and 24 numeric legacy bases, 40 French/English
+  successes, 52 priority checks, 942 rejected altered contracts/name spans,
+  108 rejected native markers and 88 rejected AST inputs. Legacy ASTs without
+  child 40 keep numeric `Detail 0`. Bootstrap AST comparisons include qualified
+  bases with comments; earlier-phase and public-inheritance priorities retained.
+  AST output and native image change; preserve the 64-byte AST layout,
+  codes/exports, 1.0 formats and ABI sizes;
+- 2026-10-10 initial tranche: translate ambiguous imported names (121) in root-alias
+  targets 38 and expression references 24 at their owned origins. Check `Detail 0`,
+  complete symbol count, name span/hash, unit, parent/leaf and origins; reuse the
+  alias-target lexical ordinal check. No import lookup, candidate reconstruction
+  or assumed resolution-free phase. Matrix: 60 translated rejections, 16 numeric
+  type/base cases, 24 numeric legacy aliases, 24 French/English successes,
+  32 priority checks, 534 rejected altered contracts/name spans and 60 rejected
+  altered native markers; qualified/UTF-8/commented names, includes, interfaces,
+  units, replaced files and copy/move/unload lifetime checks. Types, bases,
+  callbacks/casts without nominal names and other contexts remain numeric.
+  Host-only translation; unchanged native image/AST, codes/exports, formats and ABI;
+- 2026-10-10 addition: translate unknown used namespaces (120) from the written
+  name in existing node 36, at the `utilisant` / `using` position.
+  Check a unique root leaf, unit, origins, name span/hash, `Detail 0`, a complete
+  possibly empty symbol table and no resolutions, without host namespace lookup
+  or import resolution. Matrix: 60 translated rejections, 24 French/English
+  successes, 24 priority checks, 564 rejected altered contracts/name spans and
+  72 rejected altered native markers; 128-segment qualifications, UTF-8/comments,
+  later declarations, interfaces, cross-unit cases, no-symbol phase, replaced
+  files and copy/move/unload lifetime checks. Root name conflicts precede 120;
+  covered priorities before alias/value/body errors match the bootstrap, without
+  introducing a global rule across passes. Host-only translation; unchanged
+  native image, codes/exports, formats and ABI;
+- 2026-10-10 addition: translate root-alias cycles (109) in namespaces using
+  owned nominal segments 39, outermost to innermost, after target child 38.
+  Check names and cumulative prefix hashes, origins, unit, lexical order and
+  leaf shape; retain segment positions in the bootstrap for the AST oracle.
+  `Detail` remains the entry symbol ordinal, distinct from the revisited alias,
+  even across units/namespaces. Consolidated matrix: 72 translated rejections,
+  32 legacy numeric namespace ASTs, 24 French/English successes, 24 priority
+  checks, 704 rejected altered contracts/name spans, 54 segment input guards
+  and 50 rejected altered native ordinals; nested/reopened namespaces,
+  UTF-8/comments, a 128-alias chain, cross-unit cases and lifetime checks.
+  No guessed legacy prefixes or host graph resolution. Native image and AST
+  content changed; unchanged 64-byte nodes, codes/exports, 1.0 formats and ABI sizes;
+- 2026-10-10 addition: translate ambiguous overloaded-function aliases (112)
+  from the written target in child 38 of the alias at the rejection origin.
+  `Detail` remains the overload count, at least 2 and bounded by the total
+  number of function nodes; no candidate reconstruction or authentication.
+  Check names/hashes, parent, unit, origins and lexical order as for code 110.
+  Matrix: 50 translated rejections, 50 legacy numeric ASTs, 24 French/English
+  successes, 24 priority checks, 638 rejected altered contracts/name spans and
+  48 rejected altered native counts; methods, imported groups, merged interface
+  prototypes, a 128-alias chain, cross-unit cases, replaced files and copy/move/unload.
+  Legacy ASTs without child 38 stay numeric and retain their overload counts.
+  Host-only translation; unchanged native image, codes/exports, formats and ABI.
+  Code 111 remains numeric without an established differential source matrix;
+- 2026-10-10 addition: translate unknown root-alias targets (110) from their
+  owned written names, including qualifications, imports and namespaces.
+  A nominal child node 38, `CibleAlias` / `AliasTarget`, follows the alias;
+  `Detail` indexes that child while the rejection stays on the current alias.
+  Check names, hashes, origins, units and lexical order without host target,
+  import or graph resolution. Retain the target position in the bootstrap AST
+  for the oracle and accept node 38 in the historical qualified-name hash check.
+  Matrix: 48 translated rejections, 48 legacy numeric ASTs, 24 French/English
+  successes, 16 priority checks, 638 rejected altered contracts/name spans and
+  60 rejected altered native nominal indices; a 128-alias chain, cross-unit
+  cases, UTF-8/includes and copy/move/unload checks. Legacy ASTs without child 38
+  stay numeric with `Detail 0`; no symbol or evaluated expression is added.
+  Native image changed; unchanged 64-byte nodes, codes/exports, 1.0 formats
+  and ABI sizes. Code 111 and code 109 cycles needing unowned namespace
+  prefixes remain numeric;
+- 2026-10-09 addition: translate root-alias cycles (109) when the revisited
+  alias's complete name is owned, including `API::Vue`, UTF-8 and comments.
+  `Detail` remains the entry symbol ordinal; the entry and rejection may belong
+  to different units/namespaces. Check both names and origins without target
+  lookup or graph reconstruction. Matrix: 40 translated rejections,
+  16 reserved numeric namespace cases, 24 French/English successes, 16 priority
+  checks, 452 rejected altered contracts/name spans and 50 rejected altered
+  native ordinals; a 128-alias chain, includes, replaced files, copies/moves and
+  unloads. Revisited aliases declared in namespaces and code 111 remain
+  numeric, no guessed prefixes; codes 110/112 translations were added on October 10.
+  Host-only translation; unchanged native image,
+  codes/exports, formats and ABI;
+- 2026-10-09 addition: translate unknown field-alias targets (108) using their
+  owned names in a nominal child node 37, `CibleAliasChamp` / `FieldAliasTarget`.
+  `Detail` indexes that AST node; the rejection position stays on the current
+  alias. Verify canonical shape, parent, unit, origins and names/hashes without
+  target or base-field lookup. Retain the target position in the bootstrap AST
+  for the oracle without changing language rules. Matrix: 32 translated
+  rejections, 32 legacy numeric ASTs, 418 rejected altered contracts/name spans
+  and 40 rejected altered native nominal indices; a 128-alias chain,
+  UTF-8/includes and lifetime checks. All 16 alias-priority checks now translate.
+  A nominal AST child, no symbol or evaluated expression; legacy ASTs without
+  the child keep numeric code 108 with `Detail 0`. Native image changed,
+  unchanged codes/exports, formats and ABI sizes;
+- 2026-10-09 addition: translate field-alias cycles (107) using the owned name
+  of the revisited alias; distinguish its position from the entry alias's symbol
+  ordinal retained in `Detail`, including an acyclic prefix. Verify both names,
+  the unit and common aggregate without target lookup or repeating cycle
+  detection. Matrix: 32 translated rejections,
+  24 French/English successes, 16 translated priority checks,
+  322 rejected altered contracts/name spans and 40 rejected altered native
+  ordinals; self-cycles, prefixes, a 128-alias chain, includes and copy/move
+  after unload. Host code only, unchanged native image, codes/exports, formats and ABI;
+- 2026-10-09 addition: translate code 14 using the exact name of a field alias
+  conflicting with a direct field; preserve the alias position even when it
+  precedes the field, with `Detail` pointing to the field AST node. Verify names,
+  kinds, unit and common aggregate without host candidate lookup. Align native
+  name priorities per aggregate: fields before aliases, alias names in order
+  before their targets, field/alias conflicts before the same alias's duplicate.
+  Matrix: 32 translated rejections, 24 French/English successes, 16 name-priority
+  checks, 290 rejected altered contracts/name spans and 32 rejected altered
+  native indices. Native image changed without new codes/exports, formats or ABI;
+- 2026-10-09 addition: translate duplicate fields, field aliases, enumerators
+  and locals (12/13/15/17), using both owned simple names and the native `Detail`
+  pointing to the previous AST node; verify kinds, order, unit and scope without
+  new resolution. Add the invariant duplicate-parameter message (16). Matrix:
+  40 translated rejections, 32 French/English successes, 298 rejected altered
+  contracts/name spans and 32 rejected altered native indices. Fix Gs++ duplicate
+  enumerator priority before its own initializer, but after errors in earlier
+  values; eight dedicated French/English regressions. Native image changed
+  without new codes/exports, formats or ABI changes;
+- 2026-10-09 addition: translate eight more invariant codes,
+  39/85/86/87/88/101/113/115: required constructors for default field values,
+  non-integer/non-constant/out-of-range/overflowing enum values, unsupported
+  array references, non-public inheritance and self-inheritance. Remove the
+  hard-coded `Gs++ 0.22` reference from the French/English inheritance diagnostic
+  without changing the rule. Fix premature access to the final function index
+  in bootstrap enum initializer calls by retaining the already-resolved target,
+  without reordering passes. Targeted matrix: 64 translated rejections,
+  32 French/English successes and 320 rejected altered contracts; three units,
+  UTF-8 includes, replaced files and copy/move/unload checks. Host changes only,
+  unchanged native image;
+- 2026-10-09 addition: translate code 36 (incorrect expression count) and
+  explicit code 41 (non-aggregate array argument), using the canonical field,
+  including aliases. Code 36 `Detail` now indexes the field rather than storing
+  the argument count; check child counts/kinds in the owned AST and require the
+  same class for field and constructor, without host resolution. Default code
+  41 stays numeric because its message requires resolved types, without
+  approximation. Use the matching host and current image together; enriched
+  native code 36 context without new codes/exports, formats, language rules or
+  ABI layout changes. Consolidated matrix: 160 translated rejections, 8 reserved
+  numeric default cases, 58 French/English successes, 586 rejected altered
+  contracts/name spans and 62 rejected altered native indices/markers;
+- 2026-10-08 addition: translate codes 38/40 from the field declaration indexed
+  by `Detail` and its exact native error origin: forbidden class-object default
+  values and uninitialized const fields. Verify class, default-value flag,
+  symbol count and owned name without interpreting opaque types or rebuilding
+  constructor plans; reject indices pointing at another field, including one in
+  the same class. Host translation only: no change to the native image, codes,
+  exports, formats, language rules or ABI; see consolidated matrix above;
+- 2026-10-08 addition: distinguish code 33 missing fields (`Detail` 0) from
+  inherited fields/aliases that cannot be initialized directly (`Detail` 1)
+  in the Gs++ pass, then translate the written name and exact French/English
+  messages without host resolution. Bilingual aliases share the existing code;
+  native image changed without new codes, exports, formats, language rules or
+  ABI layout changes. See consolidated matrix above. Public transitive
+  inheritance, private/protected fields, inherited aliases, arrays and priorities;
+- 2026-10-08 addition: translate codes 34/35 from the canonical field selected
+  by `Detail`, without resolving fields/aliases/types again. Actual field names,
+  duplicates and incorrect order, direct/chained aliases, namespaces and error
+  priority before unknown arguments/across invalid constructors; see the
+  consolidated matrix above. No change to the native image, codes, exports,
+  formats, language rules or ABI from this 34/35 host translation;
+- 2026-10-08 addition: translate code 25 from the `Detail` symbol index and
+  owned AST without publishing semantic prefixes; distinguish private/protected
+  fields (written name, including aliases), methods (declared name, qualified
+  or aliased calls) and inaccessible member-operator expressions; check
+  struct/union/class fields, callable fields, inheritance, separate units and
+  inconsistent native indices.
+  No new code/export or ABI change in host translation;
+- accept struct/union field visibility sections in the Gs++ declaration parser,
+  matching the bootstrap. Executable members remain class-only; native image
+  changed without new language rules, codes, exports, formats or ABI changes;
+- 2026-10-08 addition: translate the four contextual code 23 variants,
+  `.` / `->`, member access or call target, without host type resolution;
+  contextual matrix: 114 translated rejections, 28 French/English successes,
+  224 rejected altered contexts and eight rejected native markers;
+- fix enum receivers in the Gs++ pass: reject with code 23 before member lookup,
+  instead of the incorrect code 24. Qualified enumerator names remain valid;
+  native image changed without new exports, formats or ABI layout changes;
+- add `SemantiqueAssemblee::PeutTraduireDiagnostic()` and `ExigerValide()`:
+  invariant and contextual French/English messages with owned original positions,
+  usable after copying/moving/unloading without rereads or native calls;
+- check retained successes/rejections and separate inconsistent contracts, exact
+  source diagnostics and still-numeric families; do not invent names or resolved
+  types from opaque hashes;
+- translate the four variants of codes 46 and 62 from owned context: declaration
+  kind for local/global arrays, `Detail` 0/1 and the affected expression for
+  logical operation/condition; bilingual `ConditionNonScalaire` /
+  `NonScalarCondition` aliases without a new code or export;
+- translate code 18 from the owned reference name span: lex only this name,
+  including qualifications with whitespace/comments, UTF-8 and `soi` / `this`;
+  check the hash without reversing it. Reserved `parent` / `super` references
+  remain numeric; no new code/export or change to the native image;
+- also translate code 19 from the owned source name of the ambiguous overloaded
+  address: coherent candidate count, reference outside a direct call target;
+  check callbacks, conditions, globals and mixed free/member groups, without
+  introducing overload selection from the destination callback type;
+- translate code 24 from a unique member access: simple UTF-8 name, `.` / `->`
+  position, chained accesses, missing methods and priorities, without new
+  resolution or native frontend changes. Reject inconsistent qualifications,
+  keywords, flags or candidates as host errors;
+- fix missing `if` / `while` condition checks in the Gs++ pass: resolve and require
+  a scalar value before visiting branches/body, without ABI or export changes;
+  60 translated rejections and 16 French/English successes; reject 96 altered
+  contexts and eight unknown native markers;
+  also check valid `==` / `!=` overloads returning a struct rejected as a
+  condition, without making `&&` / `||` overloadable;
+- extend differential comparisons to both messages and `GS1001` rendering in
+  both languages; add a production matrix covering units, UTF-8 includes,
+  BOM/CRLF, destroyed snapshots, replaced files and altered results. Current
+  validation is recorded in the frontend report;
+- name/access matrix: 192 translated rejections, including 36 ambiguous overloaded
+  addresses, 36 unknown members and 72 inaccessible accesses, four reserved
+  numeric cases and 46 French/English successes; reject 1,218 altered contracts/name
+  spans and six altered native indices as host
+  errors, without turning an internal lexical error into a source diagnostic;
+  independent lifetime after unloading and replacing source files;
+- previous callback validation, 10 October: Windows CTest 5/5, GNU/Linux CTest 6/6, native VS 2026 solution
+  and validation passed; conformity 20/20 on each chain, GNU/Linux integration passed; 920 bilingual comparisons,
+  47 invariant codes,
+  three contextual codes, code 18/19/24/25 names/accesses and code 33/34/35/36/38/40 fields/initializers and explicit code 41, 94
+  assembled corpora and 80 altered invariant results; the 2,751
+  historical rejections keep their separate counter; identical verified images
+  with 584,431 bytes and 107 exports. New cast image: 585,279 bytes, 107 exports,
+  identical across all three builds and accepted by all three verifiers;
+  848 bytes added to the previous image;
+- local work without commit/push/release or package; alpha.10, formats and ABI
+  unchanged. One final 0.27.0-series commit/release is planned before the
+  explicitly announced 0.28.0 transition; full translation,
+  driver and backend work remain pending.
+
+## Sémantique assemblée possédée — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- ajouter `AnalyserSemantiqueAssemblee` et les miroirs ABI sémantiques au
+  compilateur hôte ; charger à la demande la paire historique
+  `AnalyserSemantiqueUnites` / `AnalyzeUnitSemantics`, sans nouvel export natif ;
+- posséder ensemble l'AST d'entrée, les symboles et résolutions, l'isolation des
+  unités et les positions originales des refus numériques ; aucune relecture,
+  aucun catalogue ni passe syntaxique/sémantique C++ dans cet adaptateur ;
+- copies privées, contrôles d'entrée, mesure/publication, limites et gardes :
+  jeter les préfixes natifs sur refus/exception et refuser les contrats altérés ;
+  conserver le sens particulier du hachage/décalage des étapes de durée de vie ;
+- étendre les matrices normalisées et incluses existantes aux sorties possédées,
+  avec oracle bootstrap pour les refus et comparaison binaire aux exports
+  historiques pour les succès ; tester contrat, limites, vide/BOM, remplacement
+  des fichiers, destruction des catalogues, copie/déplacement et déchargement ;
+- corriger la fausse allocation échouée d'un AST sans symbole : les tableaux
+  vides sont facultatifs, les imports et tableaux par nœud restent contrôlés ;
+- validation : CTest Windows 5/5, GNU/Linux 6/6, solution et validation native
+  VS 2026 réussis, conformité 20/20 par chaîne ; 94 contrats/exceptions et
+  40 limites/entrées bilingues, huit cas sans symbole, compteur historique
+  de 2 751 refus inchangé ; images identiques de 570 479 octets, 107 exports ;
+- tranche locale en alpha.10, formats 1.0 et ABI 1 inchangés ; pas de commit,
+  push, release ni paquet. Validation courante dans le bilan du frontend ;
+  diagnostics sémantiques bilingues complets, pilote et backend restent à raccorder.
+
+### English
+
+- add `AnalyserSemantiqueAssemblee` and semantic ABI mirrors to the host compiler;
+  lazily load the historical `AnalyserSemantiqueUnites` / `AnalyzeUnitSemantics`
+  pair, without adding a native export;
+- own input AST, symbols and resolutions together, preserving unit isolation
+  and original positions for numeric rejections; no rereads, catalogs or C++
+  syntax/semantic passes inside this adapter;
+- private copies, input checks, measure/publish consistency, limits and guards:
+  discard native prefixes on rejection/exception and reject altered contracts;
+  preserve the special meaning of lifetime-step type hashes/offsets;
+- extend existing normalized/include matrices to owned outputs, using the
+  bootstrap oracle for rejections and byte comparisons to historical exports
+  for successes; exercise contracts, limits, empty/BOM input, replaced files,
+  destroyed catalogs, copy/move and unloading;
+- fix the false allocation failure for an AST without symbols: empty symbol
+  tables are optional while imports and per-node tables remain checked;
+- validation: Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 solution and
+  validation passed, conformance 20/20 per toolchain; 94 contracts/exceptions,
+  40 bilingual limits/inputs, eight cases without symbols, unchanged historical
+  2,751-rejection counter; identical 570,479-byte images with 107 exports;
+- local alpha.10 tranche with unchanged formats 1.0 and ABI 1; no commit, push,
+  release or package. Current validation recorded in the frontend report;
+  full bilingual semantic diagnostics, driver and backend integration pending.
+
+## Diagnostics d'assemblage possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- ajouter l'export `AssemblerDeclarationsNormaliseesAvecDiagnostic` et son alias
+  anglais, avec requête additive de 40 octets ; les chemins lexicaux Gs++
+  produisent le nom qualifié des conflits avant libération de l'arène ;
+- posséder `NomConflit` dans `DeclarationsAssemblees` et traduire les refus avec
+  `ExigerValide()` en messages français/anglais exacts, position originale comprise,
+  sans nouvelle lecture ni appel natif ; un conflit historique sans nom reste
+  numérique et ne permet pas un diagnostic exact ;
+- vérifier les nouveaux exports à la demande, borner/mesurer/copier le nom et
+  garder les trois sorties d'assemblage intactes sur refus ; UTF-8, pointeurs,
+  capacités, garde et cohérence entre appels contrôlés côté hôte ;
+- comparer 32 corpus bilingues de normalisation (64 refus), un refus syntaxique bilingue,
+  les 134 refus syntaxiques possédés et les 28 corpus bilingues d'inclusions ;
+  tester 40 contrats altérés, huit capacités natives, limites/entrées/exceptions,
+  sept nouveaux exports altérés et durée de vie après déchargement ;
+- CTest Windows 5/5, GNU/Linux 6/6, validation native VS 2026 et conformité
+  20/20 par chaîne réussis ; trois images identiques de 570 319 octets et
+  107 exports, 2 751 refus sémantiques inchangés ;
+- version alpha.10, formats 1.0, ABI 1 et contrats historiques inchangés ;
+  raccord sémantique/backend et diagnostics du pilote encore à réaliser.
+  Tranche locale, sans commit/push/release ni paquet ; validation courante
+  consignée dans le bilan du frontend.
+
+### English
+
+- add `AssemblerDeclarationsNormaliseesAvecDiagnostic` and its English alias,
+  using an additive 40-byte request; Gs++ lexical paths produce the qualified
+  conflict name before the arena is released;
+- own `NomConflit` in `DeclarationsAssemblees` and translate rejections with
+  `ExigerValide()` into exact French/English messages at the original position,
+  without rereads or native calls; a historical conflict without a name remains
+  numeric and cannot provide an exact diagnostic;
+- lazily validate the new exports; bound/measure/copy the name while preserving
+  all three assembly outputs on rejection; host-side UTF-8, pointer/capacity,
+  guard and cross-call consistency checks;
+- compare 32 bilingual normalization corpora (64 rejections), one bilingual syntax rejection,
+  all 134 owned syntax rejections and 28 bilingual include corpora; exercise
+  40 altered contracts, eight native capacities, limits/inputs/exceptions,
+  seven new altered exports and lifetime after unloading;
+- Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 validation and conformance
+  20/20 per toolchain passed; three identical 570,319-byte images with 107
+  exports, unchanged 2,751 semantic rejections;
+- preserve alpha.10, formats 1.0, ABI 1 and historical contracts; semantic/backend
+  integration and driver diagnostics remain pending. Local tranche, no commit,
+  push, release or package; current validation recorded in the frontend report.
+
+## Assemblage multi-unités possédé — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
+
+### Français
+
+- ajouter `AssemblerDeclarationsPreparees` et `DeclarationsAssemblees` pour
+  posséder les sorties brutes/normalisées de plusieurs instantanés, sans lecture
+  ni parseur syntaxique C++ ; remapper les catalogues, conserver unités/modes
+  et origines des définitions sélectionnées. Le frontend Gs++ réanalyse les
+  textes préparés, pas les AST mono-unités ;
+- centraliser les miroirs ABI d'assemblage et vérifier à la demande les exports
+  FR/EN dans le chargeur de production. Limites cumulées, copies privées,
+  mesure/publication, structure/noms/positions et trois gardes de sortie ;
+- comparer les sorties possédées sur 28 corpus bilingues existants, refuser
+  82 contrats et 14 exports altérés ; tester limites, entrées invalides,
+  exceptions, instantanés et durée de vie ; refus numériques sans arbre partiel ;
+- CTest Windows 5/5, GNU/Linux 6/6, construction/validation native VS 2026 et
+  conformité 20/20 par chaîne ; 2 751 refus sémantiques inchangés. Trois images
+  identiques vérifiées de 566 495 octets et 105 exports ;
+- préserver alpha.10, formats 1.0, ABI 1 et bootstrap par défaut. Traduction
+  des conflits de normalisation et raccord sémantique/backend encore à faire ;
+  nouvelle tranche locale, sans commit/push/release ni paquet.
+
+### English
+
+- add `AssemblerDeclarationsPreparees` and `DeclarationsAssemblees` for owned
+  raw/normalized outputs from multiple snapshots, without rereads or a C++
+  syntax parser; remap catalogs, preserve units/modes and selected-definition
+  origins. The Gs++ frontend reparses prepared text, not single-unit ASTs;
+- centralize assembly ABI mirrors and lazily validate FR/EN exports in the
+  production loader. Cumulative limits, private copies, measure/publication,
+  structure/names/positions and three output guards;
+- compare owned outputs across 28 existing bilingual corpora, reject 82 altered
+  contracts and 14 altered exports; test limits, invalid inputs, exceptions,
+  snapshots and lifetime; numeric rejections without partial trees;
+- Windows CTest 5/5, GNU/Linux 6/6, native VS 2026 build/validation and
+  conformance 20/20 per toolchain; unchanged 2,751 semantic rejections. Three
+  identical verified images, 566,495 bytes and 105 exports;
+- preserve alpha.10, formats 1.0, ABI 1 and the default bootstrap. Normalization
+  conflict translation and semantic/backend integration remain pending; new
+  local tranche without a commit, push, release or package.
+
 ## Portabilité du corpus Unicode Windows — 2026-10-07
 
 ### Français

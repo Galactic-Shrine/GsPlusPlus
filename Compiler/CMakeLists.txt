@@ -5,6 +5,8 @@ set(GSPP_COMPILER_SOURCES
     src/CatalogueInclusions.cpp
     src/ExpanseurInclusions.cpp
     src/DeclarationsPreparees.cpp
+    src/AssemblageDeclarationsPreparees.cpp
+    src/SemantiqueAssemblee.cpp
     src/AnalyseurSyntaxique.cpp
     src/AnalyseurSemantique.cpp
     src/GenerateurX64.cpp
@@ -56,5 +58,5 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
    AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
     target_compile_options(gsechargeur PRIVATE -maccumulate-outgoing-args)
     target_compile_options(gseload PRIVATE -maccumulate-outgoing-args)
-    set_source_files_properties(src/CatalogueInclusions.cpp src/DeclarationsPreparees.cpp PROPERTIES COMPILE_OPTIONS -maccumulate-outgoing-args)
+    set_source_files_properties(src/CatalogueInclusions.cpp src/DeclarationsPreparees.cpp src/AssemblageDeclarationsPreparees.cpp src/SemantiqueAssemblee.cpp PROPERTIES COMPILE_OPTIONS -maccumulate-outgoing-args)
 endif()

@@ -10,6 +10,14 @@ composants n’est pas stabilisé.
 
 ## Jalons
 
+La version courante reste `0.27.0-alpha.10`. Le passage à `0.28.0` sera annoncé
+explicitement au mainteneur au moment du changement de version ; les travaux
+locaux ci-dessous ne constituent pas ce passage.
+
+Avant ce changement, un dernier commit et une release de la série `0.27.0`
+seront préparés et validés. Ce jalon est prévu, pas encore réalisé ; la version
+reste inchangée pendant les travaux locaux.
+
 Le commit signé [`fefd44a`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/fefd44a34d900feb4d23d923b215a835b073f2c3)
 publie les tranches jusqu'aux diagnostics syntaxiques possédés, à 2 751 refus
 sémantiques. GitHub confirme sa signature vérifiée. Sa
@@ -18,9 +26,306 @@ réussit sous Linux mais échoue sur les deux chaînes Windows : le corpus de te
 crée `Étoile.GsPP` avec une conversion dépendante de la page de codes système.
 Le correctif utilise un chemin explicitement UTF-8 et conserve les comparaisons
 bilingues ; il ne modifie pas le comportement des inclusions du compilateur.
+Il est publié dans le commit signé et vérifié
+[`f7b5d2b`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/f7b5d2b28acbaf71ef629b3af3071e9b7b93898a) ;
+sa [CI à trois chaînes](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/37582865907)
+réussit. La validation locale de ce correctif donne CTest Windows 5/5,
+GNU/Linux 6/6, validation native VS 2026 et conformité 20/20 par chaîne.
 Les mentions locales des jalons historiques décrivent leur état au moment de
 validation ; aucune nouvelle release ni mise à jour des paquets alpha.10
 n'est réalisée.
+
+### Ajouts locaux des 7 et 8 octobre 2026 — diagnostics sémantiques possédés
+
+`SemantiqueAssemblee::ExigerValide()` traduit un sous-ensemble de refus dont le
+message est invariant ou dont le contexte possédé est explicite, en français et
+en anglais, à la position originale possédée. `PeutTraduireDiagnostic()` expose
+la disponibilité du message, pas la validité du contrat. Aucun fichier relu ni
+appel natif pour cette traduction,
+qui reste utilisable après déchargement de l'image.
+
+Le nouveau contrôle corrige aussi les conditions non scalaires de `si` et
+`tantque` dans la passe Gs++ : résoudre la condition et contrôler son type
+avant le corps/les branches, avec les mêmes priorités que le bootstrap. Le code
+62 distingue désormais l'opération logique (`Detail` 0) de la condition
+(`Detail` 1), sans changer sa valeur ni la disposition de l'ABI. Le code 46
+utilise le genre local/global de la déclaration. Le code 23 distingue maintenant
+quatre variantes : accès `.` / `->`, membre ou cible d'appel, messages exacts
+« structure » / « classe » sans résoudre de type dans l'adaptateur hôte.
+La passe Gs++ refuse aussi un récepteur d'énumération avant la recherche de
+membre, corrigeant un code 24 incorrect en code 23. Tests ciblés : 114 refus
+traduits et 28 succès FR/EN ; 224 contextes et 8 marqueurs altérés refusés.
+
+Le code 18 restitue aussi les noms introuvables simples/qualifiés depuis leur
+tranche de texte possédée : lexage limité au nom, commentaires et UTF-8,
+`soi` / `this`, contrôle du hachage sans inversion. Pas de relecture ni de
+passe syntaxique/sémantique C++. `parent` / `super` reste numérique.
+Le code 19 réutilise ce nom pour les adresses surchargées ambiguës, hors cible
+directe d'appel, avec un nombre de candidats cohérent. La règle de sélection
+des surcharges ne change pas. Le code 24 traduit les membres introuvables
+depuis leur nom simple possédé et la position de `.` / `->`, sans nouvelle
+résolution ; accès chaînés, méthodes absentes et priorités vérifiés.
+Le code 25 distingue désormais champs, méthodes et expressions d'opérateurs
+membres inaccessibles à partir de l'index `Detail` dans l'ordre des genres
+symboliques de l'AST. Nom écrit pour un champ (alias compris), nom déclaré
+pour une méthode appelée directement, par qualification ou alias ; un champ
+callable privé conserve son message de champ. Déclaration et référence dans
+des unités différentes, champs de structures/unions/classes, signes d'opérateurs
+et indices natifs altérés testés.
+Pas de nouvelle résolution ni changement d'export, de format ou d'ABI dans
+cette traduction hôte. Un correctif de l'analyseur Gs++ accepte aussi les
+sections de visibilité des champs de structures/unions, comme le bootstrap,
+sans y autoriser de méthodes ; ce correctif modifie l'image native.
+Matrice de noms/accès : 192 refus traduits (dont 36 adresses ambiguës, 36 membres
+introuvables et 72 accès interdits), quatre réservés numériques, 46 succès FR/EN,
+1 218 contrats/textes et six indices natifs altérés refusés ; utilisable après
+déchargement.
+
+Les codes 34/35 traduisent aussi le champ canonique sélectionné par `Detail`
+pour un doublon ou un ordre d'initialisation incorrect : noms réels des champs,
+alias directs/chaînés, priorités avant les arguments inconnus et entre plusieurs
+constructeurs invalides. L'adaptateur exige la même classe pour le champ et le
+constructeur, sans nouvelle résolution. Le code 33 restitue désormais le nom
+écrit d'un champ absent ou hérité non directement initialisable, depuis le
+marqueur natif `Detail` 0/1, sans recherche de champ/base dans l'hôte.
+Les codes 38/40 nomment le champ déclaré dont la valeur par défaut est interdite
+ou la constante non initialisée : indice natif, origine exacte, classe, drapeau
+de valeur par défaut et nom possédé vérifiés, sans réinterprétation du type ni
+du plan de constructeur. Cette traduction supplémentaire ne change pas l'image native.
+Ajout du 9 octobre : le code 36 nomme le champ canonique dont l'initialiseur
+explicite n'a pas exactement une expression ; son `Detail` natif désigne désormais
+le champ, non le nombre d'arguments. Le code 41 explicite nomme aussi le champ
+tableau dont l'argument n'est pas agrégé. L'AST vérifie nombre/forme des arguments,
+constructeur et même classe, sans nouvelle résolution. Le code 41 par défaut
+reste numérique : le message du bootstrap exige les types résolus, pas le nom
+du champ explicite. Hôte et image courante doivent être utilisés ensemble.
+Matrice ciblée : 160 refus traduits, huit cas par défaut réservés numériques,
+58 succès FR/EN, 586 contrats/textes et 62 indices/marqueurs natifs altérés
+refusés. Les enrichissements des contextes 33/36 modifient l'image native ; codes,
+exports, formats, règles du langage et disposition d'ABI inchangés.
+
+Ajout du 9 octobre : huit invariants supplémentaires sont traduits,
+codes 39/85/86/87/88/101/113/115 : constructeur requis pour les champs par défaut,
+valeurs d'énumération non entières/non constantes/hors plage/débordement,
+références de tableaux interdites, héritage non public et auto-héritage.
+Le diagnostic d'héritage ne cite plus `Gs++ 0.22`, sans modifier la règle.
+Le bootstrap réutilise aussi la fonction déjà résolue dans un initialiseur
+d'énumération au lieu de consulter prématurément son index final ; l'ordre
+des passes ne change pas. Matrice ciblée : 64 refus traduits, 32 succès FR/EN
+et 320 contrats altérés refusés ; trois unités, inclusions UTF-8, instantanés
+et copie/déplacement/déchargement. Ces ajouts restent hôtes : image native inchangée.
+
+Ajout du 9 octobre : les codes 12/13/15/17 restituent le nom exact des champs,
+alias de champs, énumérateurs et locaux répétés ; le code 16 ajoute le message
+invariant des paramètres répétés. `Detail` désigne le nœud AST précédent,
+contrôlé avec les deux noms, l'ordre, l'unité et les portées, sans refaire la
+résolution. Matrice ciblée : 40 refus traduits, 32 succès FR/EN, 298 contrats/textes
+et 32 indices natifs altérés refusés. La passe Gs++ vérifie désormais un doublon
+d'énumérateur avant son propre initialiseur, sans devancer une erreur de valeur
+précédente ; huit régressions FR/EN supplémentaires vérifient cette priorité.
+Ce correctif change l'image native, pas les codes, exports, formats ni l'ABI.
+
+Ajout du 9 octobre : le code 14 nomme l'alias en conflit avec un champ direct,
+à la position de l'alias dans les deux ordres de déclaration. Son `Detail`
+désigne le champ AST, même ultérieur ; noms exacts, unité, genres et même agrégat
+contrôlés sans nouvelle résolution hôte. La passe Gs++ vérifie par agrégat les
+noms des champs, puis ceux des alias dans leur ordre, avant la résolution des
+cibles. Matrice ciblée : 32 refus traduits, 24 succès FR/EN, 16 priorités de noms,
+290 contrats/textes et 32 indices natifs altérés refusés ; plusieurs types,
+UTF-8/commentaires, inclusions et copie/déplacement/déchargement. Image native
+modifiée sans nouveau code/export ni changement de format ou d'ABI ; les autres
+priorités entre passes restent à consolider.
+
+Ajout du 9 octobre : le code 107 traduit le cycle d'alias de champ depuis le
+nom possédé de l'alias revisité. Son `Detail` est le rang de symbole de l'entrée,
+qui peut être un préfixe acyclique distinct de l'alias nommé ; unité et même
+agrégat contrôlés, sans recherche de cible ni nouvelle détection du cycle.
+Matrice ciblée : 32 refus traduits, 24 succès FR/EN, 16 priorités traduites,
+322 contrats/textes et 40 rangs natifs altérés refusés ;
+auto-cycles, préfixes, chaîne de 128 alias, inclusions et copie/déplacement après
+déchargement. Traduction hôte seulement : image native, formats et ABI inchangés.
+
+Ajout du 9 octobre : le code 108 restitue le nom écrit de la cible introuvable
+depuis un enfant nominal 37 de l'alias de champ ; `Detail` indexe ce nœud AST,
+mais le refus garde la position de l'alias courant. Aucun symbole ou expression
+évaluée ajouté, aucune recherche de champ/base ni inversion de hachage hôte.
+Matrice ciblée : 32 refus traduits, 32 anciens AST numériques, 418 contrats/textes
+et 40 indices nominaux natifs altérés refusés ; chaînes de 128 alias, noms UTF-8,
+inclusions et copie/déplacement/déchargement. Le bootstrap conserve aussi la
+position du nom cible pour l'oracle AST. Image native modifiée ; formats et
+tailles ABI inchangés, ancien AST sans enfant nominal conservé numérique.
+
+Ajouts des 9 et 10 octobre : le code 109 traduit le nom complet de l'alias
+revisité, y compris les noms qualifiés `API::Vue`, UTF-8/commentés et les namespaces.
+`Detail` reste le rang de symbole de l'entrée, distincte du refus et susceptible
+d'appartenir à une autre unité ou à un autre espace. Les deux noms possédés et
+leurs origines sont contrôlés, sans rechercher les cibles ni reconstruire le
+graphe. Des feuilles nominales 39, `SegmentEspaceAlias` / `AliasNamespaceSegment`,
+possèdent les identifiants du namespace après la cible 38, dans l'ordre extérieur
+vers intérieur, avec les hachages de préfixes cumulés. Le bootstrap conserve
+leurs positions pour l'oracle AST. Matrice : 72 refus traduits, 32 anciens AST de
+namespaces numériques, 24 succès FR/EN, 24 priorités, 704 contrats/textes,
+54 gardes de segments et 50 rangs natifs altérés refusés ; chaîne 128, namespaces
+imbriqués/réouverts, inclusions et copie/déplacement/déchargement. Les anciens AST
+sans segments gardent rang et position, sans préfixe deviné. Image native et
+contenu AST modifiés, nœuds de 64 octets, formats et tailles ABI inchangés.
+
+Ajout du 10 octobre : le code 110 nomme la cible écrite introuvable d'un alias
+global, y compris dans un namespace, avec imports, qualifications et commentaires.
+Un enfant nominal 38 porte le nom et sa position ; `Detail` indexe cet enfant,
+le refus garde la position de l'alias courant. Pas de résolution hôte des cibles,
+imports ou graphes. Matrice : 48 refus traduits, 48 anciens AST numériques,
+24 succès FR/EN, 16 priorités, 638 contrats/textes et 60 indices nominaux natifs
+altérés refusés ; chaîne 128, inter-unités, UTF-8 et durée de vie. Les anciens AST
+sans enfant 38 gardent `Detail 0` numérique. Image native modifiée, nœuds de
+64 octets, codes/exports, formats 1.0 et tailles ABI inchangés ; code 111
+et cycles 109 des anciens AST sans préfixe de namespace encore numériques.
+
+Ajout du 10 octobre : le code 112 traduit le nom cible écrit d'un alias ambigu
+de fonction surchargée depuis l'enfant 38 existant. `Detail` reste le nombre
+de surcharges, au moins 2 et borné par le total des nœuds de fonction, pas un
+indice AST. Contrôle des noms/origines sans reconstruire les candidats ; ancien
+AST sans enfant 38 conservé numérique. Matrice : 50 refus traduits, 50 anciens AST
+numériques, 24 succès FR/EN, 24 priorités, 638 contrats/textes et 48 nombres natifs
+altérés refusés ; méthodes/groupes importés, prototypes d'interface, chaîne 128,
+inter-unités et durée de vie. Traduction hôte, image native, formats et
+ABI inchangés. Le code 111 reste numérique faute de matrice source différentielle
+établie, avec priorités des contrôles de conflits/imports conservées.
+
+Ajout du 10 octobre : le code 120 traduit le nom écrit d'un espace utilisé
+introuvable depuis le nœud 36 existant, à la position de `utilisant` / `using`.
+`Detail 0`, table complète de symboles (éventuellement vide) et absence de
+résolutions caractérisent cette phase. Nom qualifié/commenté, unité, origine,
+tranche et hachage sont contrôlés sans rechercher de namespace ni résoudre les
+imports. Matrice : 60 refus traduits, 24 succès FR/EN, 24 priorités,
+564 contrats/textes et 72 marqueurs natifs altérés refusés ; qualification 128,
+UTF-8, déclarations trop tardives, interfaces, inter-unités et durée de vie.
+Traduction hôte uniquement, sans changement de l'image native, des formats
+ou de l'ABI. Les autres familles nécessitant un nom résolu restent numériques.
+
+Ajout du 10 octobre : le code 121 nomme précisément l'import ambigu depuis une
+cible d'alias global 38 ou une référence d'expression 24, avec `Detail 0`.
+Tranches, lexèmes, hachages, origines, unité et contexte sont contrôlés sans
+rechercher d'import ou reconstruire les candidats. L'extension d'héritage du
+10 octobre ajoute la base nominale enfant 40 de la classe 6 ; `Detail` indexe
+cette feuille et la position reste celle de la classe. Lexage du nom et de la
+séparation d'héritage, rang lexical, tranche, unité, origines, nombre complet de
+symboles et phase sans résolutions vérifiés. L'extension aux types directs ajoute
+l'enfant nominal immédiat 41 aux globales/locales/champs/retours/paramètres,
+constructeurs compris : nom écrit, hachage, même espace, empreinte opaque du
+type complet et décalage lexical conservés. `Detail` indexe 41, position de la
+déclaration conservée ; bornes/origines/rangs et lexage du préfixe vérifiés, sans
+résolution hôte. Globales ambiguës différées après signatures et contrôles des
+classes, puis ordre complet des globales ; résolutions antérieures admises pour
+globales/locales. Parcours d'initialiseurs/arguments et comparaison des surcharges
+compatibles avec les nouvelles feuilles, sans changer les clés de types.
+Les noms imbriqués des callbacks utilisent les feuilles 42, contiguës et ordonnées
+avant les autres enfants du même propriétaire. `Detail` désigne le nom exact,
+position de déclaration conservée ; tranches/empreintes/origines/prédécesseurs et
+rang lexical contrôlés sans résolution hôte. Premier échec conservé dans l'ordre
+retour puis paramètres récursifs ; feuilles ignorées par les parcours d'expressions
+et la normalisation des surcharges/prototypes, sans nouvelle clé de type.
+Ajout du 15 octobre : les noms de types cibles de conversions utilisent les
+feuilles 43, contiguës avant l'unique opérande de l'expression 31. `Detail`
+désigne le nom exact, callbacks imbriqués compris ; la position reste celle
+de `convertir` / `cast`. Tranches, empreintes opaques, origines/rangs/unités,
+prédécesseurs et opérande ultérieur sont contrôlés ; lexage borné du préfixe,
+sans résolution hôte. Cible validée avant l'opérande, ordre des autres expressions
+inchangé, anciens AST sans feuilles 43 conservés numériques avec `Detail 0`.
+Matrice ciblée consolidée : 190 refus traduits, 0 cas réservés numériques,
+24 anciens alias, 24 anciennes bases et 106 anciens contextes types/conversions numériques, 104 succès FR/EN,
+154 priorités, 2 700 contrats/textes, 312 marqueurs natifs et 428 entrées AST altérés refusés ;
+noms qualifiés/UTF-8, inclusions, interfaces, unités et durée de vie.
+Les anciens AST sans contexte 40/41/42/43 restent
+numériques ; leur nom de déclaration n'est pas celui du type ambigu. Les contextes nominaux changent
+l'AST produit et l'image native, sans changer les codes/exports, formats 1.0 ou tailles ABI.
+
+Les noms complets, types résolus et variantes contextuelles encore nécessaires
+aux autres familles restent numériques : aucun diagnostic source approximatif
+n'est inventé. Validation courante dans le
+[bilan des diagnostics](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-sémantiques-possédés--7-octobre-2026).
+Validation conversions du 15 octobre : Windows CTest 5/5, GNU/Linux CTest 6/6,
+solution et validation native VS 2026 réussies ; conformité 20/20 sur chaque chaîne,
+intégration GNU/Linux réussie.
+920 comparaisons bilingues, 47 codes invariants,
+huit variantes sur trois codes contextuels, noms/accès des codes 18/19/24/25
+et champs/initialiseurs des codes 33/34/35/36/38/40 et 41 explicite, 94 corpus
+assemblés et 80 résultats altérés d'invariants ;
+les 2 751 refus historiques restent un compteur distinct. Images identiques de
+585 279 octets, 107 exports, vérifiées par les trois vérificateurs. Les correctifs des
+récepteurs, des visibilités de structures/unions, les contextes 33/36 et la priorité
+des doublons d'énumérateurs, des conflits champ/alias et les contextes nominaux
+108/110, les préfixes de namespace 39 du code 109, les bases nominales 40, types directs 41, callbacks 42 et conversions 43
+du code 121 modifient l'image courante,
+tandis que les traductions 112, 120 et les alias/références 121 réutilisent leurs contextes existants,
+sans changement des formats ni de l'ABI.
+API locale sans activation du pilote ni nouveau
+jalon de version.
+
+### Ajout local du 7 octobre 2026 — sémantique assemblée possédée
+
+`AnalyserSemantiqueAssemblee` relie l'AST assemblé possédé à la passe Gs++
+multi-unités historique. Le résultat possède l'entrée complète, les symboles,
+les résolutions et la position originale des refus numériques. Pas de fichiers
+relus, de catalogues requis ni de passe C++ dans l'adaptateur ; isolation des
+unités, copies privées, mesure/publication, limites et gardes. Les préfixes
+sémantiques natifs sont jetés sur refus/exception.
+
+La matrice compare les sorties aux exports historiques et les positions des
+refus au bootstrap, puis injecte des contrats incohérents et vérifie la durée
+de vie indépendante des préparations et de l'image. Validation courante
+consignée dans le [bilan sémantique](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#sémantique-assemblée-possédée--7-octobre-2026).
+CTest Windows 5/5, GNU/Linux 6/6 et validation native VS 2026 réussis,
+conformité 20/20 par chaîne ; 94 contrats/exceptions, 40 limites/entrées
+bilingues et huit cas sans symbole, dont l'absence de fonction globale sans
+origine de fichier inventée. Images identiques de 570 479 octets, 107 exports,
+compteur historique de 2 751 refus inchangé.
+Tranche locale non publiée, alpha.10, formats 1.0 et ABI 1 inchangés ; diagnostics
+sémantiques bilingues complets, pilote et backend restent à raccorder. Aucun
+frontend complet ni jalon 0.28 acquis.
+
+### Ajout local du 7 octobre 2026 — diagnostics d'assemblage possédés
+
+L'entrée additive `AssemblerDeclarationsNormaliseesAvecDiagnostic` fournit le
+nom qualifié exact du conflit, depuis les chemins lexicaux Gs++. Son adaptateur
+hôte possède ce nom et la position originale ; `DeclarationsAssemblees::ExigerValide()`
+lève les mêmes messages français/anglais que le bootstrap, sans appel natif ni
+relecture. Contrats historiques inchangés, pas de sorties d'assemblage partielles,
+nom mesuré puis copié avec limite et garde. Les nouveaux exports restent facultatifs.
+
+La matrice différentielle compare les messages des 32 corpus bilingues existants
+de normalisation (64 refus),
+les 134 refus syntaxiques et les 28 corpus bilingues d'inclusions, avec noms
+de méthodes, constructeurs, destructeurs et opérateurs, priorités intergroupes
+et positions originales. Des tests supplémentaires exercent les tampons de nom,
+contrats altérés, UTF-8, instantanés et durée de vie. CTest Windows 5/5,
+GNU/Linux 6/6, validation native VS 2026 et conformité 20/20 par chaîne réussis ;
+images identiques de 570 319 octets, 107 exports et 2 751 refus sémantiques inchangés.
+Tranche locale non publiée ; la validation courante est consignée dans le
+[bilan des diagnostics](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-dassemblage-possédés--7-octobre-2026).
+Raccord sémantique/backend et diagnostics du pilote encore à réaliser : aucune
+activation automatique, version alpha.10 et aucun jalon 0.28 acquis.
+
+### Ajout local du 7 octobre 2026 — assemblage multi-unités possédé
+
+`AssemblerDeclarationsPreparees` reçoit les instantanés développés de plusieurs
+unités et l'export Gs++ d'assemblage brut ou normalisé. Texte assemblé, AST,
+plages d'unités, noms et positions originales sont possédés ; les sélections
+normalisées conservent leur unité, y compris lorsqu'une définition remplace
+un prototype d'une autre unité. Copies privées, limites cumulées et gardes des
+trois sorties ; refus sans arbre partiel. Les exports sont vérifiés à la demande.
+
+La matrice existante de 28 corpus bilingues compare aussi ces résultats possédés
+au bootstrap ; 82 contrats et 14 exports d'assemblage altérés refusés, limites,
+exceptions, instantanés et durée de vie vérifiés. Windows CTest 5/5 et validation
+native VS 2026 réussis, GNU/Linux CTest 6/6 et conformité 20/20 par chaîne.
+Aucun nouveau commit
+de cette tranche, aucune release ni paquet. API de développement : le frontend
+Gs++ réanalyse les textes préparés ; cet appel ne consomme pas les AST mono-unités
+et ne remplace pas encore `Programme`. Conflits numériques situés, traduction
+bilingue de normalisation réalisée dans la tranche additive suivante ; raccord
+sémantique/backend encore à faire.
+Voir le [bilan multi-unités](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-multi-unités-possédé--7-octobre-2026).
 
 ### Ajout local du 7 octobre 2026 — diagnostics syntaxiques possédés
 

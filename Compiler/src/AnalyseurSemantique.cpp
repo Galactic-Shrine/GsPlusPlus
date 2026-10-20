@@ -543,8 +543,8 @@ namespace GsPP
         if (structure.VisibiliteHeritage != VisibiliteMembre::Publique)
             Erreur(
                 structure.Position,
-                "Gs++ 0.22 prend en charge uniquement l’héritage public",
-                "Gs++ 0.22 supports public inheritance only");
+                "Gs++ prend en charge uniquement l’héritage public",
+                "Gs++ supports public inheritance only");
 
         TypeGs typeBase{GenreType::Structure, structure.ClasseBase};
         ResoudreType(typeBase, structure.Espace, structure.Position);
@@ -1970,6 +1970,7 @@ namespace GsPP
             case GenreExpression::Appel:
             {
                 auto& appel = static_cast<ExpressionAppel&>(expression);
+                const Fonction* declarationDirecte = nullptr;
                 if (appel.Cible->Genre == GenreExpression::Membre)
                 {
                     auto& membre = static_cast<ExpressionMembre&>(*appel.Cible);
@@ -2040,6 +2041,7 @@ namespace GsPP
                                    "méthode inaccessible : " + surcharge->NomSource,
                                    "method is inaccessible: " + surcharge->NomSource);
                         PreparerAppel(appel, *surcharge, arguments, fonction);
+                        declarationDirecte = surcharge;
                     }
                 }
                 const auto typeCible = AnalyserExpression(*appel.Cible, fonction);
@@ -2053,7 +2055,12 @@ namespace GsPP
                 {
                     appel.NomDirect =
                         static_cast<const ExpressionVariable&>(*appel.Cible).Nom;
-                    const auto* declaration = _Fonctions.at(appel.NomDirect);
+                    /**
+                     * <résumé>Conserve la cible déjà résolue avant l'indexation finale des fonctions.</résumé>
+                     * @etc. Les valeurs d'énumération sont analysées avant le remplissage de _Fonctions.
+                     **/
+                    const auto* declaration = declarationDirecte
+                        ? declarationDirecte : _Fonctions.at(appel.NomDirect);
                     const auto intrinseque = IdentifierIntrinseque(appel.NomDirect);
                     if (declaration->EstExterne
                         && intrinseque != GenreIntrinseque::Aucun)

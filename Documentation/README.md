@@ -27,7 +27,11 @@ consultables dans l’historique Git.
 
 - [Matrice de conformité 1.0](CONFORMITE_GS_PLUS_PLUS_1.0.md)
 - [Frontend auto-hébergé 0.27](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md)
-- [Diagnostics syntaxiques possédés : dernier bilan local](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-syntaxiques-possédés--7-octobre-2026)
+- [Diagnostics sémantiques possédés : répétitions, conflits, cycles/cibles d'alias de champs et globaux, préfixes de namespaces, surcharges d'alias, espaces introuvables et noms importés ambigus dans les alias, expressions, bases de classes, types déclarés directs, callbacks imbriqués et conversions, énumérations/héritage, contextes, noms, accès et initialiseurs de champs, bilan actualisé le 15 octobre](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-sémantiques-possédés--7-octobre-2026)
+- [Sémantique assemblée possédée](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#sémantique-assemblée-possédée--7-octobre-2026)
+- [Diagnostics d'assemblage possédés](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-dassemblage-possédés--7-octobre-2026)
+- [Assemblage multi-unités possédé](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#assemblage-multi-unités-possédé--7-octobre-2026)
+- [Diagnostics syntaxiques possédés](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#diagnostics-syntaxiques-possédés--7-octobre-2026)
 - [Adaptateur hôte d'AST possédé](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#adaptateur-hôte-dast-possédé--7-octobre-2026)
 - [Priorités des bases, champs et initialiseurs](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#priorités-des-bases-champs-et-initialiseurs--tranche-locale-du-5-octobre-2026)
 - [Protocole de benchmark](PROTOCOLE-BENCHMARK-GS-PLUS-PLUS-0.25.md)

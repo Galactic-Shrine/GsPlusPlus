@@ -124,7 +124,7 @@ espace GalacticShrine::GsPP::Autohebergement {
     }
 
     ErreurAssemblageDeclarations AssemblerOriginesDeclarationsInterne(
-        RequeteAssemblageAvecOrigines* requete, booléen normaliser) {
+        RequeteAssemblageAvecOrigines* requete, booléen normaliser, RequeteDiagnosticAssemblage* diagnostic) {
         si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
         requete->IndexFichierErreur = requete->NombreFichiers;
         requete->LigneLocaleErreur = 0;
@@ -140,7 +140,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
         ErreurAssemblageDeclarations erreur = ErreurAssemblageDeclarations::Reussite;
         si (normaliser) erreur = AssemblerDeclarationsNormaliseesInterne(
-            requete->Assemblage, requete->Tables, requete->NombreFichiers);
+            requete->Assemblage, requete->Tables, requete->NombreFichiers, diagnostic);
         sinon erreur = AssemblerDeclarationsPrepareesInterne(
             requete->Assemblage, requete->Tables, requete->NombreFichiers);
         si (requete->Assemblage->Resultat.LigneErreur != 0
@@ -152,10 +152,27 @@ espace GalacticShrine::GsPP::Autohebergement {
     }
 
     publique ErreurAssemblageDeclarations AssemblerDeclarationsAvecOrigines(RequeteAssemblageAvecOrigines* requete) {
-        retourner AssemblerOriginesDeclarationsInterne(requete, faux);
+        retourner AssemblerOriginesDeclarationsInterne(requete, faux, NulDiagnosticAssemblage);
     }
 
     publique ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesAvecOrigines(RequeteAssemblageAvecOrigines* requete) {
-        retourner AssemblerOriginesDeclarationsInterne(requete, vrai);
+        retourner AssemblerOriginesDeclarationsInterne(requete, vrai, NulDiagnosticAssemblage);
+    }
+
+    publique ErreurAssemblageDeclarations AssemblerDeclarationsNormaliseesAvecDiagnostic(RequeteDiagnosticAssemblage* requete) {
+        si (!requete) retourner ErreurAssemblageDeclarations::ArgumentInvalide;
+        requete->NombreOctetsNom = 0;
+        si (!requete->Assemblage || (!requete->Nom && requete->CapaciteNom != 0) || requete->Reserve != 0) {
+            si (requete->Assemblage && requete->Assemblage->Assemblage) {
+                requete->Assemblage->Assemblage->Resultat = {};
+                requete->Assemblage->Assemblage->Resultat.IndexUniteErreur = requete->Assemblage->Assemblage->NombreUnites;
+                requete->Assemblage->Assemblage->Resultat.Erreur = ErreurAssemblageDeclarations::ArgumentInvalide;
+                requete->Assemblage->IndexFichierErreur = requete->Assemblage->NombreFichiers;
+                requete->Assemblage->LigneLocaleErreur = 0;
+                requete->Assemblage->ColonneLocaleErreur = 0;
+            }
+            retourner ErreurAssemblageDeclarations::ArgumentInvalide;
+        }
+        retourner AssemblerOriginesDeclarationsInterne(requete->Assemblage, vrai, requete);
     }
 }

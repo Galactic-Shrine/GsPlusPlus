@@ -4,6 +4,18 @@ espace GalacticShrine::GsPP::Autohebergement {
     constante OrigineJetonDeclarations* NulOriginesJetonsDeclarations;
     constante TableOriginesUniteDeclarations* NulTablesOriginesDeclarations;
 
+    structure NomTypeDeclarationInterne {
+        naturel64 DebutNom;
+        naturel64 TailleNom;
+        naturel64 HachageNom;
+        naturel64 IndexJetonNom;
+        naturel32 LigneNom;
+        naturel32 ColonneNom;
+        NomTypeDeclarationInterne* Suivant;
+    };
+
+    NomTypeDeclarationInterne* NulNomsTypesDeclarations;
+
     structure TypeDeclarationInterne {
         naturel32 Genre;
         naturel32 Qualificatifs;
@@ -11,12 +23,24 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel32 NombreDimensions;
         naturel64 HachageNom;
         naturel64 HachageDimensions;
+        naturel64 DebutNom;
+        naturel64 TailleNom;
+        naturel64 IndexJetonNom;
+        naturel32 LigneNom;
+        naturel32 ColonneNom;
+        NomTypeDeclarationInterne* PremierNom;
+        NomTypeDeclarationInterne* DernierNom;
     };
 
     structure ContexteEspaceDeclaration {
         naturel64 Hachage;
         booléen EstVide;
+        ContexteEspaceDeclaration* Parent;
+        naturel64 PremierJeton;
+        naturel64 FinJetons;
     };
+
+    ContexteEspaceDeclaration* NulContexteEspaceDeclaration;
 
     structure NomQualifieDeclaration {
         naturel64 Debut;
@@ -38,6 +62,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 PremierEnfant;
         naturel64 DernierEnfant;
         naturel64 EnfantSuivant;
+        NomTypeDeclarationInterne* PremierNomType;
     };
 
     NoeudExpressionInterne* NulExpressionsDeclarations;
@@ -51,6 +76,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 NombreNoeuds;
         NoeudExpressionInterne* ExpressionsTravail;
         naturel64 NombreExpressions;
+        booléen CapturerNomsTypes;
         booléen EstInterface;
         constante OrigineJetonDeclarations* OriginesJetons;
         GalacticShrine::GsPP::Hebergee::AreneMemoire Arene;
@@ -308,6 +334,10 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner faux;
         }
         JetonLexe* nom = JetonCourantDeclaration(etat);
+        type->DebutNom = nom->Debut;
+        type->IndexJetonNom = etat->Position;
+        type->LigneNom = nom->Ligne;
+        type->ColonneNom = nom->Colonne;
         type->HachageNom = AjouterTrancheDeclaration(
             etat, HachageVideDeclaration(), nom);
         etat->Position = etat->Position + 1;
@@ -328,7 +358,51 @@ espace GalacticShrine::GsPP::Autohebergement {
                 etat, type->HachageNom, nom);
             etat->Position = etat->Position + 1;
         }
+        type->TailleNom = nom->Debut + nom->TailleSource - type->DebutNom;
         retourner vrai;
+    }
+
+    /**
+     * <résumé>Conserve les noms source directs et imbriqués, dans leur ordre lexical.</résumé>
+     * @Paramètre(EtatAnalyseDeclarations*: etat) Jetons et stockage AST de travail.
+     * @Paramètre(naturel64: indexParent) Déclaration déjà émise, avant ses autres enfants.
+     * @Paramètre(NomTypeDeclarationInterne*: nom) Noms déjà recueillis pendant l'analyse effective du type source.
+     * @Paramètre(naturel32: genreNom) Contexte nominal 41, 42 ou 43, sans symbole ni expression évaluée.
+     * @Retourner(booléen) Feuille nominale ajoutée, ou type non nommé sans ajout.
+     **/
+    booléen EmettreNomsTypeDeclaration(EtatAnalyseDeclarations* etat, naturel64 indexParent,
+        NomTypeDeclarationInterne* nom, naturel32 genreNom) {
+        NoeudDeclaration* declaration = &etat->NoeudsTravail[indexParent];
+        si (!nom) retourner vrai;
+        naturel64 premier = nom->IndexJetonNom;
+        tantque (premier != 0 && (etat->Jetons[premier].Ligne != declaration->Ligne
+            || etat->Jetons[premier].Colonne != declaration->Colonne)) premier = premier - 1;
+        si (etat->Jetons[premier].Ligne != declaration->Ligne || etat->Jetons[premier].Colonne != declaration->Colonne)
+            retourner faux;
+        tantque (nom) {
+            si (nom->IndexJetonNom - premier > 4_294_967_295) retourner faux;
+            NoeudDeclaration nominal = {
+                genreNom, nom->LigneNom, nom->ColonneNom, convertir<naturel32>(nom->IndexJetonNom - premier), indexParent,
+                nom->DebutNom, nom->TailleNom, nom->HachageNom, declaration->HachageEspace, declaration->HachageType};
+            si (!AjouterNoeudDeclaration(etat, nominal)) retourner faux;
+            nom = nom->Suivant;
+        }
+        retourner vrai;
+    }
+
+    booléen EmettreNomTypeDeclaration(EtatAnalyseDeclarations* etat, naturel64 indexParent, TypeDeclarationInterne* type) {
+        si (type->Genre != 13 && type->Genre != 14) retourner vrai;
+        naturel32 genreNom = 41;
+        si (type->Genre == 14) genreNom = 42;
+        retourner EmettreNomsTypeDeclaration(etat, indexParent, type->PremierNom, genreNom);
+    }
+
+    /** <résumé>Joint les noms déjà recueillis par le parseur récursif, sans reparcourir la grammaire.</résumé> **/
+    vide AjouterNomsTypeDeclaration(TypeDeclarationInterne* cible, TypeDeclarationInterne* source) {
+        si (!source->PremierNom) retourner;
+        si (cible->DernierNom) cible->DernierNom->Suivant = source->PremierNom;
+        sinon cible->PremierNom = source->PremierNom;
+        cible->DernierNom = source->DernierNom;
     }
 
     booléen AnalyserTypeDeclaration(
@@ -339,6 +413,8 @@ espace GalacticShrine::GsPP::Autohebergement {
         type->NombreDimensions = 0;
         type->HachageNom = HachageVideDeclaration();
         type->HachageDimensions = HachageVideDeclaration();
+        type->PremierNom = NulNomsTypesDeclarations;
+        type->DernierNom = NulNomsTypesDeclarations;
 
         booléen continuer = vrai;
         tantque (continuer) {
@@ -367,6 +443,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             TypeDeclarationInterne retourPointeurFonction;
             si (!AnalyserTypeDeclaration(etat, &retourPointeurFonction))
                 retourner faux;
+            AjouterNomsTypeDeclaration(type, &retourPointeurFonction);
             naturel64 hachageSignaturePointeurFonction =
                 AjouterNaturel64Declaration(
                     HachageVideDeclaration(),
@@ -386,6 +463,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 si (!AnalyserTypeDeclaration(
                         etat, &parametrePointeurFonction))
                     retourner faux;
+                AjouterNomsTypeDeclaration(type, &parametrePointeurFonction);
                 hachageSignaturePointeurFonction =
                     AjouterNaturel64Declaration(
                         hachageSignaturePointeurFonction,
@@ -411,6 +489,23 @@ espace GalacticShrine::GsPP::Autohebergement {
         sinon si (genreJeton == 1) {
             type->Genre = 13;
             si (!AnalyserNomQualifieType(etat, type)) retourner faux;
+            si (etat->CapturerNomsTypes) {
+                NomTypeDeclarationInterne* nom = convertir<NomTypeDeclarationInterne*>(
+                    GalacticShrine::GsPP::Hebergee::AllouerArene(&etat->Arene, 48, 8));
+                si (!nom) {
+                    SignalerErreurDeclaration(etat, ErreurAnalyseDeclarations::AllocationImpossible, type->LigneNom, type->ColonneNom);
+                    retourner faux;
+                }
+                nom->DebutNom = type->DebutNom;
+                nom->TailleNom = type->TailleNom;
+                nom->HachageNom = type->HachageNom;
+                nom->IndexJetonNom = type->IndexJetonNom;
+                nom->LigneNom = type->LigneNom;
+                nom->ColonneNom = type->ColonneNom;
+                nom->Suivant = NulNomsTypesDeclarations;
+                type->PremierNom = nom;
+                type->DernierNom = nom;
+            }
         }
         sinon {
             JetonLexe* typeManquant = JetonCourantDeclaration(etat);
@@ -513,6 +608,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         noeud->PremierEnfant = IndexExpressionNulDeclaration();
         noeud->DernierEnfant = IndexExpressionNulDeclaration();
         noeud->EnfantSuivant = IndexExpressionNulDeclaration();
+        noeud->PremierNomType = NulNomsTypesDeclarations;
     }
 
     naturel64 AjouterExpressionInterneDeclaration(
@@ -694,6 +790,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             InitialiserExpressionInterneDeclaration(
                 &conversion, 31, position->Ligne, position->Colonne);
             conversion.HachageType = HacherTypeDeclaration(&typeCible);
+            conversion.PremierNomType = typeCible.PremierNom;
             naturel64 indexConversion =
                 AjouterExpressionInterneDeclaration(etat, conversion);
             si (indexConversion == IndexExpressionNulDeclaration())
@@ -1076,6 +1173,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             hachageEspace,
             expression->HachageType};
         si (!AjouterNoeudDeclaration(etat, noeud)) retourner faux;
+        si (expression->Genre == 31
+            && !EmettreNomsTypeDeclaration(etat, indexSortie, expression->PremierNomType, 43)) retourner faux;
         naturel64 enfant = expression->PremierEnfant;
         tantque (enfant != IndexExpressionNulDeclaration()) {
             naturel64 suivant =
@@ -1150,9 +1249,13 @@ espace GalacticShrine::GsPP::Autohebergement {
         naturel64 positionSauvee = etat->Position;
         TypeDeclarationInterne typeTeste;
         booléen resultat = faux;
+        /** <résumé>La sonde syntaxique ne possède aucun contexte nominal et ne doit pas allouer.</résumé> **/
+        booléen captureSauvee = etat->CapturerNomsTypes;
+        etat->CapturerNomsTypes = faux;
         si (AnalyserTypeDeclaration(etat, &typeTeste)
             && EstJetonDeclaration(etat, 1))
             resultat = vrai;
+        etat->CapturerNomsTypes = captureSauvee;
         etat->Position = positionSauvee;
         retourner resultat;
     }
@@ -1331,6 +1434,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 contexte->Espace->Hachage,
                 HacherTypeDeclaration(&typeVariable)};
             si (!AjouterNoeudDeclaration(etat, variable)) retourner faux;
+            si (!EmettreNomTypeDeclaration(etat, indexVariable, &typeVariable)) retourner faux;
             si (AccepterJetonDeclaration(etat, 45)) {
                 si (!AnalyserEtEmettreExpressionDeclaration(
                         etat,
@@ -1459,6 +1563,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 contexte->Hachage,
                 HacherTypeDeclaration(&typeRetour)};
             si (!AjouterNoeudDeclaration(etat, noeudGlobale)) retourner faux;
+            si (!EmettreNomTypeDeclaration(etat, indexGlobale, &typeRetour)) retourner faux;
             si (AccepterJetonDeclaration(etat, 45)
                 && !AnalyserEtEmettreExpressionDeclaration(
                     etat, indexGlobale, contexte->Hachage))
@@ -1498,6 +1603,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             contexte->Hachage,
             HacherTypeDeclaration(&typeRetour)};
         si (!AjouterNoeudDeclaration(etat, noeudFonction)) retourner faux;
+        si (!EmettreNomTypeDeclaration(etat, indexFonction, &typeRetour)) retourner faux;
 
         etat->Position = etat->Position + 1;
         si (!EstJetonDeclaration(etat, 35)) {
@@ -1529,6 +1635,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     HacherTypeDeclaration(&typeParametre)};
                 si (!AjouterNoeudDeclaration(etat, noeudParametre))
                     retourner faux;
+                si (!EmettreNomTypeDeclaration(etat, etat->NombreNoeuds - 1, &typeParametre)) retourner faux;
                 si (!AccepterJetonDeclaration(etat, 41))
                     continuerParametres = faux;
             }
@@ -1660,6 +1767,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             contexte->Espace->Hachage,
             HacherTypeDeclaration(&typeRetour)};
         si (!AjouterNoeudDeclaration(etat, noeudMembre)) retourner faux;
+        si (!EmettreNomTypeDeclaration(etat, indexMembre, &typeRetour)) retourner faux;
 
         naturel32 nombreParametres = 0;
         si (!EstJetonDeclaration(etat, 35)) {
@@ -1691,6 +1799,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     HacherTypeDeclaration(&typeParametre)};
                 si (!AjouterNoeudDeclaration(etat, noeudParametre))
                     retourner faux;
+                si (!EmettreNomTypeDeclaration(etat, etat->NombreNoeuds - 1, &typeParametre)) retourner faux;
                 nombreParametres = nombreParametres + 1;
                 si (!AccepterJetonDeclaration(etat, 41))
                     continuerParametres = faux;
@@ -1841,6 +1950,40 @@ espace GalacticShrine::GsPP::Autohebergement {
         retourner AnalyserBlocInstructionDeclaration(etat, &contexteCorps);
     }
 
+    /**
+     * <résumé>Possède les segments du namespace d'un alias dans leur ordre extérieur vers intérieur.</résumé>
+     * @Paramètre(EtatAnalyseDeclarations*: etat) Jetons et stockage privé de l'AST.
+     * @Paramètre(ContexteEspaceDeclaration*: contexte) Préfixe lexical déjà analysé, sans résolution de nom.
+     * @Paramètre(naturel64: indexAlias) Parent des feuilles nominales, après sa cible 38.
+     * @Retourner(booléen) Faux si le stockage des nœuds échoue.
+     **/
+    booléen AjouterSegmentsEspaceAliasDeclaration(
+        EtatAnalyseDeclarations* etat, ContexteEspaceDeclaration* contexte, naturel64 indexAlias) {
+        si (contexte->EstVide) retourner vrai;
+        si (!AjouterSegmentsEspaceAliasDeclaration(etat, contexte->Parent, indexAlias)) retourner faux;
+        naturel64 hachage = contexte->Parent->Hachage;
+        booléen estVide = contexte->Parent->EstVide;
+        naturel64 index = contexte->PremierJeton;
+        tantque (index < contexte->FinJetons) {
+            JetonLexe* partie = &etat->Jetons[index];
+            si (partie->Genre == 1) {
+                si (!estVide) {
+                    hachage = AjouterOctetDeclaration(hachage, 58);
+                    hachage = AjouterOctetDeclaration(hachage, 58);
+                }
+                hachage = AjouterTrancheDeclaration(etat, hachage, partie);
+                estVide = faux;
+                NoeudDeclaration segment = {
+                    39, partie->Ligne, partie->Colonne, 0, indexAlias,
+                    partie->Debut, partie->TailleSource,
+                    AjouterTrancheDeclaration(etat, HachageVideDeclaration(), partie), hachage, 0};
+                si (!AjouterNoeudDeclaration(etat, segment)) retourner faux;
+            }
+            index = index + 1;
+        }
+        retourner vrai;
+    }
+
     booléen AnalyserAliasDeclaration(
         EtatAnalyseDeclarations* etat,
         ContexteEspaceDeclaration* contexte,
@@ -1886,7 +2029,17 @@ espace GalacticShrine::GsPP::Autohebergement {
             nom.Hachage,
             contexte->Hachage,
             cible.Hachage};
-        retourner AjouterNoeudDeclaration(etat, noeud);
+        naturel64 indexAlias = etat->NombreNoeuds;
+        si (!AjouterNoeudDeclaration(etat, noeud)) retourner faux;
+        /** <résumé>Possède le nom écrit de la cible, sans modifier le hachage de résolution de l'alias.</résumé> **/
+        naturel32 genreCible = 38;
+        si (estAliasChamp) genreCible = 37;
+        NoeudDeclaration cibleNominale = {
+            genreCible, cible.Ligne, cible.Colonne, 0, indexAlias,
+            cible.Debut, cible.Taille, cible.Hachage, contexte->Hachage, 0};
+        si (!AjouterNoeudDeclaration(etat, cibleNominale)) retourner faux;
+        si (estAliasChamp) retourner vrai;
+        retourner AjouterSegmentsEspaceAliasDeclaration(etat, contexte, indexAlias);
     }
 
     booléen AnalyserUtilisationDeclaration(
@@ -2007,6 +2160,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         }
         naturel32 drapeauxStructure = 4;
         naturel64 hachageBase = 0;
+        NomQualifieDeclaration base = {};
         si (estClasse && AccepterJetonDeclaration(etat, 73)) {
             drapeauxStructure = drapeauxStructure | 32 | 1;
             si (AccepterJetonDeclaration(etat, 10)) {
@@ -2017,7 +2171,6 @@ espace GalacticShrine::GsPP::Autohebergement {
             sinon si (AccepterJetonDeclaration(etat, 11)) {
                 drapeauxStructure = (drapeauxStructure & 4_294_967_294) | 16;
             }
-            NomQualifieDeclaration base;
             si (!AnalyserNomQualifieDeclaration(etat, &base)) retourner faux;
             hachageBase = base.Hachage;
         }
@@ -2040,6 +2193,12 @@ espace GalacticShrine::GsPP::Autohebergement {
             contexte->Hachage,
             hachageBase};
         si (!AjouterNoeudDeclaration(etat, noeudStructure)) retourner faux;
+        si ((drapeauxStructure & 32) != 0) {
+            NoeudDeclaration baseNominale = {
+                40, base.Ligne, base.Colonne, 0, indexStructure,
+                base.Debut, base.Taille, base.Hachage, contexte->Hachage, 0};
+            si (!AjouterNoeudDeclaration(etat, baseNominale)) retourner faux;
+        }
 
         naturel32 visibilite = 1;
         si (estClasse) visibilite = 16;
@@ -2050,10 +2209,13 @@ espace GalacticShrine::GsPP::Autohebergement {
                     etat, ErreurAnalyseDeclarations::AccoladeFermanteAttendue, courant, DetailDiagnosticDeclarations::StructureFinType);
                 retourner faux;
             }
-            si (estClasse
-                && (courant->Genre == 10
+            /**
+             * <résumé>Les sections de visibilité concernent les champs de tout agrégat, comme dans le bootstrap.</résumé>
+             * @etc. Seules les classes autorisent ensuite des membres exécutables ; leurs règles ne changent pas.
+             **/
+            si (courant->Genre == 10
                     || courant->Genre == 11
-                    || courant->Genre == 67)) {
+                    || courant->Genre == 67) {
                 si (courant->Genre == 10) visibilite = 1;
                 sinon si (courant->Genre == 67) visibilite = 8;
                 sinon visibilite = 16;
@@ -2081,6 +2243,8 @@ espace GalacticShrine::GsPP::Autohebergement {
                     sinon {
                         naturel64 positionSauvee = etat->Position;
                         TypeDeclarationInterne typeTeste;
+                        booléen captureSauvee = etat->CapturerNomsTypes;
+                        etat->CapturerNomsTypes = faux;
                         si (AnalyserTypeDeclaration(etat, &typeTeste)) {
                             si (EstJetonDeclaration(etat, 71))
                                 estMembreExecutable = vrai;
@@ -2090,6 +2254,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                                     estMembreExecutable = vrai;
                             }
                         }
+                        etat->CapturerNomsTypes = captureSauvee;
                         etat->Position = positionSauvee;
                     }
                 }
@@ -2145,6 +2310,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                         HacherTypeDeclaration(&typeChamp)};
                     si (!AjouterNoeudDeclaration(etat, champ))
                         retourner faux;
+                    si (!EmettreNomTypeDeclaration(etat, indexChamp, &typeChamp)) retourner faux;
                     si (AccepterJetonDeclaration(etat, 45)
                         && !AnalyserEtEmettreExpressionDeclaration(
                             etat, indexChamp, contexte->Hachage))
@@ -2184,6 +2350,8 @@ espace GalacticShrine::GsPP::Autohebergement {
             }
             si (AccepterJetonDeclaration(etat, 4)) {
                 ContexteEspaceDeclaration enfant = *contexte;
+                enfant.Parent = contexte;
+                enfant.PremierJeton = etat->Position;
                 si (!EstJetonDeclaration(etat, 1)) {
                     JetonLexe* nomEspaceManquant =
                         JetonCourantDeclaration(etat);
@@ -2218,6 +2386,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                     }
                     sinon continuerNom = faux;
                 }
+                enfant.FinJetons = etat->Position;
                 si (!ExigerJetonDeclaration(
                         etat,
                         36,
@@ -2334,6 +2503,7 @@ espace GalacticShrine::GsPP::Autohebergement {
         etat.NombreNoeuds = 0;
         etat.ExpressionsTravail = NulExpressionsDeclarations;
         etat.NombreExpressions = 0;
+        etat.CapturerNomsTypes = vrai;
         etat.EstInterface = estInterface;
         etat.OriginesJetons = origines;
         GalacticShrine::GsPP::Hebergee::InitialiserArene(&etat.Arene, 4096);
@@ -2346,7 +2516,7 @@ espace GalacticShrine::GsPP::Autohebergement {
                 &etat.Arene, etat.NombreJetons * 64, 8));
         etat.ExpressionsTravail = convertir<NoeudExpressionInterne*>(
             GalacticShrine::GsPP::Hebergee::AllouerArene(
-                &etat.Arene, etat.NombreJetons * 72, 8));
+                &etat.Arene, etat.NombreJetons * 80, 8));
         si (!etat.Jetons || !etat.NoeudsTravail
             || !etat.ExpressionsTravail) {
             requete->Resultat.Erreur =
@@ -2397,7 +2567,7 @@ espace GalacticShrine::GsPP::Autohebergement {
             retourner requete->Resultat.Erreur;
         }
         ContexteEspaceDeclaration racine = {
-            HachageVideDeclaration(), vrai};
+            HachageVideDeclaration(), vrai, NulContexteEspaceDeclaration, 0, 0};
         si (!AnalyserDeclarationsDansEspace(&etat, &racine, faux)) {
             requete->Resultat.NombreOctetsArene = etat.Arene.NombreOctets;
             GalacticShrine::GsPP::Hebergee::DetruireArene(&etat.Arene);

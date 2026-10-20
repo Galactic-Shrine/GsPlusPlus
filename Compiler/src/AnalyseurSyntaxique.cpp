@@ -160,6 +160,7 @@ namespace GsPP
         const std::string& espaceParent)
     {
         const auto position = Position(Courant());
+        const auto debutNom = _Position;
         const std::string nom = AnalyserNomQualifie();
         const std::string complet = espaceParent.empty() ? nom : espaceParent + "::" + nom;
         for (std::size_t fin = complet.find("::");; fin = complet.find("::", fin + 2))
@@ -168,9 +169,13 @@ namespace GsPP
             if (fin == std::string::npos) break;
         }
         Exiger(GenreJeton::AccoladeOuvrante, "'{' attendue", "expected '{'");
+        const auto nombrePositionsParent = _PositionsEspace.size();
+        for (std::size_t i = debutNom; i + 1 < _Position; ++i)
+            if (_Jetons[i].Genre == GenreJeton::Identifiant) _PositionsEspace.push_back(Position(_Jetons[i]));
         AnalyserDeclarations(programme, complet);
         Exiger(GenreJeton::AccoladeFermante, "'}' attendue", "expected '}'");
         Accepter(GenreJeton::PointVirgule);
+        _PositionsEspace.resize(nombrePositionsParent);
     }
 
     TypeGs AnalyseurSyntaxique::AnalyserType()
@@ -223,6 +228,7 @@ namespace GsPP
         else if (Est(GenreJeton::Identifiant))
         {
             type.Genre = GenreType::Structure;
+            type.PositionNom = Position(Courant());
             type.Nom = AnalyserNomQualifie();
         }
         else
@@ -292,6 +298,7 @@ namespace GsPP
                 else if (Precedent().Genre == GenreJeton::Privee)
                     structure.VisibiliteHeritage = VisibiliteMembre::Privee;
             }
+            structure.PositionBase = Position(Courant());
             structure.ClasseBase = AnalyserNomQualifie();
         }
         Exiger(GenreJeton::AccoladeOuvrante, "'{' attendue", "expected '{'");
@@ -333,10 +340,12 @@ namespace GsPP
                     "nom d’alias de champ attendu",
                     "expected field alias name").Texte;
                 Exiger(GenreJeton::Egal, "'=' attendu dans l’alias", "expected '=' in alias");
-                alias.Cible = Exiger(
+                const auto& cible = Exiger(
                     GenreJeton::Identifiant,
                     "champ cible attendu",
-                    "expected target field").Texte;
+                    "expected target field");
+                alias.Cible = cible.Texte;
+                alias.PositionCible = Position(cible);
                 Exiger(GenreJeton::PointVirgule, "';' attendu après l’alias", "expected ';' after alias");
                 structure.AliasesChamps.push_back(std::move(alias));
                 continue;
@@ -520,10 +529,12 @@ namespace GsPP
     {
         DeclarationAlias alias;
         alias.Espace = espaceCourant;
+        alias.PositionsEspace = _PositionsEspace;
         alias.Position = Position(Courant());
         Exiger(GenreJeton::Alias, "'alias' attendu", "expected 'alias'");
         alias.Nom = AnalyserNomQualifie();
         Exiger(GenreJeton::Egal, "'=' attendu dans l’alias", "expected '=' in alias");
+        alias.PositionCible = Position(Courant());
         alias.Cible = AnalyserNomQualifie();
         Exiger(GenreJeton::PointVirgule, "';' attendu après l’alias", "expected ';' after alias");
         return alias;

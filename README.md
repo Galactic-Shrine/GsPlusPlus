@@ -557,6 +557,51 @@ principale.
   contextes, 67 corpus bilingues et 134 refus comparés au bootstrap, messages
   et positions compris. Détails inconnus/incompatibles refusés comme erreurs
   hôtes ; API de développement, sans activation de l'analyse Gs++ dans le pilote ;
+- adaptateur hôte d'assemblage multi-unités brut/normalisé possédé : texte,
+  AST, noms, plages et positions originales conservés après sélection des
+  définitions ; limites cumulées, 82 contrats et 14 exports altérés refusés,
+  matrice bilingue comparée au bootstrap. API de développement sans relecture ;
+  entrée additive avec noms qualifiés de conflits et `ExigerValide()` bilingue,
+  raccord backend et traduction complète des diagnostics sémantiques encore à réaliser ;
+- adaptateur hôte de sémantique assemblée possédée : `AnalyserSemantiqueAssemblee`
+  conserve l'AST, les symboles et résolutions, l'isolation des unités et les
+  positions originales des refus numériques ; copies privées, bornes et gardes,
+  aucun préfixe publié sur refus, aucune relecture ni passe C++ ; testé avec
+  fichiers remplacés et après déchargement, API locale sans activation du pilote ;
+- diagnostics sémantiques possédés : messages invariants, dont le constructeur
+  requis pour les champs par défaut, les valeurs d'énumération, les références
+  de tableaux interdites, l'héritage non public/auto-héritage et les paramètres
+  répétés ; noms exacts des champs, alias de champs, énumérateurs et locaux
+  répétés ; alias de champ en conflit avec un champ direct, dans les deux ordres
+  de déclaration ; nom exact de l'alias revisité dans un cycle, distinct de
+  l'entrée lorsque la chaîne comporte un préfixe acyclique ; nom écrit de la
+  cible d'alias de champ introuvable, possédé dans un enfant nominal AST ;
+  cycles racines avec nom qualifié complet possédé, namespaces imbriqués et
+  inter-unités compris (anciens AST sans préfixe nominal conservés numériques) ; cible écrite d'alias
+  global introuvable et nom cible des alias ambigus de fonctions surchargées,
+  qualifications, imports, namespaces et méthodes compris ; nom écrit de
+  l'espace utilisé introuvable, qualifié ou relatif, à la position de `utilisant` / `using` ;
+  nom écrit importé ambigu dans une cible d'alias global, une expression ou
+  une base de classe (nœud nominal 40) ou le type nommé direct d'une globale,
+  locale, champ, retour de fonction/méthode ou paramètre (nœud nominal 41) ;
+  types nommés imbriqués des callbacks (feuilles nominales 42, premier échec conservé) ;
+  types cibles nommés de `convertir<…>` / `cast<…>`, callbacks imbriqués compris
+  (feuilles nominales 43, cible validée avant l'opérande) ;
+  anciens AST sans contexte nominal conservés numériques ; variantes
+  locale/globale, condition/logique, récepteur membre/cible d'appel invalide,
+  accès interdits aux champs, méthodes et opérateurs membres,
+  noms de champs absents ou hérités non initialisables directement,
+  champs objets avec valeur par défaut interdite et champs constants non initialisés,
+  nombres d'expressions incorrects et arguments de tableaux non agrégés dans les initialiseurs explicites,
+  champs initialisés plusieurs fois ou dans le mauvais ordre (noms canoniques,
+  alias compris),
+  noms ou membres introuvables et adresses
+  de fonctions surchargées ambiguës français/anglais via
+  `SemantiqueAssemblee::ExigerValide()`, avec positions originales ; lexage limité
+  à la tranche du nom déjà en mémoire, qualifications et commentaires compris,
+  sans relecture ni passe syntaxique/sémantique C++. Les familles exigeant encore
+  un nom résolu, un type ou un contexte indisponible restent numériques, sans message
+  approximatif. API locale, traduction complète et raccord au pilote à poursuivre ;
 - assemblage auto-hébergé de sources et interfaces préparées : texte, AST et
   table d'origines, avec diagnostics locaux et imports d'espaces isolés par unité ;
   treize corpus bilingues valides, sorties protégées et échecs d'allocation testés ;

@@ -47,6 +47,7 @@ namespace GsPP
         GenreType Genre = GenreType::Inconnu;
         std::string Nom;
         std::uint32_t NiveauPointeur = 0;
+        PositionSource PositionNom;
         std::vector<std::uint32_t> DimensionsTableau;
         std::shared_ptr<TypeGs> RetourFonction;
         std::vector<TypeGs> ParametresFonction;
@@ -518,6 +519,8 @@ namespace GsPP
         std::string Cible;
         std::string CibleCanonique;
         PositionSource Position;
+        /** <résumé>Position du nom cible, distincte de celle de la déclaration d'alias.</résumé> **/
+        PositionSource PositionCible;
     };
 
     struct Structure
@@ -532,6 +535,7 @@ namespace GsPP
         bool EstUnion = false;
         bool EstClasse = false;
         std::string ClasseBase;
+        PositionSource PositionBase;
         std::string ClasseBaseCanonique;
         VisibiliteMembre VisibiliteHeritage = VisibiliteMembre::Publique;
         bool EstPolymorphe = false;
@@ -672,8 +676,11 @@ namespace GsPP
         std::string Cible;
         std::string Espace;
         PositionSource Position;
+        PositionSource PositionCible;
         std::string CibleCanonique;
         GenreCibleAlias GenreCible = GenreCibleAlias::Inconnue;
+        /** <résumé>Positions lexicales des segments du namespace, pour l'oracle AST nominal.</résumé> **/
+        std::vector<PositionSource> PositionsEspace;
 
         [[nodiscard]] std::string NomComplet() const
         {

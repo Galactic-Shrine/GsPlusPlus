@@ -25,6 +25,7 @@ consultables dans l’historique Git.
 
 ## Validation et développement
 
+- [Correctif CI Windows : encodage UTF-8 des arguments et chemins (24 novembre)](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#correction-de-lencodage-des-processus-windows--24-novembre-2026)
 - [Appels indirects : cibles, arités et priorités (24 novembre)](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#appels-indirects--cibles-et-arités--24-novembre-2026)
 - [Groupes mixtes d'alias importés : nom appelé, priorités et compatibilité (24 novembre)](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#groupes-mixtes-dalias-importés--24-novembre-2026)
 - [Appels d'alias refusés : noms canoniques et compatibilité (24 novembre)](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#appels-dalias-refusés-possédés--24-novembre-2026)

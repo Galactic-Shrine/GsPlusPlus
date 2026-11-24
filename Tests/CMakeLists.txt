@@ -7,6 +7,9 @@ add_executable(
 )
 target_link_libraries(gspp_autohebergement_tests PRIVATE gspp_compiler)
 
+gspp_appliquer_manifeste_windows(gspp_tests)
+gspp_appliquer_manifeste_windows(gspp_autohebergement_tests)
+
 if(MSVC)
     target_compile_options(gspp_tests PRIVATE /W4 /permissive- /utf-8)
     target_compile_options(

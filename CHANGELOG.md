@@ -10,6 +10,38 @@
 
 # Journal des modifications
 
+## Encodage des processus Windows — 2026-11-24
+
+### Français
+
+- corriger les échecs d'auto-hébergement et de CLI de la CI Windows : chemins
+  sources GsObj non UTF-8 et argument `français` altéré par Windows-1252 ;
+- intégrer un manifeste `activeCodePage=UTF-8` aux quatre outils et aux deux
+  exécutables de tests, avec CMake/MSVC comme avec Visual Studio 2026 natif ;
+- conserver les tests Unicode et la validation UTF-8 des objets ; les options
+  `/utf-8` de compilation ne déterminent pas l'encodage du processus ;
+- reproduire les deux erreurs dans des copies isolées des exécutables en
+  Windows-1252, sans modifier les paramètres du système ; vérifier les douze
+  manifestes intégrés des deux constructions Windows ;
+- validation locale : CMake Windows 6/6 et validation native VS 2026 réussis,
+  conformité 20/20 dans les deux chaînes ; CLI : 444 diagnostics comparés ;
+- conserver la version `0.27.0-alpha.10`, les formats 1.0 et les structures ABI.
+
+### English
+
+- fix the Windows CI self-hosting and CLI failures caused by non-UTF-8 GsObj
+  source paths and the `français` argument being encoded as Windows-1252;
+- embed a shared `activeCodePage=UTF-8` manifest in all four tools and both
+  test executables for CMake/MSVC and native Visual Studio 2026 builds;
+- retain Unicode coverage and UTF-8 object validation; compiler `/utf-8`
+  options do not set the process code page;
+- reproduce both errors in isolated Windows-1252 executable copies without
+  changing system settings; verify all twelve embedded manifests from the
+  two Windows builds;
+- local validation passed: Windows CMake 6/6 and native VS 2026, with 20/20
+  conformance cases in both toolchains and 444 CLI diagnostic comparisons;
+- retain `0.27.0-alpha.10`, format 1.0 and ABI structures.
+
 ## Appels indirects : cibles et arités — développement après Gs++ 0.27.0-alpha.10 — 2026-11-24
 
 ### Français

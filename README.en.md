@@ -250,6 +250,10 @@ A file's presence in the directory does not automatically expose its types.
 
 For the native solution, install Visual Studio 2026 with MSVC v145 C++ tools
 and the Windows SDK. **CMake is not required for this mode.**
+Windows executables built with MSVC embed a UTF-8 manifest, shared by CMake
+and the native solution, for non-ASCII arguments and paths. No system-wide
+Windows code-page setting is required.
+This manifest is supported starting with Windows 10 version 1903.
 The following requirements apply to the CMake build:
 
 - CMake 4.2 or newer on Windows for the Visual Studio 2026 generator;

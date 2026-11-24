@@ -25,4 +25,9 @@
     </ClCompile>
     <Link><SubSystem>Console</SubSystem><GenerateDebugInformation>true</GenerateDebugInformation></Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(ConfigurationType)' == 'Application'">
+    <Manifest>
+      <AdditionalManifestFiles>$(GsPPRoot)Compiler\WindowsUtf8.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
+    </Manifest>
+  </ItemDefinitionGroup>
 </Project>

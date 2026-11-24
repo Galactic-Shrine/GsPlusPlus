@@ -8232,6 +8232,51 @@ section précédente concernent les groupes mixtes d'alias.
 Version `0.27.0-alpha.10`, formats 1.0, structures ABI et **125 exports**
 conservés ; aucun nouveau commit, push ou release pour cette tranche.
 
+## Correction de l'encodage des processus Windows — 24 novembre 2026
+
+La [CI du commit `53eabb1`](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/45433711800)
+réussit sous GNU/Linux mais échoue dans les deux tâches Windows. Les binaires
+sont construits ; l'auto-hébergement refuse un chemin source GsObj non UTF-8
+et la CLI reçoit l'argument `français` encodé en Windows-1252. La compilation
+avec `/utf-8` fixe les jeux de caractères du source et des littéraux, pas la
+page de codes active du processus. La validation locale antérieure ne
+couvrait pas ce réglage Windows différent.
+
+Les deux erreurs exactes sont reproduites dans des copies isolées des anciens
+exécutables, munies d'un manifeste `activeCodePage=en-US` : refus du chemin
+source GsObj et langue inconnue. Aucun réglage global Windows n'est modifié.
+
+Le correctif intègre `Compiler/WindowsUtf8.manifest` aux quatre outils Windows
+et aux deux exécutables de tests. La fonction CMake et les propriétés MSBuild
+communes l'ajoutent uniquement aux exécutables MSVC ; la bibliothèque statique
+et la chaîne GNU/Linux ne reçoivent pas de manifeste Windows. Le paramètre
+[`activeCodePage=UTF-8`](https://learn.microsoft.com/en-us/windows/apps/design/globalizing/use-utf8-code-page)
+est celui prévu par Windows pour rendre la page de codes du processus UTF-8,
+indépendamment du réglage système, sur Windows 10 1903 et versions ultérieures.
+
+Les douze manifestes réellement intégrés sont extraits et vérifiés : six par
+construction Windows. L'argument accentué `--langue-diagnostics français`
+est accepté dans les deux constructions. Les tests Unicode existants et le
+contrôle UTF-8 des objets sont conservés.
+
+Validation locale du correctif sur les sources figées, le 24 novembre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 168,73 s, CLI 34,69 s, total 216,67 s | 20/20 ; fin 17:33:27 +01:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 17:33:21 +01:00 |
+
+Les deux chaînes conservent les 444 diagnostics CLI, 28 comparaisons
+binaires/jetons/AST et 36 refus/arrêts de projets. Les deux images
+`Frontend.GsE` restent identiques à la tranche précédente, SHA-256
+`529B63B032DA15B20B85FB17E11C2121A4F291B99815F3165F7C486A47ECEB41`.
+La reconfiguration GNU/Linux réussit sans travail de compilation supplémentaire.
+Les résultats distants du commit correctif sont consultables dans le
+[workflow Validation Gs++](https://github.com/Galactic-Shrine/GsPlusPlus/actions/workflows/validation.yml).
+
+Version `0.27.0-alpha.10`, formats 1.0, structures ABI et 125 exports du
+frontend conservés. Ce correctif ne constitue pas une nouvelle release.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore

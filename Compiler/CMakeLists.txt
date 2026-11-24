@@ -36,23 +36,33 @@ function(gspp_appliquer_avertissements cible)
     endif()
 endfunction()
 
+function(gspp_appliquer_manifeste_windows cible)
+    if(MSVC)
+        target_sources(${cible} PRIVATE "${PROJECT_SOURCE_DIR}/Compiler/WindowsUtf8.manifest")
+    endif()
+endfunction()
+
 gspp_appliquer_avertissements(gspp_compiler)
 
 add_executable(gsppc src/Principal.cpp)
 target_link_libraries(gsppc PRIVATE gspp_compiler)
 gspp_appliquer_avertissements(gsppc)
+gspp_appliquer_manifeste_windows(gsppc)
 
 add_executable(gseverifier src/VerifierGsEPrincipal.cpp)
 target_link_libraries(gseverifier PRIVATE gspp_compiler)
 gspp_appliquer_avertissements(gseverifier)
+gspp_appliquer_manifeste_windows(gseverifier)
 
 add_executable(gsechargeur src/ChargeurGsEPrincipal.cpp)
 target_link_libraries(gsechargeur PRIVATE gspp_compiler)
 gspp_appliquer_avertissements(gsechargeur)
+gspp_appliquer_manifeste_windows(gsechargeur)
 
 add_executable(gseload src/ChargeurGsEPrincipal.cpp)
 target_link_libraries(gseload PRIVATE gspp_compiler)
 gspp_appliquer_avertissements(gseload)
+gspp_appliquer_manifeste_windows(gseload)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
    AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")

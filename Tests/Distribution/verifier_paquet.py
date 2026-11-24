@@ -108,11 +108,32 @@ def main() -> int:
     metadata_offset, metadata_size = struct.unpack_from("<QQ", content, 72)
     metadata = content[metadata_offset:metadata_offset + metadata_size].decode("utf-8")
     require(f'Version = "{version}";' in metadata, "Stale frontend metadata")
-    verification = run([verifier, frontend], work)
-    require("2 import(s), 75 export(s)" in verification, "Frontend export/import drift")
-    require(sha256(frontend) == sha256(options.reference_frontend),
+    reference = options.reference_frontend.resolve()
+    require(root not in reference.parents,
+            "Reference frontend must be outside the extracted package")
+    table_counts = re.compile(
+        r"^GsE 1\.0, \d+ segment\(s\), \d+ section\(s\), "
+        r"(\d+) import\(s\), (\d+) export\(s\)$",
+        re.MULTILINE,
+    )
+
+    def frontend_counts(image: Path) -> tuple[int, int]:
+        match = table_counts.search(run([verifier, image], work))
+        require(match is not None, f"Missing frontend import/export counts: {image}")
+        assert match is not None
+        return int(match.group(1)), int(match.group(2))
+
+    expected_counts = frontend_counts(reference)
+    require(expected_counts[0] == 2 and expected_counts[1] > 0,
+            f"Unexpected reference frontend import/export counts: {expected_counts}")
+    counts = frontend_counts(frontend)
+    require(counts == expected_counts,
+            f"Frontend import/export drift: found {counts}, expected {expected_counts}")
+    digest = hashlib.sha256(content).hexdigest()
+    require(digest == sha256(reference),
             "Distributed frontend differs from the tested build")
-    passed("frontend-format-metadata-and-hash", sha256=sha256(frontend), bytes=len(content))
+    passed("frontend-format-metadata-and-hash", sha256=digest, bytes=len(content),
+           imports=counts[0], exports=counts[1])
 
     run([compiler, share / "Exemples/Bonjour.Gs++", "--format", "gsobj",
          "-o", work / "Bonjour.GsObj"], work)

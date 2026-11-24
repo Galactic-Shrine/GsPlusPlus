@@ -35,6 +35,148 @@ Les mentions locales des jalons historiques décrivent leur état au moment de
 validation ; aucune nouvelle release ni mise à jour des paquets alpha.10
 n'est réalisée.
 
+### Consolidation et suite du 20 octobre 2026
+
+Le commit signé et vérifié
+[`8dcf7dd`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/8dcf7dd6c5aabff0e53637d9026800c931adc9aa)
+consolide les diagnostics possédés jusqu'aux conversions du code 121. Sa
+[CI Windows, GNU/Linux et MSBuild natif](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/39481132539)
+réussit ; aucune nouvelle release ni mise à jour des paquets.
+
+La tranche locale suivante étend les noms possédés aux types introuvables
+100/99 : bases de classes, déclarations directes, callbacks et conversions imbriquées, priorité
+du premier nom et ordre des globales. Les anciens AST restent numériques ;
+un symbole non type reste également numérique lorsque son nom canonique
+n'est pas possédé. Aucun type/import n'est résolu dans l'hôte.
+L'extension d'héritage réutilise la feuille 40 ; les bases sont contrôlées avant
+les champs/signatures, sans déplacer la priorité des utilisations, énumérations
+ou alias racines. La base absente est distinguée d'un symbole non type et d'un
+type trouvé qui n'est pas une classe (114).
+La tranche du 21 octobre ajoute le message possédé de 114 avec le nom écrit de
+la base 40 ; `Detail` conserve son rang de symbole natif, zéro compris, et le
+type retenu est vérifié sans refaire sa résolution. L'ancien AST sans feuille
+40 reste numérique. La tranche suivante traduit aussi les noms non types
+déjà écrits sous la forme complète retenue par la recherche native, avant
+expansion des alias ; les qualifications implicites non possédées restent
+numériques sur l'ancien chemin. Une extension native facultative transporte
+maintenant les préfixes retenus pour les fonctions libres/globales, alias racines et
+valeurs d'énumération, puis pour les méthodes ordinaires avec le segment de
+leur classe déclarante. L'hôte joint ces segments possédés sans recherche de
+symboles ; anciens exports et résultats conservés. La matrice vérifie aussi
+84 sélections exactes dans les groupes mixtes méthode/fonction libre de même
+nom complet, dans les deux ordres, et 44 priorités/succès, dont 12 refus de
+doublons/appels ambigus conservés numériques. Un premier raccord explicite au
+pilote est maintenant implémenté : `--diagnostics-frontend` /
+`--frontend-diagnostics`, instantanés partagés, diagnostics possédés et repli C++
+uniquement sur refus numérique validé et confirmé à la même position.
+La syntaxe/normalisation et les annotations backend restent en C++. L'extension
+aux projets/solutions conserve une image pour la commande, les modes séparé/
+agrégé, chemins, journaux, remplacements et arrêts incrémentaux ; 12 comparaisons
+de solutions FR/EN, 4 remplacements et 8 refus/arrêts sont vérifiés sous Windows.
+Validation de cette extension : CTest Windows 6/6, GNU/Linux 7/7 avec intégration,
+validation native VS 2026 et conformité 20/20 par chaîne réussis ; images
+`Frontend.GsE` identiques et vérifiées, sans bascule par défaut.
+Une première traduction du diagnostic 118 est ajoutée localement pour les
+fonctions ordinaires racines, méthodes de classe racine et leurs groupes mixtes.
+La paire native est contrôlée sans refaire les signatures. CMake Windows 6/6, GNU/Linux
+7/7 avec intégration et validation native VS 2026 réussis, conformité 20/20 dans
+chaque chaîne. Matrice dédiée : 26 diagnostics traduits, 10 replis FR/EN,
+618 contrats/textes et 216 marqueurs natifs altérés ; CLI portée à 48 diagnostics.
+Extension locale du 22 octobre : constructeurs/destructeurs et les 18 opérateurs
+libres/membres/mixtes sont rendus avec leurs noms internes exacts, sans nouvelle
+ABI. La matrice ciblée passe à 184 diagnostics, 12 replis, 4 056 contrats/textes
+et 1 176 marqueurs natifs altérés ; CLI 72 diagnostics. Seuls les préfixes de
+namespace absents restent numériques pour le code 118. CMake Windows 6/6,
+GNU/Linux 7/7 avec intégration et validation native VS 2026 réussis,
+conformité 20/20 par chaîne ; images identiques et vérifiées, sans publication.
+L'extension suivante possède les préfixes de namespaces via une paire d'exports
+native facultative, sans modifier les anciennes entrées ni leurs résultats.
+Les 380 cas FR/EN de surcharges sont traduits avec ce contexte, dont 196 noms
+qualifiés supplémentaires ; 2 548 contrats/textes, 3 528 sorties natives altérées
+et 588 mesures/copies bornées sont vérifiés. CLI : 88 diagnostics et compatibilité
+sans les nouveaux exports. CMake Windows 6/6, GNU/Linux 7/7 avec intégration et
+validation native VS 2026 réussis, conformité 20/20 par chaîne ; les trois images
+sont identiques et vérifiées, avec 111 exports. Alpha.10 conservée.
+La tranche suivante rend le diagnostic 119 grâce à une empreinte de liaison
+native possédée et à la paire déjà choisie ; aucune signature n'est résolue ou
+rehachée dans l'hôte. La requête facultative de 56 octets conserve les contrats
+99/100/118 et les anciennes entrées ; le pilote garde son repli sans les deux
+nouveaux exports. CLI : 112 diagnostics, 24 replis de liaison et contrôles des
+paires facultatives validés. CMake Windows 6/6, GNU/Linux 7/7 avec intégration
+et VS 2026 natif réussis ; conformité 20/20 dans les trois chaînes, images
+identiques et vérifiées avec 113 exports. Alpha.10 conservée, sans publication.
+La tranche suivante conserve le groupe canonique unique des appels ambigus 22
+via une nouvelle paire d'exports facultative, avec la même requête de 56 octets.
+Fonctions, méthodes héritées, opérateurs et constructeurs sont rendus sans
+sélection hôte ; imports multigroupes conservés numériques. Les matrices de
+priorités et de contrats sont étendues : 106 diagnostics bilingues, 4 imports
+multigroupes numériques, 12 priorités et 2 succès. CMake Windows 6/6,
+GNU/Linux 7/7 avec intégration et VS 2026 natif réussis, conformité 20/20
+par chaîne ; images identiques et vérifiées avec 115 exports, sans publication.
+La tranche du 23 octobre possède aussi les groupes importés ambigus 22 :
+nom appelé et marque native, sans déclaration représentante ni recherche hôte.
+Les clés C++ internes restent utilisées pour la résolution, mais les messages
+21/22 affichent le nom public. Matrice ciblée : 70 diagnostics FR/EN, 16
+priorités/groupes uniques et 2 succès ; code 21 conservé numérique. CLI :
+176 diagnostics, 12 comparaisons binaires/jetons/AST et 12 refus/arrêts de
+projets. CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif
+réussis ; conformité 20/20 par chaîne, images identiques et vérifiées avec
+117 exports. Version alpha.10 conservée, sans publication.
+La tranche suivante du 23 octobre possède le groupe refusé par le diagnostic
+21 pour les appels directs, membres et opérateurs, imports multigroupes compris.
+L'arité explicite reste dans `Detail`, zéro compris, et l'hôte ne refait ni les
+conversions ni la sélection. Matrice ciblée validée : 126 diagnostics FR/EN,
+16 priorités et 4 succès ; constructions et alias de fonctions non représentés
+conservés numériques. La CLI passe 244 diagnostics et 16 refus/arrêts de projets.
+CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussissent
+après le correctif des alias ; conformité 20/20 par chaîne, images identiques
+et vérifiées avec 119 exports. Alpha.10 conservée, sans publication.
+La tranche suivante possède aussi les groupes de constructeurs refusés par 21 :
+variables locales et initialiseurs de délégation/base/champ, préfixes natifs
+et arité explicite conservés. Matrice ciblée : 48 diagnostics FR/EN, 14 priorités,
+4 succès et 8 replis ; champs/bases implicites insuffisamment représentés
+restent numériques. CLI : 292 diagnostics, 16 comparaisons binaires/jetons/AST
+et 20 refus/arrêts de projets. CMake Windows 6/6, GNU/Linux 7/7 avec intégration
+et VS 2026 natif réussissent ; conformité 20/20 par chaîne, images identiques et
+vérifiées avec 121 exports. Alpha.10 et formats 1.0 conservés, sans publication.
+La tranche suivante représente les refus implicites de champs 7 et de bases
+à l'origine d'un constructeur 13, sans résolution de type dans l'hôte.
+Validation ciblée : 42 diagnostics FR/EN, 6 priorités, 6 succès et 2 replis ;
+CLI : 324 diagnostics et 21 contrôles de paires facultatives. Les campagnes du
+23 octobre sont terminées : CMake Windows 6/6, GNU/Linux 7/7 avec intégration
+et VS 2026 natif réussissent, conformité 20/20 par chaîne. Les trois nouvelles
+images identiques sont vérifiées avec 123 exports ; la matrice ciblée est
+rejouée sur les trois chaînes le 24 novembre. Les résultats 121 exports
+ci-dessus restent ceux de la tranche précédente.
+La tranche du 24 novembre possède les alias de fonctions des appels refusés
+par 21 : référence 24, alias 10, cible écrite 38 et préfixe natif. Matrice ciblée
+réussie : 52 diagnostics FR/EN, 14 priorités, 4 succès et 8 replis d'imports
+mixtes ; anciennes capacités conservées, aucune chaîne d'alias résolue dans
+l'hôte. La CLI ciblée passe 356 diagnostics, 20 comparaisons binaires/jetons/AST,
+24 refus/arrêts de projets et 24 contrôles de paires facultatives. CMake Windows
+6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussissent, conformité
+20/20 par chaîne. Les images identiques sont vérifiées avec 125 exports.
+Le complément suivant du 24 novembre traduit également les imports mêlant
+plusieurs alias ou des alias et fonctions, même avec une cible finale commune.
+Il réutilise le rôle de groupe importé et les 125 exports. Matrice élargie :
+96 diagnostics FR/EN, 26 priorités et 8 succès, sans repli dans cette matrice ;
+CLI : 388 diagnostics, 24 comparaisons binaires/jetons/AST et 28 refus/arrêts de
+projets. Les anciennes entrées natives restent numériques pour ces alias ;
+CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussissent,
+conformité 20/20 par chaîne ; les trois images identiques sont vérifiées.
+Le complément des appels indirects du 24 novembre traduit le refus 53 et
+contrôle les rôles, origines et arités des refus 53/54 à partir de l'AST
+possédé, sans résolution de type ni nouvel export. Le code 55 reste numérique.
+Matrice ciblée réussie : 66 diagnostics FR/EN, 10 priorités, 6 succès,
+6 refus de type numériques, 1 320 contrats altérés et 594 contrôles natifs.
+La CLI ciblée passe 444 diagnostics, 28 comparaisons binaires/jetons/AST et
+36 refus/arrêts de projets. Les campagnes complètes CMake Windows 6/6,
+GNU/Linux 7/7 avec intégration et VS 2026 natif réussissent, conformité
+20/20 par chaîne ; les images identiques restent vérifiées avec 125 exports.
+Les autres contextes et le raccord backend demeurent à poursuivre.
+Le [bilan détaillé](FRONTEND_AUTOHEBERGE_GS_PLUS_PLUS_0.27.md#types-introuvables-possédés--20-octobre-2026)
+distingue cette tranche du commit et de la release alpha.10.
+
 ### Ajouts locaux des 7 et 8 octobre 2026 — diagnostics sémantiques possédés
 
 `SemantiqueAssemblee::ExigerValide()` traduit un sous-ensemble de refus dont le

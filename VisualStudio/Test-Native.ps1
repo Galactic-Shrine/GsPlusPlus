@@ -14,6 +14,9 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
 Invoke-Checked "$bin/gspp_tests.exe" @()
 Invoke-Checked "$bin/gspp_autohebergement_tests.exe" @(
     "$artefacts/AutoHebergement/Frontend.GsE", "$artefacts/Tests/AutoHebergement/TestHebergee.GsE")
+Invoke-Checked $Python @("$root/Tests/Pilote/verifier_diagnostics_frontend.py",
+    '--compiler', "$bin/gsppc.exe", '--frontend', "$artefacts/AutoHebergement/Frontend.GsE",
+    '--work-root', "$OutputRoot/Tests/GsPlusPlus/DiagnosticsFrontend")
 Invoke-Checked $Python @("$root/Tests/Conformite/verifier_style_sources.py", '--source-root', $root)
 Invoke-Checked $Python @("$root/Tests/Conformite/verifier_projets_visualstudio.py")
 Invoke-Checked $Python @("$root/Tests/Conformite/executer_conformite.py",

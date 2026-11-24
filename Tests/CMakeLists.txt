@@ -74,6 +74,14 @@ add_test(
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(
+    NAME gspp_diagnostics_frontend_cli
+    COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Pilote/verifier_diagnostics_frontend.py"
+        --compiler $<TARGET_FILE:gsppc>
+        --frontend "${GS_FRONTEND_GSE}"
+        --work-root "${GS_REPERTOIRE_TESTS}/GsPlusPlus/DiagnosticsFrontend"
+)
+add_test(
     NAME gspp_projets_visualstudio
     COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/Conformite/verifier_projets_visualstudio.py"

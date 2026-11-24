@@ -25,10 +25,14 @@ namespace GsPP
         const std::vector<UniteSource>& unites,
         std::ostream* sortieJetons = nullptr);
     using PreparateurJetonsUnite = std::function<std::vector<Jeton>(const UniteSource&)>;
-    /** <résumé>Partage les passes bootstrap avec une préparation de jetons explicitement fournie.</résumé> **/
+    /**
+     * <résumé>Partage les passes bootstrap avec une préparation de jetons explicitement fournie.</résumé>
+     * @etc. Le validateur facultatif est appelé après syntaxe/normalisation, avant la sémantique C++.
+     * @etc. Une seule invocation ; aucune sur refus préalable ; exceptions propagées sans conversion.
+     **/
     [[nodiscard]] Programme AnalyserUnitesAvecPreparation(
         const std::vector<UniteSource>& unites, const PreparateurJetonsUnite& preparer,
-        std::ostream* sortieJetons = nullptr);
+        std::ostream* sortieJetons = nullptr, const std::function<void()>& valider = {});
     void NormaliserDeclarations(Programme& programme);
     [[nodiscard]] std::vector<Jeton> PreparerJetonsSource(
         const std::filesystem::path& chemin, const std::string& nomDiagnostic = {});

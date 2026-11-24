@@ -40,7 +40,7 @@ namespace GsPP
             const char* Anglais;
         };
 
-        constexpr std::array<MessageSemantique, 47> MessagesSemantiques{{
+        constexpr std::array<MessageSemantique, 48> MessagesSemantiques{{
             {16, "paramètre déclaré plusieurs fois", "parameter declared more than once"},
             {20, "le programme ne contient aucune fonction", "the program contains no function"},
             {39, "une classe possédant une valeur de champ par défaut doit déclarer un constructeur", "a class with a default field value must declare a constructor"},
@@ -53,6 +53,7 @@ namespace GsPP
             {50, "l’indexation exige un pointeur ou un tableau", "indexing requires a pointer or array"},
             {51, "l’indice doit être entier", "index must be an integer"},
             {52, "l’indexation de vide* est interdite", "indexing void* is forbidden"},
+            {53, "la cible d’appel n’est pas un pointeur de fonction", "call target is not a function pointer"},
             {54, "nombre d’arguments incorrect", "incorrect argument count"},
             {60, "'!' exige une valeur scalaire", "'!' requires a scalar value"},
             {61, "opérateur unaire réservé aux entiers", "unary operator requires an integer"},
@@ -135,10 +136,50 @@ namespace GsPP
             return enfant == ancetre;
         }
 
+        /**
+         * <résumé>Contrôle le rôle de cible (53) ou l'arité de l'appel (54), sans résoudre son type.</résumé>
+         * @etc. Des appels imbriqués peuvent partager leur position ; leur message invariant n'exige aucun choix de cible.
+         **/
+        bool ContexteAppelIndirectDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        {
+            const auto code = resultat.Resultat.Erreur;
+            const auto& d = resultat.Declarations;
+            if ((code != 53 && code != 54) || !resultat.PositionErreur || resultat.IndexUniteErreur >= d.Unites.size()
+                || d.Noeuds.size() != d.Origines.size() || (code == 53 && resultat.Resultat.Detail)
+                || resultat.Resultat.NombreSymboles != static_cast<std::uint64_t>(std::count_if(
+                    d.Noeuds.begin(), d.Noeuds.end(), [](const auto& n) { return GenreSymbole(n.Genre) != 0; }))) return false;
+            std::size_t contexte = 0;
+            for (std::size_t i = 1; i + 1 < d.Noeuds.size(); ++i)
+            {
+                const auto& appel = d.Noeuds[i]; const auto& cible = d.Noeuds[i + 1];
+                if (appel.Genre != 28 || !OrigineDiagnosticCorrespond(resultat, code == 53 ? i + 1 : i)) continue;
+                if (!appel.Parent || appel.Parent >= i || appel.Drapeaux || appel.HachageType
+                    || appel.DebutNom || appel.TailleNom || appel.HachageNom || cible.Parent != i
+                    || d.Origines[i].IndexUnite != resultat.IndexUniteErreur || d.Origines[i + 1].IndexUnite != resultat.IndexUniteErreur
+                    || cible.Genre < 22 || cible.Genre > 32) return false;
+                std::uint64_t enfants = 0;
+                for (const auto& enfant : d.Noeuds)
+                    if (enfant.Parent == i)
+                    {
+                        if (enfant.Genre < 22 || enfant.Genre > 32) return false;
+                        ++enfants;
+                    }
+                if (code == 54 && resultat.Resultat.Detail != enfants - 1) continue;
+                if (!contexte) contexte = i;
+            }
+            if (!contexte) return false;
+            for (std::size_t i = 1; i < d.Noeuds.size(); ++i)
+                if (OrigineDiagnosticCorrespond(resultat, i) && (!d.Noeuds[i].Genre || d.Noeuds[i].Parent >= i
+                    || (i != contexte && !EstAncetreDiagnostic(d.Noeuds, i, contexte)
+                        && !EstAncetreDiagnostic(d.Noeuds, contexte, i)))) return false;
+            return true;
+        }
+
         /** <résumé>Choisit un message seulement si le contexte possédé est complet et non ambigu.</résumé> **/
         const MessageSemantique* MessageSemantiqueTraduisible(const SemantiqueAssemblee& resultat) noexcept
         {
             const auto code = resultat.Resultat.Erreur;
+            if ((code == 53 || code == 54) && !ContexteAppelIndirectDiagnostic(resultat)) return nullptr;
             if (const auto* invariant = MessageSemantiqueTraduisible(code)) return invariant;
             if ((code != 23 && code != 46 && code != 62) || !resultat.PositionErreur
                 || resultat.Declarations.Origines.size() != resultat.Declarations.Noeuds.size()) return nullptr;
@@ -294,10 +335,11 @@ namespace GsPP
          * <résumé>Relie le nom de type choisi par la conversion à son contexte possédé, sans le résoudre.</résumé>
          * @etc. Les feuilles 43 précèdent l'unique opérande ; les ancêtres à la même position restent autorisés.
          **/
-        AccesDiagnosticPossede NomTypeConversionAmbiguDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        AccesDiagnosticPossede NomTypeConversionDiagnostic(const SemantiqueAssemblee& resultat, std::size_t cible = 0) noexcept
         {
-            const auto& d = resultat.Declarations; const auto cible = static_cast<std::size_t>(resultat.Resultat.Detail);
-            if (resultat.Resultat.Erreur != 121 || !cible || !resultat.PositionErreur
+            const auto& d = resultat.Declarations;
+            if (!cible) cible = static_cast<std::size_t>(resultat.Resultat.Detail);
+            if ((resultat.Resultat.Erreur != 121 && resultat.Resultat.Erreur != 99) || !cible || !resultat.PositionErreur
                 || resultat.IndexUniteErreur >= d.Unites.size() || d.Noeuds.size() != d.Origines.size()
                 || cible >= d.Noeuds.size()) return {};
             const auto& nominal = d.Noeuds[cible]; const auto reference = static_cast<std::size_t>(nominal.Parent);
@@ -345,17 +387,18 @@ namespace GsPP
         }
 
         /**
-         * <résumé>Relie le code 121 au nom direct ou imbriqué du type, sans le résoudre.</résumé>
+         * <résumé>Relie les codes 100/121 au nom direct ou imbriqué du type, sans le résoudre.</résumé>
          * @etc. Detail indexe la feuille 41/42 ; Drapeaux conserve le décalage lexical depuis la déclaration.
          **/
-        AccesDiagnosticPossede NomTypeAmbiguDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        AccesDiagnosticPossede NomTypeDeclareDiagnostic(const SemantiqueAssemblee& resultat, std::size_t cible = 0) noexcept
         {
-            const auto& d = resultat.Declarations; const auto cible = static_cast<std::size_t>(resultat.Resultat.Detail);
-            if (resultat.Resultat.Erreur != 121 || !cible || !resultat.PositionErreur
+            const auto& d = resultat.Declarations;
+            if (!cible) cible = static_cast<std::size_t>(resultat.Resultat.Detail);
+            if ((resultat.Resultat.Erreur != 121 && resultat.Resultat.Erreur != 100) || !cible || !resultat.PositionErreur
                 || resultat.IndexUniteErreur >= d.Unites.size() || d.Noeuds.size() != d.Origines.size()
                 || cible >= d.Noeuds.size()) return {};
             const auto& nominal = d.Noeuds[cible];
-            if ((nominal.Genre != 41 && nominal.Genre != 42) || !nominal.Parent
+            if ((nominal.Genre != 41 && nominal.Genre != 42) || !nominal.Parent || nominal.Parent >= cible
                 || (nominal.Genre == 41 && nominal.Parent + 1 != cible)
                 || !NomDiagnosticDansUnite(resultat, cible) || d.Origines[cible].IndexUnite != resultat.IndexUniteErreur) return {};
             const auto reference = static_cast<std::size_t>(nominal.Parent); const auto& declaration = d.Noeuds[reference];
@@ -408,20 +451,46 @@ namespace GsPP
             return {reference, cible};
         }
 
-        /**
-         * <résumé>Relie le code 121 d'héritage à sa base nominale, sans résoudre un type côté hôte.</résumé>
-         * @etc. Detail indexe la feuille 40 ; le diagnostic reste à la position de la classe.
-         * @Retourner(AccesDiagnosticPossede) Classe et base cohérentes, ou indices nuls.
-         **/
-        AccesDiagnosticPossede BaseClasseAmbigueDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        std::size_t NoeudSymboleDiagnostic(const SemantiqueAssemblee& resultat) noexcept;
+
+        /** <résumé>Valide le type non classe désigné par le rang natif 114, sans rechercher sa déclaration.</résumé> **/
+        std::size_t TypeBaseNonClasseDiagnostic(const SemantiqueAssemblee& resultat) noexcept
         {
             const auto& d = resultat.Declarations;
-            const auto cible = static_cast<std::size_t>(resultat.Resultat.Detail);
-            if (resultat.Resultat.Erreur != 121 || !cible || !resultat.PositionErreur
+            if (resultat.Resultat.Erreur != 114 || d.Noeuds.size() != d.Origines.size()) return 0;
+            const auto cible = NoeudSymboleDiagnostic(resultat);
+            if (!cible || !NomDiagnosticDansUnite(resultat, cible)) return 0;
+            const auto& n = d.Noeuds[cible]; const auto& origine = d.Origines[cible].Position;
+            if (n.Parent || (n.Genre != 4 && n.Genre != 5 && n.Genre != 8)
+                || origine.Fichier.empty() || !origine.Ligne || !origine.Colonne) return 0;
+            return cible;
+        }
+
+        /**
+         * <résumé>Relie les codes 100/114/121 d'héritage à leur base nominale, sans résoudre un type côté hôte.</résumé>
+         * @etc. Detail indexe la feuille 40 pour 100/121, mais garde le rang du type non classe pour 114.
+         * @Retourner(AccesDiagnosticPossede) Classe et base cohérentes, ou indices nuls.
+         **/
+        AccesDiagnosticPossede BaseClasseDiagnostic(const SemantiqueAssemblee& resultat, std::size_t cible = 0) noexcept
+        {
+            const auto& d = resultat.Declarations;
+            if (!cible) cible = static_cast<std::size_t>(resultat.Resultat.Detail);
+            const bool nonClasse = resultat.Resultat.Erreur == 114;
+            if ((resultat.Resultat.Erreur != 121 && resultat.Resultat.Erreur != 100 && !nonClasse) || !resultat.PositionErreur
                 || resultat.Resultat.NombreResolutions || resultat.IndexUniteErreur >= d.Unites.size()
-                || d.Noeuds.size() != d.Origines.size() || cible >= d.Noeuds.size()) return {};
+                || d.Noeuds.size() != d.Origines.size()) return {};
+            if (nonClasse)
+            {
+                if (!TypeBaseNonClasseDiagnostic(resultat)) return {};
+                cible = 0;
+                for (std::size_t i = 1; i < d.Noeuds.size(); ++i)
+                    if (d.Noeuds[i].Genre == 40 && d.Noeuds[i].Parent < i
+                        && OrigineDiagnosticCorrespond(resultat, d.Noeuds[i].Parent))
+                    { if (cible) return {}; cible = i; }
+            }
+            if (!cible || cible >= d.Noeuds.size()) return {};
             const auto& base = d.Noeuds[cible];
-            if (base.Genre != 40 || !base.Parent || base.Parent + 1 != cible || base.Drapeaux || base.HachageType
+            if (base.Genre != 40 || !base.Parent || base.Parent >= cible || base.Parent + 1 != cible || base.Drapeaux || base.HachageType
                 || !NomDiagnosticDansUnite(resultat, cible) || d.Origines[cible].IndexUnite != resultat.IndexUniteErreur) return {};
             const auto reference = static_cast<std::size_t>(base.Parent);
             const auto& classe = d.Noeuds[reference];
@@ -443,6 +512,57 @@ namespace GsPP
                     || (d.Noeuds[i].Genre == 40 && d.Noeuds[i].Parent == reference && i != cible)
                     || (OrigineDiagnosticCorrespond(resultat, i) && i != reference)) return {};
             return {reference, cible};
+        }
+
+        /** <résumé>Contrôle la déclaration et le préfixe fournis par le natif, sans chercher le symbole nommé.</résumé> **/
+        AccesDiagnosticPossede TypeCanoniqueDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        {
+            const auto& d = resultat.Declarations;
+            const auto cible = resultat.IndexDeclarationCanonique;
+            const auto nominal = resultat.IndexNominalCanonique;
+            if ((resultat.Resultat.Erreur != 99 && resultat.Resultat.Erreur != 100) || resultat.Resultat.Detail != UINT32_MAX
+                || !cible || !nominal || cible >= d.Noeuds.size() || nominal >= d.Noeuds.size()
+                || d.Noeuds.size() != d.Origines.size() || resultat.PrefixeNomCanonique.empty()
+                || resultat.PrefixeNomCanonique.size() > d.Source.size() || !NomDiagnosticDansUnite(resultat, cible)) return {};
+            const auto& declaration = d.Noeuds[cible];
+            const bool valeurEnum = declaration.Genre == 9 && declaration.Parent && declaration.Parent < cible
+                && d.Noeuds[declaration.Parent].Genre == 8 && !d.Noeuds[declaration.Parent].Parent;
+            const bool methodeClasse = declaration.Genre == 12 && declaration.Parent && declaration.Parent < cible
+                && d.Noeuds[declaration.Parent].Genre == 6 && !d.Noeuds[declaration.Parent].Parent;
+            const bool prefixeDeclarant = valeurEnum || methodeClasse;
+            if ((!prefixeDeclarant && (declaration.Parent || (declaration.Genre != 1 && declaration.Genre != 3 && declaration.Genre != 10)
+                    || declaration.HachageEspace == HacherTexteDiagnostic({})))
+                || d.Origines[cible].Position.Fichier.empty() || !d.Origines[cible].Position.Ligne
+                || !d.Origines[cible].Position.Colonne) return {};
+            auto contexte = NomTypeDeclareDiagnostic(resultat, nominal);
+            if (!contexte.Reference) contexte = NomTypeConversionDiagnostic(resultat, nominal);
+            if (!contexte.Reference) contexte = BaseClasseDiagnostic(resultat, nominal);
+            if (!contexte.Reference) return {};
+            std::uint64_t fin = 0;
+            for (const auto& segment : resultat.PrefixeNomCanonique)
+            {
+                if (!segment.TailleOctets || segment.DebutOctets < fin || segment.DebutOctets > d.Source.size()
+                    || segment.TailleOctets > d.Source.size() - segment.DebutOctets
+                    || !std::any_of(d.Unites.begin(), d.Unites.end(), [&](const auto& u)
+                    { return segment.DebutOctets >= u.DebutOctets && segment.DebutOctets - u.DebutOctets <= u.TailleOctets
+                        && segment.TailleOctets <= u.TailleOctets - (segment.DebutOctets - u.DebutOctets); })) return {};
+                fin = segment.DebutOctets + segment.TailleOctets;
+            }
+            if (!prefixeDeclarant && resultat.PrefixeNomCanonique.back().HachageEspace != declaration.HachageEspace) return {};
+            if (prefixeDeclarant)
+            {
+                const auto& parent = d.Noeuds[declaration.Parent];
+                const auto& dernier = resultat.PrefixeNomCanonique.back();
+                if (!NomDiagnosticDansUnite(resultat, declaration.Parent) || parent.HachageEspace != declaration.HachageEspace
+                    || (methodeClasse && !(parent.Drapeaux & 4U))
+                    || HacherTexteDiagnostic(std::string_view(d.Source).substr(parent.DebutNom, parent.TailleNom)) != parent.HachageNom
+                    || d.Origines[declaration.Parent].Position.Fichier.empty()
+                    || !d.Origines[declaration.Parent].Position.Ligne || !d.Origines[declaration.Parent].Position.Colonne
+                    || dernier.DebutOctets != parent.DebutNom || dernier.TailleOctets != parent.TailleNom
+                    || (resultat.PrefixeNomCanonique.size() == 1 ? parent.HachageEspace != HacherTexteDiagnostic({})
+                        : resultat.PrefixeNomCanonique[resultat.PrefixeNomCanonique.size() - 2].HachageEspace != parent.HachageEspace)) return {};
+            }
+            return {contexte.Reference, cible};
         }
 
         /**
@@ -507,6 +627,279 @@ namespace GsPP
                     && (!noeuds[i].Genre || (!EstAncetreDiagnostic(noeuds, i, reference)
                         && !EstAncetreDiagnostic(noeuds, reference, i)))) return {};
             return {reference, cible};
+        }
+
+        /**
+         * <résumé>Contrôle la paire de surcharges désignée par le natif, sans comparer ses types.</résumé>
+         * @etc. Detail est l'index AST de la première déclaration, non un rang de symbole.
+         * @etc. Le choix de la paire et la priorité des groupes restent exclusivement natifs.
+         **/
+        AccesDiagnosticPossede DoublonSurchargeDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        {
+            const auto& d = resultat.Declarations;
+            const std::size_t cible = resultat.Resultat.Detail;
+            if ((resultat.Resultat.Erreur != 118 && resultat.Resultat.Erreur != 119) || !resultat.PositionErreur || !cible || cible >= d.Noeuds.size()
+                || d.Noeuds.size() != d.Origines.size() || resultat.IndexUniteErreur >= d.Unites.size()
+                || resultat.Resultat.NombreSymboles != static_cast<std::uint64_t>(std::count_if(
+                    d.Noeuds.begin(), d.Noeuds.end(), [](const auto& n) { return GenreSymbole(n.Genre) != 0; }))) return {};
+            const auto fonction = [&](std::size_t i)
+            {
+                const auto& n = d.Noeuds[i];
+                if ((n.Genre != 1 && (n.Genre < 12 || n.Genre > 15)) || !NomDiagnosticDansUnite(resultat, i)) return false;
+                const auto& o = d.Origines[i]; const auto& u = d.Unites[o.IndexUnite];
+                if (o.Position.Fichier.empty() || !o.Position.Ligne || !o.Position.Colonne || !n.Colonne
+                    || n.Ligne < u.PremiereLigne || n.Ligne - u.PremiereLigne >= u.NombreLignes) return false;
+                if (!n.Parent) return n.Genre == 1 || n.Genre == 15;
+                if (n.Genre == 1 || n.Parent >= i || !NomDiagnosticDansUnite(resultat, n.Parent)) return false;
+                const auto& classe = d.Noeuds[n.Parent];
+                return classe.Genre == 6 && !classe.Parent && (classe.Drapeaux & 4U)
+                    && classe.HachageEspace == n.HachageEspace
+                    && ((n.Genre == 13 || n.Genre == 14)
+                        ? n.DebutNom == classe.DebutNom && n.TailleNom == classe.TailleNom && n.HachageNom == classe.HachageNom
+                        : classe.DebutNom < n.DebutNom)
+                    && d.Origines[n.Parent].IndexUnite == o.IndexUnite
+                    && d.Origines[n.Parent].Position.Ordre < o.Position.Ordre;
+            };
+            if (!fonction(cible)) return {};
+            std::size_t reference = 0;
+            for (std::size_t i = 1; i < d.Noeuds.size(); ++i)
+                if (OrigineDiagnosticCorrespond(resultat, i) && GenreSymbole(d.Noeuds[i].Genre) == 2)
+                {
+                    if (reference || cible >= i || !fonction(i)
+                        || ((d.Noeuds[cible].Genre != 13 && d.Noeuds[cible].Genre != 14)
+                            && d.Noeuds[cible].DebutNom >= d.Noeuds[i].DebutNom)) return {};
+                    reference = i;
+                }
+            if (!reference) return {};
+            for (std::size_t i = 1; i < d.Noeuds.size(); ++i)
+                if (OrigineDiagnosticCorrespond(resultat, i) && i != reference
+                    && !EstAncetreDiagnostic(d.Noeuds, reference, i)) return {};
+            const auto& a = d.Noeuds[cible]; const auto& b = d.Noeuds[reference];
+            if (a.HachageNom != b.HachageNom) return {};
+            const auto famille = [](std::uint32_t genre) { return genre >= 13 && genre <= 15 ? genre : 0U; };
+            if (famille(a.Genre) != famille(b.Genre)) return {};
+            if ((!a.Parent && !b.Parent) || (a.Parent && b.Parent))
+            {
+                if (a.Parent != b.Parent || a.HachageEspace != b.HachageEspace) return {};
+            }
+            else
+            {
+                const auto& membre = a.Parent ? a : b;
+                const auto& libre = a.Parent ? b : a;
+                const auto& classe = d.Noeuds[membre.Parent];
+                auto espace = classe.HachageEspace;
+                const auto ajouter = [&](unsigned char octet) { espace = (espace ^ octet) * 1'099'511'628'211ULL; };
+                if (espace != HacherTexteDiagnostic({})) { ajouter(':'); ajouter(':'); }
+                for (const auto c : std::string_view(d.Source).substr(classe.DebutNom, classe.TailleNom)) ajouter(static_cast<unsigned char>(c));
+                if (libre.HachageEspace != espace) return {};
+            }
+            return {reference, cible};
+        }
+
+        /** <résumé>Un nom de fonction est complet sans préfixe supplémentaire seulement à la racine.</résumé> **/
+        std::size_t NomDoublonSurchargeDisponible(const SemantiqueAssemblee& resultat, AccesDiagnosticPossede paire) noexcept
+        {
+            if (!paire.Reference) return 0;
+            for (const auto i : {paire.Cible, paire.Reference})
+            {
+                const auto& n = resultat.Declarations.Noeuds[i];
+                if (n.HachageEspace == HacherTexteDiagnostic({})) return i;
+            }
+            return 0;
+        }
+
+        /** <résumé>Contrôle le préfixe de la déclaration désignée, sans rechercher de namespace ni de fonction.</résumé> **/
+        bool PrefixeDeclarationDiagnostic(const SemantiqueAssemblee& resultat, std::size_t cible) noexcept
+        {
+            const auto& d = resultat.Declarations;
+            if (cible >= d.Noeuds.size() || resultat.PrefixeNomCanonique.size() > d.Source.size()) return false;
+            const auto& declaration = d.Noeuds[cible];
+            if (resultat.PrefixeNomCanonique.empty()) return !declaration.Parent
+                && declaration.HachageEspace == HacherTexteDiagnostic({});
+            std::uint64_t fin = 0;
+            for (const auto& segment : resultat.PrefixeNomCanonique)
+            {
+                if (!segment.TailleOctets || segment.DebutOctets < fin || segment.DebutOctets > d.Source.size()
+                    || segment.TailleOctets > d.Source.size() - segment.DebutOctets
+                    || !std::any_of(d.Unites.begin(), d.Unites.end(), [&](const auto& u)
+                    { return segment.DebutOctets >= u.DebutOctets && segment.DebutOctets - u.DebutOctets <= u.TailleOctets
+                        && segment.TailleOctets <= u.TailleOctets - (segment.DebutOctets - u.DebutOctets); })) return false;
+                fin = segment.DebutOctets + segment.TailleOctets;
+            }
+            const auto& dernier = resultat.PrefixeNomCanonique.back();
+            if (!declaration.Parent) return declaration.HachageEspace != HacherTexteDiagnostic({})
+                && dernier.HachageEspace == declaration.HachageEspace;
+            const auto& classe = d.Noeuds[declaration.Parent];
+            return dernier.DebutOctets == classe.DebutNom && dernier.TailleOctets == classe.TailleNom
+                && HacherTexteDiagnostic(std::string_view(d.Source).substr(classe.DebutNom, classe.TailleNom)) == classe.HachageNom
+                && (resultat.PrefixeNomCanonique.size() == 1 ? classe.HachageEspace == HacherTexteDiagnostic({})
+                    : resultat.PrefixeNomCanonique[resultat.PrefixeNomCanonique.size() - 2].HachageEspace == classe.HachageEspace);
+        }
+
+        /** <résumé>Contrôle le préfixe de la paire de surcharges déjà choisie.</résumé> **/
+        bool ContexteDoublonSurchargeDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        {
+            const auto paire = DoublonSurchargeDiagnostic(resultat);
+            return paire.Reference && resultat.IndexNominalCanonique == paire.Reference
+                && resultat.IndexDeclarationCanonique == paire.Cible
+                && (!resultat.PrefixeNomCanonique.empty() || (resultat.Resultat.Erreur == 119 && resultat.EmpreinteLiaison.has_value()))
+                && PrefixeDeclarationDiagnostic(resultat, paire.Cible);
+        }
+
+        /** <résumé>Distingue le nombre de meilleures fonctions (22) de l'arité explicite (21), sans évaluer de candidat.</résumé> **/
+        bool DetailGroupeAppelDiagnostic(const SemantiqueAssemblee& resultat, std::size_t expression) noexcept
+        {
+            const auto& noeuds = resultat.Declarations.Noeuds;
+            if (!expression || expression >= noeuds.size()) return false;
+            if (resultat.Resultat.Erreur == 22)
+                return resultat.Resultat.Detail >= 2 && resultat.Resultat.Detail <= static_cast<std::uint64_t>(std::count_if(
+                    noeuds.begin(), noeuds.end(), [](const auto& n) { return GenreSymbole(n.Genre) == 2; }));
+            if (resultat.Resultat.Erreur != 21) return false;
+            const auto& n = noeuds[expression];
+            // Ces positions désignent une construction sans argument, pas les enfants AST du champ/constructeur.
+            if (n.Genre == 7 || n.Genre == 13) return !resultat.Resultat.Detail;
+            const bool cible = n.Genre == 24 || n.Genre == 29;
+            if (!cible && n.Genre != 25 && n.Genre != 26 && n.Genre != 19 && (n.Genre < 33 || n.Genre > 35)) return false;
+            const auto parent = cible ? n.Parent : expression;
+            const auto enfants = static_cast<std::uint64_t>(std::count_if(noeuds.begin(), noeuds.end(),
+                [&](const auto& enfant) { return enfant.Parent == parent && enfant.Genre != 41 && enfant.Genre != 42 && enfant.Genre != 43; }));
+            return (!cible || enfants) && resultat.Resultat.Detail == enfants - (cible ? 1U : 0U);
+        }
+
+        /** <résumé>Contrôle le nom appelé d'un groupe importé, sans reconstruire les espaces ou candidats.</résumé> **/
+        bool ContexteAppelImporteDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        {
+            const auto& d = resultat.Declarations;
+            const auto expression = resultat.IndexNominalCanonique;
+            if (!resultat.GroupeAppelImporte || !resultat.PositionErreur
+                || !expression || expression >= d.Noeuds.size() || resultat.IndexDeclarationCanonique
+                || !resultat.PrefixeNomCanonique.empty() || resultat.EmpreinteLiaison
+                || d.Noeuds.size() != d.Origines.size() || resultat.IndexUniteErreur >= d.Unites.size()
+                || !DetailGroupeAppelDiagnostic(resultat, expression)
+                || resultat.Resultat.NombreSymboles != static_cast<std::uint64_t>(std::count_if(
+                    d.Noeuds.begin(), d.Noeuds.end(), [](const auto& n) { return GenreSymbole(n.Genre) != 0; }))
+                || !std::any_of(d.Noeuds.begin(), d.Noeuds.end(), [](const auto& n) { return n.Genre == 36; })
+                || !OrigineDiagnosticCorrespond(resultat, expression) || !NomDiagnosticDansUnite(resultat, expression)) return false;
+            const auto& n = d.Noeuds[expression];
+            if (!n.Parent || n.Parent >= expression || n.Drapeaux || n.HachageType) return false;
+            if (n.Genre == 24)
+            {
+                if (d.Noeuds[n.Parent].Genre != 28 || expression != n.Parent + 1) return false;
+            }
+            else if (n.Genre == 25 || n.Genre == 26)
+            {
+                if (std::count_if(d.Noeuds.begin(), d.Noeuds.end(), [&](const auto& enfant) { return enfant.Parent == expression; })
+                    != (n.Genre == 25 ? 1 : 2)) return false;
+            }
+            else return false;
+            for (std::size_t i = 1; i < d.Noeuds.size(); ++i)
+                if (OrigineDiagnosticCorrespond(resultat, i) && i != expression
+                    && !EstAncetreDiagnostic(d.Noeuds, i, expression) && !EstAncetreDiagnostic(d.Noeuds, expression, i)) return false;
+            return true;
+        }
+
+        bool ContexteEspaceAliasDiagnostic(const SemantiqueAssemblee& resultat, std::size_t alias) noexcept;
+
+        /**
+         * <résumé>Contrôle l'expression et le groupe de l'appel refusé, sans évaluer de candidat.</résumé>
+         * @etc. Detail vaut le nombre de meilleures fonctions (22) ou d'arguments explicites (21), jamais un index.
+         **/
+        bool ContexteAppelAmbiguDiagnostic(const SemantiqueAssemblee& resultat) noexcept
+        {
+            if (resultat.GroupeAppelImporte) return ContexteAppelImporteDiagnostic(resultat);
+            const auto& d = resultat.Declarations;
+            const auto expression = resultat.IndexNominalCanonique, cible = resultat.IndexDeclarationCanonique;
+            if (!resultat.PositionErreur || !expression || expression >= d.Noeuds.size()
+                || !cible || cible >= d.Noeuds.size() || d.Noeuds.size() != d.Origines.size()
+                || resultat.IndexUniteErreur >= d.Unites.size() || resultat.EmpreinteLiaison
+                || !DetailGroupeAppelDiagnostic(resultat, expression)
+                || resultat.Resultat.NombreSymboles != static_cast<std::uint64_t>(std::count_if(
+                    d.Noeuds.begin(), d.Noeuds.end(), [](const auto& n) { return GenreSymbole(n.Genre) != 0; }))
+                || !OrigineDiagnosticCorrespond(resultat, expression) || !NomDiagnosticDansUnite(resultat, cible)) return false;
+            const auto& n = d.Noeuds[expression]; const auto& f = d.Noeuds[cible];
+            const auto& o = d.Origines[cible]; const auto& u = d.Unites[o.IndexUnite];
+            const bool alias = f.Genre == 10;
+            if ((!alias && f.Genre != 1 && (f.Genre < 12 || f.Genre > 15)) || o.Position.Fichier.empty()
+                || !o.Position.Ligne || !o.Position.Colonne || !f.Colonne || f.Ligne < u.PremiereLigne
+                || f.Ligne - u.PremiereLigne >= u.NombreLignes || !n.Parent || n.Parent >= expression) return false;
+            if (f.Parent)
+            {
+                if (f.Genre == 1 || f.Parent >= cible || !NomDiagnosticDansUnite(resultat, f.Parent)) return false;
+                const auto& classe = d.Noeuds[f.Parent];
+                if (classe.Genre != 6 || classe.Parent || !(classe.Drapeaux & 4U) || classe.HachageEspace != f.HachageEspace
+                    || d.Origines[f.Parent].IndexUnite != o.IndexUnite
+                    || ((f.Genre == 13 || f.Genre == 14) ? f.DebutNom != classe.DebutNom || f.TailleNom != classe.TailleNom
+                        || f.HachageNom != classe.HachageNom : classe.DebutNom >= f.DebutNom)) return false;
+            }
+            else if (!alias && f.Genre != 1 && f.Genre != 15) return false;
+            if (alias)
+            {
+                if (resultat.Resultat.Erreur != 21 || n.Genre != 24 || n.Drapeaux || n.HachageType
+                    || d.Noeuds[n.Parent].Genre != 28 || expression != n.Parent + 1
+                    || !NomDiagnosticDansUnite(resultat, expression) || f.Parent || f.Drapeaux || !f.HachageType
+                    || cible + 1 >= d.Noeuds.size() || !ContexteEspaceAliasDiagnostic(resultat, cible)) return false;
+                const auto& nominal = d.Noeuds[cible + 1];
+                if (nominal.Genre != 38 || nominal.Parent != cible || nominal.Drapeaux || nominal.HachageType
+                    || nominal.HachageNom != f.HachageType || nominal.HachageEspace != f.HachageEspace
+                    || nominal.DebutNom < f.DebutNom + f.TailleNom || !NomDiagnosticDansUnite(resultat, cible + 1)
+                    || d.Origines[cible + 1].IndexUnite != o.IndexUnite) return false;
+            }
+            else if (n.Genre == 24 || n.Genre == 29)
+            {
+                if (d.Noeuds[n.Parent].Genre != 28 || expression != n.Parent + 1 || n.HachageType
+                    || (n.Drapeaux & ~(n.Genre == 29 ? 32768U : 0U)) || !NomDiagnosticDansUnite(resultat, expression)
+                    || (f.Genre != 1 && f.Genre != 12) || (n.Genre == 29 && n.HachageNom != f.HachageNom)) return false;
+            }
+            else if (n.Genre == 25 || n.Genre == 26)
+            {
+                if (f.Genre != 15 || n.Drapeaux || n.HachageType || n.HachageNom != f.HachageNom
+                    || !NomDiagnosticDansUnite(resultat, expression)
+                    || std::count_if(d.Noeuds.begin(), d.Noeuds.end(), [&](const auto& enfant)
+                        { return enfant.Parent == expression; }) != (n.Genre == 25 ? 1 : 2)) return false;
+            }
+            else if (n.Genre == 7 || n.Genre == 13)
+            {
+                const auto& classe = d.Noeuds[n.Parent];
+                if (resultat.Resultat.Erreur != 21 || resultat.Resultat.Detail || f.Genre != 13
+                    || classe.Genre != 6 || classe.Parent || !(classe.Drapeaux & 4U)
+                    || classe.HachageEspace != n.HachageEspace || !NomDiagnosticDansUnite(resultat, expression)
+                    || !NomDiagnosticDansUnite(resultat, n.Parent)
+                    || d.Origines[n.Parent].IndexUnite != resultat.IndexUniteErreur) return false;
+                if (n.Genre == 7)
+                {
+                    if ((n.Drapeaux & 4U) || !n.HachageType || classe.DebutNom >= n.DebutNom
+                        || std::any_of(d.Noeuds.begin(), d.Noeuds.end(), [&](const auto& enfant)
+                            { return enfant.Parent == expression && enfant.Genre != 41 && enfant.Genre != 42; })) return false;
+                }
+                else if (n.HachageType != f.HachageType || (n.Drapeaux & (256U | 512U)) || !(classe.Drapeaux & 32U)
+                    || n.DebutNom != classe.DebutNom || n.TailleNom != classe.TailleNom
+                    || n.HachageNom != classe.HachageNom) return false;
+            }
+            else if (n.Genre == 19)
+            {
+                if (f.Genre != 13 || (!(n.Drapeaux & 8192U) && (resultat.Resultat.Erreur != 21 || resultat.Resultat.Detail))
+                    || !NomDiagnosticDansUnite(resultat, expression)
+                    || (resultat.Resultat.Erreur == 21 && (d.Noeuds[n.Parent].Genre != 16 && d.Noeuds[n.Parent].Genre != 20
+                        && d.Noeuds[n.Parent].Genre != 21))) return false;
+            }
+            else if (n.Genre >= 33 && n.Genre <= 35)
+            {
+                if (f.Genre != 13 || d.Noeuds[n.Parent].Genre != 13) return false;
+                if (resultat.Resultat.Erreur == 21)
+                {
+                    const auto& constructeur = d.Noeuds[n.Parent];
+                    const auto drapeau = n.Genre == 33 ? 512U : n.Genre == 34 ? 256U : 1024U;
+                    if (n.Drapeaux || n.HachageType || n.HachageEspace != constructeur.HachageEspace
+                        || !(constructeur.Drapeaux & drapeau)
+                        || (n.Genre != 35 && (n.DebutNom || n.TailleNom || n.HachageNom))
+                        || (n.Genre == 35 && !NomDiagnosticDansUnite(resultat, expression))) return false;
+                }
+            }
+            else return false;
+            for (std::size_t i = 1; i < d.Noeuds.size(); ++i)
+                if (OrigineDiagnosticCorrespond(resultat, i) && i != expression
+                    && !EstAncetreDiagnostic(d.Noeuds, i, expression) && !EstAncetreDiagnostic(d.Noeuds, expression, i)) return false;
+            return PrefixeDeclarationDiagnostic(resultat, cible);
         }
 
         /** <résumé>Retrouve l'indice AST désigné par Detail, sans conserver de préfixe sémantique.</résumé> **/
@@ -962,6 +1355,23 @@ namespace GsPP
             return nom;
         }
 
+        /**
+         * <résumé>Rend le nom source canonique d'une fonction spéciale à partir de son genre et de son nom possédé.</résumé>
+         * @etc. Les noms internes du bootstrap ne dépendent pas de la langue des mots-clés.
+         **/
+        std::string NomSurchargeDiagnostic(const SemantiqueAssemblee& resultat, std::size_t index)
+        {
+            const auto& n = resultat.Declarations.Noeuds[index];
+            const auto nom = NomReferenceDiagnostic(resultat, index);
+            if (n.Genre == 13 || n.Genre == 14)
+            {
+                if (nom != NomReferenceDiagnostic(resultat, n.Parent))
+                    ContratSemantiqueIncoherent("nom de classe de fonction spéciale possédé");
+                return n.Genre == 13 ? "$constructeur" : "$destructeur";
+            }
+            return n.Genre == 15 ? "operator" + nom : nom;
+        }
+
         /** <résumé>Joint uniquement des noms possédés, en contrôlant chaque hachage de préfixe.</résumé> **/
         std::string NomCompletAliasDiagnostic(const SemantiqueAssemblee& resultat, std::size_t alias)
         {
@@ -978,6 +1388,37 @@ namespace GsPP
             return prefixe + NomReferenceDiagnostic(resultat, alias);
         }
 
+        /** <résumé>Joint des identifiants source possédés, avec contrôle de chaque empreinte cumulative.</résumé> **/
+        std::string PrefixeNomCanoniqueDiagnostic(const SemantiqueAssemblee& resultat)
+        {
+            std::string prefixe;
+            for (const auto& segment : resultat.PrefixeNomCanonique)
+            {
+                std::vector<Jeton> jetons;
+                try { jetons = Lexeur(resultat.Declarations.Source.substr(segment.DebutOctets, segment.TailleOctets)).Analyser(); }
+                catch (const ErreurCompilation&) { ContratSemantiqueIncoherent("segment canonique possédé"); }
+                if (jetons.size() != 2 || jetons.front().Genre != GenreJeton::Identifiant
+                    || jetons.front().Texte.size() != segment.TailleOctets)
+                    ContratSemantiqueIncoherent("lexème canonique possédé");
+                if (!prefixe.empty()) prefixe += "::";
+                prefixe += jetons.front().Texte;
+                if (HacherTexteDiagnostic(prefixe) != segment.HachageEspace)
+                    ContratSemantiqueIncoherent("empreinte du préfixe canonique");
+            }
+            return prefixe;
+        }
+
+        /** <résumé>Joint des segments source possédés et le nom retenu, avec contrôle de chaque empreinte.</résumé> **/
+        std::string NomTypeCanoniqueDiagnostic(const SemantiqueAssemblee& resultat)
+        {
+            const auto acces = TypeCanoniqueDiagnostic(resultat);
+            if (!acces.Reference) ContratSemantiqueIncoherent("contexte du nom canonique");
+            const auto prefixe = PrefixeNomCanoniqueDiagnostic(resultat);
+            const auto nom = NomReferenceDiagnostic(resultat, acces.Cible);
+            if (nom.find("::") != std::string::npos) ContratSemantiqueIncoherent("déclaration canonique non simple");
+            return prefixe + "::" + nom;
+        }
+
         bool RefusSemantique(std::uint32_t code)
         {
             // Les capacités 91..93 appartiennent à l'émission des globales, pas à cette passe.
@@ -992,15 +1433,34 @@ namespace GsPP
         return MessageSemantiqueTraduisible(*this) != nullptr || ReferenceDiagnosticPossede(*this) != 0
             || AccesInterditDiagnostic(*this).Reference != 0 || InitialiseurChampDiagnostic(*this).Reference != 0
             || ChampDeclareDiagnostic(*this) != 0 || ConflitDeclarationDiagnostic(*this).Reference != 0
+            || (Resultat.Erreur == 118 && NomDoublonSurchargeDisponible(*this, DoublonSurchargeDiagnostic(*this)) != 0)
+            || ((Resultat.Erreur == 118 || EmpreinteLiaison.has_value()) && ContexteDoublonSurchargeDiagnostic(*this))
+            || ContexteAppelAmbiguDiagnostic(*this)
             || CycleAliasChampDiagnostic(*this).Reference != 0 || CibleAliasChampDiagnostic(*this).Reference != 0
             || CibleAliasRacineDiagnostic(*this).Reference != 0 || EspaceUtiliseDiagnostic(*this) != 0
-            || BaseClasseAmbigueDiagnostic(*this).Reference != 0 || NomTypeAmbiguDiagnostic(*this).Reference != 0
-            || NomTypeConversionAmbiguDiagnostic(*this).Reference != 0;
+            || BaseClasseDiagnostic(*this).Reference != 0 || NomTypeDeclareDiagnostic(*this).Reference != 0
+            || NomTypeConversionDiagnostic(*this).Reference != 0 || TypeCanoniqueDiagnostic(*this).Reference != 0;
+    }
+
+    DiagnosticSemantiqueNonTraduit::DiagnosticSemantiqueNonTraduit(std::uint32_t code)
+        : std::runtime_error("diagnostic sémantique non traduit : code=" + std::to_string(code)), code_(code)
+    {
     }
 
     void SemantiqueAssemblee::ExigerValide() const
     {
         const auto& declarations = Declarations;
+        if (GroupeAppelImporte && !ContexteAppelImporteDiagnostic(*this))
+            ContratSemantiqueIncoherent("groupe importé possédé");
+        if (EmpreinteLiaison && (Resultat.Erreur != 119 || !ContexteDoublonSurchargeDiagnostic(*this)))
+            ContratSemantiqueIncoherent("empreinte de liaison possédée");
+        const bool possedeNomCanonique = IndexNominalCanonique || IndexDeclarationCanonique || !PrefixeNomCanonique.empty();
+        if (possedeNomCanonique && !TypeCanoniqueDiagnostic(*this).Reference && !ContexteDoublonSurchargeDiagnostic(*this)
+            && !ContexteAppelAmbiguDiagnostic(*this))
+            ContratSemantiqueIncoherent("nom canonique possédé");
+        if (Resultat.Erreur == 119 && possedeNomCanonique && !EmpreinteLiaison)
+            ContratSemantiqueIncoherent("empreinte de liaison absente");
+        const auto indexNominal = possedeNomCanonique ? IndexNominalCanonique : 0;
         if (declarations.Resultat.Erreur || declarations.Resultat.Reserve
             || declarations.Resultat.LigneErreur || declarations.Resultat.ColonneErreur
             || declarations.Resultat.Detail || declarations.Resultat.DetailLexical
@@ -1044,6 +1504,72 @@ namespace GsPP
                 if (OrigineDiagnosticCorrespond(*this, i)) correspond = true;
             }
             if (!correspond) ContratSemantiqueIncoherent("origine possédée incohérente");
+        }
+        if ((Resultat.Erreur == 53 || Resultat.Erreur == 54) && !ContexteAppelIndirectDiagnostic(*this))
+            ContratSemantiqueIncoherent("contexte d'appel indirect possédé");
+        if (Resultat.Erreur == 118)
+        {
+            const auto paire = DoublonSurchargeDiagnostic(*this);
+            if (!paire.Reference) ContratSemantiqueIncoherent("paire de surcharges possédée");
+            if (const auto declaration = NomDoublonSurchargeDisponible(*this, paire); declaration || possedeNomCanonique)
+            {
+                auto nom = NomSurchargeDiagnostic(*this, paire.Cible);
+                if (nom != NomSurchargeDiagnostic(*this, paire.Reference) || nom.find("::") != std::string::npos)
+                    ContratSemantiqueIncoherent("noms de surcharges possédés");
+                if (possedeNomCanonique) nom = PrefixeNomCanoniqueDiagnostic(*this) + "::" + nom;
+                else if (const auto parent = declarations.Noeuds[declaration].Parent)
+                    nom = NomReferenceDiagnostic(*this, parent) + "::" + nom;
+                throw ErreurCompilation("surcharge déclarée plusieurs fois : " + nom,
+                    "overload declared more than once: " + nom,
+                    PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
+            }
+        }
+        if ((Resultat.Erreur == 22 || Resultat.Erreur == 21) && possedeNomCanonique)
+        {
+            const auto& expression = declarations.Noeuds[indexNominal];
+            std::string nom;
+            if (GroupeAppelImporte)
+            {
+                nom = NomReferenceDiagnostic(*this, indexNominal);
+                if (expression.Genre == 25 || expression.Genre == 26) nom = "operator" + nom;
+            }
+            else
+            {
+                nom = NomSurchargeDiagnostic(*this, IndexDeclarationCanonique);
+                if (!PrefixeNomCanonique.empty()) nom = PrefixeNomCanoniqueDiagnostic(*this) + "::" + nom;
+                if (declarations.Noeuds[IndexDeclarationCanonique].Genre == 10)
+                {
+                    (void)NomReferenceDiagnostic(*this, IndexDeclarationCanonique + 1);
+                    if (PossedeEspaceAliasDiagnostic(*this, IndexDeclarationCanonique)
+                        && nom != NomCompletAliasDiagnostic(*this, IndexDeclarationCanonique))
+                        ContratSemantiqueIncoherent("nom canonique de l'alias appelé");
+                }
+                if (expression.Genre == 24)
+                {
+                    const auto ecrit = NomReferenceDiagnostic(*this, indexNominal);
+                    if (nom != ecrit && !nom.ends_with("::" + ecrit)) ContratSemantiqueIncoherent("nom de l'appel ambigu");
+                }
+                else if (expression.Genre == 29 || expression.Genre == 25 || expression.Genre == 26)
+                    (void)NomReferenceDiagnostic(*this, indexNominal);
+                else if (Resultat.Erreur == 21 && (expression.Genre == 7 || expression.Genre == 13 || expression.Genre == 19 || expression.Genre == 35))
+                    (void)NomReferenceDiagnostic(*this, indexNominal);
+            }
+            throw ErreurCompilation((Resultat.Erreur == 21 ? "aucune surcharge compatible pour " : "appel de surcharge ambigu pour ") + nom,
+                (Resultat.Erreur == 21 ? "no matching overload for " : "ambiguous overload call for ") + nom,
+                PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
+        }
+        if (Resultat.Erreur == 119 && EmpreinteLiaison)
+        {
+            const auto paire = DoublonSurchargeDiagnostic(*this);
+            auto nom = NomSurchargeDiagnostic(*this, paire.Cible);
+            if (nom != NomSurchargeDiagnostic(*this, paire.Reference) || nom.find("::") != std::string::npos)
+                ContratSemantiqueIncoherent("noms de symboles en collision");
+            if (!PrefixeNomCanonique.empty()) nom = PrefixeNomCanoniqueDiagnostic(*this) + "::" + nom;
+            nom.push_back('$');
+            constexpr char chiffres[] = "0123456789ABCDEF";
+            for (unsigned i = 0; i < 16; ++i) nom.push_back(chiffres[(*EmpreinteLiaison >> (60 - 4 * i)) & 15]);
+            throw ErreurCompilation("collision de symbole de fonction : " + nom, "function symbol collision: " + nom,
+                PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
         }
         if (Resultat.Erreur == 120)
         {
@@ -1111,11 +1637,12 @@ namespace GsPP
                 "unknown field alias target: " + nom,
                 PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
         }
-        auto typeAmbigu = NomTypeAmbiguDiagnostic(*this);
-        if (!typeAmbigu.Reference) typeAmbigu = NomTypeConversionAmbiguDiagnostic(*this);
-        if (const auto type = typeAmbigu; type.Reference)
+        auto typeNominal = NomTypeDeclareDiagnostic(*this, indexNominal);
+        if (!typeNominal.Reference) typeNominal = NomTypeConversionDiagnostic(*this, indexNominal);
+        if (const auto type = typeNominal; type.Reference)
         {
-            const auto nom = NomReferenceDiagnostic(*this, type.Cible);
+            const auto nomEcrit = NomReferenceDiagnostic(*this, type.Cible);
+            const auto nom = possedeNomCanonique ? NomTypeCanoniqueDiagnostic(*this) : nomEcrit;
             const auto& proprietaire = declarations.Noeuds[type.Reference];
             if (proprietaire.Genre != 31)
             {
@@ -1150,12 +1677,17 @@ namespace GsPP
             }
             else if ((nominal.Genre == 42) != callback)
                 ContratSemantiqueIncoherent("genre du nom de type possédé");
-            throw ErreurCompilation("nom importé ambigu : " + nom, "ambiguous imported name: " + nom,
+            const bool ambigu = Resultat.Erreur == 121;
+            throw ErreurCompilation((ambigu ? "nom importé ambigu : " : "type de structure ou d’énumération introuvable : ") + nom,
+                (ambigu ? "ambiguous imported name: " : "unknown struct or enum type: ") + nom,
                 PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
         }
-        if (const auto base = BaseClasseAmbigueDiagnostic(*this); base.Reference)
+        if (Resultat.Erreur == 114 && !TypeBaseNonClasseDiagnostic(*this))
+            ContratSemantiqueIncoherent("rang du type non classe");
+        if (const auto base = BaseClasseDiagnostic(*this, indexNominal); base.Reference)
         {
-            const auto nom = NomReferenceDiagnostic(*this, base.Cible);
+            const auto nomEcrit = NomReferenceDiagnostic(*this, base.Cible);
+            const auto nom = possedeNomCanonique ? NomTypeCanoniqueDiagnostic(*this) : nomEcrit;
             (void)NomReferenceDiagnostic(*this, base.Reference);
             const auto& classe = declarations.Noeuds[base.Reference];
             const auto debut = classe.DebutNom + classe.TailleNom;
@@ -1168,7 +1700,16 @@ namespace GsPP
                 || (separation.size() == 3 && separation[1].Genre != GenreJeton::Publique)
                 || declarations.Origines[base.Cible].Position.Ordre - declarations.Origines[base.Reference].Position.Ordre != separation.size())
                 ContratSemantiqueIncoherent("ordre lexical de la base possédée");
-            throw ErreurCompilation("nom importé ambigu : " + nom, "ambiguous imported name: " + nom,
+            const bool ambigu = Resultat.Erreur == 121;
+            if (Resultat.Erreur == 114)
+            {
+                (void)NomReferenceDiagnostic(*this, TypeBaseNonClasseDiagnostic(*this));
+                throw ErreurCompilation("la base d’une classe doit être une classe : " + nom,
+                    "a class base must be a class: " + nom,
+                    PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
+            }
+            throw ErreurCompilation((ambigu ? "nom importé ambigu : " : "type de structure ou d’énumération introuvable : ") + nom,
+                (ambigu ? "ambiguous imported name: " : "unknown struct or enum type: ") + nom,
                 PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
         }
         if (const auto cible = CibleAliasRacineDiagnostic(*this); cible.Reference)
@@ -1243,15 +1784,27 @@ namespace GsPP
                 "unknown variable or function: " + nom, PositionErreur->Ligne, PositionErreur->Colonne, PositionErreur->Fichier);
         }
         const auto* message = MessageSemantiqueTraduisible(*this);
-        if (!message) throw std::runtime_error("diagnostic sémantique non traduit : code=" + std::to_string(Resultat.Erreur));
+        if (!message) throw DiagnosticSemantiqueNonTraduit(Resultat.Erreur);
         throw ErreurCompilation(message->Francais, message->Anglais,
             PositionErreur ? PositionErreur->Ligne : 1, PositionErreur ? PositionErreur->Colonne : 1,
             PositionErreur ? PositionErreur->Fichier : std::string{});
     }
 
     SemantiqueAssemblee AnalyserSemantiqueAssemblee(const DeclarationsAssemblees& declarations,
-        AnalyseurSemantiqueUnitesHote analyser, const LimitesSemantiqueAssemblee& limites)
+        AnalyseurSemantiqueUnitesHote analyser, const LimitesSemantiqueAssemblee& limites,
+        AnalyseurSemantiqueUnitesAvecNomHote analyserAvecNom,
+        AnalyseurSemantiqueUnitesAvecContexteHote analyserAvecContexte,
+        AnalyseurSemantiqueUnitesAvecLiaisonHote analyserAvecLiaison,
+        AnalyseurSemantiqueUnitesAvecAppelsHote analyserAvecAppels,
+        AnalyseurSemantiqueUnitesAvecGroupesHote analyserAvecGroupes,
+        AnalyseurSemantiqueUnitesAvecEchecsAppelsHote analyserAvecEchecsAppels,
+        AnalyseurSemantiqueUnitesAvecConstructionsHote analyserAvecConstructions,
+        AnalyseurSemantiqueUnitesAvecConstructionsImplicitesHote analyserAvecConstructionsImplicites,
+        AnalyseurSemantiqueUnitesAvecAliasAppelsHote analyserAvecAliasAppels)
     {
+        const auto analyserEchecs = analyserAvecAliasAppels ? analyserAvecAliasAppels
+            : analyserAvecConstructionsImplicites ? analyserAvecConstructionsImplicites
+            : analyserAvecConstructions ? analyserAvecConstructions : analyserAvecEchecsAppels;
         if (!analyser || !limites.MaximumOctets || limites.MaximumOctets > 999'999'999
             || !limites.MaximumNoeuds || limites.MaximumNoeuds > 100'000'000
             || !limites.MaximumUnites || limites.MaximumUnites > 1'000'000
@@ -1361,11 +1914,51 @@ namespace GsPP
         resultat.IndexUniteErreur = declarations.Unites.size();
         auto& copie = resultat.Declarations;
         RequeteAnalyseSemantiqueHote analyse{copie.Source.data(), copie.Source.size(), copie.Noeuds.data(), copie.Noeuds.size(), nullptr, 0, nullptr, 0, {}};
+        std::uint64_t nombreSegmentsNom = 0;
         auto appeler = [&]()
         {
             const auto avant = analyse;
             RequeteAnalyseSemantiqueUnitesHote requete{&analyse, copie.Unites.data(), copie.Unites.size(), copie.Unites.size(), 0, 0};
-            const auto code = analyser(&requete);
+            RequeteSemantiqueUnitesAvecLiaisonHote liaison{{&requete, resultat.PrefixeNomCanonique.empty() ? nullptr : resultat.PrefixeNomCanonique.data(),
+                resultat.PrefixeNomCanonique.size(), 0, 0, 0}, 0};
+            auto& nom = liaison.Contexte;
+            const auto code = analyserEchecs ? analyserEchecs(&liaison)
+                : analyserAvecGroupes ? analyserAvecGroupes(&liaison) : analyserAvecAppels ? analyserAvecAppels(&liaison)
+                : analyserAvecLiaison ? analyserAvecLiaison(&liaison) : analyserAvecContexte ? analyserAvecContexte(&nom)
+                : analyserAvecNom ? analyserAvecNom(&nom) : analyser(&requete);
+            const bool collision = code == 119 && (analyserAvecLiaison || analyserAvecAppels || analyserAvecGroupes || analyserEchecs);
+            const bool appel = ((code == 22 && (analyserAvecAppels || analyserAvecGroupes || analyserEchecs))
+                || (code == 21 && analyserEchecs)) && (nom.IndexNominal || nom.IndexDeclaration || nom.NombreSegments);
+            const bool importe = ((code == 22 && (analyserAvecGroupes || analyserEchecs)) || (code == 21 && analyserEchecs))
+                && nom.IndexNominal && !nom.IndexDeclaration && !nom.NombreSegments;
+            if (nom.Analyse != &requete || nom.Segments != (resultat.PrefixeNomCanonique.empty() ? nullptr : resultat.PrefixeNomCanonique.data())
+                || nom.CapaciteSegments != resultat.PrefixeNomCanonique.size()
+                || nom.NombreSegments > copie.Source.size()
+                || (!collision && liaison.EmpreinteLiaison)
+                || (!collision && !appel && ((!nom.NombreSegments) != (!nom.IndexNominal && !nom.IndexDeclaration)))
+                || ((nom.NombreSegments || collision || appel) && (((code != 99 && code != 100) || analyse.Resultat.Detail != UINT32_MAX)
+                    && (code != 118 || (!analyserAvecContexte && !analyserAvecLiaison && !analyserAvecAppels && !analyserAvecGroupes && !analyserEchecs) || nom.IndexDeclaration != analyse.Resultat.Detail)
+                    && (!collision || nom.IndexDeclaration != analyse.Resultat.Detail) && !appel))
+                || ((nom.NombreSegments || collision || appel) && (
+                    !nom.IndexNominal || (!nom.IndexDeclaration && !importe) || nom.IndexNominal >= copie.Noeuds.size()
+                    || nom.IndexDeclaration >= copie.Noeuds.size()))) ContratSemantiqueIncoherent("sortie canonique native");
+            if (code == 21 && nom.IndexNominal)
+            {
+                const auto genre = copie.Noeuds[nom.IndexNominal].Genre;
+                if (nom.IndexDeclaration && copie.Noeuds[nom.IndexDeclaration].Genre == 10 && !analyserAvecAliasAppels)
+                    ContratSemantiqueIncoherent("capacité d'appel d'alias absente");
+                if ((genre == 7 || genre == 13) && !analyserAvecConstructionsImplicites && !analyserAvecAliasAppels)
+                    ContratSemantiqueIncoherent("capacité de construction implicite absente");
+                if ((genre == 19 || (genre >= 33 && genre <= 35)) && !analyserAvecConstructions && !analyserAvecConstructionsImplicites && !analyserAvecAliasAppels)
+                    ContratSemantiqueIncoherent("capacité de construction absente");
+            }
+            if (nom.NombreSegments > limites.MaximumNoeuds)
+                throw std::length_error("limite des segments de nom canonique dépassée");
+            resultat.IndexNominalCanonique = nom.IndexNominal;
+            resultat.IndexDeclarationCanonique = nom.IndexDeclaration;
+            resultat.EmpreinteLiaison = collision ? std::optional{liaison.EmpreinteLiaison} : std::nullopt;
+            resultat.GroupeAppelImporte = importe;
+            nombreSegmentsNom = nom.NombreSegments;
             if (std::memcmp(&analyse, &avant, offsetof(RequeteAnalyseSemantiqueHote, Resultat)) != 0
                 || requete.Analyse != &analyse || requete.Origines != copie.Unites.data() || requete.NombreOrigines != copie.Unites.size()
                 || copie.Source != declarations.Source
@@ -1401,6 +1994,23 @@ namespace GsPP
             return requete;
         };
         auto requete = appeler();
+        if (nombreSegmentsNom)
+        {
+            const auto premier = analyse.Resultat;
+            const auto origine = requete;
+            const auto nominal = resultat.IndexNominalCanonique, declaration = resultat.IndexDeclarationCanonique;
+            const auto empreinte = resultat.EmpreinteLiaison;
+            const auto groupeImporte = resultat.GroupeAppelImporte;
+            resultat.PrefixeNomCanonique.resize(static_cast<std::size_t>(nombreSegmentsNom));
+            requete = appeler();
+            if (std::memcmp(&premier, &analyse.Resultat, sizeof(premier)) != 0
+                || requete.IndexUniteErreur != origine.IndexUniteErreur || requete.LigneLocaleErreur != origine.LigneLocaleErreur
+                || requete.ColonneLocaleErreur != origine.ColonneLocaleErreur
+                || nominal != resultat.IndexNominalCanonique || declaration != resultat.IndexDeclarationCanonique
+                || empreinte != resultat.EmpreinteLiaison
+                || groupeImporte != resultat.GroupeAppelImporte
+                || nombreSegmentsNom != resultat.PrefixeNomCanonique.size()) ContratSemantiqueIncoherent("reprise du nom canonique");
+        }
         const auto mesure = analyse.Resultat;
         if (RefusSemantique(mesure.Erreur))
         {
@@ -1428,6 +2038,8 @@ namespace GsPP
                 || requete.ColonneLocaleErreur != mesure.ColonneErreur) ContratSemantiqueIncoherent("origine du refus");
             resultat.Resultat = mesure; resultat.PositionErreur = origine.Position;
             resultat.IndexUniteErreur = origine.IndexUnite;
+            if ((mesure.Erreur == 53 || mesure.Erreur == 54) && !ContexteAppelIndirectDiagnostic(resultat))
+                ContratSemantiqueIncoherent("contexte d'appel indirect natif");
             if ((mesure.Erreur == 33 || mesure.Erreur == 34 || mesure.Erreur == 35 || mesure.Erreur == 36)
                 && !InitialiseurChampDiagnostic(resultat).Reference)
                 ContratSemantiqueIncoherent("contexte du champ initialisé");
@@ -1435,6 +2047,10 @@ namespace GsPP
                 && !ChampTableauParDefautDiagnostic(resultat)) ContratSemantiqueIncoherent("contexte du champ tableau");
             if ((mesure.Erreur == 38 || mesure.Erreur == 40) && !ChampDeclareDiagnostic(resultat))
                 ContratSemantiqueIncoherent("origine du champ déclaré");
+            if (mesure.Erreur == 118 && !DoublonSurchargeDiagnostic(resultat).Reference)
+                ContratSemantiqueIncoherent("paire de surcharges native");
+            if (mesure.Erreur == 118 && nombreSegmentsNom && !ContexteDoublonSurchargeDiagnostic(resultat))
+                ContratSemantiqueIncoherent("contexte de surcharge natif");
             if ((mesure.Erreur == 12 || mesure.Erreur == 13 || mesure.Erreur == 14 || mesure.Erreur == 15 || mesure.Erreur == 17)
                 && !ConflitDeclarationDiagnostic(resultat).Reference)
                 ContratSemantiqueIncoherent("déclarations en conflit");
@@ -1448,14 +2064,14 @@ namespace GsPP
             {
                 const bool baseNominale = std::any_of(copie.Noeuds.begin(), copie.Noeuds.end(), [&](const auto& n)
                 { return n.Genre == 40 && n.Parent < copie.Noeuds.size() && OrigineDiagnosticCorrespond(resultat, n.Parent); });
-                if (baseNominale && !BaseClasseAmbigueDiagnostic(resultat).Reference)
+                if (baseNominale && !BaseClasseDiagnostic(resultat).Reference)
                     ContratSemantiqueIncoherent("base de classe ambiguë possédée");
                 const bool typeNominal = std::any_of(copie.Noeuds.begin(), copie.Noeuds.end(), [&](const auto& n)
                 { return (n.Genre == 41 || n.Genre == 42) && n.Parent < copie.Noeuds.size() && OrigineDiagnosticCorrespond(resultat, n.Parent); });
                 const bool typeConversion = std::any_of(copie.Noeuds.begin(), copie.Noeuds.end(), [&](const auto& n)
                 { return n.Genre == 43 && n.Parent < copie.Noeuds.size() && OrigineDiagnosticCorrespond(resultat, n.Parent); });
-                if ((typeConversion && !NomTypeConversionAmbiguDiagnostic(resultat).Reference)
-                    || (typeNominal && !NomTypeAmbiguDiagnostic(resultat).Reference)
+                if ((typeConversion && !NomTypeConversionDiagnostic(resultat).Reference)
+                    || (typeNominal && !NomTypeDeclareDiagnostic(resultat).Reference)
                     || (mesure.Detail && !baseNominale && !typeNominal && !typeConversion))
                     ContratSemantiqueIncoherent("type déclaré ambigu possédé");
                 const bool referenceNominale = std::any_of(copie.Noeuds.begin(), copie.Noeuds.end(), [&](const auto& n)
@@ -1465,6 +2081,33 @@ namespace GsPP
                 if ((referenceNominale && !ReferenceDiagnosticPossede(resultat))
                     || (cibleNominale && !CibleAliasRacineDiagnostic(resultat).Reference))
                     ContratSemantiqueIncoherent("nom importé ambigu possédé");
+            }
+            if (mesure.Erreur == 114)
+            {
+                if (!TypeBaseNonClasseDiagnostic(resultat)) ContratSemantiqueIncoherent("rang de base non classe");
+                const bool baseNominale = std::any_of(copie.Noeuds.begin(), copie.Noeuds.end(), [&](const auto& n)
+                { return n.Genre == 40 && n.Parent < copie.Noeuds.size() && OrigineDiagnosticCorrespond(resultat, n.Parent); });
+                if (baseNominale && !BaseClasseDiagnostic(resultat).Reference)
+                    ContratSemantiqueIncoherent("base non classe possédée");
+            }
+            if (mesure.Erreur == 99 || mesure.Erreur == 100)
+            {
+                const auto typeNominal = std::find_if(copie.Noeuds.begin(), copie.Noeuds.end(), [&](const auto& n)
+                { return (n.Genre == 40 || n.Genre == 41 || n.Genre == 42 || n.Genre == 43) && n.Parent < copie.Noeuds.size()
+                    && OrigineDiagnosticCorrespond(resultat, n.Parent); });
+                if (mesure.Detail == UINT32_MAX)
+                {
+                    /** <résumé>Contexte nominal présent, mais nom canonique non type non possédé : aucun message inventé.</résumé> **/
+                    if (typeNominal == copie.Noeuds.end()) ContratSemantiqueIncoherent("contexte de type non traduit");
+                    resultat.Resultat.Detail = static_cast<std::uint32_t>(typeNominal - copie.Noeuds.begin());
+                    const bool contexte = NomTypeDeclareDiagnostic(resultat).Reference || NomTypeConversionDiagnostic(resultat).Reference
+                        || BaseClasseDiagnostic(resultat).Reference;
+                    resultat.Resultat.Detail = mesure.Detail;
+                    if (!contexte) ContratSemantiqueIncoherent("nom canonique de type non traduit");
+                }
+                else if ((mesure.Detail || typeNominal != copie.Noeuds.end()) && !NomTypeDeclareDiagnostic(resultat).Reference
+                    && !NomTypeConversionDiagnostic(resultat).Reference && !BaseClasseDiagnostic(resultat).Reference)
+                    ContratSemantiqueIncoherent("type nommé introuvable possédé");
             }
             if (mesure.Erreur == 108)
             {
@@ -1480,6 +2123,16 @@ namespace GsPP
                 { return n.Genre == 38 && n.Parent < copie.Noeuds.size() && OrigineDiagnosticCorrespond(resultat, n.Parent); });
                 if (cibleNominale && !CibleAliasRacineDiagnostic(resultat).Reference)
                     ContratSemantiqueIncoherent("cible nominale d'alias racine");
+            }
+            if (resultat.IndexNominalCanonique || resultat.IndexDeclarationCanonique || !resultat.PrefixeNomCanonique.empty())
+            {
+                if (mesure.Erreur == 118 || mesure.Erreur == 119 || mesure.Erreur == 22 || mesure.Erreur == 21)
+                {
+                    if (mesure.Erreur == 22 || mesure.Erreur == 21 ? !ContexteAppelAmbiguDiagnostic(resultat) : !ContexteDoublonSurchargeDiagnostic(resultat))
+                        ContratSemantiqueIncoherent("contexte de surcharge natif");
+                    (void)PrefixeNomCanoniqueDiagnostic(resultat);
+                }
+                else (void)NomTypeCanoniqueDiagnostic(resultat);
             }
             return resultat;
         }

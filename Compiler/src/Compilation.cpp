@@ -214,7 +214,7 @@ namespace GsPP
 
     Programme AnalyserUnitesAvecPreparation(
         const std::vector<UniteSource>& unites, const PreparateurJetonsUnite& preparer,
-        std::ostream* sortieJetons)
+        std::ostream* sortieJetons, const std::function<void()>& valider)
     {
         if (unites.empty())
             throw std::runtime_error("aucune unité source indiquée");
@@ -262,6 +262,7 @@ namespace GsPP
         }
 
         NormaliserDeclarations(programme);
+        if (valider) valider();
         AnalyseurSemantique().Analyser(programme);
         return programme;
     }

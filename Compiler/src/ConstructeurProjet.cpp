@@ -4,6 +4,7 @@
 #include "GsPP/Compilation.hpp"
 #include "GsPP/EditeurLiens.hpp"
 #include "GsPP/EcrivainGsE.hpp"
+#include "GsPP/ExpanseurInclusions.hpp"
 #include "GsPP/GenerateurX64.hpp"
 #include "GsPP/ObjetGsO.hpp"
 
@@ -625,6 +626,8 @@ namespace GsPP
         std::ostream& journal,
         const OptionsConstructionProjet& options) const
     {
+        if (options.PreparerJetons && options.DiagnosticsFrontend)
+            throw std::invalid_argument("préparateur de jetons et frontend de diagnostics incompatibles");
         auto configuration = ChargerProjet(cheminProjet);
         if (!options.Sortie.empty())
             configuration.Sortie = options.Sortie;
@@ -645,7 +648,7 @@ namespace GsPP
                                  const std::string& nomObjet,
                                  const std::string& diagnostic)
         {
-            auto programme = options.PreparerJetons
+            auto programme = options.DiagnosticsFrontend ? AnalyserUnitesAvecDiagnosticsFrontend(unites, *options.DiagnosticsFrontend) : options.PreparerJetons
                 ? AnalyserUnitesAvecPreparation(unites, options.PreparerJetons)
                 : AnalyserUnites(unites);
             auto machine = GenerateurX64().Generer(programme);
@@ -717,8 +720,11 @@ namespace GsPP
     std::vector<ResultatConstructionProjet> ConstructeurProjet::ConstruireSolution(
         const std::filesystem::path& cheminSolution,
         std::ostream& journal,
-        const PreparateurJetonsUnite& preparerJetons) const
+        const PreparateurJetonsUnite& preparerJetons,
+        const ExpanseurInclusionsCharge* diagnosticsFrontend) const
     {
+        if (preparerJetons && diagnosticsFrontend)
+            throw std::invalid_argument("préparateur de jetons et frontend de diagnostics incompatibles");
         const auto base = cheminSolution.parent_path().empty()
             ? std::filesystem::path(".") : cheminSolution.parent_path();
         std::vector<ResultatConstructionProjet> resultats;
@@ -733,6 +739,7 @@ namespace GsPP
             journal << "== Projet " << projet.string() << " ==\n";
             OptionsConstructionProjet options;
             options.PreparerJetons = preparerJetons;
+            options.DiagnosticsFrontend = diagnosticsFrontend;
             resultats.push_back(Construire(projet, journal, options));
         }
         if (resultats.empty())

@@ -145,6 +145,22 @@ analysis and code generation still use C++; this is not a full C++ preprocessor.
 [current rules and limitations](Documentation/SPECIFICATION_LANGAGE_GS_PLUS_PLUS_1.0.md#inclusion-textuelle-et-utilisation-despaces-de-noms)
 describe the supported forms. Published alpha.10 packages remain unchanged.
 
+For **source/interface, project and solution compilation**, local development also offers
+`--frontend-diagnostics <Frontend.GsE>` (French alias `--diagnostics-frontend`).
+It shares Gs++ expansion snapshots with the C++ pipeline and inserts owned
+semantic diagnostics. Syntax/normalization and the annotations needed by the
+backend still use C++; this is not a standalone frontend. An untranslated native
+diagnostic only allows C++ fallback if a rejection at the same location is
+confirmed; inconsistent contracts are not hidden. The image must be trusted.
+This option cannot be combined with the expansion-only option and still rejects
+binary object/library inputs. One image remains loaded throughout the build,
+in separate or aggregate mode, without new XML attributes. Paths, output overrides
+and project order are preserved. The default path is unchanged.
+
+Owned diagnostics also cover invalid indirect-call targets and argument counts,
+including calls through function pointers. Argument type errors retain the
+checked C++ fallback.
+
 ## Build pipeline
 
 ```text
@@ -551,7 +567,7 @@ All normative documentation is maintained in Markdown as its primary source.
   retains the AST, symbols and resolutions, unit isolation and original positions
   for numeric rejections; private copies, bounds and guards, no published
   rejection prefixes, rereads or C++ passes; tested with replaced files and
-  after unloading, local development API without enabling it in the driver;
+  after unloading, with optional integration into direct compilation, projects and solutions;
 - owned semantic diagnostics: invariant, local/global, condition/logical,
   required constructors for default field values, enum values, unsupported
   array references, non-public inheritance and self-inheritance,
@@ -577,13 +593,19 @@ All normative documentation is maintained in Markdown as its primary source.
   class object fields with forbidden default values and uninitialized const fields,
   incorrect expression counts and non-aggregate array arguments in explicit field initializers,
   fields initialized twice or in the wrong order (canonical names, including aliases),
+  unknown base classes, direct types, nested callback and cast target types (codes 100/99,
+  preserving the first failing name), resolved non-class bases (114, preserving the written name and symbol rank),
+  resolved non-type names already written in full, without host-side name resolution,
+  implicitly qualified non-type names through the optional native extension
+  (free functions, ordinary methods, globals, aliases and enum values),
   unknown-name, unknown-member and ambiguous overloaded-address French/English messages through
   `SemantiqueAssemblee::ExigerValide()`,
   with original positions; lex only the already-owned name span, including
   qualifications and comments, without file reads or C++ syntax/semantic passes.
   Families still needing resolved names, types or unavailable
   context remain numeric, without approximate messages.
-  Local API; full translation and driver integration are still pending;
+  Explicit integration into the driver, including projects and solutions;
+  full translation and backend integration are still pending;
 - self-hosted assembly of prepared sources and interfaces: text, AST and origin
   table, with local diagnostics and namespace imports isolated per compilation unit;
   thirteen valid bilingual corpora, guarded outputs and tested allocation failures;

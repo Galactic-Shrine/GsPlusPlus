@@ -153,6 +153,24 @@ préprocesseur C++ complet. Les
 précisent les formes prises en charge. Les paquets alpha.10 publiés restent
 inchangés.
 
+Pour les compilations **de sources/interfaces, projets et solutions**, le développement local
+propose aussi `--diagnostics-frontend <Frontend.GsE>` (alias
+`--frontend-diagnostics`). Ce mode partage les instantanés de l'expansion Gs++
+avec le pipeline C++ et y insère les diagnostics sémantiques possédés.
+La syntaxe/normalisation et les annotations nécessaires au backend restent en C++ ;
+ce n'est pas un frontend autonome. Un diagnostic natif encore non traduit ne
+permet un repli C++ que si un refus à la même position est confirmé ; un contrat
+incohérent n'est pas masqué. L'image doit être de confiance. Cette option est
+incompatible avec l'option d'expansion seule et reste refusée sur les entrées
+binaires objets/bibliothèques. Une seule image est conservée pendant toute la
+construction, en modes séparé et agrégé, sans nouvel attribut XML. Les chemins,
+remplacements de sortie et ordre des projets restent inchangés. Sans option,
+rien ne change.
+
+Les diagnostics possédés couvrent aussi les cibles non appelables et les
+erreurs d'arité des appels indirects, notamment via des pointeurs de fonction.
+Les erreurs de type d'argument conservent le repli C++ vérifié.
+
 ## Chaîne de production
 
 ```text
@@ -556,7 +574,7 @@ principale.
   une `ErreurCompilation` française/anglaise dans le fichier original ; 43
   contextes, 67 corpus bilingues et 134 refus comparés au bootstrap, messages
   et positions compris. Détails inconnus/incompatibles refusés comme erreurs
-  hôtes ; API de développement, sans activation de l'analyse Gs++ dans le pilote ;
+  hôtes ; API de développement, sans remplacement de l'analyse syntaxique C++ du pilote ;
 - adaptateur hôte d'assemblage multi-unités brut/normalisé possédé : texte,
   AST, noms, plages et positions originales conservés après sélection des
   définitions ; limites cumulées, 82 contrats et 14 exports altérés refusés,
@@ -567,7 +585,7 @@ principale.
   conserve l'AST, les symboles et résolutions, l'isolation des unités et les
   positions originales des refus numériques ; copies privées, bornes et gardes,
   aucun préfixe publié sur refus, aucune relecture ni passe C++ ; testé avec
-  fichiers remplacés et après déchargement, API locale sans activation du pilote ;
+  fichiers remplacés et après déchargement, raccord facultatif aux compilations directes, projets et solutions ;
 - diagnostics sémantiques possédés : messages invariants, dont le constructeur
   requis pour les champs par défaut, les valeurs d'énumération, les références
   de tableaux interdites, l'héritage non public/auto-héritage et les paramètres
@@ -595,13 +613,20 @@ principale.
   nombres d'expressions incorrects et arguments de tableaux non agrégés dans les initialiseurs explicites,
   champs initialisés plusieurs fois ou dans le mauvais ordre (noms canoniques,
   alias compris),
+  bases de classes introuvables, types introuvables directs, de callbacks imbriqués et de conversions
+  (codes 100/99, premier nom fautif conservé),
+  noms trouvés non types dont la forme complète est déjà écrite, sans résolution côté hôte,
+  noms non types qualifiés implicitement via l'extension native facultative
+  (fonctions libres, méthodes ordinaires, globales, alias et valeurs d'énumération),
+  bases trouvées qui ne sont pas des classes (114, nom écrit et rang de symbole conservés),
   noms ou membres introuvables et adresses
   de fonctions surchargées ambiguës français/anglais via
   `SemantiqueAssemblee::ExigerValide()`, avec positions originales ; lexage limité
   à la tranche du nom déjà en mémoire, qualifications et commentaires compris,
   sans relecture ni passe syntaxique/sémantique C++. Les familles exigeant encore
   un nom résolu, un type ou un contexte indisponible restent numériques, sans message
-  approximatif. API locale, traduction complète et raccord au pilote à poursuivre ;
+  approximatif. Raccord explicite au pilote, projets et solutions compris ;
+  traduction complète et raccord backend encore à poursuivre ;
 - assemblage auto-hébergé de sources et interfaces préparées : texte, AST et
   table d'origines, avec diagnostics locaux et imports d'espaces isolés par unité ;
   treize corpus bilingues valides, sorties protégées et échecs d'allocation testés ;

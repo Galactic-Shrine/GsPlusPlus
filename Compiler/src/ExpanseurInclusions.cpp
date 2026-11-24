@@ -1,6 +1,7 @@
 #include "GsPP/ExpanseurInclusions.hpp"
 
 #include "GsPP/ChargeurGsE.hpp"
+#include "GsPP/ErreurCompilation.hpp"
 #include "GsPP/FichiersSource.hpp"
 #include "GsPP/VerificateurGsE.hpp"
 
@@ -8,7 +9,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <optional>
 #include <stdexcept>
+#include <utility>
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -54,11 +57,12 @@ namespace GsPP
         std::vector<ExportChargeGsE> Exports;
         std::vector<SegmentChargeGsE> Segments;
 
-        std::uint64_t ChercherFonction(std::string_view francais, std::string_view anglais) const
+        std::uint64_t ChercherFonction(std::string_view francais, std::string_view anglais, bool facultative = false) const
         {
             auto chercher = [&](std::string_view nom)
             { return std::find_if(Exports.begin(), Exports.end(), [&](const auto& e) { return e.Nom == nom; }); };
             const auto fr = chercher(francais), en = chercher(anglais);
+            if (facultative && fr == Exports.end() && en == Exports.end()) return 0;
             if (fr == Exports.end() || en == Exports.end() || !fr->Adresse || fr->Adresse != en->Adresse)
                 throw std::runtime_error("exports FR/EN absents ou différents dans l'image GsE : " + std::string(francais));
             for (const auto* exporte : {&*fr, &*en})
@@ -226,5 +230,118 @@ namespace GsPP
         return reinterpret_cast<AnalyseurSemantiqueUnitesHote>(implementation_->ChercherFonction(
             "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnites",
             "GalacticShrine::GsPP::Autohebergement::AnalyzeUnitSemantics"));
+    }
+
+    AnalyseurSemantiqueUnitesAvecNomHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecNom() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecNomHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecNom",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeNamedUnitSemantics"));
+    }
+
+    AnalyseurSemantiqueUnitesAvecContexteHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecContexte() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecContexteHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecContexte",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeContextualUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecLiaisonHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecLiaison() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecLiaisonHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecLiaison",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeLinkUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecAppelsHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecAppels() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecAppelsHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecAppels",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeCallUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecGroupesHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecGroupes() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecGroupesHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecGroupes",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeGroupUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecEchecsAppelsHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecEchecsAppels() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecEchecsAppelsHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecEchecsAppels",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeFailedCallUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecConstructionsHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecConstructions() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecConstructionsHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecConstructions",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeConstructionUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecConstructionsImplicitesHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecConstructionsImplicites() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecConstructionsImplicitesHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecConstructionImplicite",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeImplicitConstructionUnitSemantics", true));
+    }
+
+    AnalyseurSemantiqueUnitesAvecAliasAppelsHote ExpanseurInclusionsCharge::AnalyseurSemantiqueUnitesAvecAliasAppels() const
+    {
+        return reinterpret_cast<AnalyseurSemantiqueUnitesAvecAliasAppelsHote>(implementation_->ChercherFonction(
+            "GalacticShrine::GsPP::Autohebergement::AnalyserSemantiqueUnitesAvecAliasAppels",
+            "GalacticShrine::GsPP::Autohebergement::AnalyzeAliasCallUnitSemantics", true));
+    }
+
+    Programme AnalyserUnitesAvecDiagnosticsFrontend(const std::vector<UniteSource>& unites,
+        const ExpanseurInclusionsCharge& frontend, std::ostream* sortieJetons)
+    {
+        const auto assembler = frontend.AssembleurDeclarationsAvecDiagnostic();
+        const auto analyser = frontend.AnalyseurSemantiqueUnites();
+        const auto analyserAvecNom = frontend.AnalyseurSemantiqueUnitesAvecNom();
+        const auto analyserAvecContexte = frontend.AnalyseurSemantiqueUnitesAvecContexte();
+        const auto analyserAvecLiaison = frontend.AnalyseurSemantiqueUnitesAvecLiaison();
+        const auto analyserAvecAppels = frontend.AnalyseurSemantiqueUnitesAvecAppels();
+        const auto analyserAvecGroupes = frontend.AnalyseurSemantiqueUnitesAvecGroupes();
+        const auto analyserAvecEchecsAppels = frontend.AnalyseurSemantiqueUnitesAvecEchecsAppels();
+        const auto analyserAvecConstructions = frontend.AnalyseurSemantiqueUnitesAvecConstructions();
+        const auto analyserAvecConstructionsImplicites = frontend.AnalyseurSemantiqueUnitesAvecConstructionsImplicites();
+        const auto analyserAvecAliasAppels = frontend.AnalyseurSemantiqueUnitesAvecAliasAppels();
+        std::vector<ResultatPreparationFichier> preparations;
+        preparations.reserve(unites.size());
+        std::optional<SemantiqueAssemblee> refusReserve;
+        try
+        {
+            auto programme = AnalyserUnitesAvecPreparation(unites, [&](const UniteSource& unite)
+            {
+                preparations.push_back(PreparerFichierAvecReprise(unite, frontend.Developper()));
+                return ConvertirPreparationEnJetons(preparations.back());
+            }, sortieJetons, [&]()
+            {
+                std::vector<const ResultatPreparationFichier*> sources;
+                sources.reserve(preparations.size());
+                for (const auto& preparation : preparations) sources.push_back(&preparation);
+                auto declarations = AssemblerDeclarationsNormaliseesAvecDiagnostic(sources, assembler);
+                declarations.ExigerValide();
+                auto semantique = AnalyserSemantiqueAssemblee(declarations, analyser, {}, analyserAvecNom, analyserAvecContexte, analyserAvecLiaison,
+                    analyserAvecAppels, analyserAvecGroupes, analyserAvecEchecsAppels, analyserAvecConstructions, analyserAvecConstructionsImplicites, analyserAvecAliasAppels);
+                try { semantique.ExigerValide(); }
+                catch (const DiagnosticSemantiqueNonTraduit&)
+                { refusReserve = std::move(semantique); }
+            });
+            if (refusReserve) throw std::runtime_error("désaccord frontend/bootstrap : le refus sémantique natif n'est pas confirmé, code="
+                + std::to_string(refusReserve->Resultat.Erreur));
+            return programme;
+        }
+        catch (const ErreurCompilation& erreur)
+        {
+            if (refusReserve && (!refusReserve->PositionErreur || refusReserve->PositionErreur->Fichier != erreur.Fichier()
+                || refusReserve->PositionErreur->Ligne != erreur.Ligne() || refusReserve->PositionErreur->Colonne != erreur.Colonne()))
+                throw std::runtime_error("désaccord frontend/bootstrap : position du refus sémantique différente, code="
+                    + std::to_string(refusReserve->Resultat.Erreur));
+            throw;
+        }
     }
 }

@@ -25,7 +25,7 @@ unité développée avec modes mixtes et origines de jetons, raccordement de ces
 origines à l'assemblage/normalisation et à la sémantique par unité, origines
 des diagnostics et isolation des imports par unité
 et émission des globales
-VALIDÉS dans le périmètre testé — 6 octobre 2026.**
+VALIDÉS dans le périmètre testé — 21 octobre 2026.**
 
 La génération machine C++ des noms locaux réutilisés dans des portées distinctes
 est également validée dans la tranche décrite plus bas ; elle ne constitue pas
@@ -55,6 +55,11 @@ mentions de tranches non commitées ou non publiées relatent également leur
 état à la date de validation, pas l’état actuel de la branche de développement.
 La consolidation du 20 octobre 2026 ne crée ni nouvelle version ni nouveaux
 paquets ; elle ne transforme pas les validations locales en résultats de CI.
+Elle est publiée dans le commit signé et vérifié
+[`8dcf7dd`](https://github.com/Galactic-Shrine/GsPlusPlus/commit/8dcf7dd6c5aabff0e53637d9026800c931adc9aa),
+dont la [CI Windows/GNU/Linux/MSBuild](https://github.com/Galactic-Shrine/GsPlusPlus/actions/runs/39481132539)
+réussit. Les tranches des types introuvables, bases non classes et noms non types
+ci-dessous sont postérieures à ce commit.
 
 Gs++ 0.27 a pour objectif de migrer le frontend du compilateur depuis le
 bootstrap C++ vers Gs++. Le lexeur constitue la première tranche achevée,
@@ -7036,13 +7041,1204 @@ inchangée ; un dernier commit/release de la série `0.27.0` est prévu avant le
 passage à `0.28.0`, qui sera annoncé explicitement. Traduction complète,
 raccord au pilote et backend restent à poursuivre.
 
+## Types introuvables possédés — 20 octobre 2026
+
+Après la consolidation `8dcf7dd`, les codes 100 (base ou type déclaré introuvable) et
+99 (cible de conversion introuvable) réutilisent les contextes nominaux 40/41/42/43.
+`Detail` désigne le premier nom refusé, direct ou imbriqué dans un callback ;
+la position reste celle de la déclaration ou de la conversion. L'hôte possède
+et vérifie la tranche UTF-8, le hachage du nom, l'empreinte opaque du type,
+l'espace, le rang lexical, le parent, l'unité et les origines. Il ne recherche
+ni type ni import et ne reconstruit pas de `Programme`.
+L'extension d'héritage ajoute la base 40 au code 100, à la position de la classe ;
+le nom écrit, la séparation `:` / `: publique`, le rang lexical et l'appartenance
+à la classe/unité sont contrôlés sans reconstruire sa résolution.
+
+La résolution conserve le premier échec dans l'ordre retour puis paramètres,
+même si une ambiguïté apparaît ensuite. Les types de conversions précèdent
+leurs opérandes ; le parcours spécialisé des expressions reste inchangé.
+Le refus nominal d'une globale est différé jusqu'à sa visite, après les
+signatures/champs par défaut et avant son initialiseur puis la globale suivante.
+Les priorités sont comparées au bootstrap, notamment inconnue d'expression
+avant un type local/global ultérieur, et type de signature avant champ par
+défaut invalide, sans confondre ces phases avec l'ordre lexical global.
+Les bases sont contrôlées dans l'ordre des classes avant les types des champs
+et signatures, mais après les utilisations, valeurs d'énumération et alias
+racines. Les cas 100/113/114/115/121 sont distingués sans modifier ces phases.
+
+La matrice dédiée `--diagnostics-types-introuvables` vérifie :
+
+- **108 refus traduits FR/EN**, dont 32 d'héritage, avec message complet, rendu GS1001, fichier,
+  ligne, colonne, nom choisi par `Detail` et AST/source/unités/origines intacts ;
+- **108 anciens AST numériques**, sans feuilles 40/41/42/43, `Detail 0` et même origine ;
+- **34 cas de symboles non types réservés numériques**, avec `Detail UINT32_MAX` :
+  le nom résolu peut être qualifié par le bootstrap mais n'est pas encore possédé ;
+  le contexte nominal est contrôlé sans inventer de message source ;
+- **102 priorités bilingues**, incluant plusieurs noms introuvables, les
+  ambiguïtés 121, les contraintes de callbacks et les expressions/globales ;
+- **3 084 contrats/textes, 756 marqueurs natifs et 256 entrées AST altérés refusés** ;
+- **16 succès FR/EN d'héritage**, avec noms simples/qualifiés/importés,
+  alias de types, chaînes et bases provenant d'interfaces ;
+- parents nominaux hors bornes ou auto-référents refusés par les contrôles
+  de disponibilité et de traduction, sans accès hors limites ;
+- instantanés détruits et fichiers remplacés avant l'analyse ; copies et
+  déplacements revérifiés après déchargement de l'image.
+
+La matrice 121 demeure à 190 refus traduits, 104 succès FR/EN, 154 priorités,
+2 700 contrats/textes, 312 marqueurs natifs et 428 entrées AST altérés.
+Les 47 codes de messages invariants restent inchangés : les noms de types
+sont un contexte nominal, pas une nouvelle famille de messages invariants.
+
+Validation finale du 20 octobre, après l'extension d'héritage, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 5/5 ; auto-hébergement 138,91 s, total 160,79 s | 20/20 ; fin 22:19:45 +02:00 |
+| GNU/Linux WSL | CTest 6/6, intégration comprise ; auto-hébergement 535,61 s, total 575,73 s | 20/20 ; fin 22:31:31 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, style et 7 cibles C++ réussies | 20/20 ; fin 22:22:18 +02:00 |
+
+Ces durées décrivent cette campagne, pas un benchmark comparatif ; le volume
+Windows accessible par WSL introduit notamment des attentes d'E/S.
+Les 2 751 refus sémantiques différentiels, 920 comparaisons de diagnostics,
+47 codes invariants, 94 corpus assemblés FR/EN et 80 résultats altérés
+restent vérifiés sur les trois chaînes.
+Leurs images `Frontend.GsE` sont identiques : **586 143 octets**, SHA-256
+`F14188AA1626E6933FCB3786B7B652E254587989F8B43F8D4E442FEC729DF6E5` ;
+les trois `gseverifier` confirment 3 segments, 8 sections, 2 imports et 107 exports.
+Les trois `VersionProduit.hpp` générés annoncent toujours alpha.10 et
+`ConteneursDynamiques.GsPP` demeure inchangé (SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`).
+
+La campagne remplace le bilan initial de 76 diagnostics, validé le même jour
+avant l'extension d'héritage (image de 585 999 octets).
+À ce jalon du 20 octobre, les noms canoniques non possédés et le code 114
+restaient numériques ; la tranche du 21 octobre ci-dessous étend le code 114.
+Formats 1.0, dispositions ABI, genres AST, codes et exports inchangés.
+Version `0.27.0-alpha.10` conservée. Cette nouvelle tranche est locale, non
+commitée/non poussée, sans release ni modification des paquets ; le commit et
+la CI `8dcf7dd` ne la couvrent pas. Traduction complète et raccord au pilote/backend
+restent à poursuivre avant le dernier commit/release 0.27 puis le passage à 0.28.
+
+## Bases trouvées non classes — 21 octobre 2026
+
+Le code 114 possède désormais le message exact du bootstrap quand la base
+retenue est une structure, une union ou une énumération : nom **écrit** de la
+feuille 40, alias compris, à la position originale de la classe dérivée.
+`Detail` reste le rang de symbole natif du type retenu ; zéro est valide et
+n'est pas remplacé par l'index de la feuille. Le type peut provenir d'une autre
+unité/interface ou être déclaré après la classe.
+
+L'hôte rattache ce rang à l'ordre ABI des déclarations symboliques puis
+contrôle le genre racine 4/5/8, les bornes, tranches, lexèmes/hachages, unités,
+origines et liens de la classe/base. Aucun type/import/alias n'est résolu à
+nouveau ; un rang cohérent ne prouve pas l'authenticité d'un résultat natif.
+Un ancien AST sans feuille 40 conserve son refus numérique, son rang et sa
+position, sans message source approximatif. Les rangs de classe/fonction,
+hors limites et les autres contextes incohérents sont refusés comme contrats hôtes.
+
+La matrice `--diagnostics-types-introuvables`, étendue aux bases non classes,
+vérifie **148 refus traduits FR/EN**, dont **40 nouveaux cas 114**, **148 anciens
+AST numériques**, **34 cas non types réservés numériques**, **150 priorités**,
+**4 884 contrats/textes**, **1 036 marqueurs natifs**, **576 entrées AST altérés**
+et **24 succès FR/EN**. Les fichiers sont remplacés et les préparations
+détruites avant la passe ; AST/source/origines/unités intacts et résultats
+copiés/déplacés après déchargement sont vérifiés. Les priorités 100/113/114/115/121,
+signatures/champs/globales, énumérations, utilisations et cycles d'alias suivent
+le bootstrap C++.
+
+Validation finale du 21 octobre, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 5/5 ; auto-hébergement 132,04 s, total 148,57 s | 20/20 ; fin 00:51:33 +02:00 |
+| GNU/Linux WSL | CTest 6/6, intégration comprise ; auto-hébergement 518,56 s, total 554,02 s | 20/20 ; fin 01:02:44 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, style et 7 cibles C++ réussies | 20/20 ; fin 00:53:56 +02:00 |
+
+Ces durées décrivent cette campagne, pas un benchmark comparatif ; le volume
+Windows accessible par WSL introduit notamment des attentes d'E/S.
+Les trois chaînes vérifient la matrice étendue ci-dessus, les 2 751 refus
+sémantiques différentiels, les 920 comparaisons de diagnostics, les 47 codes
+invariants, les 94 corpus assemblés FR/EN et les 80 résultats altérés.
+
+Leurs images `Frontend.GsE` sont identiques et inchangées depuis la tranche
+du 20 octobre : **586 143 octets**, SHA-256
+`F14188AA1626E6933FCB3786B7B652E254587989F8B43F8D4E442FEC729DF6E5`.
+Les trois `gseverifier` confirment 3 segments, 8 sections, 2 imports et
+107 exports. Les trois `VersionProduit.hpp` générés annoncent alpha.10 ;
+`ConteneursDynamiques.GsPP` reste inchangé (SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`).
+
+Le code natif Gs++ ne change pas dans cette tranche : le rang 114 était déjà
+fourni ; la traduction exploite ces informations côté hôte. Aucune modification
+de genre AST, code, export, format 1.0, taille ABI ou version `0.27.0-alpha.10`.
+Tranche locale non commitée/non poussée, sans release ni modification des paquets.
+Les noms canoniques non possédés et le raccord au pilote/backend restent à poursuivre.
+
+## Noms non types déjà canoniques — 21 octobre 2026
+
+Les codes 100/99 utilisent désormais les feuilles nominales existantes
+40/41/42/43 aussi lorsqu'un symbole non type est trouvé, si son nom complet
+retenu par la recherche native est identique au nom écrit. Le natif compare
+l'empreinte du nom trouvé **avant l'expansion d'un alias** : `Vue` reste `Vue`,
+et `N::Vue` reste `N::Vue`, sans remplacer le nom par celui de sa cible.
+La recherche reste native ; l'hôte réutilise le contexte nominal possédé
+et les contrôles existants, sans résoudre de type, alias ou import.
+
+Les signatures et champs, variables globales et locales, callbacks imbriqués,
+conversions et bases de classes conservent le premier nom fautif, le code,
+le message exact FR/EN et la position de leur déclaration/conversion.
+Les qualifications écrites avec espaces/commentaires et identifiants UTF-8,
+les déclarations provenant d'interfaces ou situées après leur utilisation sont couvertes.
+
+Si la recherche doit transformer `X` en `N::X`, la sentinelle `UINT32_MAX`
+est conservée : le texte canonique n'est pas encore possédé. La même règle
+s'applique aux alias qualifiés implicitement. Un ancien AST sans feuilles
+nominales reste numérique avec `Detail 0`. Une ancienne image native peut
+continuer à renvoyer la sentinelle pour un nom pourtant déjà canonique ;
+l'hôte l'accepte sans inventer de diagnostic source.
+
+La matrice `--diagnostics-types-introuvables` vérifie maintenant **212 refus
+traduits FR/EN**, dont **64 nouveaux cas non types**, **212 anciens AST
+numériques**, **64 anciens marqueurs non types numériques**, **36 cas non
+types réservés numériques**, **202 priorités**, **6 628 contrats/textes**,
+**1 484 marqueurs natifs**, **672 entrées AST altérées** et **24 succès FR/EN**.
+Les anciennes matrices 114 et 121 restent incluses. Les instantanés détruits,
+fichiers remplacés, AST/source/unités/origines intacts et copies/déplacements
+après déchargement sont contrôlés.
+
+Validation finale du 21 octobre, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 5/5 ; auto-hébergement 133,81 s, total 144,84 s | 20/20 ; fin 02:20:16 +02:00 |
+| GNU/Linux WSL | CTest 6/6, intégration comprise ; auto-hébergement 570,20 s, total 607,51 s | 20/20 ; fin 02:29:38 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, style et 7 cibles C++ réussies | 20/20 ; fin 02:20:31 +02:00 |
+
+Ces durées décrivent cette campagne, pas un benchmark comparatif. Les attentes
+d'E/S sur le volume Windows accessible par WSL font partie du temps observé.
+Les trois chaînes vérifient aussi les 2 751 refus sémantiques différentiels,
+920 comparaisons de diagnostics, 47 codes invariants, 94 corpus assemblés FR/EN
+et 80 résultats altérés de la suite générale.
+
+Les trois nouvelles images `Frontend.GsE` sont identiques : **586 415 octets**,
+SHA-256 `FD67FD4D72C5B619B2E815F0C802D73C1284DEBCC821F31946BEB383315D69B8`.
+Elles contiennent 647 symboles et 2 979 relocalisations ; le code sémantique
+occupe 356 461 octets, celui des déclarations reste à 203 539 octets.
+Les trois `gseverifier` confirment 3 segments, 8 sections, 2 imports et 107 exports.
+Les trois `VersionProduit.hpp` générés annoncent alpha.10 et
+`ConteneursDynamiques.GsPP` reste inchangé (SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`).
+
+Le code natif Gs++ est reconstruit ; aucun genre AST, code, export, format 1.0
+ou taille ABI ne change. L'hôte n'effectue aucune nouvelle résolution de nom.
+Version `0.27.0-alpha.10` conservée ; tranche locale non commitée/non poussée,
+sans release ni modification des paquets. Les noms qualifiés implicitement
+non possédés et le raccord au pilote/backend restent à poursuivre.
+
+## Noms qualifiés implicitement possédés — 21 octobre 2026
+
+L'extension facultative `AnalyserSemantiqueUnitesAvecNom` /
+`AnalyzeNamedUnitSemantics` transporte le nom complet choisi par le natif pour
+les refus 100/99 de fonctions libres/globales, alias racines et valeurs d'énumération.
+Les anciens exports et résultats, dont `Detail UINT32_MAX`, restent inchangés.
+Une requête de 48 octets enveloppe l'analyse par unité et un tampon de segments
+de 24 octets (début source, taille, empreinte du préfixe) ; elle retourne les
+indices AST du nom nominal fautif et de la déclaration retenue avant expansion
+d'alias. Les valeurs d'énumération possèdent aussi le segment du nom de l'enum.
+
+Le natif utilise ses portées déjà indexées. Mesure et copie sont bornées,
+sans écriture partielle ni pointeur d'arène exposé. L'hôte possède la source,
+l'AST et les segments, contrôle contexte, unités, tranches, lexèmes, ordre et
+empreintes puis joint les noms ; aucun symbole/type/import/alias n'est résolu
+à nouveau. Un résultat cohérent n'authentifie pas le choix de la déclaration.
+L'appel étendu est explicite, via le quatrième argument d'`AnalyserSemantiqueAssemblee`.
+Sans lui, ou pour un contexte non représenté, le refus reste numérique.
+
+La matrice dédiée vérifie **82 refus FR/EN**, **1 804 contrats/textes**,
+**1 476 sorties natives altérées**, **330 mesures/copies/limites** et
+**438 contextes sans extension**. Elle inclut imports transitifs, espaces
+parents et imbriqués sur 24 niveaux, qualifications relatives, alias et chaînes,
+valeurs d'énumération, callbacks/conversions imbriqués, interface, déclaration
+postérieure et UTF-8. L'ancien résultat est comparé octet pour octet ; première
+erreur, message FR/EN, GS1001, positions et AST/source/unités/origines sont
+contrôlés. Fichiers remplacés, instantanés détruits, copies/déplacements après
+déchargement et retour au refus numérique sans métadonnées sont vérifiés.
+
+Les **six paires d'exports facultatifs** ont **42 altérations** vérifiées ;
+l'expansion et l'ancien export sémantique restent utilisables si seule la
+nouvelle paire est altérée. Les nouveaux exports sont vérifiés à la demande,
+pas imposés par le chargement de l'expanseur.
+
+Validation finale du 21 octobre, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 5/5 ; auto-hébergement 141,90 s, total 153,09 s | 20/20 ; fin 02:49:11 +02:00 |
+| GNU/Linux WSL | CTest 6/6, intégration comprise ; auto-hébergement 571,94 s, total 609,51 s | 20/20 ; fin 02:59:11 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, style et 7 cibles C++ réussies | 20/20 ; fin 02:49:54 +02:00 |
+
+Ces durées décrivent cette campagne, pas un benchmark comparatif ; WSL attend
+notamment les E/S du volume Windows. Les trois chaînes vérifient la nouvelle
+matrice, les 212 diagnostics de l'ancien export, les 2 751 refus sémantiques
+différentiels, 920 comparaisons de diagnostics, 47 codes invariants,
+94 corpus assemblés FR/EN et 80 résultats altérés de la suite générale.
+
+Les trois nouvelles images `Frontend.GsE` sont identiques : **592 319 octets**,
+SHA-256 `095F1A5220C1A766E8C283B96EE0164EA13339EA9ECFE36EF5BC1AE600A90AB2`.
+Elles contiennent 653 symboles et 2 987 relocalisations ; le code sémantique
+occupe 362 174 octets, celui des déclarations reste à 203 539 octets.
+Les trois `gseverifier` confirment 3 segments, 8 sections, 2 imports et 109 exports.
+Les trois `VersionProduit.hpp` générés annoncent alpha.10 et
+`ConteneursDynamiques.GsPP` reste inchangé (SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`).
+
+Formats 1.0, codes et ABI existante conservés ; deux exports facultatifs
+supplémentaires (109 au total). Aucun préfixe de table de symboles/résolutions
+n'est publié sur refus : les segments possédés décrivent seulement le nom.
+Version `0.27.0-alpha.10` ; tranche locale non commitée/non poussée, sans release
+ni modification des paquets. Les noms complets de membres non représentés et
+le raccord au pilote/backend restent à poursuivre ; le chemin par défaut de
+`gsppc` n'est pas modifié par cette extension explicite de l'adaptateur.
+
+## Noms complets de méthodes — 21 octobre 2026
+
+Le même export facultatif possède désormais le nom des méthodes ordinaires
+(genre 12) utilisées à tort comme types : espaces de noms, classe déclarante
+et nom retenu, par exemple `N::C::M`. Le natif fournit le segment du parent
+classe, comme il fournissait celui de l'énumération ; l'hôte contrôle la
+déclaration et joint les noms sans rechercher de membre.
+
+La classe doit être définie, mais n'a pas besoin d'une base. Le parent racine,
+le genre, la définition, les noms/hachages, tranches et unités/origines du
+déclarant ainsi que le segment final sont vérifiés ; les contrôles du parent
+énumération sont renforcés de la même façon. Une sortie entièrement dépourvue
+de contexte canonique reste un refus numérique compatible, pas un nom inventé.
+
+La matrice compte **222 refus FR/EN**, dont **98 noms de méthodes**,
+**6 204 contrats/textes**, **3 996 sorties natives altérées**,
+**890 mesures/copies/limites**, **506 contextes sans extension** et
+**222 replis natifs compatibles**. Elle couvre signatures/retours, callbacks
+imbriqués, conversions, variables locales, constructeurs/destructeurs,
+initialiseurs de champs par défaut/explicites et corps d'opérateurs ; méthodes
+privées, surchargées, masquantes ou déclarées après usage ; espaces imbriqués,
+UTF-8 et interface avec déclarations sans corps.
+
+Le complément consacré aux groupes mixtes ajoute **84 refus FR/EN** avec
+deux candidats méthode/fonction libre de même nom complet. Il contrôle l'index
+AST exact du premier candidat natif, pas seulement le texte commun `C::M` :
+deux ordres de déclaration, classes/espaces imbriqués, imports transitifs,
+unités distinctes, interfaces et UTF-8. Les feuilles 40/41/42/43, callbacks
+imbriqués, conversions, bases, signatures et déclarations globales sont couverts.
+Deux noms mixtes invalides sont testés dans les deux ordres, dans les callbacks
+et conversions imbriquées. La sélection respecte l'ordre de l'AST normalisé ;
+aucune recherche de membre n'est ajoutée à l'hôte.
+
+**44 priorités/succès mixtes** vérifient aussi l'absence de contexte canonique
+sur un autre refus ou un appel valide. Les **12 refus numériques réservés**
+concernent les doublons canoniques de signatures (118, après résolution d'alias)
+et les appels mixtes ambigus (22) : code, position et ancien résultat comparés,
+sans prétendre posséder leur message. Les vrais doublons textuels rejetés par
+la normalisation ne sont pas présentés comme des erreurs de l'analyse suivante.
+Ce complément renforce les tests sans modifier l'algorithme du compilateur.
+
+Les deux ordres de noms invalides et les refus prioritaires 18/39/85/99/100/109/
+113/114/120 sont comparés au bootstrap. Le résultat natif reste identique
+octet pour octet sur l'ancien appel et le repli ; message FR/EN, GS1001, origine,
+AST/source/unités/origines intacts et copie/déplacement/déchargement sont vérifiés
+après remplacement des fichiers et destruction des préparations.
+
+Validation finale du 21 octobre, groupes mixtes compris et sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 5/5 ; auto-hébergement 150,15 s, total 164,47 s | 20/20 ; fin 09:04:22 +02:00 |
+| GNU/Linux WSL | CTest 6/6, intégration comprise ; auto-hébergement 617,02 s, total 655,72 s | 20/20 ; fin 09:15:28 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, style et 7 cibles C++ réussies | 20/20 ; fin 09:04:52 +02:00 |
+
+Ces durées décrivent cette campagne, pas un benchmark comparatif. Les trois
+chaînes vérifient la matrice étendue, les 212 diagnostics de l'ancien export,
+les 2 751 refus sémantiques différentiels, 920 comparaisons de diagnostics,
+47 codes invariants, 94 corpus assemblés FR/EN et 80 résultats altérés de la
+suite générale. Le complément de groupes mixtes modifie uniquement les tests
+et la documentation ; le compilateur et les images restent inchangés.
+
+Les trois images `Frontend.GsE` sont identiques : **592 591 octets**, SHA-256
+`1F4CEB54C43C01A2708883AAD6CBB2771412F018EC35B253B653C33BC8437E6A`.
+Elles contiennent 653 symboles et 2 987 relocalisations ; le code sémantique
+occupe 362 440 octets, celui des déclarations reste à 203 539 octets.
+Les trois `gseverifier` confirment 3 segments, 8 sections, 2 imports et 109 exports.
+Les trois `VersionProduit.hpp` générés annoncent alpha.10 et
+`ConteneursDynamiques.GsPP` reste inchangé (SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`).
+
+Pas de nouvel export, code, format 1.0 ou taille ABI ; les 109 exports et les
+contrats de 48/24 octets sont conservés. Version `0.27.0-alpha.10`, chemin par
+défaut de `gsppc` et paquets inchangés ; tranche locale non commitée/non poussée,
+sans release.
+Les autres contextes de diagnostic et le raccord au pilote/backend restent à poursuivre.
+
+## Raccord explicite des diagnostics au pilote — 21 octobre 2026
+
+Le mode local `--diagnostics-frontend <Frontend.GsE>` / `--frontend-diagnostics`
+raccorde les diagnostics possédés aux compilations directes de sources et
+interfaces, ainsi qu'aux projets et solutions. Il est refusé pour les binaires et avec
+l'option d'expansion seule. L'aide précise ces limites et l'exigence d'une image
+native de confiance. Le chemin par défaut est conservé.
+
+L'image unique choisie par la commande est empruntée par
+`OptionsConstructionProjet::DiagnosticsFrontend` et transmise à chaque projet
+de la solution. Les groupes d'unités ne changent pas : interfaces et une source
+par objet séparé, interfaces et toutes les sources en agrégé. Un préparateur
+personnalisé concurrent est rejeté avant toute lecture de configuration,
+écriture de journal ou construction. Aucun attribut XML nouveau n'est requis.
+
+Les tests API vérifient l'égalité des objets, archives, images, cartes et
+journaux des solutions séparées/agrégées, les remplacements de sortie/dossier
+objets et les conflits de mode. La matrice CLI ajoute **12 comparaisons de
+solutions FR/EN**, **4 remplacements** et **8 refus/arrêts de projets** :
+préservation des sorties sur le premier refus et ordre/état partiellement
+reconstruit après l'échec d'un projet suivant. Il n'y a pas de rollback global.
+
+Chaque unité est préparée une seule fois. Syntaxe et normalisation C++ gardent
+leur priorité ; un validateur exécute ensuite assemblage et sémantique Gs++ sur
+les mêmes instantanés, sans relecture, avant la passe sémantique C++ nécessaire
+aux annotations du backend. Il s'agit d'un raccord de diagnostics, pas d'un
+frontend autonome ni d'un remplacement de `Programme`.
+
+`ExigerValide()` distingue maintenant un refus numérique validé par
+`DiagnosticSemantiqueNonTraduit` (sous-type C++ de `std::runtime_error`, texte
+historique conservé, code accessible). Seule cette exception autorise le repli
+sur le bootstrap : un refus à la même position doit être confirmé. Sinon, le
+désaccord reste une erreur hôte. Les incohérences de contrat et erreurs d'E/S
+ne sont pas masquées. Aucun nouveau code ni contrat ABI natif n'est introduit.
+
+La matrice ciblée vérifie **36 corpus FR/EN** du raccord, **44 corpus FR/EN** du
+pilote d'inclusions dans les deux modes, objets/images et jetons identiques,
+messages/positions, origines BOM/CRLF/UTF-8 et replis des codes 118/22. Le validateur
+est testé une fois après normalisation, jamais après un refus préalable, avec
+propagation d'exception avant la sémantique et sans relecture du fichier remplacé.
+
+La matrice CLI automatisée vérifie **8 comparaisons binaires/jetons/AST**,
+**32 diagnostics FR/EN** et **12 refus d'options/images** ; aucune sortie sur
+refus, aliases FR/EN, ancien mode sans l'export canonique et aide sont contrôlés.
+Elle est intégrée à CTest et à `VisualStudio/Test-Native.ps1`.
+
+Un contrôle complémentaire passe une interface `.HGsPP` comme unité directe,
+avec la source, plutôt que comme inclusion : objets identiques avec/sans le
+mode de diagnostics dans chacune des trois chaînes.
+
+Validation finale de l'extension projets/solutions du 21 octobre, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 374,66 s, CLI 5,16 s, total 401,08 s | 20/20 ; fin 10:31:56 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 1 324,92 s, CLI 18,86 s, total 1 436,26 s | 20/20 ; fin 10:55:07 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 10:32:55 +02:00 |
+
+Ces durées décrivent cette campagne, pas un benchmark comparatif ; WSL sur le
+volume Windows comporte notamment des attentes d'E/S. Les trois chaînes vérifient
+aussi les 222 diagnostics de noms canoniques, les 2 751 refus sémantiques
+différentiels, 920 comparaisons de diagnostics, 47 codes invariants,
+94 corpus assemblés FR/EN et 80 résultats altérés.
+
+Les trois images `Frontend.GsE` restent identiques : **592 591 octets**, SHA-256
+`1F4CEB54C43C01A2708883AAD6CBB2771412F018EC35B253B653C33BC8437E6A` ;
+les trois `gseverifier` confirment GsE 1.0, 3 segments, 8 sections, 2 imports
+et 109 exports. Les trois `VersionProduit.hpp` générés annoncent alpha.10 et
+`ConteneursDynamiques.GsPP` reste inchangé (SHA-256
+`4EB8F7384823BEB1D9E2C9B073F67487AFE5F4B3FC038C5387181C1E2C50EF67`).
+
+Version `0.27.0-alpha.10` ; pas de nouveau format, export GsE ou taille ABI
+native, ni de commit/push/release.
+La traduction complète et le raccord backend restent à poursuivre.
+
+## Doublons de signatures ordinaires — 21 octobre 2026
+
+Le diagnostic natif **118** est désormais traduit pour les fonctions ordinaires
+à la racine, les méthodes ordinaires d'une classe racine et leurs groupes mixtes.
+Par exemple, une méthode de `classe C` et une fonction libre de `espace C`
+produisent le même nom `C::M`, dans les deux ordres de déclaration.
+
+`Detail` désigne la première fonction par son **index AST**, pas son rang de
+symbole ; l'origine désigne la seconde. L'hôte contrôle les deux déclarations,
+leurs portées, genres, unités, origines, noms possédés et empreintes. La résolution
+des alias/types, la comparaison des signatures et la priorité des groupes ne sont
+pas refaites. Le contrat natif, les exports et les tailles ABI restent inchangés.
+
+Les préfixes de namespace non disponibles dans ce contexte, les constructeurs,
+destructeurs et opérateurs restent numériques. Les genres de fonctions
+spéciales 13/14 portent la tranche du nom de classe : leurs positions
+de déclaration restent distinctes. Un contrat altéré ne doit jamais être masqué
+par un repli ni présenté comme une erreur de code source. Les doublons rejetés
+plus tôt en normalisation conservent cette priorité.
+
+La matrice dédiée compare les diagnostics aux deux langues du bootstrap et
+exerce alias, callbacks, interfaces, inclusions BOM/CRLF/UTF-8, plusieurs unités,
+priorité des groupes, sorties natives et contrats possédés altérés. Les messages
+sont rejoués après remplacement des fichiers, déchargement de l'image, copie et
+déplacement des résultats. Les huit anciens refus mixtes 118 de la matrice de
+types deviennent traduits ; ses quatre refus d'appel ambigu 22 restent numériques.
+La matrice dédiée est validée dans les trois chaînes : **26 diagnostics traduits**,
+**10 replis FR/EN**, **618 contrats/textes** et **216 marqueurs natifs** altérés.
+Le test CLI passe de 32 à **48 diagnostics FR/EN**, avec les comparaisons binaires,
+solutions et erreurs d'options conservées. La matrice de types confirme ses
+**222 diagnostics canoniques**, **84 sélections mixtes** et **44 priorités/succès
+mixtes**, dont désormais **4** refus numériques.
+
+Validation de cette tranche, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 373,87 s, CLI 8,04 s, total 412,45 s | 20/20 ; fin 11:21:51 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 11:23:00 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 1 039,30 s, CLI 8,24 s, total 1 082,20 s | 20/20 ; fin 11:36:59 +02:00 |
+
+La campagne GNU utilise `ctest --preset linux-release --output-on-failure
+--timeout 3600` pour laisser une marge aux E/S du volume Windows. Le résultat
+rapporté correspond à une exécution terminée, sans changer le contenu des tests
+ni les délais configurés du projet. Ces durées ne sont pas un benchmark.
+
+Les trois images reconstruites restent identiques et vérifiées : **592 591 octets**,
+SHA-256 `1F4CEB54C43C01A2708883AAD6CBB2771412F018EC35B253B653C33BC8437E6A`,
+GsE 1.0, 3 segments, 8 sections, 2 imports et 109 exports. Les trois en-têtes
+générés annoncent alpha.10 ; `ConteneursDynamiques.GsPP` est inchangé.
+
+Version `0.27.0-alpha.10` ; pas de commit, push ou release pour cette tranche.
+
+## Fonctions spéciales dans le diagnostic 118 — 22 octobre 2026
+
+La traduction possédée du code **118** couvre maintenant les constructeurs et
+destructeurs de classe racine ainsi que les opérateurs libres, membres et leurs
+groupes mixtes. Le nom suit le bootstrap, indépendamment de la langue du code :
+`C::$constructeur`, `C::$destructeur`, `operator+`, `C::operator+`, etc.
+Les préfixes de namespace qui ne sont pas possédés restent numériques.
+
+Le genre 13/14 est relié au nom de classe partagé par ses nœuds ; le genre 15
+est relié à son signe source, vérifié parmi les **18 opérateurs déjà admis**.
+Les familles de fonctions sont distinguées avant traduction : une méthode
+ordinaire, un opérateur, un constructeur et un destructeur ne sont pas confondus
+sur la seule base de leurs noms/empreintes brutes. Aucune signature ni surcharge
+n'est résolue à nouveau dans l'hôte ; `Detail` garde son rôle d'index AST de la
+première déclaration retenue nativement.
+
+La matrice dédiée est validée dans les trois chaînes : **184 diagnostics traduits**, **12 replis FR/EN**,
+**4 056 contrats/textes** et **1 176 marqueurs natifs** altérés. Elle couvre les
+18 signes en libre/membre, les deux ordres des groupes mixtes, les priorités
+indépendantes, alias/callbacks, interfaces, inclusions et unités. Elle vérifie
+explicitement l'index de la première déclaration de chaque groupe de fixture,
+les empreintes altérées sur les deux fonctions à la fois et les noms/signes
+remplacés par d'autres lexèmes valides. Copie/déplacement, remplacement des fichiers
+et déchargement de l'image conservent les messages et positions bilingues.
+
+Les doublons textuellement identiques de destructeurs et certains unaires membres
+sont testés en **assemblage brut**, contre la passe sémantique C++ sans normaliser.
+En production, la normalisation du pilote conserve sa priorité et son diagnostic :
+aucune nouvelle syntaxe ni anticipation de phase n'est introduite. La matrice CLI
+vérifie désormais **72 diagnostics FR/EN**, y compris cette priorité et les nouveaux
+noms canoniques, avec les 8 comparaisons binaires/jetons/AST, 12 refus d'options,
+12 solutions, 4 remplacements et 8 refus/arrêts de projets conservés.
+
+Validation de l'extension du 22 octobre, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 176,13 s, CLI 7,86 s, total 206,98 s | 20/20 ; fin 20:45:17 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 20:45:44 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 695,36 s, CLI 11,23 s, total 748,31 s | 20/20 ; fin 20:56:27 +02:00 |
+
+La campagne GNU est exécutée avec `--timeout 3600` pour garder une marge aux E/S
+du volume Windows, sans modifier les tests ni les délais configurés du projet.
+Ces durées décrivent cette exécution terminée, pas un benchmark comparatif.
+
+Les trois images reconstruites sont identiques, **592 591 octets**, SHA-256
+`1F4CEB54C43C01A2708883AAD6CBB2771412F018EC35B253B653C33BC8437E6A` ;
+les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports
+et 109 exports. Les trois en-têtes générés annoncent alpha.10 et
+`ConteneursDynamiques.GsPP` conserve son empreinte initiale.
+
+Version `0.27.0-alpha.10`, formats 1.0, genres AST, tailles ABI et exports natifs
+inchangés. Aucun commit, push ou release pour cette tranche.
+
+## Préfixes de surcharges possédés — 22 octobre 2026
+
+Le diagnostic 118 possède maintenant les préfixes manquants pour les namespaces
+imbriqués, par exemple `Démo::API::F`, `Démo::API::C::$constructeur`,
+`Démo::API::C::$destructeur` et `Démo::API::C::operator+`.
+
+Une paire d'exports **facultative**, `AnalyserSemantiqueUnitesAvecContexte` /
+`AnalyzeContextualUnitSemantics`, réutilise la requête de **48 octets** et les
+segments de **24 octets**. Pour 118, `IndexNominal` désigne la seconde fonction
+à l'origine du refus, `IndexDeclaration` la première (égale à `Detail`). Les
+anciennes entrées sémantiques et nommées ne changent pas et continuent à publier
+le même résultat numérique sans préfixe 118. Pour 99/100, la nouvelle entrée
+conserve le contrat nominal existant.
+
+Le natif copie uniquement les namespaces déjà indexés et, s'il s'agit d'un
+membre, le nom de sa classe déclarante. Il ne recherche pas une autre paire.
+L'hôte contrôle les indices, genres, familles, unités, tranches, lexèmes et
+empreintes cumulées, puis joint les noms possédés. Aucun namespace, import,
+type ou candidat n'est résolu de nouveau dans le pilote. Les noms disponibles
+à la racine restent traduits sans métadonnées supplémentaires.
+
+Mesure à capacité nulle, publication entière seulement si le tampon suffit,
+gardes et refus d'entrées incohérentes sont testés. Fichiers remplacés,
+instantanés détruits, déchargement, copie et déplacement conservent le diagnostic.
+Les deux nouveaux exports absents sont acceptés par le pilote (ancien contrat
+et repli confirmés) ; une paire partielle reste une erreur hôte. Les anciennes
+entrées déjà requises par le mode de diagnostics restent nécessaires.
+
+La matrice ciblée compare **380 cas FR/EN** au bootstrap : **184 traductions et
+196 replis** avec l'ancienne entrée, tous traduits avec la nouvelle, résultat
+numérique identique. Elle couvre les fonctions ordinaires/spéciales, les 18
+signes d'opérateurs, les deux ordres mixtes, alias, callbacks, interfaces et
+unités, avec les namespaces UTF-8 qualifiés. Les **196 contextes** supplémentaires
+exercent **2 548 contrats/textes**, **3 528 sorties natives altérées** et
+**588 mesures/copies bornées**. La matrice historique étendue compte également
+7 000 contrats/textes et 2 280 marqueurs natifs altérés.
+
+Le test CLI passe à **88 diagnostics FR/EN**, **4 replis** sans les nouveaux
+exports et **3 contrôles d'exports facultatifs**. Les 8 comparaisons binaires,
+12 refus d'options/images, 12 solutions FR/EN, 4 remplacements et 8 refus/arrêts
+de projets sont conservés. La matrice des noms de types garde ses 222 diagnostics
+canoniques et ses contrats antérieurs. Syntaxe et normalisation restent avant
+la sémantique ; les entrées brutes de test ne changent pas le chemin du pilote.
+
+Validation de cette extension, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 179,69 s, CLI 11,17 s, total 214,82 s | 20/20 ; fin 21:22:29 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 21:22:22 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 728,71 s, CLI 12,34 s, total 782,31 s | 20/20 ; fin 21:33:31 +02:00 |
+
+La campagne GNU utilise `--timeout 3600` pour garder une marge aux E/S du volume
+Windows, sans changer les tests ni les délais configurés du projet. Ces durées
+correspondent à une exécution terminée, pas à un benchmark comparatif.
+
+Les trois images reconstruites sont identiques : **595 759 octets**, SHA-256
+`472A2CDCE795D1AB7EB87F03868AE01D3E36688310788E9E6F35DA03C9958C0A`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections et 2 imports.
+Les nouvelles images comportent **111 exports** (deux ajouts facultatifs).
+Version `0.27.0-alpha.10`, formats 1.0 et structures ABI existantes conservés ;
+aucun commit, push ou release pour cette tranche.
+
+## Collisions de liaison possédées — 22 octobre 2026
+
+Le diagnostic **119** est rendu à partir d'un nom de symbole possédé : fonction,
+méthode, constructeur ou opérateur, préfixe qualifié compris, puis `$` et les
+16 chiffres hexadécimaux majuscules du suffixe. Il ne faut pas fabriquer ce
+suffixe à partir d'un hachage de type opaque ou de la signature écrite : les
+alias, qualifications, callbacks et récepteurs utilisent des types canoniques.
+
+La nouvelle paire facultative `AnalyserSemantiqueUnitesAvecLiaison` /
+`AnalyzeLinkUnitSemantics` fournit **l'empreinte déjà calculée** lors de la
+collision native, sans nouvelle résolution. Sa requête de **56 octets** contient
+le contexte existant de 48 octets puis l'empreinte de 64 bits, zéro compris.
+`IndexNominal` désigne la seconde fonction ; `IndexDeclaration` la première,
+égale à `Detail`. Le préfixe source, éventuellement vide à la racine, conserve
+les segments de 24 octets. Aucune écriture partielle, chaîne temporaire ou
+adresse d'arène n'est exposée. Pour 99/100/118, cette entrée garde le contrat
+précédent ; l'empreinte reste nulle hors 119.
+
+L'adaptateur possède les sorties, contrôle paire/genres/familles/unités,
+tranches, lexèmes et empreintes cumulées, puis formate les 64 bits reçus.
+L'empreinte de liaison n'est pas recalculée dans le C++ hôte. Les valeurs zéro
+et maximale sont testées comme valeurs opaques valides ; seule leur cohérence
+entre mesure et copie est contrôlée. Les fichiers remplacés, préparations
+détruites, copies/déplacements et le déchargement de l'image n'invalident pas
+le diagnostic. Le mode explicite du pilote choisit cette extension si présente ;
+sans ses deux exports, le repli C++ confirmé à la même position reste disponible.
+Une paire partielle est une erreur hôte, pas un motif de repli.
+
+La matrice dédiée couvre les vraies collisions préconstruites entre types
+distincts, alias en chaîne, callbacks, constantes, pointeurs/références,
+énumérations, noms UTF-8, namespaces imbriqués, interfaces, inclusions et unités.
+Les groupes mixtes membre/libre et les deux ordres sont exercés. Les refus 118
+et 100 conservent leur priorité ; deux groupes en collision gardent l'ordre
+d'insertion des symboles, non l'ordre de première déclaration du groupe 118.
+Les 380 cas du diagnostic 118 sont aussi rejoués par la nouvelle entrée.
+
+La nouvelle matrice compte **80 diagnostics FR/EN**, **12 contrôles de priorité**,
+**1 240 contrats/textes altérés**, **840 sorties natives altérées** et
+**240 mesures/copies bornées**. L'ancien résultat numérique est comparé octet
+pour octet ; sans l'entrée de liaison, ces 80 collisions restent numériques.
+
+Le test CLI vérifie **112 diagnostics FR/EN**, **24 replis de liaison**,
+4 replis contextuels et 6 contrôles d'exports facultatifs, avec les comparaisons
+binaires/jetons/AST et projets/solutions inchangées.
+
+Les trois images reconstruites sont identiques : **597 295 octets**, SHA-256
+`07CD85F5F4D247779B842ECD851C720F7881A8F8448EA7DC9966B6C9EF07528A`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**113 exports** (deux ajouts facultatifs pour cette tranche).
+
+Validation de cette tranche, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 187,26 s, CLI 17,47 s, total 221,46 s | 20/20 ; fin 21:53:35 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 21:53:31 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 709,48 s, CLI 13,74 s, total 760,35 s | 20/20 ; fin 22:04:23 +02:00 |
+
+La campagne GNU utilise `--timeout 3600` pour les E/S du volume Windows, sans
+changer les tests ni leurs délais configurés. Les résultats ci-dessus proviennent
+d'exécutions terminées ; les durées ne constituent pas un benchmark comparatif.
+
+Version `0.27.0-alpha.10`, formats 1.0 et
+structures ABI existantes conservés. Aucun commit, push ou release ;
+`ConteneursDynamiques.GsPP` reste inchangé.
+
+## Appels ambigus possédés — 22 octobre 2026
+
+Le diagnostic **22** possède désormais le nom du groupe canonique unique déjà
+sélectionné par Gs++, au lieu d'exiger une nouvelle recherche dans l'hôte.
+Fonctions libres, méthodes héritées, appels liés/non liés, opérateurs et
+constructeurs sont rendus avec leur nom exact : `Démo::API::F`, `Base::M`,
+`C::operator+` ou `C::$constructeur`, sans suffixe de liaison.
+
+La nouvelle paire facultative `AnalyserSemantiqueUnitesAvecAppels` /
+`AnalyzeCallUnitSemantics` réutilise la requête de **56 octets**, sans changer
+les contrats des anciennes entrées ni ceux des codes 99/100/118/119.
+`IndexNominal` désigne ici l'expression fautive ; `IndexDeclaration` une meilleure
+fonction du groupe unique. **`Detail` reste le nombre de meilleures surcharges**,
+pas un index. Les indices sont mémorisés pendant la sélection native ; la copie
+du préfixe ne refait aucune sélection de candidat ou conversion.
+
+L'adaptateur vérifie les indices, rôles d'expressions, genres, classes, origines,
+unités, tranches, lexèmes, préfixes et bornes du nombre de meilleures fonctions.
+Il ne reconstitue pas les types ni les scores. Le nom possédé reste utilisable
+après remplacement des fichiers, destruction des préparations, copie/déplacement
+et déchargement de l'image. Les segments sont mesurés à capacité nulle et copiés
+seulement en entier si le tampon suffit ; aucun pointeur d'arène n'est conservé.
+
+Les expressions couvertes sont les cibles d'appel 24/29, les opérateurs 25/26,
+les constructions locales explicites 19 et les initialiseurs 33/34/35. La matrice
+exerce les 18 signes, qualifications, alias, callbacks, imports uniques/transitifs,
+interfaces, inclusions, unités, noms UTF-8, BOM/CRLF et priorités entre erreurs
+indépendantes ou imbriquées. Les matrices 118 et 119 sont aussi rejouées via la
+nouvelle entrée pour vérifier leur contrat historique.
+
+**Limite conservée :** un import réunissant plusieurs noms complets distincts
+reste numérique, sans faux nom dérivé d'une seule déclaration. Le groupe
+synthétique propre au bootstrap reste traité par le repli explicite confirmé
+à la même position. L'absence des deux nouveaux exports est admise ; une paire
+partielle/incohérente reste une erreur hôte. Ni le chemin par défaut ni les
+annotations C++ nécessaires au backend ne sont remplacés par cette tranche.
+
+La matrice ciblée passe avec **106 diagnostics FR/EN**, **4 imports multigroupes
+numériques**, **12 priorités**, **2 succès**, **2 552 contrats/textes altérés**,
+**1 104 sorties natives altérées** et **318 mesures/copies bornées**. Le résultat
+numérique est comparé octet pour octet à l'ancienne entrée de liaison.
+Les matrices 118 et 119 conservent respectivement leurs 380 et 80 diagnostics
+et leurs contrôles précédents.
+
+La matrice CLI est portée à 144 comparaisons de diagnostics FR/EN, 32 replis
+d'appels sans la nouvelle paire, 24 replis de liaison, 4 replis contextuels et
+9 contrôles d'exports facultatifs. Les comparaisons binaires/jetons/AST et les
+projets/solutions restent exercés. Les trois campagnes complètes ci-dessous
+sont terminées avec succès.
+
+Les trois images reconstruites sont identiques : **600 655 octets**, SHA-256
+`C3942CA7878DB82866EABF08284C3394BB006B8FCFF431883F1B16CE2BC11089`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**115 exports** (deux nouveaux exports facultatifs pour cette tranche).
+
+Validation de cette tranche, sources figées :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 172,90 s, CLI 17,56 s, total 211,67 s | 20/20 ; fin 22:26:18 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 22:26:57 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 670,56 s, CLI 17,07 s, total 723,23 s | 20/20 ; fin 22:36:54 +02:00 |
+
+La campagne GNU utilise `--timeout 3600` pour les E/S du volume Windows, sans
+changer les tests ni leurs délais configurés. Les résultats sont issus
+d'exécutions terminées ; les durées ne sont pas un benchmark comparatif.
+
+Version `0.27.0-alpha.10`, formats 1.0 et structures ABI existantes conservés.
+Aucun commit, push ou release ; `ConteneursDynamiques.GsPP` inchangé.
+
+## Groupes importés possédés — 23 octobre 2026
+
+La limite de la tranche du 22 octobre est levée pour les groupes importés
+ambigus 22 représentés par les expressions 24/25/26. Le natif conserve le fait
+que la recherche a réuni plusieurs noms complets distincts, sans choisir une
+seule fonction pour représenter ce groupe. L'hôte affiche le nom appelé : `F`,
+`API::F`, `Écho` ou `operator+`, à l'origine initiale du refus.
+
+La nouvelle paire facultative `AnalyserSemantiqueUnitesAvecGroupes` /
+`AnalyzeGroupUnitSemantics` réutilise la requête de **56 octets**.
+Pour ce contexte, `IndexNominal` désigne l'expression, `IndexDeclaration` vaut
+zéro ; aucun préfixe ni empreinte de liaison n'est publié. `Detail` reste le
+nombre de meilleures fonctions. Les anciennes entrées continuent à rendre ces
+cas numériques, résultat identique ; les contrats 99/100/118/119 et groupes
+uniques 22 sont conservés. L'absence de la paire est admise, une paire partielle
+est une erreur hôte, pas un motif de repli silencieux.
+
+L'adaptateur possède la marque native `GroupeAppelImporte`. Il contrôle le rôle
+de l'expression, sa tranche/empreinte, l'origine, l'unité, les tailles et les
+bornes du compte de meilleures fonctions, sans reconstruire les imports ni
+recalculer les scores. Ces contrôles vérifient la cohérence du contexte, pas
+l'authenticité d'une image native hostile. Les capacités zéro ou positives ne
+modifient aucun segment. Le résultat reste exploitable après remplacement des fichiers,
+destruction des préparations, copie/déplacement et déchargement de l'image.
+
+Le C++ conserve ses clés `@GsUsing::…` pour la résolution, mais mémorise leur
+nom public séparément. Les diagnostics 21/22 ne montrent donc plus cette clé
+ni le chemin/unité qu'elle contenait. Les candidats, leur ordre, les scores et
+les symboles générés ne sont pas modifiés ; les tables de noms publics sont
+réinitialisées avec l'analyseur. Le code 21 reste numérique côté natif : cette
+correction de son affichage n'est pas une nouvelle prise en charge sémantique.
+
+La matrice dédiée passe avec **70 diagnostics FR/EN**, **16 priorités/groupes
+uniques**, **2 succès**, **4 replis 21**, **1 120 contrats/textes altérés**,
+**770 sorties natives altérées** et **210 mesures/gardes**. Imports transitifs,
+répétés, cycliques, relatif qualifié, UTF-8, interfaces, unités et les 18
+opérateurs sont comparés au bootstrap ; les noms publics sont exigés exactement
+dans les deux langues. Le résultat numérique et l'AST complet sont inchangés.
+Les anciennes matrices 118/119/22 sont rejouées avec la nouvelle entrée.
+
+La CLI est étendue à 176 diagnostics, 12 comparaisons binaires/jetons/AST,
+32 replis de groupes sans la nouvelle paire et 12 contrôles d'exports facultatifs.
+Les 12 comparaisons de solutions FR/EN, 4 remplacements et 12 refus/arrêts de
+projets couvrent les modes séparé/agrégé, dont le refus d'un groupe importé et
+la conservation de leurs anciennes sorties.
+
+Les trois images reconstruites sont identiques : **601 887 octets**, SHA-256
+`D51EEC3B16FC62EF044D3064245F47D2E9CED633D7E772CEC5F36B43F0CCF1A8`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**117 exports**. Les en-têtes générés des trois constructions annoncent
+`0.27.0-alpha.10`.
+
+Validation de cette tranche, sources figées, le 23 octobre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 177,75 s, CLI 23,26 s, total 224,75 s | 20/20 ; fin 05:52:57 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 05:53:20 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 690,15 s, CLI 21,87 s, total 747,74 s | 20/20 ; fin 06:03:24 +02:00 |
+
+Les trois campagnes sont terminées avec succès. La campagne GNU utilise
+`--timeout 3600` pour les E/S du volume Windows, sans modifier les tests ni
+leurs délais configurés ; ces durées ne sont pas un benchmark comparatif.
+
+Version `0.27.0-alpha.10`, formats 1.0 et structures ABI existantes conservés.
+Aucun commit, push ou release ; `ConteneursDynamiques.GsPP` inchangé.
+
+## Échecs d'appels possédés — 23 octobre 2026
+
+Une nouvelle entrée facultative possède le nom du groupe refusé par le
+diagnostic **21 — aucune surcharge compatible** :
+`AnalyserSemantiqueUnitesAvecEchecsAppels` / `AnalyzeFailedCallUnitSemantics`.
+Les appels directs et membres 24/29 et les opérateurs 25/26 sont représentés ;
+les constructions et alias de fonctions non représentés restent numériques,
+sans nom inventé.
+
+Le natif retient la première déclaration du groupe de nom complet unique
+pendant son parcours existant, pas une fonction compatible inexistante.
+Un import réunissant plusieurs noms complets reste sans déclaration
+représentante ; le nom appelé est possédé comme pour 22. La requête de
+56 octets et les contrats précédents sont conservés. Le neuvième argument C++
+facultatif sélectionne cette entrée avant les anciennes.
+
+**`Detail` vaut ici l'arité explicite, zéro compris**, pas le nombre de
+meilleures surcharges du code 22. L'hôte vérifie ce compte dans l'AST, les
+origines, tranches, lexèmes, indices et préfixes, sans refaire les conversions
+ni la recherche de candidats. Les refus précoces d'arité et de préfixe
+conservent leur priorité sur les arguments suivants ; résultat numérique et
+AST sont comparés aux anciennes entrées.
+
+La matrice dédiée passe avec **126 diagnostics FR/EN**, **16 priorités**,
+**4 succès**, **12 constructions/alias numériques**, **2 016 contrats/textes altérés**,
+**1 386 sorties natives altérées** et **378 mesures/copies bornées**. Elle couvre
+les arités zéro/incorrectes, les références et callbacks, les méthodes héritées,
+les récepteurs explicites/implicites/const et les groupes mixtes, imports,
+interfaces, unités, UTF-8, BOM/CRLF et les 18 signes d'opérateurs. Le diagnostic
+possédé reste utilisable après remplacement des fichiers, destruction des
+préparations, copie/déplacement et déchargement de l'image. Les codes antérieurs
+sont rejoués avec la nouvelle entrée, résultat numérique inchangé. La non-régression
+des alias couvre noms différents, alias de méthodes, namespace et import, dont
+un alias portant la même feuille que sa cible dans un autre espace. Ces cas
+conservent le message C++ attendu par repli, pas une erreur de contrat hôte.
+
+La CLI passe **244 comparaisons de diagnostics**, 12 comparaisons
+binaires/jetons/AST, 12 solutions FR/EN, 4 remplacements et **16 refus/arrêts de
+projets**, sans écrasement des anciennes sorties. Les 68 comparaisons de repli
+sans la nouvelle paire comprennent les constructions et alias restés numériques ;
+elles ne représentent pas 68 nouveaux contextes traduits. Les 4 replis
+contextuels, 24 de liaison, 32 d'appels et 32 de groupes sont conservés, avec
+15 contrôles d'exports facultatifs au total.
+
+Les trois images reconstruites sont identiques : **606 447 octets**, SHA-256
+`44A504EB1167E61DEB748621175A11CE5151B4749A7C521A7308CE802DCE6920`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**119 exports**. Les en-têtes générés annoncent tous `0.27.0-alpha.10`.
+
+Validation de cette tranche, sources figées, le 23 octobre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 170,29 s, CLI 28,25 s, total 216,92 s | 20/20 ; fin 08:30:43 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 08:31:07 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 696,01 s, CLI 29,65 s, total 762,08 s | 20/20 ; fin 08:41:19 +02:00 |
+
+Les trois campagnes ci-dessus sont terminées avec succès après le correctif
+des alias, sur les sources figées à cet état. Les exécutions antérieures au
+correctif ne sont pas utilisées comme preuves de l'état final. La campagne GNU
+utilise `--timeout 3600` pour les E/S du volume Windows, sans modifier les tests
+ni leurs délais configurés ; ces durées ne sont pas un benchmark comparatif.
+
+Version `0.27.0-alpha.10`, formats 1.0 et structures ABI existantes conservés.
+Aucun commit, push ou release ; `ConteneursDynamiques.GsPP` inchangé.
+
+## Constructions refusées possédées — 23 octobre 2026
+
+Le diagnostic **21 — aucune surcharge compatible** possède désormais aussi
+les groupes de constructeurs des variables locales 19 et initialiseurs de
+délégation, de base et de champ 33/34/35. La nouvelle paire facultative est
+`AnalyserSemantiqueUnitesAvecConstructions` / `AnalyzeConstructionUnitSemantics`.
+Elle réutilise la requête de **56 octets**, sans modifier les anciennes entrées
+ni les résultats numériques. Le dixième argument C++ facultatif la sélectionne
+avant les précédentes ; le mode de compilation par défaut ne change pas.
+
+La première déclaration du groupe est retenue pendant le parcours natif
+existant, pas lors d'une nouvelle sélection dans l'hôte. Le préfixe possédé
+donne le nom canonique `Démo::C::$constructeur`, même si un alias de classe
+est utilisé. Les refus d'arité et de préfixe conservent leur priorité sur les
+arguments suivants. `Detail` reste le nombre d'arguments explicites, zéro
+compris ; les feuilles de type 41/42/43 sont exclues des enfants expressions.
+
+Les défauts locaux sans expression sont représentés. Les refus implicites
+dont l'origine est seulement un champ 7 ou un constructeur 13 restent
+numériques, comme les alias de fonctions non représentés de la tranche
+précédente. Le contrat est vérifié sans reconstruire les types ou les plans de
+construction. Les anciennes capacités ne peuvent pas publier silencieusement
+les nouveaux contextes ; absence complète de la paire admise, paire partielle
+ou incohérente refusée.
+
+La matrice dédiée passe avec **48 diagnostics FR/EN**, **14 priorités**,
+**4 succès**, **8 replis numériques**, **768 contrats/textes altérés**,
+**576 contrôles de sorties/capacités natives** et **144 mesures/copies bornées**.
+Les 576 contrôles comprennent 528 sorties altérées et 48 refus d'un contexte
+de construction injecté via l'ancienne capacité. Variables et tableaux,
+arité zéro, alias de classes, namespaces, UTF-8, références/callbacks,
+initialiseurs et priorités sont comparés au C++ de référence. Les codes
+99/100/118/119/22 sont aussi rejoués via la nouvelle entrée. Les résultats
+numériques et l'AST restent inchangés, y compris avec interface et unités
+séparées ; noms et diagnostics survivent au remplacement des fichiers,
+à la destruction des préparations, copie/déplacement et déchargement de l'image.
+
+La CLI passe **292 comparaisons de diagnostics**, **16 comparaisons
+binaires/jetons/AST**, 12 solutions FR/EN, 4 remplacements et **20 refus/arrêts
+de projets**, sans écrasement des anciennes sorties. Les anciennes images sans
+la paire ajoutent 48 comparaisons de repli de constructions, dont les cas
+implicites restés numériques ; ces 48 comparaisons ne sont pas toutes de
+nouveaux contextes traduits. Les 4 replis contextuels, 24 de liaison, 32
+d'appels, 32 de groupes et 68 d'échecs sont conservés. Les 18 contrôles
+d'exports facultatifs vérifient absence admise et paire partielle refusée,
+sans imposer ces contrats au mode historique d'expansion seule.
+
+Les trois images reconstruites sont identiques : **608 863 octets**, SHA-256
+`9B494B265ACB3B68298FB52B3668E7ED6005E3B22D06B1CB6C0994C5E7404335`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**121 exports** ; les trois en-têtes générés annoncent `0.27.0-alpha.10`.
+
+Validation de cette tranche, sources figées, le 23 octobre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 177,95 s, CLI 38,05 s, total 239,58 s | 20/20 ; fin 08:59:33 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 09:00:00 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 714,75 s, CLI 35,84 s, total 787,52 s | 20/20 ; fin 09:10:19 +02:00 |
+
+Les trois campagnes sont terminées avec succès sur les sources figées de cette
+tranche. La campagne GNU utilise `--timeout 3600` pour les E/S du volume Windows,
+sans modifier les tests ni leurs délais configurés ; ces durées ne sont pas un
+benchmark comparatif. Les preuves de la section précédente concernent uniquement
+les échecs d'appels.
+
+Version `0.27.0-alpha.10`, formats 1.0 et structures ABI existantes conservés.
+Aucun commit, push ou release ; `ConteneursDynamiques.GsPP` inchangé.
+
+## Constructions implicites refusées — 23 octobre 2026
+
+Le diagnostic **21 — aucune surcharge compatible** possède aussi le groupe
+de constructeurs lorsque l'origine est un **champ 7** ou un **constructeur 13**.
+La paire facultative `AnalyserSemantiqueUnitesAvecConstructionImplicite` /
+`AnalyzeImplicitConstructionUnitSemantics` utilise la même requête de **56 octets**.
+L'onzième argument C++ la sélectionne avant les capacités précédentes ; les
+anciennes entrées conservent leurs résultats et leurs contextes.
+
+Le natif transmet le groupe déjà mémorisé pendant la sélection sans argument.
+L'hôte ne cherche pas le type du champ, la chaîne des bases ou les candidats.
+Il vérifie le rôle du nœud, son propriétaire, les noms possédés, origines et
+préfixes. `Detail` reste **zéro**, même si le constructeur possède des paramètres
+et un corps. Une base indirecte ou un champ imbriqué peut donc afficher le
+groupe canonique réellement refusé, distinct du type directement écrit dans
+le contexte de construction.
+
+La matrice ciblée renforcée passe avec **42 diagnostics FR/EN**, **6 priorités**,
+**6 succès**, **2 replis d'alias de fonctions**, **882 contrats/textes altérés**,
+**546 contrôles de sorties/capacités natives** et **126 mesures/copies bornées**.
+Les 546 contrôles comprennent 462 sorties altérées et 84 refus de publication
+via les deux capacités antérieures. Elle couvre tableaux,
+alias de types, namespaces, UTF-8, interfaces et unités distinctes, champs
+imbriqués, bases indirectes et priorité avant le corps du constructeur.
+Les résultats numériques et l'AST sont comparés aux anciennes capacités ;
+les messages et positions sont comparés au bootstrap C++. Les fichiers sont
+remplacés avant l'analyse puis les diagnostics sont relus après copie,
+déplacement et déchargement de l'image. Les campagnes portent sur les sources
+figées après correction du contrôle de l'empreinte de retour des constructeurs ;
+leur retour `vide` n'a pas une empreinte nulle.
+
+La CLI ciblée passe **324 diagnostics FR/EN**, **16 comparaisons binaires/jetons/AST**,
+12 solutions, 4 remplacements, **20 refus/arrêts de projets**, 32 nouveaux
+replis de constructions implicites et **21 contrôles d'exports facultatifs**.
+Les replis des capacités antérieures sont conservés. Les paires partielles
+sont refusées seulement là où le contrat est demandé ; le mode historique
+d'expansion seule n'est pas modifié.
+
+Les trois images reconstruites sont identiques : **610 207 octets**, SHA-256
+`58888DA2E0CD85410591C5C7EFAA364650B855336C64F9C5DEAA98715E561566`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**123 exports** ; les trois en-têtes générés annoncent `0.27.0-alpha.10`.
+Validation de cette tranche, le 23 octobre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 471,75 s, CLI 140,22 s, total 663,02 s | 20/20 ; fin 10:30:52 +02:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 10:30:14 +02:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 2 301,44 s, CLI 157,36 s | 20/20 ; fin 11:07:09 +02:00 |
+
+Les trois campagnes du 23 octobre sont terminées avec succès. Leur résultat
+est relu le **24 novembre 2026** dans les journaux et rapports conservés ;
+la matrice ciblée ci-dessus est aussi rejouée avec succès ce jour sur les trois
+chaînes. La CLI CMake Windows est rejouée avec succès : **324 diagnostics**,
+test terminé en **20,24 s** ; les trois images sont aussi revérifiées.
+Cette reprise ne constitue pas une nouvelle campagne complète.
+Les preuves complètes de la section précédente concernent uniquement la tranche
+à 121 exports. Les durées ci-dessus sont celles de campagnes en parallèle sur
+ce poste, pas un benchmark comparatif. Version `0.27.0-alpha.10`,
+formats 1.0 et structures ABI conservés ; aucun commit, push ou release.
+
+## Appels d'alias refusés possédés — 24 novembre 2026
+
+Les appels d'alias de fonctions refusés par **21 — aucune surcharge compatible**
+possèdent désormais leur nom canonique, par exemple `API::Appeler`, au lieu
+de dépendre du repli numérique. L'entrée facultative
+`AnalyserSemantiqueUnitesAvecAliasAppels` / `AnalyzeAliasCallUnitSemantics`
+réutilise la requête de **56 octets** ; le douzième argument C++ est prioritaire.
+`IndexNominal` désigne la référence 24 et `IndexDeclaration` l'alias racine 10,
+pas la fonction cible. `Detail` reste l'arité explicite, zéro compris.
+
+Le natif retient l'alias déjà résolu pendant le refus. L'hôte contrôle son
+préfixe, la référence, la cible écrite 38, les noms et origines possédés.
+Il ne résout ni les types, ni la chaîne d'alias, ni les candidats. Les anciennes
+entrées restent numériques pour ces contextes et ne peuvent pas les publier
+via une ancienne capacité. Absence complète de la paire admise, paire partielle
+ou incohérente refusée dans le mode explicite ; expansion seule inchangée.
+
+Un groupe importé mêlant plusieurs alias ou fonctions reste numérique, même
+si plusieurs alias désignent la même fonction finale. La présence d'un seul
+groupe canonique de fonctions ne permet pas de choisir arbitrairement le nom
+public d'un des alias importés. Ces replis sont couverts dans les deux ordres
+d'import ; une directive répétée vers le même alias ne crée pas un tel groupe.
+
+La matrice ciblée passe **52 diagnostics FR/EN**, **14 priorités**, **4 succès**,
+**8 replis numériques**, **1 196 contrats/textes altérés**, **624 contrôles de
+sorties/capacités natives** et **156 mesures/copies bornées**. Les 624 contrôles
+comprennent 572 sorties altérées et 52 refus de publication via l'ancienne
+capacité. Sont couverts les chaînes de 32 alias, arités et préfixes précoces,
+méthodes non liées, namespaces/qualifications/commentaires, UTF-8, interfaces
+et unités distinctes. Messages et positions sont comparés au bootstrap ;
+résultats numériques et AST aux anciennes entrées. Les fichiers sont remplacés
+avant l'analyse, puis les diagnostics sont relus après copie, déplacement et
+déchargement de l'image. Les codes 18/99/100/109/110/112 gardent leur priorité.
+
+La CLI ciblée passe **356 diagnostics FR/EN**, **20 comparaisons binaires/jetons/AST**,
+12 solutions, 4 remplacements et **24 refus/arrêts de projets**. Les refus
+d'appels d'alias de projets agrégés et séparés conservent les sorties antérieures.
+Les binaires des appels d'alias valides restent identiques au mode historique.
+Les 32 nouveaux replis d'alias s'ajoutent aux replis des capacités antérieures ;
+les **24 contrôles d'exports facultatifs** couvrent absence admise et paire
+partielle refusée sans modifier l'expansion seule.
+
+Les trois images reconstruites sont identiques : **612 831 octets**, SHA-256
+`A33B930CB4C3031DB76F6DB0C0DD24F0C9DD0DCE8B7D92C0D7218779A30B8F59`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**125 exports** ; les trois en-têtes générés annoncent `0.27.0-alpha.10`.
+
+Validation de cette tranche sur les sources figées, le 24 novembre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 168,77 s, CLI 31,49 s, total 213,75 s | 20/20 ; fin 13:25:50 +01:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 13:25:08 +01:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 784,74 s, CLI 45,63 s, total 870,09 s | 20/20 ; fin 13:37:08 +01:00 |
+
+Les trois campagnes sont terminées avec succès sur les sources figées. La
+campagne GNU utilise `--timeout 3600` pour les E/S du volume Windows, sans
+réduire la suite ni modifier les délais configurés des tests. Les durées
+ci-dessus ne constituent pas un benchmark comparatif. Les preuves de la
+section précédente concernent uniquement la tranche à 123 exports.
+La configuration CMake locale a été régénérée après la mise à jour de Visual
+Studio 2026, son ancienne instance mise en cache n'étant plus installée.
+
+Le correctif de distribution signé `fde9d25` déjà publié est repris localement
+par avance rapide, sans inclure les travaux non validés. Version
+`0.27.0-alpha.10`, formats 1.0 et structures ABI conservés ; aucun nouveau
+commit, push ou release pour cette tranche.
+
+## Groupes mixtes d'alias importés — 24 novembre 2026
+
+L'entrée `AnalyserSemantiqueUnitesAvecAliasAppels` /
+`AnalyzeAliasCallUnitSemantics` possède aussi les refus **21** des imports qui
+mêlent plusieurs alias ou des alias et fonctions. Le nom écrit dans l'appel,
+par exemple `F` ou `API::F`, représente le groupe public importé. Cela vaut
+aussi si plusieurs alias publics visent une seule fonction finale : cette
+unicité de cible ne permet pas de choisir le nom canonique d'un alias arbitraire.
+
+Le natif retient une marque de groupe mixte pendant le refus, sans recalcul
+des conversions ni recherche dans l'hôte. Il réutilise le contexte importé
+existant : `IndexNominal` référence **24**, `IndexDeclaration` et `NombreSegments`
+nuls, sans empreinte de liaison. `Detail` reste l'arité explicite, zéro compris.
+La requête de **56 octets**, les structures ABI et les **125 exports** sont
+inchangés ; aucun nouveau point d'entrée n'est nécessaire.
+
+Les anciennes entrées natives restent numériques pour ces alias. Le rôle de
+groupe importé est déjà compris par les hôtes qui traduisent 21 ; contrairement
+au rôle d'alias unique 10, sa forme n'exige pas de nouvelle capacité de rendu.
+La matrice vérifie donc à la fois le refus d'un alias unique publié via une
+ancienne capacité et l'acceptation du rôle importé déjà compatible. Les groupes
+ambigus **22** conservent aussi leur comportement et leur compte de meilleures
+fonctions, sans être confondus avec l'arité explicite de 21.
+
+La matrice d'appels d'alias élargie passe **96 diagnostics FR/EN**, **26 priorités**,
+**8 succès**, **aucun repli numérique dans cette matrice**, **1 900 contrats/textes
+altérés**, **1 152 contrôles de sorties/capacités natives** et **288 mesures/copies
+bornées**. Les 1 152 contrôles comprennent 1 056 sorties natives altérées ou
+exceptions provoquées, 52 refus d'un alias unique injecté via une ancienne
+capacité et 44 acceptations du rôle importé déjà compatible.
+Elle conserve les 52 diagnostics d'alias uniques et traduit les 8
+anciens replis, avec de nouveaux groupes mixtes, méthodes non liées, imports
+transitifs/cycliques, directives répétées, qualifications, Unicode, interfaces
+et unités distinctes. Les espaces du cas cyclique sont déclarés avant les
+directives qui les utilisent ; leur absence aurait légitimement priorité (120).
+
+Deux groupes indépendants invalides sont exercés dans les deux ordres, avec
+des alias distincts de la même cible finale. Le diagnostic garde le premier
+nom appelé, sans dépendre de l'ordre de parcours des déclarations. Arité zéro,
+refus d'arité/préfixe avant un argument inconnu, erreurs de types/alias et
+ambiguïté 22 gardent les priorités du bootstrap. Les résultats numériques et
+l'AST sont comparés aux anciennes entrées, puis les messages et positions à
+l'oracle C++. Les fichiers sont remplacés avant l'analyse et les diagnostics
+survivent aux copies, déplacements et au déchargement de l'image.
+
+La CLI ciblée passe **388 diagnostics FR/EN**, **24 comparaisons binaires/jetons/AST**,
+12 solutions, 4 remplacements et **28 refus/arrêts de projets**. Les 64 replis
+d'alias en l'absence de l'entrée dédiée et les 24 contrôles de paires facultatives
+sont conservés. Les sorties des projets agrégés/séparés restent intactes après
+un refus, et les appels mixtes valides produisent les mêmes binaires.
+
+Les trois images reconstruites sont identiques : **613 295 octets**, SHA-256
+`529B63B032DA15B20B85FB17E11C2121A4F291B99815F3165F7C486A47ECEB41`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**125 exports** ; les trois en-têtes générés annoncent `0.27.0-alpha.10`.
+
+Validation de ce complément sur les sources figées, le 24 novembre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 216,77 s, CLI 39,82 s, total 270,75 s | 20/20 ; fin 14:52:47 +01:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 14:53:15 +01:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 767,75 s, CLI 49,93 s, total 855,78 s | 20/20 ; fin 15:04:57 +01:00 |
+
+Les trois campagnes sont terminées avec succès sur les sources figées.
+La campagne GNU utilise `--timeout 3600` pour les E/S du volume Windows, sans
+réduire la suite ni modifier les délais configurés des tests. Les preuves de
+la section précédente concernent la tranche des alias uniques, pas ce complément.
+Les durées ci-dessus ne constituent pas un benchmark comparatif.
+Version `0.27.0-alpha.10` et formats 1.0 conservés ;
+aucun nouveau commit, push ou release pour cette tranche.
+
+## Appels indirects : cibles et arités — 24 novembre 2026
+
+Le résultat sémantique possédé traduit maintenant le refus **53**, « la cible
+d’appel n’est pas un pointeur de fonction » / « call target is not a function
+pointer ». Le message invariant de **54**, « nombre d’arguments incorrect » /
+« incorrect argument count », est conservé avec un contrôle de son contexte.
+L'entrée native de base `AnalyserSemantiqueUnites` suffit pour ces deux codes :
+aucun point d'entrée, segment canonique ni type résolu supplémentaire.
+
+Pour **53**, l'origine désigne la cible expression **22..32**, premier enfant
+direct de l'appel **28**, et `Detail` vaut zéro. Pour **54**, l'origine désigne
+l'appel et `Detail` compte ses arguments explicites, hors cible. Le rôle de
+chaque nœud, les unités, les origines et le compte complet des symboles sont
+contrôlés à la réception du refus natif et lors de la validation du résultat
+possédé. Les appels imbriqués peuvent partager une position ; leur relation
+d'ascendance est vérifiée, sans choisir ni résoudre leur type dans l'hôte.
+Un contrat incohérent produit une erreur de contrat, pas un diagnostic source.
+
+La matrice dédiée passe **66 diagnostics FR/EN**, **10 priorités**, **6 succès**,
+**6 refus de type numériques**, **1 320 contrats altérés** et **594 contrôles de
+sorties natives/exceptions**. Elle couvre variables locales/globales,
+paramètres, champs de structures/classes, alias de valeurs/callbacks,
+références, pointeurs, accès indexés, conversions et appels imbriqués. Les
+interfaces, unités distinctes, namespaces Unicode, BOM et fins de ligne CRLF
+sont exercés. Les messages et positions sont comparés au bootstrap après
+remplacement des fichiers ; les résultats survivent aux copies, déplacements
+et au déchargement de l'image.
+
+L'ordre des contrôles reste celui du bootstrap : cible, arité, puis arguments.
+Les premiers refus entre deux appels indépendants sont vérifiés dans les deux
+ordres. Les erreurs de nom/type, de déréférencement et de membre conservent
+leur priorité. Le code **55** reste numérique : son texte peut dépendre des
+types résolus et de la liaison d'une référence. Cette tranche ne possède pas
+ces données ; le pilote conserve son repli C++ avec vérification du refus et
+de sa position.
+
+La CLI ciblée passe **444 diagnostics FR/EN**, **28 comparaisons binaires/jetons/AST**,
+12 solutions, 4 remplacements et **36 refus/arrêts de projets**. Les callbacks
+valides produisent les mêmes objets/images que le mode historique ; les refus
+de cible ou d'arité préservent les sorties antérieures des projets agrégés et
+séparés. Les replis antérieurs, dont les 64 replis d'alias, et les 24 contrôles
+de paires facultatives sont conservés.
+
+La suite différentielle générale conserve **2 751 corpus refusés** avec code,
+position et AST vérifiés. Le rendu possédé passe maintenant **954 comparaisons
+différentielles**, **48 codes invariants**, **96 corpus assemblés FR/EN** et
+**80 résultats altérés**.
+
+Les trois images reconstruites sont identiques : **613 295 octets**, SHA-256
+`529B63B032DA15B20B85FB17E11C2121A4F291B99815F3165F7C486A47ECEB41`.
+Les trois vérificateurs confirment GsE 1.0, 3 segments, 8 sections, 2 imports et
+**125 exports** ; les trois en-têtes générés annoncent `0.27.0-alpha.10`.
+Cette tranche modifie le contrat de validation et le rendu C++, ainsi que les
+tests ; elle ne modifie pas le code Gs++ de l'image native.
+
+Validation sur les sources figées, le 24 novembre 2026 :
+
+| Chaîne | Résultat | Conformité |
+|---|---|---|
+| CMake Windows / VS 2026 | CTest 6/6 ; auto-hébergement 200,39 s, CLI 38,29 s, total 253,28 s | 20/20 ; fin 15:28:05 +01:00 |
+| VS 2026 natif / `.slnx` et `Validation.vcxproj` | Suites unitaires/auto-hébergement, CLI, style et cohérence des 7 cibles C++ réussies | 20/20 ; fin 15:28:32 +01:00 |
+| GNU/Linux WSL | CTest 7/7, intégration comprise ; auto-hébergement 762,04 s, CLI 53,75 s, total 853,44 s | 20/20 ; fin 15:40:11 +01:00 |
+
+Les trois campagnes sont terminées avec succès sur les sources figées. La
+campagne GNU utilise `--timeout 3600` pour les E/S du volume Windows, sans
+réduire la suite ni modifier les délais configurés des tests. Les durées
+ci-dessus ne constituent pas un benchmark comparatif. Les preuves de la
+section précédente concernent les groupes mixtes d'alias.
+Version `0.27.0-alpha.10`, formats 1.0, structures ABI et **125 exports**
+conservés ; aucun nouveau commit, push ou release pour cette tranche.
+
 ## Travaux restant dans Gs++ 0.27
 
 - compléter les combinaisons de conversions et qualifications encore
   absentes de la matrice différentielle ;
 - compléter les interactions non couvertes des reprises et erreurs d'E/S,
   puis raccorder les sorties sémantiques possédées au backend et au pilote ;
-  connecter les diagnostics possédés au pilote ;
+  compléter les contextes du raccord explicite des diagnostics ;
   conserver la distinction entre
   inclusions textuelles et unités de traduction séparées et vérifier avant
   tout changement du chemin par défaut ;

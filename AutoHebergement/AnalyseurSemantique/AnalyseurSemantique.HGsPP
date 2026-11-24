@@ -413,7 +413,11 @@ espace GalacticShrine::GsPP::Autohebergement {
      * @etc. Code 108 : Detail index AST de la cible nominale (genre 37), position de l'alias ; 0 pour un ancien AST.
      * @etc. Code 109 : Detail rang de symbole de l'entrée du cycle, position de l'alias racine revisité, même inter-unité.
      * @etc. Code 110 : Detail index AST de la cible nominale (genre 38), position de l'alias ; 0 pour un ancien AST.
-     * @etc. Code 121 : Detail index AST de la base 40 ou du type nommé direct 41 ; 0 pour les alias, expressions et anciens AST.
+     * @etc. Code 121 : Detail index AST de la base 40 ou du nom de type 41/42/43 ; 0 pour les alias, expressions et anciens AST.
+     * @etc. Codes 100/99 : Detail indexe la base introuvable 40, le nom 41/42 (déclaration) ou 43 (conversion) ; ancien AST à 0.
+     * @etc. Codes 100/99 : Detail 4_294_967_295 si le nom désigne un symbole non type dont le nom canonique n'est pas possédé.
+     * @etc. Un nom non type déjà canonique conserve l'index nominal 40/41/42/43 ; comparaison avant expansion des alias.
+     * @etc. Code 114 : Detail reste le rang de symbole du type non classe retenu, zéro compris ; position de la classe dérivée.
      **/
     structure ResultatAnalyseSemantique {
 
@@ -477,6 +481,110 @@ espace GalacticShrine::GsPP::Autohebergement {
 
     alias UnitSemanticAnalysisRequest = RequeteAnalyseSemantiqueUnites;
     alias AnalyzeUnitSemantics = AnalyserSemantiqueUnites;
+
+    /** <résumé>Segment source d'un préfixe canonique choisi par la recherche native ; empreinte du préfixe inclus.</résumé> **/
+    structure SegmentNomTypeCanonique {
+        naturel64 DebutOctets;
+        naturel64 TailleOctets;
+        naturel64 HachageEspace;
+    };
+
+    /**
+     * <résumé>Extension facultative des refus 100/99 dont le nom non type est qualifié implicitement.</résumé>
+     * @etc. L'ancien résultat, dont Detail 4_294_967_295, reste identique ; aucune écriture partielle des segments.
+     * @etc. Capacité nulle : mesure ; capacité suffisante : segments racine vers feuille. Tampon distinct des entrées/sorties.
+     * @etc. IndexNominal désigne la feuille 40/41/42/43 ; IndexDeclaration désigne le nom retenu avant expansion d'alias.
+     * @etc. Une méthode ordinaire ajoute le segment de sa classe déclarante, comme une valeur ajoute celui de son enum.
+     * @etc. Sorties nulles pour les autres refus, anciens AST et contextes non représentés ; aucun pointeur d'arène exposé.
+     **/
+    structure RequeteSemantiqueUnitesAvecNom {
+        RequeteAnalyseSemantiqueUnites* Analyse;
+        SegmentNomTypeCanonique* Segments;
+        naturel64 CapaciteSegments;
+        naturel64 IndexNominal;
+        naturel64 IndexDeclaration;
+        naturel64 NombreSegments;
+    };
+
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecNom(RequeteSemantiqueUnitesAvecNom* requete);
+    alias CanonicalTypeNameSegment = SegmentNomTypeCanonique;
+    alias NamedUnitSemanticRequest = RequeteSemantiqueUnitesAvecNom;
+    alias AnalyzeNamedUnitSemantics = AnalyserSemantiqueUnitesAvecNom;
+
+    /**
+     * <résumé>Extension facultative des noms possédés, avec le préfixe des surcharges refusées par le code 118.</résumé>
+     * @etc. Même requête 48 octets ; pour 118, IndexNominal est la seconde fonction et IndexDeclaration la première (Detail).
+     * @etc. Pour 99/100, contrat de l'entrée AvecNom conservé ; anciennes entrées et résultat numérique inchangés.
+     * @etc. Aucun tampon partiel, fichier relu, pointeur d'arène ou nouvelle résolution de candidat.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecContexte(RequeteSemantiqueUnitesAvecNom* requete);
+    alias AnalyzeContextualUnitSemantics = AnalyserSemantiqueUnitesAvecContexte;
+
+    /**
+     * <résumé>Possède l'empreinte de liaison déjà calculée pour la collision 119.</résumé>
+     * @etc. Requête 56 octets ; Contexte conserve les contrats 99/100/118 de l'entrée AvecContexte.
+     * @etc. Pour 119, IndexNominal désigne la seconde fonction, IndexDeclaration la première (= Detail).
+     * @etc. Préfixe source facultatif à la racine ; empreinte 64 bits opaque, zéro compris, nulle hors code 119.
+     * @etc. Mesure et copie sans écriture partielle ; anciennes entrées et résultat numérique inchangés.
+     **/
+    structure RequeteSemantiqueUnitesAvecLiaison {
+        RequeteSemantiqueUnitesAvecNom Contexte;
+        naturel64 EmpreinteLiaison;
+    };
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecLiaison(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias LinkUnitSemanticRequest = RequeteSemantiqueUnitesAvecLiaison;
+    alias AnalyzeLinkUnitSemantics = AnalyserSemantiqueUnitesAvecLiaison;
+
+    /**
+     * <résumé>Conserve le groupe canonique déjà choisi pour l'appel ambigu 22.</résumé>
+     * @etc. Requête de liaison 56 octets inchangée ; contrats 99/100/118/119 conservés.
+     * @etc. Pour 22, IndexNominal désigne l'expression et IndexDeclaration une meilleure fonction du groupe unique.
+     * @etc. Detail reste le nombre de meilleures surcharges ; empreinte de liaison nulle, préfixe source facultatif.
+     * @etc. Groupes d'import de noms complets distincts et contextes non représentés : sorties nulles, refus numérique.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecAppels(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias AnalyzeCallUnitSemantics = AnalyserSemantiqueUnitesAvecAppels;
+
+    /**
+     * <résumé>Possède aussi le nom appelé pour les groupes importés réunissant plusieurs noms complets.</résumé>
+     * @etc. Requête 56 octets et contrats 99/100/118/119/22 uniques inchangés.
+     * @etc. Pour un groupe importé ambigu 22, IndexNominal désigne l'expression 24/25/26, IndexDeclaration vaut zéro.
+     * @etc. Aucun préfixe ni empreinte de liaison ; Detail reste le nombre de meilleures fonctions.
+     * @etc. La marque de groupe importé provient de la recherche native, sans reconstituer les imports dans l'hôte.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecGroupes(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias AnalyzeGroupUnitSemantics = AnalyserSemantiqueUnitesAvecGroupes;
+
+    /**
+     * <résumé>Possède le groupe sans surcharge compatible des appels directs, membres et opérateurs (21).</résumé>
+     * @etc. Même requête 56 octets ; contrats précédents conservés. Detail reste le nombre d'arguments explicites.
+     * @etc. IndexNominal expression 24/29/25/26 ; IndexDeclaration première fonction du groupe unique, jamais une sélection compatible.
+     * @etc. Imports multigroupes : IndexDeclaration nul, aucun préfixe ; nom appelé possédé. Constructions non représentées numériques.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecEchecsAppels(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias AnalyzeFailedCallUnitSemantics = AnalyserSemantiqueUnitesAvecEchecsAppels;
+
+    /**
+     * <résumé>Possède aussi les groupes de constructeurs refusés par le code 21.</résumé>
+     * @etc. Requête 56 octets, résultats et anciens contrats inchangés ; Detail reste l'arité explicite, zéro compris.
+     * @etc. IndexNominal désigne une variable locale 19 ou un initialiseur 33/34/35 ; IndexDeclaration une fonction du groupe refusé.
+     * @etc. Un défaut local sans argument est représenté ; champs et bases implicites sans contexte suffisant restent numériques.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecConstructions(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias AnalyzeConstructionUnitSemantics = AnalyserSemantiqueUnitesAvecConstructions;
+
+    /** <résumé>Étend AvecConstructions aux refus implicites des champs 7 et constructeurs 13 ; Detail reste nul.</résumé> **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecConstructionImplicite(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias AnalyzeImplicitConstructionUnitSemantics = AnalyserSemantiqueUnitesAvecConstructionImplicite;
+
+    /**
+     * <résumé>Étend le contexte 21 aux appels d'alias de fonctions déjà résolus.</résumé>
+     * @etc. Requête 56 octets ; IndexNominal référence 24, IndexDeclaration alias racine 10, préfixe canonique de l'alias.
+     * @etc. Detail reste l'arité explicite ; imports mixtes d'alias/fonctions : IndexDeclaration nul, sans préfixe ni empreinte.
+     * @etc. Le nom appelé représente le groupe importé, même si plusieurs alias visent la même fonction finale.
+     **/
+    publique ErreurAnalyseSemantique AnalyserSemantiqueUnitesAvecAliasAppels(RequeteSemantiqueUnitesAvecLiaison* requete);
+    alias AnalyzeAliasCallUnitSemantics = AnalyserSemantiqueUnitesAvecAliasAppels;
 
     structure RequeteSemantiqueUnitesAvecOrigines {
         RequeteAnalyseSemantique* Analyse;

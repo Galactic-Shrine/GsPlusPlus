@@ -10,6 +10,732 @@
 
 # Journal des modifications
 
+## Appels indirects : cibles et arités — développement après Gs++ 0.27.0-alpha.10 — 2026-11-24
+
+### Français
+
+- traduire le refus 53 de cible non appelable en français et en anglais,
+  depuis l'AST et les origines possédés, sans nouvelle capacité native ;
+- contrôler le rôle de cible du code 53 et l'arité explicite du code 54,
+  y compris pour les callbacks, champs, références, accès indexés et appels
+  imbriqués ; refuser les contrats incohérents à la frontière native ;
+- conserver le code 55 numérique : son message dépend des types résolus et
+  des règles de liaison de références ; le pilote garde son repli vérifié ;
+- matrice ciblée réussie : 66 diagnostics FR/EN, 10 priorités, 6 succès,
+  6 refus 55 numériques, 1 320 contrats altérés et 594 sorties natives/exceptions ;
+- CLI ciblée réussie : 444 diagnostics, 28 comparaisons binaires/jetons/AST,
+  36 refus/arrêts de projets ; CMake Windows 6/6, GNU/Linux 7/7 avec intégration
+  et VS 2026 natif réussis, conformité 20/20 par chaîne ;
+- version alpha.10, formats 1.0, structures ABI et 125 exports conservés.
+
+### English
+
+- translate invalid indirect-call target diagnostic 53 in French and English
+  from owned AST nodes and origins, without a new native capability;
+- validate target roles for 53 and explicit argument counts for 54, including
+  callbacks, fields, references, indexed access and nested calls; reject
+  inconsistent contracts at the native boundary;
+- keep diagnostic 55 numeric because its message needs resolved types and
+  reference-binding rules; the driver retains its checked fallback;
+- targeted matrix passed: 66 bilingual diagnostics, 10 precedence checks,
+  6 successes, 6 numeric type rejections, 1,320 altered contracts and 594
+  native-output/exception checks;
+- targeted CLI passed: 444 diagnostics, 28 binary/token/AST comparisons and
+  36 project rejection/stop checks; Windows CMake 6/6, GNU/Linux 7/7 including
+  integration and native VS 2026 passed, with 20/20 conformance cases per toolchain;
+- alpha.10, format 1.0, ABI structures and 125 exports retained.
+
+## Groupes mixtes d'alias importés — développement après Gs++ 0.27.0-alpha.10 — 2026-11-24
+
+### Français
+
+- traduire les refus 21 des groupes importés mêlant plusieurs alias ou des
+  alias et fonctions, y compris plusieurs alias de la même fonction finale ;
+- réutiliser `AvecAliasAppels` et le rôle de groupe importé : référence 24,
+  déclaration nulle, sans préfixe ni empreinte ; afficher le nom appelé,
+  jamais un alias choisi arbitrairement ni une clé interne `@GsUsing::` ;
+- préserver les anciennes entrées natives numériques ; le rôle importé reste
+  compatible avec les hôtes qui comprennent déjà les groupes importés de 21 ;
+- matrice ciblée élargie réussie : 96 diagnostics FR/EN, 26 priorités, 8 succès,
+  aucun repli dans cette matrice, 1 900 contrats/textes altérés, 1 152 contrôles
+  de sorties/capacités natives et 288 mesures/copies bornées ;
+- CLI ciblée réussie : 388 diagnostics, 24 comparaisons binaires/jetons/AST,
+  28 refus/arrêts de projets, 64 replis d'alias sans la capacité et 24 contrôles
+  de paires facultatives ; CMake Windows 6/6, GNU/Linux 7/7 avec intégration et
+  VS 2026 natif réussis, conformité 20/20 par chaîne ; images identiques et vérifiées ;
+- version alpha.10, requête de 56 octets, formats 1.0 et 125 exports conservés ;
+  aucun nouveau commit, push ou release pour cette tranche.
+
+### English
+
+- translate diagnostic 21 for mixed imported aliases/functions, including
+  multiple public aliases of the same final function;
+- reuse `AnalyzeAliasCallUnitSemantics` and the existing imported-group role:
+  reference 24, no declaration, prefix or link fingerprint; render the called
+  name, never an arbitrary alias or internal `@GsUsing::` key;
+- retain numeric output from older native entries and compatibility with hosts
+  that already understand imported groups for diagnostic 21;
+- expanded targeted matrix passed: 96 bilingual diagnostics, 26 precedence checks,
+  8 successes, no fallback in this matrix, 1,900 altered contracts/texts,
+  1,152 native-output/capability checks and 288 bounded measurements/copies;
+- targeted CLI passed: 388 diagnostics, 24 binary/token/AST comparisons,
+  28 project rejection/stop checks, 64 alias fallbacks without the capability
+  and 24 optional-pair checks; Windows CMake 6/6, GNU/Linux 7/7 including integration
+  and native VS 2026 passed, conformity 20/20 on all chains; identical verified images;
+- retain alpha.10, the 56-byte request, formats 1.0 and 125 exports;
+  no new commit, push or release for this tranche.
+
+## Appels d'alias refusés possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-11-24
+
+### Français
+
+- ajouter la paire facultative `AnalyserSemantiqueUnitesAvecAliasAppels` /
+  `AnalyzeAliasCallUnitSemantics`, avec la requête de 56 octets inchangée ;
+- posséder la déclaration et le préfixe canonique de l'alias de fonction déjà
+  résolu lors d'un refus 21 ; conserver `Detail` comme arité explicite ;
+- contrôler la référence 24, l'alias 10 et sa cible écrite 38 sans résoudre
+  les types, la chaîne d'alias ou les candidats dans l'hôte ;
+- maintenir les anciennes entrées et les replis des imports qui mêlent
+  plusieurs alias ou fonctions, même s'ils visent la même fonction finale ;
+- matrice ciblée réussie : 52 diagnostics FR/EN, 14 priorités, 4 succès,
+  8 replis numériques, 1 196 contrats/textes altérés, 624 contrôles de
+  sorties/capacités natives et 156 mesures/copies bornées ;
+- CLI ciblée réussie : 356 diagnostics, 20 comparaisons binaires/jetons/AST,
+  24 refus/arrêts de projets, 32 replis d'appels d'alias et 24 contrôles de
+  paires facultatives ; CMake Windows 6/6, GNU/Linux 7/7 avec intégration et
+  VS 2026 natif réussis, conformité 20/20 par chaîne ; images identiques et
+  vérifiées avec 125 exports ;
+- reprendre localement le correctif de distribution signé `fde9d25`, sans
+  nouveau commit ni push de ces travaux ; conserver alpha.10 et formats 1.0.
+
+### English
+
+- add optional `AnalyzeAliasCallUnitSemantics` / `AnalyserSemantiqueUnitesAvecAliasAppels`,
+  retaining the unchanged 56-byte request;
+- own the declaration and canonical prefix of an already resolved function
+  alias for diagnostic 21; retain explicit arity and older entry behavior;
+- validate the reference (24), alias (10) and written target (38), without
+  host-side type, alias-chain or overload resolution;
+- preserve numeric fallbacks for mixed imported aliases/functions, including
+  distinct aliases of the same final function;
+- targeted matrix passed: 52 bilingual diagnostics, 14 precedence checks,
+  4 successes, 8 fallbacks, 1,196 altered contracts/texts, 624 native-output/capability
+  checks and 156 bounded measurements/copies;
+- targeted CLI passed: 356 diagnostics, 20 binary/token/AST comparisons,
+  24 project rejection/stop checks, 32 alias-call fallbacks and 24 optional-pair
+  checks; Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026
+  passed, conformity 20/20 on all chains; identical verified images with 125 exports;
+- fast-forward to signed distribution fix `fde9d25`, with no new commit/push
+  of these changes; retain alpha.10 and formats 1.0.
+
+## Constructions implicites refusées — développement après Gs++ 0.27.0-alpha.10 — 2026-10-23
+
+### Français
+
+- ajouter la paire facultative `AnalyserSemantiqueUnitesAvecConstructionImplicite` /
+  `AnalyzeImplicitConstructionUnitSemantics`, sans modifier la requête de 56 octets ;
+- transmettre le groupe natif refusé par 21 lorsque l'origine est un champ 7
+  ou un constructeur 13 : tableaux, champs imbriqués, alias et bases indirectes ;
+- garder `Detail` à zéro et vérifier les rôles, noms, origines et capacités,
+  sans reconstruire les types ni choisir un constructeur dans l'hôte ;
+- conserver les sorties numériques et les anciennes entrées, ainsi que le
+  repli des alias de fonctions non représentés ;
+- validation ciblée réussie : 42 diagnostics FR/EN, 6 priorités, 6 succès,
+  2 replis, 882 contrats/textes altérés, 546 contrôles de sorties/capacités
+  natives et 126 mesures/copies bornées ;
+- CLI ciblée réussie : 324 diagnostics, 16 comparaisons binaires/jetons/AST,
+  20 refus/arrêts de projets, 32 replis implicites et 21 contrôles de paires ;
+- campagnes du 23 octobre terminées : CMake Windows 6/6, GNU/Linux 7/7 avec
+  intégration et VS 2026 natif réussis, conformité 20/20 par chaîne ; trois
+  images identiques et vérifiées avec 123 exports ;
+- matrice ciblée rejouée avec succès sur les trois chaînes le 24 novembre ;
+  CLI CMake Windows rejouée et réussie (324 diagnostics), images revérifiées ;
+- alpha.10 et formats 1.0 conservés ; aucun commit, push ou release.
+
+### English
+
+- add optional `AnalyzeImplicitConstructionUnitSemantics` /
+  `AnalyserSemantiqueUnitesAvecConstructionImplicite`, retaining the 56-byte request;
+- own the native rejected constructor group for diagnostic 21 on fields (7)
+  and constructors (13), including arrays, nested fields, aliases and indirect bases;
+- preserve zero arity, numeric results, old entries and unrepresented function-alias
+  fallbacks, without host-side type resolution or constructor selection;
+- targeted tests passed: 42 bilingual diagnostics, 6 precedence checks, 6 successes,
+  2 fallbacks, 882 altered contracts/texts, 546 native-output/capability checks
+  and 126 bounded measurements/copies;
+- targeted CLI passed: 324 diagnostics, 16 binary/token/AST comparisons,
+  20 project rejection/stop checks, 32 implicit fallbacks and 21 optional-pair checks;
+- October 23 campaigns completed: Windows CMake 6/6, GNU/Linux 7/7 including
+  integration and native VS 2026 passed, conformity 20/20 on all three chains;
+  identical verified images with 123 exports;
+- targeted matrix rerun successfully on all three chains on November 24;
+  Windows CMake CLI rerun passed (324 diagnostics), images reverified;
+- retain alpha.10 and formats 1.0; no commit, push or release.
+
+## Constructions refusées possédées — développement après Gs++ 0.27.0-alpha.10 — 2026-10-23
+
+### Français
+
+- ajouter l'entrée facultative `AnalyserSemantiqueUnitesAvecConstructions` /
+  `AnalyzeConstructionUnitSemantics`, avec la même requête de 56 octets ;
+- posséder le groupe de constructeurs refusé par 21 pour les variables locales
+  et initialiseurs de délégation/base/champ, sans sélection ni résolution de
+  type dans l'hôte ; conserver arité zéro, préfixes et priorités ;
+- exclure les feuilles nominales 41/42/43 du compte des arguments ; conserver
+  numériques les champs/bases implicites dont le contexte n'est pas représenté ;
+- matrice ciblée validée : 48 diagnostics FR/EN, 14 priorités, 4 succès,
+  8 replis, 768 contrats/textes altérés, 576 sorties/capacités natives contrôlées
+  et 144 mesures/copies bornées ; anciennes entrées et durée de vie vérifiées ;
+- CLI : 292 diagnostics, 16 comparaisons binaires/jetons/AST, 20 refus/arrêts
+  de projets, 48 replis de constructions et 18 contrôles de paires facultatives ;
+- CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis ;
+  conformité 20/20 par chaîne, images identiques et vérifiées avec 121 exports ;
+- alpha.10 et formats 1.0 conservés, aucun commit, push ou release.
+
+### English
+
+- add optional `AnalyzeConstructionUnitSemantics` / `AnalyserSemantiqueUnitesAvecConstructions`,
+  reusing the unchanged 56-byte request;
+- own the rejected constructor group for diagnostic 21 on local variables
+  and delegating/base/field initializers, without host-side type resolution
+  or overload selection; preserve zero arity, prefixes and error precedence;
+- exclude nominal leaves 41/42/43 from argument counts; retain numeric fallbacks
+  for implicit field/base contexts that are not represented;
+- targeted matrix passed: 48 bilingual diagnostics, 14 precedence checks,
+  4 successes, 8 fallbacks, 768 altered contracts/texts, 576 native-output/capability
+  checks and 144 bounded measurements/copies; older entries and lifetime checked;
+- CLI: 292 diagnostics, 16 binary/token/AST comparisons, 20 project rejection/stop
+  checks, 48 construction fallbacks and 18 optional-export checks;
+- Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026 passed;
+  conformity 20/20 on each chain, identical verified images with 121 exports;
+- retain alpha.10 and formats 1.0; no commit, push or release.
+
+## Échecs d'appels possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-23
+
+### Français
+
+- ajouter l'entrée facultative `AnalyserSemantiqueUnitesAvecEchecsAppels` /
+  `AnalyzeFailedCallUnitSemantics`, avec la requête de 56 octets inchangée ;
+- posséder le groupe refusé par le diagnostic 21 pour les appels directs,
+  méthodes et opérateurs, imports multigroupes compris, sans nouvelle sélection
+  dans l'hôte ; conserver `Detail` comme arité explicite, zéro compris ;
+- préserver les refus précoces d'arité/préfixe et les contrats 99/100/118/119/22 ;
+  anciennes entrées, constructions et alias de fonctions non représentés conservés numériques ;
+- matrice ciblée validée : 126 diagnostics FR/EN, 16 priorités, 4 succès,
+  12 constructions/alias numériques, 2 016 contrats/textes altérés, 1 386 sorties
+  natives altérées et 378 mesures/copies bornées ; durée de vie vérifiée ;
+- CLI : 244 diagnostics, 68 replis d'échecs, 15 contrôles de paires facultatives
+  et 16 refus/arrêts de projets, sans écrasement des anciennes sorties ;
+- CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis
+  après le correctif des alias ; conformité 20/20 par chaîne, images identiques
+  et vérifiées avec 119 exports ; alpha.10 et formats 1.0 conservés,
+  aucun commit, push ou release.
+
+### English
+
+- add optional `AnalyzeFailedCallUnitSemantics` / `AnalyserSemantiqueUnitesAvecEchecsAppels`,
+  using the unchanged 56-byte request;
+- own the rejected group for diagnostic 21 on direct/member calls and operators,
+  including imported groups, without host-side overload selection; keep `Detail`
+  as the explicit argument count, including zero;
+- preserve early arity/argument-prefix errors and the 99/100/118/119/22 contracts;
+  older entries and unrepresented constructions/function aliases retain numeric fallbacks;
+- targeted matrix passed: 126 bilingual diagnostics, 16 precedence checks,
+  4 successes, 12 numeric construction/alias fallbacks, 2,016 altered contracts/texts,
+  1,386 altered native outputs and 378 bounded measurements/copies; lifetime checked;
+- CLI: 244 diagnostics, 68 failed-call fallbacks, 15 optional-export checks and
+  16 project rejection/stop checks, preserving existing outputs;
+- Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026
+  passed after the alias fix; conformity 20/20 on each chain, identical verified
+  images with 119 exports; retain alpha.10 and formats 1.0; no commit, push or release.
+
+## Groupes importés possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-23
+
+### Français
+
+- ajouter l'entrée facultative `AnalyserSemantiqueUnitesAvecGroupes` /
+  `AnalyzeGroupUnitSemantics`, avec la requête de 56 octets inchangée ;
+- posséder le nom appelé des imports multigroupes ambigus 22, sans choisir une
+  déclaration représentante ni reconstruire les imports ou scores dans l'hôte ;
+- garder les clés `@GsUsing::…` pour la résolution C++, mais afficher le nom
+  public dans les diagnostics 21/22 ; aucune modification de la sélection ;
+- matrice ciblée validée : 70 diagnostics FR/EN, 16 priorités/groupes uniques,
+  2 succès, 4 replis 21, 1 120 contrats/textes altérés, 770 sorties natives
+  altérées et 210 mesures/gardes ; anciens contrats et durée de vie conservés ;
+- CLI étendue à 176 diagnostics, 12 comparaisons binaires/jetons/AST et
+  12 contrôles de paires facultatives ; 12 solutions FR/EN, 4 remplacements et
+  12 refus/arrêts de projets vérifiés, anciennes sorties conservées ;
+- CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis ;
+  conformité 20/20 par chaîne, images identiques et vérifiées avec 117 exports ;
+- alpha.10 et formats 1.0 conservés, aucun commit, push ou release.
+
+### English
+
+- add optional `AnalyzeGroupUnitSemantics` / `AnalyserSemantiqueUnitesAvecGroupes`
+  using the unchanged 56-byte request;
+- own the called name of ambiguous imported groups (22), without choosing a
+  representative declaration or rebuilding imports and scores in the host;
+- retain internal `@GsUsing::…` keys for C++ resolution, but display public
+  names in diagnostics 21/22 without changing overload selection;
+- targeted matrix passed: 70 bilingual diagnostics, 16 precedence/unique-group
+  checks, 2 successes, 4 code-21 fallbacks, 1,120 altered contracts/texts,
+  770 altered native outputs and 210 measurements/guards; preserve older
+  contracts and lifetime guarantees;
+- extend CLI to 176 diagnostics, 12 binary/token/AST comparisons and
+  12 optional-export checks; verify 12 FR/EN solution comparisons, 4 overrides
+  and 12 project rejection/stop checks while preserving existing outputs;
+- Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026
+  passed; conformity 20/20 on each chain, identical verified images with 117 exports;
+- retain alpha.10 and formats 1.0; no commit, push or release.
+
+## Appels ambigus possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-22
+
+### Français
+
+- ajouter la paire native facultative `AnalyserSemantiqueUnitesAvecAppels` /
+  `AnalyzeCallUnitSemantics`, sans changer la requête de liaison de 56 octets ;
+- conserver le groupe canonique déjà sélectionné pour le diagnostic 22,
+  sans refaire les conversions, le score ou la recherche de surcharge dans l'hôte ;
+- rendre fonctions, méthodes héritées, opérateurs, constructeurs, initialisations
+  de base/champ et délégations ; conserver `Detail` comme nombre de meilleures
+  surcharges, distinct des deux indices AST du contexte possédé ;
+- garder numériques les imports réunissant plusieurs noms complets distincts ;
+  anciennes entrées et contrats 99/100/118/119 conservés ;
+- étendre les matrices de messages, priorités, contrats altérés, mesure/copie,
+  interfaces, unités et durée de vie : 106 diagnostics bilingues, 4 imports
+  multigroupes numériques, 12 priorités et 2 succès ; 2 552 contrats/textes,
+  1 104 sorties natives altérées et 318 mesures/copies ;
+- CLI : 144 comparaisons de diagnostics, 32 replis d'appels et 9 contrôles des
+  paires facultatives ; CMake Windows 6/6, GNU/Linux 7/7 avec intégration et
+  VS 2026 natif réussis, conformité 20/20 par chaîne ; images identiques et
+  vérifiées avec 115 exports ;
+- alpha.10 et formats 1.0 conservés ; aucun commit, push ou release.
+
+### English
+
+- add the optional `AnalyzeCallUnitSemantics` / `AnalyserSemantiqueUnitesAvecAppels`
+  native export pair, reusing the unchanged 56-byte link request;
+- retain the canonical group already chosen for diagnostic 22 without host-side
+  conversions, scoring or overload lookup;
+- render functions, inherited methods, operators, constructors, base/field
+  initializers and delegation; keep `Detail` as the best-candidate count,
+  separate from the two owned AST indices;
+- preserve numeric fallbacks for imports combining distinct complete names,
+  older entries and the 99/100/118/119 contracts;
+- extend message, precedence, corrupted-contract, bounded-copy, unit and lifetime
+  matrices: 106 bilingual diagnostics, 4 numeric multi-group imports, 12 precedence
+  checks and 2 successes; 2,552 altered contracts/texts, 1,104 altered native
+  outputs and 318 measurements/copies;
+- CLI: 144 diagnostic comparisons, 32 call fallbacks and 9 optional-export
+  checks; Windows CMake 6/6, GNU/Linux 7/7 including integration and native
+  VS 2026 passed, conformity 20/20 on each chain; identical verified images
+  with 115 exports;
+- retain alpha.10 and file formats 1.0; no commit, push or release.
+
+## Collisions de liaison possédées — développement après Gs++ 0.27.0-alpha.10 — 2026-10-22
+
+### Français
+
+- ajouter la paire d'exports facultative `AnalyserSemantiqueUnitesAvecLiaison` /
+  `AnalyzeLinkUnitSemantics` et sa requête de 56 octets ; les requêtes existantes
+  et leurs résultats numériques restent inchangés ;
+- rendre le diagnostic 119 à partir de la paire native, de ses préfixes source
+  et de l'empreinte de liaison déjà calculée ; aucun type ni suffixe résolu à
+  nouveau dans l'hôte, zéro et les 64 bits de l'empreinte sont conservés ;
+- couvrir fonctions, méthodes, constructeurs, opérateurs, groupes mixtes,
+  alias, callbacks, qualifications, namespaces et unités séparées ; vérifier
+  aussi la priorité des doublons 118 et types introuvables 100 ;
+- CLI validée : 112 diagnostics FR/EN, 24 replis sans l'extension de liaison,
+  4 replis contextuels et 6 contrôles d'exports facultatifs ;
+- matrice ciblée : 80 diagnostics, 12 priorités, 1 240 contrats/textes altérés,
+  840 sorties natives altérées et 240 mesures/copies ; les 380 cas 118 sont conservés ;
+- CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis ;
+  conformité 20/20 par chaîne, images identiques et vérifiées (113 exports) ;
+  alpha.10 conservée, aucun commit, push ou release pour cette tranche.
+
+### English
+
+- add the optional `AnalyzeLinkUnitSemantics` / `AnalyserSemantiqueUnitesAvecLiaison`
+  export pair and its 56-byte request; preserve existing requests and numeric results;
+- render diagnostic 119 from the native pair, source prefixes and already computed
+  link fingerprint, without resolving types or rebuilding signature hashes in the host;
+  preserve all 64 bits, including zero;
+- exercise free/member functions, constructors, operators, mixed groups, aliases,
+  callbacks, qualifiers, namespaces and separate units; keep 118/100 error precedence;
+- CLI passed: 112 FR/EN diagnostics, 24 legacy link fallbacks, 4 contextual
+  fallbacks and 6 optional-export checks;
+- targeted matrix: 80 diagnostics, 12 precedence checks, 1,240 altered contracts/texts,
+  840 altered native outputs and 240 measurements/copies; preserve all 380 code-118 cases;
+- Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026 passed;
+  conformity 20/20 on each chain, identical verified images (113 exports);
+  retain alpha.10, with no commit, push or release for this slice.
+
+## Préfixes de surcharges possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-22
+
+### Français
+
+- ajouter l'entrée native facultative `AnalyserSemantiqueUnitesAvecContexte` /
+  `AnalyzeContextualUnitSemantics` pour copier les préfixes du diagnostic 118 ;
+- conserver les anciennes entrées et leur résultat numérique ; réutiliser la
+  requête de 48 octets et les segments de 24 octets, sans nouveau code/format ;
+- rendre les fonctions, membres, constructeurs/destructeurs et opérateurs dans
+  les namespaces imbriqués, sans résolution de noms/types/surcharges dans l'hôte ;
+- matrice ciblée validée : 196 noms qualifiés supplémentaires, 2 548 contrats/textes,
+  3 528 sorties natives altérées et 588 mesures/copies bornées ; 380 cas FR/EN
+  traduits avec la nouvelle entrée contre 184 traductions/196 replis avec l'ancienne ;
+- CLI : 88 diagnostics, 4 replis sans les nouveaux exports et 3 contrôles
+  d'exports facultatifs ; absence des deux tolérée, paire partielle refusée ;
+- CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis,
+  conformité 20/20 par chaîne ; version alpha.10 conservée, sans publication.
+
+### English
+
+- add the optional native `AnalyzeContextualUnitSemantics` /
+  `AnalyserSemantiqueUnitesAvecContexte` entry to copy diagnostic 118 prefixes;
+- preserve older entries and numeric results; reuse the 48-byte request and
+  24-byte segments, with no new error code or file format;
+- render functions, members, constructors/destructors and operators in nested
+  namespaces without host-side name/type/overload resolution;
+- targeted matrix passed: 196 additional qualified names, 2,548 altered contracts/texts,
+  3,528 altered native outputs and 588 bounded measurements/copies; all 380 FR/EN
+  cases translated with the new entry versus 184 translations/196 legacy fallbacks;
+- CLI: 88 diagnostics, 4 fallbacks without the new exports and 3 optional-export
+  checks; both absent accepted, partial pair rejected;
+- Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026 passed,
+  conformity 20/20 on each chain; keep alpha.10, with no publication.
+
+## Fonctions spéciales dans le diagnostic 118 possédé — développement après Gs++ 0.27.0-alpha.10 — 2026-10-22
+
+### Français
+
+- étendre la traduction aux constructeurs/destructeurs de classe racine et aux
+  opérateurs libres, membres et mixtes dont le nom complet est possédé ;
+- rendre les noms internes exacts `$constructeur`, `$destructeur` et `operatorSIGNE`
+  dans les deux langues, sans nouvelle résolution de types ou de candidats ;
+- refuser les paires de familles incohérentes, même si leurs tranches/noms de
+  classe se ressemblent ; vérifier l'index natif de la première déclaration ;
+- matrice ciblée validée : 184 diagnostics, 12 replis FR/EN, 4 056 contrats/textes
+  et 1 176 marqueurs natifs altérés ; les 18 opérateurs et les deux ordres mixtes
+  sont couverts ; CLI portée à 72 diagnostics FR/EN ;
+- les doublons déjà refusés en normalisation gardent cette priorité ; les tests
+  sémantiques bruts de destructeurs ne changent pas le chemin du pilote ;
+- CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis,
+  conformité 20/20 par chaîne ; version alpha.10, formats et ABI conservés,
+  sans nouveau genre AST/export natif ni publication.
+
+### English
+
+- extend translation to root-class constructors/destructors and free, member
+  and mixed operators whose complete name is owned;
+- render exact internal `$constructeur`, `$destructeur` and `operatorSIGN` names
+  in both languages, without repeating type resolution or candidate selection;
+- reject inconsistent function families even when their class-name spans match;
+  check the native index of the first declaration;
+- targeted matrix passed: 184 diagnostics, 12 FR/EN fallbacks, 4,056 altered
+  contracts/texts and 1,176 altered native markers; all 18 operators and both
+  mixed declaration orders covered; CLI extended to 72 FR/EN diagnostics;
+- preserve earlier normalization failures; raw destructor semantic tests do not
+  change the driver's production pipeline;
+- Windows CMake 6/6, GNU/Linux 7/7 including integration and native VS 2026 passed,
+  conformity 20/20 on each chain; alpha.10, formats and ABI retained, with no new
+  AST kind/native export or publication.
+
+## Doublons de signatures ordinaires possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-21
+
+### Français
+
+- traduire le diagnostic 118 pour les fonctions racines, méthodes de classes
+  racines et leurs groupes mixtes, avec le nom et la position exacts FR/EN ;
+- contrôler la paire désignée par l'index AST `Detail`, sans refaire la
+  comparaison des types, le choix des candidats ou l'ordre des groupes ;
+- conserver le repli numérique pour les préfixes de namespace non possédés,
+  constructeurs, destructeurs et opérateurs ; aucune nouvelle ABI ni export ;
+- matrice dédiée validée : 26 diagnostics traduits, 10 replis FR/EN, 618
+  contrats/textes et 216 marqueurs natifs altérés ; CLI étendue à 48 diagnostics ;
+  CMake Windows 6/6, GNU/Linux 7/7 avec intégration et VS 2026 natif réussis,
+  conformité 20/20 par chaîne ;
+- version alpha.10 conservée ; aucune publication.
+
+### English
+
+- translate diagnostic 118 for root functions, root-class methods and their
+  mixed groups, preserving exact bilingual names and source locations;
+- validate the pair selected by the native AST index in `Detail`, without
+  repeating type comparison, candidate selection or group ordering;
+- retain numeric fallback for unavailable namespace prefixes, constructors,
+  destructors and operators; no new native ABI or export;
+- dedicated matrix passed: 26 translated diagnostics, 10 FR/EN fallbacks,
+  618 altered contracts/texts and 216 altered native markers; CLI extended to
+  48 diagnostics; Windows CMake 6/6, GNU/Linux 7/7 including integration and
+  native VS 2026 passed, conformity 20/20 on each chain;
+- keep alpha.10; no publication.
+
+## Raccord explicite des diagnostics au pilote — développement après Gs++ 0.27.0-alpha.10 — 2026-10-21
+
+### Français
+
+- ajouter `--diagnostics-frontend` / `--frontend-diagnostics` pour sources et
+  interfaces directes, projets et solutions, avec une image native de confiance choisie ;
+- partager les instantanés de préparation et insérer assemblage/sémantique Gs++
+  après syntaxe/normalisation C++, sans relecture ni remplacement du backend ;
+- distinguer le refus numérique validé par une exception C++ dédiée, texte et
+  ancien contrat d'exception conservés ; repli uniquement si le bootstrap
+  confirme un refus à la même position, sans masquer les erreurs hôtes ;
+- 36 corpus FR/EN du raccord, 44 du pilote dans les deux modes, 8 comparaisons
+  CLI binaires/jetons/AST, 32 diagnostics FR/EN et 12 refus options/images ;
+- extension projets/solutions : modes séparé/agrégé, 12 comparaisons FR/EN,
+  4 remplacements, 8 refus/arrêts, sorties/journaux et état incrémental conservés ;
+  pointeur emprunté, conflit de préparateur refusé avant construction ;
+- test CLI intégré à CTest et MSBuild natif ; Windows 6/6, GNU/Linux 7/7 avec
+  intégration, validation native VS 2026 et conformité 20/20 par chaîne réussis ;
+  images identiques et vérifiées ;
+- chemin par défaut, version alpha.10, formats et ABI native inchangés ;
+- entrées binaires toujours refusées dans ce mode ; aucune publication.
+
+### English
+
+- add `--frontend-diagnostics` / `--diagnostics-frontend` for direct source/interface
+  inputs, projects and solutions, using one explicitly selected trusted native image;
+- share preparation snapshots and insert Gs++ assembly/semantics after C++
+  syntax/normalization, without rereads or replacing the backend;
+- distinguish validated numeric rejection with a dedicated C++ exception,
+  preserving its historical text/base type; only fall back when the bootstrap
+  confirms a rejection at the same location, without hiding host errors;
+- 36 FR/EN integration corpora, 44 include-driver corpora in both modes,
+  8 CLI binary/token/AST comparisons, 32 FR/EN diagnostics and 12 option/image rejections;
+- extend to projects/solutions: separate/aggregate modes, 12 FR/EN comparisons,
+  4 overrides and 8 rejections/stops, identical outputs/logs and incremental state;
+  borrowed pointer, reject custom-preparer conflicts before building;
+- integrate the CLI test into CTest and native MSBuild; Windows 6/6,
+  GNU/Linux 7/7 including integration, native VS 2026 validation and conformity
+  20/20 per toolchain passed; identical, verified images;
+- default path, alpha.10 version, formats and native ABI unchanged;
+- still reject binary inputs in this mode; no publication.
+
+## Noms complets de méthodes et groupes mixtes — développement après Gs++ 0.27.0-alpha.10 — 2026-10-21
+
+### Français
+
+- étendre l'export sémantique facultatif aux méthodes ordinaires utilisées
+  comme noms de types : préfixe de namespace et classe déclarante, sans recherche hôte ;
+- vérifier le genre/parent, le nom/hachage, les tranches et origines du
+  déclarant ; exiger une classe définie, sans lui imposer d'héritage ;
+- matrice étendue : 222 refus FR/EN dont 98 méthodes, 6 204 contrats/textes,
+  3 996 sorties natives altérées, 890 mesures/copies/limites, 506 contextes sans
+  extension et 222 replis natifs numériques compatibles ;
+- 84 sélections exactes de déclaration dans les groupes mixtes méthode/fonction
+  libre de même nom complet : deux ordres, imports, unités, interfaces, UTF-8,
+  signatures, callbacks et conversions ; 44 priorités/succès supplémentaires,
+  dont 12 refus de doublons/appels ambigus conservés numériques (118/22) ;
+- signatures, callbacks, conversions, constructeurs/destructeurs, champs par
+  défaut/explicites, opérateurs, visibilité, surcharges, déclaration postérieure,
+  interface et UTF-8 couverts ; premier refus et résultat historique conservés ;
+- validation complète : CTest Windows 5/5, GNU/Linux 6/6 avec intégration,
+  suites natives VS 2026 réussies, conformité 20/20 par chaîne ; les trois
+  images sont identiques (592 591 octets) et vérifiées ; le complément de
+  groupes mixtes ne modifie pas l'algorithme du compilateur ;
+- 109 exports, contrats natifs/ABI et formats 1.0 conservés. Alpha.10, chemin
+  par défaut de `gsppc` et paquets inchangés ; travail local sans commit/push/release.
+
+### English
+
+- extend the optional semantic export to ordinary methods used as type names:
+  namespace and declaring-class prefix without host-side lookup;
+- check the declaring class/enum kind/parent, name/hash, spans and origins;
+  require a defined class, without requiring inheritance;
+- extended matrix: 222 FR/EN rejections including 98 methods, 6,204 contracts/texts,
+  3,996 altered native outputs, 890 measurement/copy/limit checks, 506 contexts
+  without metadata and 222 compatible native numeric fallbacks;
+- 84 exact declaration selections within mixed method/free-function groups sharing
+  a complete name: both orders, imports, units, interfaces, UTF-8, signatures,
+  callbacks and casts; 44 additional priority/success cases including 12 duplicate
+  or ambiguous-call failures retained as numeric diagnostics (118/22);
+- cover signatures, callbacks, casts, constructors/destructors, default/explicit
+  fields, operators, visibility, overloads, later declarations, interfaces and UTF-8;
+  retain the first failure and historical result;
+- full validation: Windows CTest 5/5, GNU/Linux 6/6 including integration,
+  successful native VS 2026 suites and conformity 20/20 per toolchain;
+  all three images are identical (592,591 bytes) and verified; the mixed-group
+  extension does not change the compiler algorithm;
+- retain 109 exports, existing native contracts/ABI, formats 1.0, alpha.10,
+  the default `gsppc` path and packages. Local work without commit, push or release.
+
+## Noms qualifiés implicitement possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-21
+
+### Français
+
+- ajouter les exports facultatifs `AnalyserSemantiqueUnitesAvecNom` /
+  `AnalyzeNamedUnitSemantics` : requête 48 octets, segments source 24 octets,
+  nom complet de fonction libre/globale, alias racine ou valeur d'énumération ;
+- conserver les anciens exports, dispositions ABI et résultats ; mesure/copie
+  bornées sans écriture partielle, aucun pointeur d'arène ni résolution hôte ;
+- matrice dédiée : 82 refus FR/EN, 1 804 contrats/textes et 1 476 sorties natives
+  altérées, 330 mesures/copies/limites, 438 contextes sans extension ;
+  anciens AST, marqueurs, premier nom, origine et durée de vie conservés ;
+- six paires d'exports facultatifs et 42 altérations vérifiées ; nouvelle paire
+  non requise par l'expansion ou les anciens appels sémantiques ;
+- validation complète : CTest Windows 5/5, GNU/Linux 6/6 avec intégration,
+  solution VS 2026 native et conformité 20/20 sur chaque chaîne ; trois images
+  `Frontend.GsE` identiques à 592 319 octets, avec 109 exports et deux imports ;
+- version alpha.10, formats 1.0 et ABI existante conservés. Travail local sans
+  commit/push/release ni mise à jour des paquets.
+
+### English
+
+- add optional `AnalyserSemantiqueUnitesAvecNom` / `AnalyzeNamedUnitSemantics`
+  exports: 48-byte request and 24-byte source segments for canonical free-function/global,
+  root alias and enum-value names;
+- retain existing exports, ABI layouts and results; bounded measurement/copy
+  without partial writes, arena pointers or host-side lookup;
+- dedicated matrix: 82 FR/EN rejections, 1,804 altered contracts/texts,
+  1,476 altered native outputs, 330 measurement/copy/limit checks and 438 contexts
+  without extra metadata; legacy ASTs/markers, first name, origin and lifetime retained;
+- six optional export pairs and 42 mutations checked; the new pair is not
+  required for expansion or legacy semantic calls;
+- full validation: Windows CTest 5/5, GNU/Linux 6/6 including integration,
+  native VS 2026 solution and conformity 20/20 on each toolchain; three identical
+  592,319-byte `Frontend.GsE` images, with 109 exports and two imports;
+- alpha.10, formats 1.0 and existing ABI retained. Local work without commit,
+  push, release or updated packages.
+
+## Noms non types déjà canoniques — développement après Gs++ 0.27.0-alpha.10 — 2026-10-21
+
+### Français
+
+- traduire les codes 100/99 pour un symbole non type lorsque le nom complet
+  retenu par la recherche native est déjà écrit ; conserver les feuilles
+  nominales 40/41/42/43 et comparer avant l'expansion d'un alias ;
+- préserver le premier refus de callback/conversion, l'origine, les anciens
+  AST et les anciens marqueurs numériques ; les qualifications implicites
+  dont le texte canonique n'est pas possédé restent numériques ;
+- matrice étendue : 212 refus traduits, dont 64 nouveaux cas non types,
+  212 anciens AST et 64 anciens marqueurs numériques, 36 cas non types
+  réservés numériques, 202 priorités, 6 628 contrats/textes, 1 484 marqueurs
+  natifs, 672 entrées AST altérées et 24 succès FR/EN ;
+- validation complète : CTest Windows 5/5, GNU/Linux 6/6 avec intégration,
+  solution VS 2026 native et conformité 20/20 sur chaque chaîne ; trois images
+  `Frontend.GsE` identiques à 586 415 octets ;
+- code natif reconstruit, sans résolution de noms côté hôte, nouveau code,
+  genre AST, format ou taille ABI.
+  Version alpha.10 conservée ; sans commit/push/release ni mise à jour des paquets.
+
+### English
+
+- translate codes 100/99 for non-type symbols when the lookup-selected full
+  name is already written; reuse nominal leaves 40/41/42/43 and compare before
+  expanding aliases;
+- retain the first callback/cast failure and its origin, legacy ASTs and
+  numeric markers; implicit qualifications whose canonical text is not owned
+  remain numeric;
+- extended matrix: 212 translated rejections including 64 new non-type cases,
+  212 legacy ASTs and 64 legacy numeric markers, 36 reserved numeric non-type
+  cases, 202 priority checks, 6,628 contracts/texts, 1,484 native markers,
+  672 altered AST inputs and 24 FR/EN successes;
+- full validation: Windows CTest 5/5, GNU/Linux 6/6 including integration,
+  native VS 2026 solution and conformity 20/20 on each toolchain; three identical
+  586,415-byte `Frontend.GsE` images;
+- rebuilt native code without host-side name resolution, new codes, AST kinds,
+  formats or ABI sizes. Alpha.10 retained; no commit, push, release or updated packages.
+
+## Bases trouvées non classes — développement après Gs++ 0.27.0-alpha.10 — 2026-10-21
+
+### Français
+
+- traduire le code 114 depuis la base nominale 40, avec le nom écrit exact
+  (alias compris), à la position de la classe ; conserver `Detail` comme rang
+  de symbole du type retenu, zéro compris, sans le remplacer par un index AST ;
+- contrôler rang/genre structure-union-enum, tranches, lexèmes/hachages, liens
+  et origines ; type retenu éventuellement postérieur ou d'une autre unité ;
+  aucun type/import/alias résolu dans l'hôte. Ancien AST sans feuille 40 numérique,
+  rang et position conservés. Cohérence distincte de l'authenticité du natif ;
+- matrice étendue : 148 refus traduits, dont 40 nouveaux cas 114, 148 anciens
+  AST numériques, 34 non types numériques, 150 priorités, 4 884 contrats/textes,
+  1 036 marqueurs natifs, 576 entrées AST altérées et 24 succès FR/EN ;
+- validation complète : CTest Windows 5/5, GNU/Linux 6/6 avec intégration,
+  solution VS 2026 native et conformité 20/20 sur chaque chaîne ; images
+  `Frontend.GsE` identiques et inchangées à 586 143 octets ;
+- code natif Gs++, genres AST, codes/exports, formats 1.0, tailles ABI et version
+  alpha.10 inchangés. Travail local sans commit/push/release ni mise à jour des paquets.
+
+### English
+
+- translate code 114 using nominal base leaf 40 and its exact written name
+  (including aliases), at the class position; retain `Detail` as the selected
+  type's native symbol rank, including zero, rather than an AST index;
+- check struct/union/enum rank and kind, spans, lexemes/hashes, links and origins;
+  allow a later type or another unit/interface without host type/import/alias
+  resolution. Legacy ASTs without leaf 40 stay numeric with the same rank and
+  position. Coherence does not authenticate a native result;
+- extended matrix: 148 translated rejections including 40 new code-114 cases,
+  148 numeric legacy ASTs, 34 numeric non-type cases, 150 priority checks,
+  4,884 contracts/texts, 1,036 native markers, 576 altered AST inputs and 24 FR/EN successes;
+- full validation: Windows CTest 5/5, GNU/Linux 6/6 including integration,
+  native VS 2026 solution and conformity 20/20 on each toolchain; identical,
+  unchanged 586,143-byte `Frontend.GsE` images;
+- native Gs++ code, AST kinds, codes/exports, formats 1.0, ABI sizes and alpha.10
+  unchanged. Local work without commit, push, release or updated packages.
+
+## Types introuvables possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-20
+
+### Français
+
+- consolidation signée `8dcf7dd` poussée sur `main`, signature vérifiée par
+  GitHub et CI Windows/GNU/Linux/MSBuild réussie ; pas de release ;
+- tranche locale suivante : traduire les types introuvables 100/99 depuis les
+  feuilles nominales existantes 41/42/43, y compris les callbacks et conversions
+  imbriqués ; conserver le premier nom fautif et l'origine de la déclaration
+  ou conversion, sans résolution de types/imports côté hôte ;
+- différer le nom introuvable d'une globale jusqu'à sa visite, après les
+  signatures/champs par défaut et avant son initialiseur puis la globale suivante ;
+- anciens AST sans contexte : `Detail 0`, refus numérique. Un symbole non type
+  peut changer le nom canonique affiché : sentinelle `Detail UINT32_MAX`, contexte
+  nominal contrôlé et refus numérique, sans message approximatif. Formats 1.0, tailles ABI, genres AST,
+  codes/exports et version alpha.10 conservés ;
+- borner le parent d'une feuille de callback avant tout accès ; parents hors
+  limites/auto-référents refusés par disponibilité et traduction. Première matrice, avant extension à l'héritage :
+  76 refus traduits, 76 anciens AST numériques, 18 non types numériques,
+  54 priorités FR/EN, 1 900 contrats/textes et 532 marqueurs natifs altérés.
+  CTest Windows 5/5, GNU/Linux 6/6 avec intégration, validation native VS 2026
+  réussie et conformité 20/20 sur chaque chaîne. Images identiques (585 999 octets).
+- extension à l'héritage : le code 100 désigne la base nominale 40, à la position
+  de la classe ; contrôle des noms écrits, séparations, rangs, unités et liens,
+  sans recherche de type côté hôte. Ancien AST numérique et sentinelle non type
+  conservés ; priorités 100/113/114/115/121 comparées au bootstrap.
+  Matrice étendue : 108 refus traduits, 108 anciens AST, 34 non types numériques,
+  102 priorités FR/EN, 3 084 contrats/textes, 756 marqueurs natifs, 256 entrées
+  AST altérées et 16 succès FR/EN. CTest Windows 5/5, GNU/Linux 6/6 avec
+  intégration, validation native VS 2026 et conformité 20/20 sur chaque chaîne.
+  Images identiques après extension : 586 143 octets ; exports/ABI inchangés.
+
+### English
+
+- signed consolidation `8dcf7dd` pushed to `main`, GitHub-verified signature and
+  successful Windows/GNU/Linux/native MSBuild CI; no release;
+- subsequent local work: translate unknown types 100/99 from existing nominal
+  leaves 41/42/43, including nested callbacks and casts; preserve the first
+  failing name and declaration/cast origin without host type/import resolution;
+- defer unknown global type names until that global is visited, after signature
+  and default-field checks, before its initializer and the next global;
+- legacy ASTs without context retain numeric `Detail 0`. Non-type symbols whose
+  canonical names are unavailable use `Detail UINT32_MAX`, with checked nominal
+  context and no approximate source message. Formats 1.0, ABI sizes, AST kinds,
+  codes/exports and alpha.10 unchanged;
+- bound callback leaf parents before access; reject out-of-range/self parents
+  in availability and translation checks. Initial matrix, before inheritance: 76 translated
+  rejections, 76 numeric legacy ASTs, 18 numeric non-type cases, 54 FR/EN priority
+  checks, 1,900 altered contracts/texts and 532 altered native markers.
+  Windows CTest 5/5, GNU/Linux 6/6 including integration, successful native VS 2026
+  validation and conformity 20/20 on each chain. Identical images (585,999 bytes).
+- extend inheritance diagnostics: code 100 selects the nominal base leaf 40,
+  at the class position; check written names, separators, token order, units
+  and links without host type lookup. Preserve numeric legacy ASTs and non-type
+  sentinel; compare 100/113/114/115/121 priorities against the bootstrap.
+  Extended matrix: 108 translated rejections, 108 legacy ASTs, 34 numeric non-type
+  cases, 102 FR/EN priority checks, 3,084 contracts/texts, 756 native markers,
+  256 altered AST inputs and 16 FR/EN successes. Windows CTest 5/5, GNU/Linux
+  6/6 including integration, native VS 2026 validation and conformity 20/20
+  on each chain. Identical extended images: 586,143 bytes; exports/ABI unchanged.
+
 ## Diagnostics sémantiques possédés — développement après Gs++ 0.27.0-alpha.10 — 2026-10-07
 
 ### Français

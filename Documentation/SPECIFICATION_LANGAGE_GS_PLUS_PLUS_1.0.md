@@ -1143,6 +1143,65 @@ exact et lève une erreur de contrat hôte. Messages, noms et positions restent
 possédés après destruction des préparations et déchargement de l'image.
 Cette API de développement ne remplace toujours pas les passes du pilote.
 
+### Diagnostics Gs++ facultatifs dans le pilote
+
+Le développement local après alpha.10 ajoute `--diagnostics-frontend <image.GsE>`
+et son alias anglais `--frontend-diagnostics`. Ils concernent les compilations
+directes de sources et interfaces, les projets et les solutions. Ils sont
+refusés sur une entrée binaire et sont incompatibles avec l'option
+d'expansion seule. Aucun choix n'est enregistré dans le XML 1.0 ; le chemin par
+défaut et les paquets publiés restent inchangés.
+
+Pour les projets, `OptionsConstructionProjet::DiagnosticsFrontend` emprunte le
+frontend explicitement chargé par l'appelant ; il doit rester vivant jusqu'à la
+fin. `ConstruireSolution` transmet ce même pointeur à chaque projet, sans en
+changer l'ordre. Un préparateur personnalisé et un frontend de diagnostics sont
+mutuellement exclusifs : le conflit est refusé avant lecture de configuration,
+écriture de journal ou construction. Nul conserve le fonctionnement précédent.
+
+En mode séparé, chaque compilation conserve les interfaces du projet et une
+seule source ; en agrégé, les interfaces et toutes les sources sont analysées
+ensemble. La préparation des interfaces reste propre à chaque compilation.
+Les chemins physiques et noms de diagnostic, les membres d'archives, cartes,
+journaux, remplacements `-o` et `--repertoire-objets` ne changent pas. Ces deux
+remplacements restent interdits sur une solution. Le chemin de l'image est
+résolu depuis le répertoire du processus, pas depuis le projet XML.
+
+Une construction reste incrémentale, sans transaction globale : un refus avant
+le premier objet laisse les fichiers de sortie existants intacts ; un échec
+dans un projet ultérieur ne restaure pas les bibliothèques déjà reconstruites
+et conserve les sorties non remplacées de ce projet. L'option de diagnostics
+ne change ni ce comportement ni l'arrêt au premier refus.
+
+L'image est native et doit être de confiance, sans bac à sable. Les exports
+d'expansion, d'assemblage normalisé avec diagnostic, de sémantique par unité et
+de nom canonique sont exigés dans ce mode. Une image ou paire d'exports invalide
+échoue comme erreur hôte, sans repli silencieux. Les autres modes ne deviennent
+pas dépendants de ces exports facultatifs.
+
+`AnalyserUnitesAvecDiagnosticsFrontend` prépare chaque unité une seule fois et
+convertit son instantané en jetons possédés du pipeline C++. Après syntaxe et
+normalisation C++ réussies, un validateur facultatif d'
+`AnalyserUnitesAvecPreparation` assemble et analyse ces mêmes instantanés en Gs++.
+Il ne relit aucun fichier. Le validateur est appelé une seule fois, avant la
+sémantique C++, jamais après un refus de préparation, syntaxe ou normalisation ;
+ses exceptions sont propagées sans conversion.
+
+Un refus pris en charge lève l'`ErreurCompilation` bilingue possédée, à sa
+position d'origine. Un refus numérique validé lève désormais le sous-type C++
+`DiagnosticSemantiqueNonTraduit` de `std::runtime_error`, avec le même `what()` et
+un accesseur `Code()`. Seul ce sous-type autorise le raccord à demander le
+diagnostic au bootstrap. Il exige alors un refus C++ au même fichier/ligne/colonne :
+succès C++ ou position différente signifie désaccord frontend/bootstrap et erreur
+hôte. Les incohérences de contrat, allocations et erreurs d'E/S ne sont pas
+absorbées par ce repli. L'accord de position ne prouve pas à lui seul une
+équivalence sémantique générale ni l'authenticité de l'image.
+
+La sémantique C++ reste nécessaire sur succès pour les annotations du backend ;
+la génération x64 et les écrivains ne changent pas. Ce mode est un premier
+raccord des diagnostics, pas un frontend autonome, et ne revendique ni nouvelle
+ABI native, ni nouveau format ou export GsE.
+
 ### Sémantique assemblée possédée
 
 `AnalyserSemantiqueAssemblee` reçoit un `DeclarationsAssemblees` réussi et
@@ -1690,6 +1749,425 @@ freestanding sans runtime caché.
 L’héritage multiple, l’héritage virtuel, la RTTI et les exceptions ne sont pas
 des conditions automatiques de Gs++ 1.0. Leur absence peut être normative si
 elle est diagnostiquée et n’empêche pas l’auto-hébergement.
+
+## Diagnostics possédés des types introuvables (développement après alpha.10)
+
+Les codes sémantiques 100 (base ou déclaration) et 99 (conversion) peuvent désigner,
+dans `Detail`, le premier nom de type introuvable : feuille nominale 40 pour
+la base d'une classe, 41 pour
+un type direct, 42 pour un callback, 43 pour une cible de conversion.
+Pour la base 40, `HachageType` et `Drapeaux` restent nuls ; `HachageNom`
+correspond au `HachageType` source de la classe. Son rang est contrôlé par
+les origines et le lexage borné de `:` ou `: publique` / `: public`.
+Le nom écrit est possédé avec sa tranche, son hachage, son empreinte de type
+source opaque, son espace et son rang lexical ; le diagnostic garde la position
+de la classe, de la déclaration ou de la conversion, pas celle de la feuille.
+Les bases sont contrôlées dans l'ordre des classes avant les types des champs
+et signatures. Les utilisations d'espaces, valeurs d'énumération et alias
+racines gardent leur priorité préalable. L'héritage non public (113) précède
+la recherche de sa base ; une base absente (100), un type trouvé non classe
+(114) et un auto-héritage (115) restent des refus distincts.
+Les signatures imbriquées suivent le retour puis les paramètres ; la cible
+d'une conversion est vérifiée avant son opérande. Un refus ultérieur ne
+remplace pas le premier échec de type. Le refus nominal d'une globale attend
+sa visite après les signatures et les contrôles de champs par défaut, puis
+avant son initialiseur et la globale suivante.
+
+L'hôte vérifie les indices, genres, liens, unités/origines et lexèmes possédés,
+sans rechercher de type ni d'import. Un ancien AST sans feuille reste numérique
+avec `Detail 0`. `Detail 4_294_967_295` réserve le cas où le nom désigne un
+symbole non type et où le nom canonique qu'afficherait le bootstrap n'est pas
+possédé : le contexte nominal est vérifié, sans fabriquer de message source.
+Cette sentinelle ne prouve pas l'authenticité d'un résultat natif ; comme les
+autres marqueurs, elle en décrit le contexte.
+
+La tranche des noms non types déjà canoniques du 21 octobre conserve l'index
+nominal normal lorsque le nom complet retenu par la recherche native est
+identique au nom écrit : nom racine ou qualification explicite, y compris
+avec commentaires et séparations lexicales. La comparaison est effectuée
+avant l'expansion d'un alias : le nom affiché d'un alias non type reste celui
+retenu par la recherche, pas celui de sa cible. La priorité du premier refus
+reste inchangée, notamment dans les callbacks et conversions imbriqués.
+L'hôte réutilise les feuilles 40/41/42/43 existantes sans chercher de symbole.
+Si la recherche qualifie implicitement le nom (`X` devenant `N::X`, par
+exemple), la sentinelle numérique est conservée tant que ce texte canonique
+n'est pas possédé. Les anciens AST à `Detail 0` et anciennes images renvoyant
+la sentinelle numérique restent pris en charge ; aucun genre, code, taille ABI
+ou format 1.0 supplémentaire n'est introduit.
+
+La tranche suivante du 21 octobre ajoute une paire d'exports **facultatifs**
+`AnalyserSemantiqueUnitesAvecNom` / `AnalyzeNamedUnitSemantics`. Les anciens
+exports et les structures de 64/56/120/40 octets restent inchangés. La nouvelle
+requête, de 48 octets, enveloppe la requête par unité et un tampon de segments
+de 24 octets : début source, taille et empreinte du préfixe complet. Elle
+retourne le nombre de segments, l'index AST nominal 40/41/42/43 et l'index AST
+de la déclaration retenue **avant expansion d'alias**. Aucun pointeur d'arène
+n'est publié. Le résultat historique, dont `Detail UINT32_MAX`, est conservé
+octet pour octet sur ces refus.
+
+Le natif utilise ses portées déjà indexées pour fournir les segments du nom
+complet d'une fonction libre/globale ou d'un alias racine ; une valeur d'énumération
+ajoute le segment de son énumération. Capacité nulle : mesure ; capacité
+insuffisante : aucune écriture du tampon ; capacité suffisante : copie dans
+l'ordre racine vers feuille. Les tampons appartiennent à l'appelant et sont
+distincts des entrées et autres sorties. Les champs de sortie sont nuls
+pour les succès, autres refus, anciens AST et contextes non représentés.
+
+L'adaptateur accepte cette fonction comme quatrième argument facultatif de
+`AnalyserSemantiqueAssemblee`. Il borne les segments par `MaximumNoeuds`,
+compare mesure et copie, puis possède les segments et l'AST source. Il vérifie
+la déclaration retenue, le contexte nominal, les unités, tranches et lexèmes
+de chaque identifiant, l'ordre des segments et toutes les empreintes de préfixe.
+La jointure n'est pas une résolution : aucun type, import ou alias n'est
+recherché dans l'hôte. La cohérence d'un nom fourni ne prouve pas l'authenticité
+du choix natif. L'ancien appel sans extension garde son refus numérique.
+
+```cpp
+auto resultat = GsPP::AnalyserSemantiqueAssemblee(declarations,
+    image.AnalyseurSemantiqueUnites(), {}, image.AnalyseurSemantiqueUnitesAvecNom());
+resultat.ExigerValide();
+```
+
+La nouvelle paire est vérifiée seulement sur demande par le chargeur : même
+adresse FR/EN, type fonction, taille non nulle et plage exécutable. Sa présence
+n'est pas requise pour l'expansion ou les anciens appels sémantiques. Les
+anciens marqueurs et AST restent numériques si l'extension n'est pas choisie
+ou ne possède pas le contexte. L'image possède désormais 109 exports, sans
+nouveau code d'erreur ni changement de format 1.0 ou d'ABI existante.
+
+La tranche suivante étend ce même contrat aux **méthodes ordinaires** (genre
+12), dont le parent est une classe racine (genre 6). Le préfixe possède les
+espaces de noms et le nom de cette classe : `M` peut ainsi être affiché comme
+`N::C::M` dans un refus de type. Le segment de classe vient de la déclaration
+AST déjà retenue, sans recherche de membre côté hôte. La classe doit avoir une
+définition (drapeau 4) ; aucun héritage n'est exigé. Son genre, parent racine,
+nom/hachage, tranche, unité/origine et segment final sont contrôlés, comme
+ceux de l'énumération déclarante pour une valeur.
+
+Le message, le code 100/99, la position et le premier nom refusé suivent le
+bootstrap dans les signatures et retours, callbacks, variables locales,
+conversions, constructeurs/destructeurs, initialiseurs de champs et corps
+d'opérateurs couverts. Les déclarations de méthodes d'une interface restent
+sans corps ; cette extension ne modifie pas la syntaxe ou la recherche des
+types. Une méthode privée, surchargée ou déclarée après l'utilisation ne devient
+pas un type. Les autres refus et succès ne publient pas ce contexte.
+Un ancien export étendu qui ne fournit pas les segments conserve le refus
+numérique et le résultat historique inchangé. Aucun export, code ou taille ABI
+supplémentaire n'est introduit par cette extension des méthodes.
+
+Pour un groupe mêlant méthode et fonction libre de même nom complet, le nom
+affiché peut être identique quelle que soit la déclaration retenue. Le contrat
+étendu conserve l'index AST du premier candidat natif dans l'ordre des
+déclarations normalisées ; il ne suffit donc pas de comparer le texte du
+diagnostic pour contrôler ce choix. La matrice compare ce même index à la mesure
+et à la copie, dans les deux ordres de déclaration et entre unités, ainsi que
+les messages et positions au bootstrap. Ce contrôle ne refait pas une recherche
+de surcharge côté hôte. Les priorités des autres erreurs restent inchangées ;
+les doublons de signatures (118) et appels ambigus (22) ne reçoivent pas de
+contexte de nom de type canonique par cette extension.
+
+Le **code 118** utilise `Detail` comme **index AST de la première fonction**
+de la paire, tandis que l'origine du refus désigne la seconde. L'adaptateur
+contrôle ces deux fonctions, leurs genres, parents, unités, origines, tranches,
+empreintes de nom et espaces déclarants. Il ne compare pas leurs types et ne
+recherche pas de paire concurrente : ce choix et la priorité des groupes
+restent natifs. Aucun préfixe sémantique partiel n'est publié sur refus.
+
+Lorsque le nom complet est déjà possédé, le message est
+`surcharge déclarée plusieurs fois : NOM` / `overload declared more than once: NOM`.
+Cette traduction couvre les fonctions à la racine, les méthodes d'une classe
+racine et les paires mixtes de même nom complet, fonctions spéciales comprises.
+Un nom de classe possédé permet ainsi de rendre `C::M`, même si la fonction libre
+correspondante est déclarée dans `espace C`. Les deux ordres restent admis.
+Sans l'entrée facultative `AvecContexte`, les préfixes de namespace absents de
+ce contexte conservent le refus numérique validé. Les nœuds 13/14 portent la
+tranche du nom de leur classe, non celle du mot-clé : ce partage n'est pas un
+doublon de position source. Aucun type, alias ou import n'est résolu dans l'hôte ;
+les structures ABI existantes restent inchangées. Les doublons refusés plus tôt par
+la normalisation conservent leur phase et leur diagnostic antérieurs.
+
+Les fonctions spéciales sont rendues par leur nom source canonique du bootstrap,
+identique pour les mots-clés français et anglais : `$constructeur` pour le genre
+13, `$destructeur` pour le genre 14, `operator` suivi du signe possédé pour le
+genre 15. Le nom de classe racine est préfixé lorsqu'il s'agit d'un membre,
+par exemple `C::$constructeur`, `C::$destructeur` et `C::operator+`. Le signe est
+contrôlé parmi les 18 opérateurs déjà admis ; aucun opérateur nouveau n'est ajouté.
+Deux familles différentes (constructeur/destructeur/opérateur/ordinaire) ne sont
+pas assimilées à cause d'un même nom de classe ou d'une même empreinte brute.
+
+La matrice sémantique brute peut exercer un doublon de destructeurs ou d'opérateurs
+unaires membres déjà refusé par la normalisation du pilote. Elle le compare au
+bootstrap sans normalisation, à phase égale ; ce test n'avance pas la sémantique
+devant la normalisation dans `gsppc`.
+
+L'entrée native facultative `AnalyserSemantiqueUnitesAvecContexte` /
+`AnalyzeContextualUnitSemantics` réutilise `RequeteSemantiqueUnitesAvecNom`
+(48 octets) et ses segments source (24 octets), mais autorise le préfixe des
+surcharges de code 118. Dans ce cas, `IndexNominal` est l'index AST de la seconde
+fonction à l'origine du refus ; `IndexDeclaration` est celui de la première,
+égal à `Detail`. Ce ne sont pas des rangs de symbole ni des feuilles de type.
+Pour 99/100, le sens nominal et le contrat de l'entrée `AvecNom` sont conservés.
+Les anciennes entrées restent inchangées : elles ne publient pas de préfixe 118.
+
+Le natif copie les segments de namespace déjà indexés et, pour un membre, celui
+de la classe de la première déclaration retenue. Les noms déjà disponibles à la
+racine ne nécessitent pas de segments supplémentaires. La capacité nulle mesure
+la taille ; une capacité insuffisante n'écrit aucun segment ; une capacité
+suffisante publie le préfixe entier, sans pointeur d'arène. Le résultat numérique,
+la première déclaration et la position restent identiques aux anciennes entrées.
+
+L'hôte contrôle la paire, les segments, leurs unités, les noms de classe et les
+empreintes cumulées puis joint uniquement des identifiants possédés. Il n'effectue
+pas de recherche de namespace, d'import, de type ou de surcharge. Le cinquième
+argument C++ facultatif d'`AnalyserSemantiqueAssemblee`, `analyserAvecContexte`,
+sélectionne cette entrée, prioritaire sur le quatrième argument `analyserAvecNom`.
+Un appel historique conserve son comportement et ses replis.
+
+Dans le pilote, les deux nouveaux exports sont facultatifs : tous deux absents,
+le contrat précédent et le repli C++ restent disponibles ; un seul présent, une
+adresse différente ou un export non exécutable restent des erreurs hôtes.
+L'image choisie doit toujours fournir les anciennes entrées déjà exigées par le
+mode de diagnostics. Deux exports sont ajoutés, sans changer le format GsE 1.0,
+les structures ABI existantes, le chemin par défaut ou la version alpha.10.
+
+Le **code 119** utilise la même paire d'indices AST : `Detail` désigne la première
+fonction dont le symbole est déjà présent ; l'origine désigne la seconde. Sa
+priorité d'insertion reste native et ne se confond pas avec celle des groupes
+de doublons 118, contrôlés auparavant.
+
+L'entrée facultative `AnalyserSemantiqueUnitesAvecLiaison` /
+`AnalyzeLinkUnitSemantics` reçoit `RequeteSemantiqueUnitesAvecLiaison` : **56
+octets**, composés du `Contexte` existant de 48 octets suivi de
+`EmpreinteLiaison` (`naturel64`, décalage 48). Pour 99/100/118, elle conserve
+exactement le contrat de l'entrée `AvecContexte`, empreinte nulle. Pour 119,
+`Contexte.IndexNominal` désigne la seconde fonction, `IndexDeclaration` la
+première, égale à `Detail`. Les segments sont ceux du préfixe de la première
+fonction : namespaces et classe éventuelle ; ils peuvent être absents pour
+une fonction libre à la racine. Mesure, copie entière et bornes restent identiques.
+
+L'empreinte est celle **déjà calculée** par le contrôle natif de collision.
+Elle est opaque : ses 64 bits, zéro compris, sont valides ; l'hôte ne compare
+pas les types, ne redétecte pas la collision et ne recalcule pas le hachage de
+signature. Après contrôle de la paire et du préfixe possédés, il affiche le nom
+canonique, `$` et exactement **16 chiffres hexadécimaux majuscules**, zéros de
+tête compris. Le message est `collision de symbole de fonction : SYMBOLE` /
+`function symbol collision: SYMBOL`, à la position source originale.
+
+Le sixième argument C++ facultatif `analyserAvecLiaison` sélectionne cette entrée
+avant les deux précédentes. Le résultat possédé conserve l'empreinte comme
+valeur facultative : absence et valeur zéro sont distinctes. Aucun pointeur
+d'arène n'est conservé ; les mesures et copies doivent avoir les mêmes
+résultats, indices, préfixes et empreinte. Sans cette entrée, 119 conserve son
+refus numérique validé et le repli C++ explicite du pilote. La paire d'exports
+est facultative, mais une paire partielle/incohérente n'est pas masquée.
+Les anciennes entrées ne publient pas de contexte 119. Les formats 1.0 et
+structures ABI existantes restent inchangés ; deux exports facultatifs sont
+ajoutés aux 111 précédents, sans bascule du chemin par défaut.
+
+Le **code 22** conserve `Detail` comme **nombre de meilleures surcharges**,
+au moins deux, et non comme index de fonction. L'entrée facultative
+`AnalyserSemantiqueUnitesAvecAppels` / `AnalyzeCallUnitSemantics` réutilise
+la requête de liaison de **56 octets**, avec les contrats 99/100/118/119
+inchangés. Pour 22, `Contexte.IndexNominal` désigne l'expression à l'origine
+du refus, `IndexDeclaration` une meilleure fonction du **groupe canonique
+unique déjà sélectionné**. `EmpreinteLiaison` reste nulle.
+
+Le natif mémorise ces indices pendant la sélection ; la production du contexte
+ne refait pas la sélection. Il copie le préfixe source de la déclaration retenue,
+classe éventuelle comprise ; une fonction libre racine n'a pas besoin de segment.
+Les anciennes entrées ne publient pas de contexte 22. Mesure, copie entière,
+origine, résultat numérique et bornes restent inchangés.
+
+L'adaptateur contrôle rôle de l'expression, genre et classe de la fonction,
+origines, unités, tranches, lexèmes, préfixes et nombre de meilleures surcharges
+borné par les fonctions de l'AST. Il ne valide pas lui-même le score et ne
+recherche pas de candidat. Les expressions prises en charge sont la référence
+cible d'appel 24, l'accès membre appelé 29, les opérateurs 25/26, la construction
+locale explicite 19 et les initialiseurs 33/34/35. Le nom canonique est rendu
+selon la déclaration, sans suffixe de liaison : `$constructeur` ou `operatorSIGNE`
+pour les fonctions spéciales. Le message est `appel de surcharge ambigu pour NOM`
+/ `ambiguous overload call for NAME`, à l'origine du refus.
+
+Avec l'entrée `AvecAppels`, si les imports réunissent des noms complets distincts,
+le contexte reste vide et le refus numérique est conservé. Le groupe synthétique
+du bootstrap n'est pas inventé à partir d'une seule fonction. Le pilote conserve
+son repli C++ confirmé à la même position. Le septième argument C++ facultatif
+`analyserAvecAppels` sélectionne cette entrée avant les précédentes. L'absence
+de la paire d'exports est admise ; une paire partielle ou incohérente est refusée.
+Deux exports facultatifs sont ajoutés aux 113 précédents, sans modifier les
+structures ABI existantes, les formats 1.0 ou le chemin par défaut.
+
+L'entrée facultative suivante, `AnalyserSemantiqueUnitesAvecGroupes` /
+`AnalyzeGroupUnitSemantics`, réutilise aussi la requête de **56 octets** et
+conserve les contrats précédents. Pour un **groupe importé ambigu 22**,
+`Contexte.IndexNominal` désigne l'expression 24/25/26 déjà choisie par le natif,
+`IndexDeclaration` est **nul** : aucune fonction n'est désignée comme représentante
+de plusieurs noms complets. Préfixe et empreinte de liaison sont absents ;
+`Detail` reste le nombre de meilleures fonctions. Les anciennes entrées ne
+publient pas ce contexte, donc leurs refus numériques restent inchangés.
+
+Le huitième argument C++ facultatif `analyserAvecGroupes` est prioritaire sur
+les précédents. L'adaptateur possède une marque `GroupeAppelImporte`, dérivée
+uniquement de ce contrat natif, et vérifie expression, rôle d'appel, unité,
+origine, nom, tranches, lexèmes, empreinte du nom et bornes du compte. Il ne
+refait pas la recherche d'import, la preuve d'ambiguïté ou le score. Le nom
+affiché est celui de l'appel : `F`, `API::F`, ou `operator` suivi du signe 25/26.
+Mesure sans segment et capacités positives n'écrivent aucun segment.
+
+Les clés synthétiques `@GsUsing::…` restent privées à la résolution C++.
+Leur nom public est enregistré lors de leur création puis utilisé dans les
+messages 21/22, sans parser la clé ou modifier les candidats. Cette association
+est réinitialisée avec les tables sémantiques. Les messages ne contiennent plus
+ce second chemin/unité interne ; l'origine normale du diagnostic est conservée.
+Sur l'entrée `AvecGroupes`, le code 21 garde son repli numérique natif,
+même si son affichage C++ est corrigé.
+L'absence de la paire reste admise ; une paire partielle/incohérente est refusée.
+Deux exports facultatifs sont ajoutés aux 115 précédents, sans nouveau format
+ou nouvelle structure ABI.
+
+L'entrée facultative `AnalyserSemantiqueUnitesAvecEchecsAppels` /
+`AnalyzeFailedCallUnitSemantics` ajoute le **diagnostic 21** pour les appels
+directs et membres 24/29 et les opérateurs 25/26. Elle réutilise la même requête
+de **56 octets** et conserve les contrats 99/100/118/119/22. Le neuvième argument
+C++ `analyserAvecEchecsAppels` est facultatif et prioritaire sur les précédents.
+
+Le groupe est mémorisé pendant le parcours natif existant, y compris lorsqu'un
+refus d'arité ou de préfixe d'arguments précède les arguments suivants.
+`IndexNominal` désigne l'expression ; pour un groupe de nom complet unique,
+`IndexDeclaration` désigne une fonction de ce groupe, **pas une surcharge
+compatible**. Le préfixe canonique provient du natif. Pour plusieurs noms
+complets importés, `IndexDeclaration` reste nul et le nom appelé est rendu,
+sans préfixe de déclaration ni empreinte de liaison.
+
+Pour 21, **`Detail` reste le nombre d'arguments explicites**, zéro compris,
+et non le nombre de meilleures fonctions de 22. L'hôte le compare aux enfants
+directs de l'appel (hors cible/récepteur implicite) ou de l'opérateur. Il
+contrôle le contexte possédé sans rechercher les imports, résoudre les types
+ou recalculer les conversions. Ces contrôles vérifient sa cohérence, pas
+l'authenticité d'une image native hostile.
+
+Les anciennes entrées conservent leur refus 21 numérique et le pilote peut
+toujours utiliser son repli C++ confirmé. Une absence complète des deux exports
+est admise ; une paire partielle ou incohérente est refusée. Les constructions,
+les alias de fonctions dont le nom du groupe appelé n'est pas représenté et
+les autres contextes non couverts restent numériques. Le natif ne publie pas
+le nom de la fonction cible à la place du nom d'un alias, même lorsque leur
+feuille est identique dans deux namespaces différents. Deux exports facultatifs
+s'ajoutent aux 117 précédents ; formats 1.0, structures ABI et chemin par défaut
+inchangés.
+
+L'entrée facultative suivante, `AnalyserSemantiqueUnitesAvecConstructions` /
+`AnalyzeConstructionUnitSemantics`, ajoute les contextes de construction du
+code **21**, avec la même requête de **56 octets**. Le dixième argument C++
+`analyserAvecConstructions` est facultatif et prioritaire sur les précédents.
+Les résultats numériques et les contrats 99/100/118/119/22 sont conservés.
+
+`IndexNominal` désigne la variable locale 19 ou l'initialiseur de délégation,
+de base ou de champ 33/34/35. `IndexDeclaration` désigne une fonction du groupe
+de constructeurs refusé, jamais une fonction compatible. Le natif mémorise le
+groupe pendant le parcours existant, y compris lors des refus précoces d'arité
+ou de préfixe, sans refaire les conversions pour copier le diagnostic.
+Le message utilise le préfixe canonique possédé suivi de `::$constructeur`,
+y compris lorsqu'un alias de classe est écrit dans la source.
+
+`Detail` reste l'arité explicite, zéro compris. Les feuilles nominales 41/42/43
+ne sont pas des arguments et sont exclues du compte des enfants directs.
+Une construction locale implicite 19 sans enfant expression est aussi admise ;
+les origines implicites limitées à un champ 7 ou un constructeur 13 restent
+numériques. L'hôte contrôle les rôles, indices, origines, préfixes et comptes,
+sans résoudre à nouveau le type ou le constructeur. Les anciens exports
+n'ajoutent pas ce contexte ; une sortie de construction annoncée par une
+ancienne capacité est incohérente, pas un motif de repli silencieux.
+
+L'absence de la nouvelle paire est admise ; une paire partielle ou incohérente
+est refusée. Deux exports facultatifs s'ajoutent aux 119 précédents, sans
+nouveau format, nouvelle structure ABI ni bascule du chemin par défaut.
+
+L'entrée facultative `AnalyserSemantiqueUnitesAvecConstructionImplicite` /
+`AnalyzeImplicitConstructionUnitSemantics` étend ensuite ce contrat aux refus
+**21** dont `IndexNominal` est un **champ 7** ou un **constructeur 13**.
+Elle conserve la requête de **56 octets** ; l'onzième argument C++ facultatif
+`analyserAvecConstructionsImplicites` est prioritaire. `IndexDeclaration` et le
+préfixe désignent le groupe déjà retenu par le natif, y compris pour une base
+indirecte ou un champ imbriqué : ce n'est pas nécessairement le type directement
+écrit dans le champ ou la classe à l'origine de l'erreur.
+
+`Detail` vaut **zéro** : les paramètres et le corps du constructeur ne sont
+pas les arguments de cette construction implicite. Un champ 7 n'a pas
+d'initialiseur expression ; son type et son propriétaire de classe sont
+contrôlés structurellement. Un constructeur 13 appartient à une classe avec
+base, sans initialiseur explicite de base ni délégation. Les noms possédés,
+origines et préfixes sont vérifiés, sans résoudre le type, reconstruire le plan
+de construction ou évaluer les candidats dans l'hôte.
+
+Les anciennes entrées restent numériques pour ces deux nouveaux rôles et ne
+peuvent pas publier ce contexte via une capacité antérieure. L'absence des deux
+exports est admise ; une paire partielle ou incohérente est refusée dans le
+mode explicite de diagnostics. Les alias de fonctions non représentés restent
+numériques. Deux exports facultatifs s'ajoutent aux 121 précédents, sans
+changement de version produit, de format 1.0 ou de structure ABI.
+
+L'entrée facultative `AnalyserSemantiqueUnitesAvecAliasAppels` /
+`AnalyzeAliasCallUnitSemantics` ajoute ensuite les appels d'alias de fonctions
+refusés par **21**. Le douzième argument C++ `analyserAvecAliasAppels` la
+sélectionne avant les précédentes. La requête reste de **56 octets** :
+`IndexNominal` désigne la référence appelée **24**, `IndexDeclaration` la
+déclaration de l'alias racine **10**, et les segments son préfixe canonique.
+`Detail` reste le nombre d'arguments explicites, zéro compris.
+
+Le natif retient l'alias public déjà résolu, non la fonction cible, afin de
+conserver le message canonique du bootstrap, par exemple `API::Appeler`.
+L'hôte vérifie la cible nominale écrite **38**, les rôles, noms, origines et
+préfixes, sans résoudre l'alias ni les candidats. Les noms et tranches source
+restent possédés après remplacement des fichiers et déchargement de l'image.
+Pour les imports mêlant plusieurs alias ou fonctions, la même entrée transmet
+le contexte de groupe importé existant : `IndexNominal` reste la référence
+**24**, `IndexDeclaration` et `NombreSegments` sont nuls, sans empreinte de
+liaison. Le nom écrit dans l'appel (`F`, `API::F`, etc.) représente les noms
+publics importés, même lorsque plusieurs alias visent la même fonction finale.
+Aucun alias particulier ni préfixe canonique n'est choisi pour ce groupe.
+
+Les anciennes entrées natives restent numériques pour ces alias. Le contexte
+d'alias unique **10** exige la capacité dédiée ; le contexte importé reprend
+un rôle déjà compris des hôtes qui traduisent les groupes importés du code 21.
+Cette extension réutilise les 125 exports, sans nouveau point d'entrée.
+L'absence des deux exports reste admise ; une paire partielle ou incohérente est refusée
+uniquement lorsque le contrat est demandé. L'entrée `AvecAliasAppels` et son
+alias ont porté le total de 123 à 125 exports ; le complément des imports mixtes
+n'en ajoute aucun. Le format 1.0, les structures ABI et le mode de compilation
+par défaut restent inchangés.
+
+Les refus d'appels indirects **53** (cible non appelable) et **54** (nombre
+d'arguments incorrect) ont des messages invariants bilingues. L'entrée de base
+`AnalyserSemantiqueUnites` suffit : aucun nom canonique ni type résolu n'est
+nécessaire à leur rendu. Pour 53, l'origine désigne la cible expression
+**22..32**, premier enfant direct d'un appel **28**, et `Detail` vaut zéro.
+Pour 54, l'origine désigne l'appel **28** et `Detail` compte ses arguments
+explicites, hors cible. Les appels imbriqués peuvent partager une position ;
+leurs rôles et relations d'ascendance sont vérifiés sans sélectionner une
+cible sémantique dans l'hôte. Les comptes de symboles, unités et origines
+doivent rester cohérents avec l'AST possédé. Un contrat incohérent est refusé
+avant tout rendu de diagnostic source.
+
+Le code **55** reste numérique dans le résultat possédé : les refus de type
+d'argument peuvent dépendre des types résolus et de la liaison des références.
+Le pilote explicite conserve son repli C++ avec vérification du refus et de
+sa position. Le contrôle de cible précède celui de l'arité, qui précède celui
+des arguments, conformément au bootstrap. Ces contrôles réutilisent les
+125 exports et ne modifient ni les formats 1.0 ni les structures ABI.
+
+Pour le code 114, le nom écrit de la base est pris dans la feuille 40, à la
+position de la classe dérivée, y compris s'il s'agit d'un alias. `Detail`
+reste le **rang de symbole** natif du type retenu, pas un index AST ; zéro
+est un rang valide. L'hôte le rattache uniquement à l'ordre des déclarations
+symboliques et exige une structure, une union ou une énumération racine.
+Ce type peut être déclaré après la classe ou dans une autre unité/interface.
+Le rang, le genre, les tranches, lexèmes, hachages et origines sont contrôlés,
+mais les types/imports/alias ne sont pas résolus une seconde fois. La cohérence
+du marqueur ne prouve pas son authenticité. Un ancien AST sans base nominale
+reste numérique en conservant le même rang et la même position.
+Aucun nouveau genre AST, code, export ni taille ABI ;
+formats 1.0 et version produit `0.27.0-alpha.10` inchangés.
 
 ## Conformité
 

@@ -142,6 +142,8 @@ namespace GsPP
         std::unordered_map<std::string, ValeurEnumeration> _ValeursEnumerations;
         std::unordered_map<std::string, Fonction*> _Fonctions;
         mutable std::unordered_map<std::string, std::vector<Fonction*>> _Surcharges;
+        /** <résumé>Sépare le nom public appelé de la clé interne de résolution des imports.</résumé> **/
+        mutable std::unordered_map<std::string, std::string> _NomsGroupesImportes;
         std::unordered_map<std::string, VariableGlobale*> _Globales;
         std::unordered_map<std::string, DeclarationAlias*> _Aliases;
         std::unordered_map<std::string, TypeGs> _Variables;

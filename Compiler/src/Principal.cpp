@@ -105,6 +105,8 @@ namespace
             << "  --ast                            afficher l’AST et les dispositions\n"
             << "  --expanseur-inclusions <image.GsE> expansion Gs++ : sources, interfaces, projets, solutions\n"
             << "  --include-expander <image.GsE>    alias anglais ; image native de confiance uniquement\n"
+            << "  --diagnostics-frontend <image.GsE> diagnostics Gs++ : sources, interfaces, projets, solutions\n"
+            << "  --frontend-diagnostics <image.GsE> alias anglais ; image native de confiance uniquement\n"
             << "  --langue-diagnostics français|anglais\n"
             << "  --version                        afficher la version\n";
     }
@@ -209,6 +211,7 @@ int main(int argc, char** argv)
     std::filesystem::path carte;
     std::filesystem::path repertoireObjets;
     std::filesystem::path imageExpansion;
+    std::filesystem::path imageDiagnostics;
     bool afficherJetons = false;
     bool afficherAst = false;
     bool formatExplicite = false;
@@ -234,6 +237,14 @@ int main(int argc, char** argv)
                 if (++index >= argc || !argv[index][0] || argv[index][0] == '-')
                     throw std::runtime_error("chemin d'image attendu après " + argument);
                 imageExpansion = argv[index];
+                continue;
+            }
+            if (argument == "--diagnostics-frontend" || argument == "--frontend-diagnostics")
+            {
+                if (!imageDiagnostics.empty()) throw std::runtime_error("frontend de diagnostics indiqué plusieurs fois");
+                if (++index >= argc || !argv[index][0] || argv[index][0] == '-')
+                    throw std::runtime_error("chemin d'image attendu après " + argument);
+                imageDiagnostics = argv[index];
                 continue;
             }
             if (argument == "-o")
@@ -311,6 +322,8 @@ int main(int argc, char** argv)
         }
 
         if (entrees.empty()) throw std::runtime_error("aucun fichier d’entrée indiqué");
+        if (!imageDiagnostics.empty() && !imageExpansion.empty())
+            throw std::runtime_error("--diagnostics-frontend et --expanseur-inclusions sont incompatibles");
         const bool contientProjet = std::any_of(entrees.begin(), entrees.end(), EstProjet);
         const bool contientSolution = std::any_of(entrees.begin(), entrees.end(), EstSolution);
         if (contientProjet || contientSolution)
@@ -325,6 +338,8 @@ int main(int argc, char** argv)
                 throw std::runtime_error(
                     "les remplacements de sortie s’appliquent uniquement à un projet");
             std::unique_ptr<ExpanseurInclusionsCharge> expanseur;
+            std::unique_ptr<ExpanseurInclusionsCharge> frontend;
+            if (!imageDiagnostics.empty()) frontend = std::make_unique<ExpanseurInclusionsCharge>(imageDiagnostics);
             PreparateurJetonsUnite preparer;
             if (!imageExpansion.empty())
             {
@@ -338,6 +353,7 @@ int main(int argc, char** argv)
                 options.Sortie = sortie;
                 options.RepertoireObjets = repertoireObjets;
                 options.PreparerJetons = preparer;
+                options.DiagnosticsFrontend = frontend.get();
                 const auto resultat = ConstructeurProjet().Construire(
                     entrees[0], std::cout, options);
                 std::cout << "Projet construit : " << resultat.Sortie.string()
@@ -345,7 +361,7 @@ int main(int argc, char** argv)
             }
             else
             {
-                const auto resultats = ConstructeurProjet().ConstruireSolution(entrees[0], std::cout, preparer);
+                const auto resultats = ConstructeurProjet().ConstruireSolution(entrees[0], std::cout, preparer, frontend.get());
                 std::cout << "Solution construite : " << resultats.size() << " projet(s)\n";
             }
             return 0;
@@ -361,6 +377,8 @@ int main(int argc, char** argv)
         const bool contientBinaire = contientObjet || contientBibliotheque;
         if (contientBinaire && !imageExpansion.empty()) throw std::runtime_error(
             "--expanseur-inclusions ne s'applique pas aux objets/bibliothèques");
+        if (contientBinaire && !imageDiagnostics.empty()) throw std::runtime_error(
+            "--diagnostics-frontend ne s'applique pas aux objets/bibliothèques");
         const bool contientSource = std::any_of(
             entrees.begin(), entrees.end(),
             [](const std::filesystem::path& chemin)
@@ -386,7 +404,9 @@ int main(int argc, char** argv)
                 unites.push_back({chemin, EstExtensionInterface(chemin), chemin.string()});
             std::unique_ptr<ExpanseurInclusionsCharge> expanseur;
             if (!imageExpansion.empty()) expanseur = std::make_unique<ExpanseurInclusionsCharge>(imageExpansion);
-            auto programme = expanseur
+            std::unique_ptr<ExpanseurInclusionsCharge> frontend;
+            if (!imageDiagnostics.empty()) frontend = std::make_unique<ExpanseurInclusionsCharge>(imageDiagnostics);
+            auto programme = frontend ? AnalyserUnitesAvecDiagnosticsFrontend(unites, *frontend, afficherJetons ? &std::cout : nullptr) : expanseur
                 ? AnalyserUnitesAvecPreparation(unites, [&](const UniteSource& unite)
                     { return PreparerJetonsAvecReprise(unite, expanseur->Developper()); }, afficherJetons ? &std::cout : nullptr)
                 : AnalyserUnites(unites, afficherJetons ? &std::cout : nullptr);

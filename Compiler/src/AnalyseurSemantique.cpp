@@ -416,6 +416,7 @@ namespace GsPP
                 const auto groupe = "@GsUsing::" + position.Unite + ':'
                     + std::to_string(position.Ordre) + ':' + nom;
                 _Surcharges[groupe] = std::move(fonctions);
+                _NomsGroupesImportes[groupe] = nom;
                 return groupe;
             }
             if (niveau.empty()) break;
@@ -976,6 +977,8 @@ namespace GsPP
     {
         const auto qualifie = QualifierNomFonction(nom, contexte, position);
         const auto groupe = _Surcharges.find(qualifie);
+        const auto nomImporte = _NomsGroupesImportes.find(qualifie);
+        const auto& nomDiagnostic = nomImporte == _NomsGroupesImportes.end() ? nom : nomImporte->second;
         if (groupe == _Surcharges.end())
             Erreur(position,
                    "fonction introuvable : " + nom,
@@ -1049,12 +1052,12 @@ namespace GsPP
         }
         if (!meilleure)
             Erreur(position,
-                   "aucune surcharge compatible pour " + nom,
-                   "no matching overload for " + nom);
+                   "aucune surcharge compatible pour " + nomDiagnostic,
+                   "no matching overload for " + nomDiagnostic);
         if (ambigu)
             Erreur(position,
-                   "appel de surcharge ambigu pour " + nom,
-                   "ambiguous overload call for " + nom);
+                   "appel de surcharge ambigu pour " + nomDiagnostic,
+                   "ambiguous overload call for " + nomDiagnostic);
         return meilleure;
     }
 
@@ -1101,6 +1104,7 @@ namespace GsPP
     {
         _Fonctions.clear();
         _Surcharges.clear();
+        _NomsGroupesImportes.clear();
         std::vector<std::string> ordreGroupes;
         for (auto& fonction : programme.Fonctions)
         {
@@ -3337,6 +3341,7 @@ namespace GsPP
         _ValeursEnumerations.clear();
         _Fonctions.clear();
         _Surcharges.clear();
+        _NomsGroupesImportes.clear();
         _Globales.clear();
         _Aliases.clear();
         _StructuresCalculees.clear();
